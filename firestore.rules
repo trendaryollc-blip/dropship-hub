@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // User profiles
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // User settings subcollection
+      match /settings/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Favorites subcollection
+      match /favorites/{favId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Calculator history subcollection
+      match /calcHistory/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Chat history subcollection
+      match /chatHistory/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Product notes subcollection
+      match /notes/{productId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // Products (read-only for all authenticated users)
+    match /products/{productId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Admin-only via Admin SDK
+    }
+
+    // Suppliers (read-only for all authenticated users)
+    match /suppliers/{supplierId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Competitors (read-only for all authenticated users)
+    match /competitors/{competitorId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Niches (read-only for all authenticated users)
+    match /niches/{nicheId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+  }
+}

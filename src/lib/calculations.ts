@@ -1,0 +1,205 @@
+export interface ProfitCalc {
+  totalCost: number;
+  netProfit: number;
+  profitMargin: number;
+  roi: number;
+  breakEvenUnits: number;
+  revenue: number;
+  costBreakdown: { name: string; value: number; pct: number; color: string }[];
+}
+
+export interface ShippingCalc {
+  estimatedCost: number;
+  deliveryDays: { min: number; max: number };
+  carriers: { name: string; cost: number; days: number; reliability: number }[];
+  costPerUnit: number;
+}
+
+export interface LandedCostCalc {
+  landedCost: number;
+  totalDuties: number;
+  totalShipping: number;
+  totalFees: number;
+  breakdown: { name: string; value: number; color: string }[];
+  suggestedRetail: number;
+  profitAtSuggested: number;
+}
+
+export interface MarginCalc {
+  recommendedPrice: number;
+  competitiveRange: { min: number; max: number };
+  marginAtPrice: number;
+  priceBreakpoints: { price: number; margin: number; roi: number }[];
+}
+
+export interface AdROICalc {
+  estimatedCAC: number;
+  breakEvenROAS: number;
+  projectedProfit: number;
+  requiredSales: number;
+  dailyBudget: number;
+  monthlyRevenue: number;
+  monthlyProfit: number;
+  scenarios: { name: string; spend: number; revenue: number; profit: number; roas: number }[];
+}
+
+export function calculateProfit(
+  productCost: number,
+  sellingPrice: number,
+  shippingCost: number,
+  platformFeePercent: number,
+  adSpendPerUnit: number,
+  units: number = 1
+): ProfitCalc {
+  const revenue = sellingPrice * units;
+  const platformFee = (sellingPrice * platformFeePercent / 100) * units;
+  const totalShipping = shippingCost * units;
+  const totalAds = adSpendPerUnit * units;
+  const totalCost = (productCost * units) + platformFee + totalShipping + totalAds;
+  const netProfit = revenue - totalCost;
+  const profitMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0;
+  const roi = totalCost > 0 ? (netProfit / totalCost) * 100 : 0;
+  const breakEvenUnits = netProfit > 0 ? 1 : Math.ceil(Math.abs(netProfit) > 0 ? Math.abs(totalCost - revenue) / (sellingPrice - productCost - (sellingPrice * platformFeePercent / 100) - shippingCost - adSpendPerUnit) : 0);
+
+  const costBreakdown = [
+    { name: "Product Cost", value: productCost * units, pct: totalCost > 0 ? ((productCost * units) / totalCost) * 100 : 0, color: "#3b82f6" },
+    { name: "Platform Fees", value: platformFee, pct: totalCost > 0 ? (platformFee / totalCost) * 100 : 0, color: "#a855f7" },
+    { name: "Shipping", value: totalShipping, pct: totalCost > 0 ? (totalShipping / totalCost) * 100 : 0, color: "#f97316" },
+    { name: "Ad Spend", value: totalAds, pct: totalCost > 0 ? (totalAds / totalCost) * 100 : 0, color: "#ef4444" },
+  ];
+
+  return { totalCost, netProfit, profitMargin, roi, breakEvenUnits, revenue, costBreakdown };
+}
+
+export function calculateShipping(
+  weight: number,
+  length: number,
+  width: number,
+  height: number,
+  originCountry: string,
+  destinationCountry: string
+): ShippingCalc {
+  const volumetricWeight = (length * width * height) / 5000;
+  const chargeableWeight = Math.max(weight, volumetricWeight);
+
+  const baseRate = originCountry === destinationCountry ? 3.5 : 8.0;
+  const carriers = [
+    { name: "Standard Air", cost: +(chargeableWeight * baseRate).toFixed(2), days: originCountry === destinationCountry ? 3 : 12, reliability: 92 },
+    { name: "Express", cost: +(chargeableWeight * baseRate * 1.8).toFixed(2), days: originCountry === destinationCountry ? 1 : 7, reliability: 97 },
+    { name: "Economy Sea", cost: +(chargeableWeight * baseRate * 0.5).toFixed(2), days: originCountry === destinationCountry ? 5 : 30, reliability: 85 },
+    { name: "Premium Courier", cost: +(chargeableWeight * baseRate * 2.5).toFixed(2), days: originCountry === destinationCountry ? 1 : 5, reliability: 99 },
+  ];
+
+  const estimatedCost = carriers[0].cost;
+  const deliveryDays = { min: Math.min(...carriers.map((c) => c.days)), max: Math.max(...carriers.map((c) => c.days)) };
+
+  return { estimatedCost, deliveryDays, carriers, costPerUnit: estimatedCost };
+}
+
+export function calculateLandedCost(
+  productCost: number,
+  shippingCost: number,
+  tariffPercent: number,
+  customsDuty: number,
+  insuranceCost: number,
+  platformFeePercent: number,
+  otherFees: number,
+  quantity: number = 1
+): LandedCostCalc {
+  const totalProductCost = productCost * quantity;
+  const totalShipping = shippingCost * quantity;
+  const tariffAmount = (totalProductCost * tariffPercent) / 100;
+  const totalDuties = tariffAmount + customsDuty;
+  const totalFees = ((totalProductCost * platformFeePercent) / 100) + insuranceCost + otherFees;
+  const landedCost = totalProductCost + totalShipping + totalDuties + totalFees;
+  const landedCostPerUnit = landedCost / quantity;
+
+  const suggestedRetail = +(landedCostPerUnit * 2.5).toFixed(2);
+  const profitAtSuggested = +(suggestedRetail - landedCostPerUnit).toFixed(2);
+
+  const breakdown = [
+    { name: "Product Cost", value: +totalProductCost.toFixed(2), color: "#3b82f6" },
+    { name: "Shipping", value: +totalShipping.toFixed(2), color: "#f97316" },
+    { name: "Tariffs & Duties", value: +totalDuties.toFixed(2), color: "#ef4444" },
+    { name: "Platform Fees", value: +((totalProductCost * platformFeePercent) / 100).toFixed(2), color: "#a855f7" },
+    { name: "Insurance", value: +insuranceCost.toFixed(2), color: "#eab308" },
+    { name: "Other Fees", value: +otherFees.toFixed(2), color: "#6b7280" },
+  ];
+
+  return { landedCost: +landedCost.toFixed(2), totalDuties: +totalDuties.toFixed(2), totalShipping, totalFees: +totalFees.toFixed(2), breakdown, suggestedRetail, profitAtSuggested };
+}
+
+export function calculateMargin(
+  costPrice: number,
+  desiredMarginPercent: number,
+  competitorPrices: number[] = []
+): MarginCalc {
+  const recommendedPrice = +(costPrice / (1 - desiredMarginPercent / 100)).toFixed(2);
+  const marginAtPrice = desiredMarginPercent;
+
+  const minCompetitor = competitorPrices.length > 0 ? Math.min(...competitorPrices) : recommendedPrice * 0.8;
+  const maxCompetitor = competitorPrices.length > 0 ? Math.max(...competitorPrices) : recommendedPrice * 1.3;
+
+  const competitiveRange = {
+    min: +Math.max(minCompetitor * 0.95, costPrice * 1.1).toFixed(2),
+    max: +(maxCompetitor * 1.05).toFixed(2),
+  };
+
+  const priceBreakpoints = [20, 30, 40, 50, 60].map((margin) => {
+    const price = +(costPrice / (1 - margin / 100)).toFixed(2);
+    const profit = price - costPrice;
+    const roi = costPrice > 0 ? (profit / costPrice) * 100 : 0;
+    return { price, margin, roi: +roi.toFixed(1) };
+  });
+
+  return { recommendedPrice, competitiveRange, marginAtPrice, priceBreakpoints };
+}
+
+export function calculateAdROI(
+  productCost: number,
+  sellingPrice: number,
+  shippingCost: number,
+  platformFeePercent: number,
+  estimatedCTR: number,
+  estimatedCVR: number,
+  dailyBudget: number
+): AdROICalc {
+  const revenuePerUnit = sellingPrice;
+  const costPerUnit = productCost + shippingCost + (sellingPrice * platformFeePercent / 100);
+  const profitPerUnit = revenuePerUnit - costPerUnit;
+
+  const clicksPerDay = dailyBudget > 0 && estimatedCTR > 0 ? (dailyBudget / (estimatedCTR / 100)) / 100 : 0;
+  const salesPerDay = clicksPerDay * (estimatedCVR / 100);
+  const revenuePerDay = salesPerDay * sellingPrice;
+  const profitPerDay = (salesPerDay * profitPerUnit) - dailyBudget;
+
+  const estimatedCAC = salesPerDay > 0 ? dailyBudget / salesPerDay : 0;
+  const breakEvenROAS = profitPerUnit > 0 ? sellingPrice / profitPerUnit : 0;
+  const requiredSales = estimatedCAC > 0 ? Math.ceil(dailyBudget / profitPerUnit) : 0;
+
+  const monthlyRevenue = +revenuePerDay * 30;
+  const monthlyProfit = +profitPerDay * 30;
+
+  const scenarios = [
+    { name: "Conservative", spend: dailyBudget * 0.5, revenue: 0, profit: 0, roas: 0 },
+    { name: "Expected", spend: dailyBudget, revenue: 0, profit: 0, roas: 0 },
+    { name: "Aggressive", spend: dailyBudget * 2, revenue: 0, profit: 0, roas: 0 },
+  ].map((s) => {
+    const clicks = s.spend > 0 && estimatedCTR > 0 ? (s.spend / (estimatedCTR / 100)) / 100 : 0;
+    const sales = clicks * (estimatedCVR / 100);
+    const rev = sales * sellingPrice;
+    const prof = (sales * profitPerUnit) - s.spend;
+    return { ...s, revenue: +rev.toFixed(2), profit: +prof.toFixed(2), roas: s.spend > 0 ? +(rev / s.spend).toFixed(2) : 0 };
+  });
+
+  return {
+    estimatedCAC: +estimatedCAC.toFixed(2),
+    breakEvenROAS: +breakEvenROAS.toFixed(2),
+    projectedProfit: +profitPerDay.toFixed(2),
+    requiredSales,
+    dailyBudget,
+    monthlyRevenue: +monthlyRevenue.toFixed(2),
+    monthlyProfit: +monthlyProfit.toFixed(2),
+    scenarios,
+  };
+}
