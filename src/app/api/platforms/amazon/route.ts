@@ -1,45 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-
-const RAINFOREST_API_KEY = process.env.RAINFOREST_API_KEY;
-
-async function searchAmazon(query: string) {
-  const params = new URLSearchParams({
-    api_key: RAINFOREST_API_KEY!,
-    type: "search",
-    amazon_domain: "amazon.com",
-    search_term: query,
-    include_clause: "search_results(title,price,image,link,asin,rating,total_ratings,prime,delivery,offer_count,buybox)",
-  });
-
-  const res = await fetch(`https://api.rainforestapi.com/request?${params}`);
-  if (!res.ok) throw new Error(`Rainforest ${res.status}: ${await res.text()}`);
-  return res.json();
-}
-
-async function getAmazonProduct(asin: string) {
-  const params = new URLSearchParams({
-    api_key: RAINFOREST_API_KEY!,
-    type: "product",
-    amazon_domain: "amazon.com",
-    asin,
-    include_clause: "product(title,price,image,features,description,brand,rating,total_ratings,prime,buybox,variations)",
-  });
-
-  const res = await fetch(`https://api.rainforestapi.com/request?${params}`);
-  if (!res.ok) throw new Error(`Rainforest ${res.status}: ${await res.text()}`);
-  return res.json();
-}
+import { searchAmazon } from "@/lib/platform-search";
 
 export async function POST(request: NextRequest) {
   try {
     const { query, asin } = await request.json();
 
-    if (!RAINFOREST_API_KEY) {
+    if (!process.env.RAINFOREST_API_KEY) {
       return NextResponse.json({ error: "Rainforest API key not configured" }, { status: 503 });
     }
 
     if (asin) {
-      const data = await getAmazonProduct(asin);
+      const params = new URLSearchParams({
+        api_key: process.env.RAINFOREST_API_KEY!,
+        type: "product",
+        amazon_domain: "amazon.com",
+        asin,
+        include_clause: "product(title,price,image,features,description,brand,rating,total_ratings,prime,buybox,variations)",
+      });
+      const res = await fetch(`https://api.rainforestapi.com/request?${params}`);
+      if (!res.ok) throw new Error(`Rainforest ${res.status}`);
+      const data = await res.json();
       return NextResponse.json({ data, source: "amazon" });
     }
 
@@ -53,5 +33,5 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  return NextResponse.json({ platform: "Amazon", configured: !!RAINFOREST_API_KEY });
+  return NextResponse.json({ platform: "Amazon", configured: !!process.env.RAINFOREST_API_KEY });
 }

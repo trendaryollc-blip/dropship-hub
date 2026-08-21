@@ -1,63 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import { searchCJProducts } from "@/lib/platform-search";
 
 const CJ_API_KEY = process.env.CJ_API_KEY;
 const CJ_EMAIL = process.env.CJ_EMAIL;
 const CJ_PASSWORD = process.env.CJ_PASSWORD;
 
 async function getCJAccessToken() {
-  if (!CJ_EMAIL || !CJ_PASSWORD) {
-    throw new Error("CJ_EMAIL and CJ_PASSWORD must be configured in .env.local");
-  }
+  if (!CJ_EMAIL || !CJ_PASSWORD) throw new Error("CJ credentials not configured");
   const res = await fetch("https://developers.cjdropshipping.com/api2.0/v1/authentication/getAccessToken", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email: CJ_EMAIL, password: CJ_PASSWORD }),
   });
-  if (!res.ok) throw new Error(`CJ Auth ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`CJ Auth ${res.status}`);
   const data = await res.json();
   return data.data?.accessToken;
-}
-
-async function searchCJProducts(query: string, accessToken: string) {
-  const res = await fetch(
-    `https://developers.cjdropshipping.com/api2.0/v1/product/list?productNameEn=${encodeURIComponent(query)}&pageNum=1&pageSize=20`,
-    {
-      method: "GET",
-      headers: {
-        "CJ-Access-Token": accessToken,
-        "Content-Type": "application/json",
-      },
-    }
-  );
-  if (!res.ok) throw new Error(`CJ Products ${res.status}: ${await res.text()}`);
-  return res.json();
-}
-
-async function getCJProductDetail(productId: string, accessToken: string) {
-  const res = await fetch(
-    `https://developers.cjdropshipping.com/api2.0/v1/product/query?pid=${productId}`,
-    {
-      method: "GET",
-      headers: {
-        "CJ-Access-Token": accessToken,
-        "Content-Type": "application/json",
-      },
-    }
-  );
-  if (!res.ok) throw new Error(`CJ Product ${res.status}: ${await res.text()}`);
-  return res.json();
-}
-
-async function getCJCategories(accessToken: string) {
-  const res = await fetch("https://developers.cjdropshipping.com/api2.0/v1/product/getCategory", {
-    method: "GET",
-    headers: {
-      "CJ-Access-Token": accessToken,
-      "Content-Type": "application/json",
-    },
-  });
-  if (!res.ok) throw new Error(`CJ Categories ${res.status}: ${await res.text()}`);
-  return res.json();
 }
 
 export async function POST(request: NextRequest) {
@@ -73,18 +30,28 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "detail" && productId) {
-      const data = await getCJProductDetail(productId, accessToken);
+      const res = await fetch(
+        `https://developers.cjdropshipping.com/api2.0/v1/product/query?pid=${productId}`,
+        { method: "GET", headers: { "CJ-Access-Token": accessToken, "Content-Type": "application/json" } }
+      );
+      if (!res.ok) throw new Error(`CJ Product ${res.status}`);
+      const data = await res.json();
       return NextResponse.json({ data, source: "cj", action: "detail" });
     }
 
     if (action === "categories") {
-      const data = await getCJCategories(accessToken);
+      const res = await fetch("https://developers.cjdropshipping.com/api2.0/v1/product/getCategory", {
+        method: "GET",
+        headers: { "CJ-Access-Token": accessToken, "Content-Type": "application/json" },
+      });
+      if (!res.ok) throw new Error(`CJ Categories ${res.status}`);
+      const data = await res.json();
       return NextResponse.json({ data, source: "cj", action: "categories" });
     }
 
     if (!query) return NextResponse.json({ error: "Query is required" }, { status: 400 });
 
-    const data = await searchCJProducts(query, accessToken);
+    const data = await searchCJProducts(query);
     return NextResponse.json({ data, source: "cj", query });
   } catch {
     return NextResponse.json({ error: "CJ API request failed" }, { status: 500 });

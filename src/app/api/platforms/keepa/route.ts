@@ -1,30 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { searchKeepaProducts } from "@/lib/platform-search";
 
 const KEEPA_API_KEY = process.env.KEEPA_API_KEY;
 
-async function searchKeepaProducts(query: string) {
-  const res = await fetch("https://api.keepa.com/product", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      key: KEEPA_API_KEY,
-      domain: 1, // US
-      type: "ProductSearch",
-      params: {
-        term: query,
-       新品: 10,
-        excludeCategories: [],
-      },
-    }),
-  });
-
-  if (!res.ok) throw new Error(`Keepa ${res.status}: ${await res.text()}`);
-  return res.json();
-}
-
 async function getKeepaProduct(asin: string) {
   const res = await fetch(`https://api.keepa.com/product?key=${KEEPA_API_KEY}&domain=1&asin=${asin}&stats=1,1,1`);
-  if (!res.ok) throw new Error(`Keepa ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`Keepa ${res.status}`);
   return res.json();
 }
 
@@ -58,18 +39,7 @@ export async function POST(request: NextRequest) {
     if (!query) return NextResponse.json({ error: "Query is required" }, { status: 400 });
 
     const data = await searchKeepaProducts(query);
-    const products = (data.products || []).slice(0, 20).map((p: Record<string, unknown>) => ({
-      asin: p.asin,
-      title: p.title,
-      brand: p.brand,
-      price: (p.stats as Record<string, unknown>)?.current ? ((p.stats as Record<string, number[]>).current[0] / 100) : null,
-      salesRank: (p.stats as Record<string, unknown>)?.currentRank,
-      rating: p.rating,
-      reviewCount: p.reviewCount,
-      image: p.image,
-    }));
-
-    return NextResponse.json({ data: { search_results: products }, source: "keepa", query });
+    return NextResponse.json({ data, source: "keepa", query });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Keepa search failed" }, { status: 500 });
   }
