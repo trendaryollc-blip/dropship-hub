@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, Suspense } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Search, X, Globe, Loader2, Package, BarChart3 } from "lucide-react";
 
@@ -236,45 +237,54 @@ function ProductsContent() {
 
       {results.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {results.map((product) => (
-            <a
-              key={product.id}
-              href={product.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="glass rounded-2xl border border-border overflow-hidden hover:border-accent/30 transition-all group"
-            >
-              <div className="aspect-square bg-surface relative overflow-hidden">
-                {product.image ? (
-                  <img src={product.image} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
-                    <Package className="h-12 w-12" />
-                  </div>
-                )}
-                <span className="absolute top-2 left-2 px-2 py-1 rounded-lg bg-black/60 text-white text-[10px] font-medium backdrop-blur-sm flex items-center gap-1">
-                  {platformIcons[product.source] || "🔗"} {product.source}
-                </span>
-              </div>
-              <div className="p-4 space-y-2">
-                <h3 className="font-medium text-sm text-foreground line-clamp-2 group-hover:text-accent transition-colors">
-                  {product.title}
-                </h3>
-                <div className="flex items-center justify-between">
-                  {product.price != null ? (
-                    <span className="text-lg font-bold text-accent">${product.price.toFixed(2)}</span>
+          {results.map((product) => {
+            const params = new URLSearchParams({
+              t: product.title,
+              p: String(product.price ?? ""),
+              img: product.image ?? "",
+              link: product.link,
+              src: product.source,
+              r: String(product.rating ?? ""),
+              rev: String(product.reviews ?? ""),
+            });
+            return (
+              <Link
+                key={product.id}
+                href={`/products/${product.id}?${params.toString()}`}
+                className="glass rounded-2xl border border-border overflow-hidden hover:border-accent/30 transition-all group"
+              >
+                <div className="aspect-square bg-surface relative overflow-hidden">
+                  {product.image ? (
+                    <img src={product.image} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                   ) : (
-                    <span className="text-sm text-muted-foreground">Price N/A</span>
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
+                      <Package className="h-12 w-12" />
+                    </div>
                   )}
-                  {product.rating != null && (
-                    <span className="text-xs text-muted-foreground">
-                      ★ {product.rating.toFixed(1)} {product.reviews != null ? `(${product.reviews})` : ""}
-                    </span>
-                  )}
+                  <span className="absolute top-2 left-2 px-2 py-1 rounded-lg bg-black/60 text-white text-[10px] font-medium backdrop-blur-sm flex items-center gap-1">
+                    {platformIcons[product.source] || "🔗"} {product.source}
+                  </span>
                 </div>
-              </div>
-            </a>
-          ))}
+                <div className="p-4 space-y-2">
+                  <h3 className="font-medium text-sm text-foreground line-clamp-2 group-hover:text-accent transition-colors">
+                    {product.title}
+                  </h3>
+                  <div className="flex items-center justify-between">
+                    {product.price != null ? (
+                      <span className="text-lg font-bold text-accent">${product.price.toFixed(2)}</span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Price N/A</span>
+                    )}
+                    {product.rating != null && (
+                      <span className="text-xs text-muted-foreground">
+                        ★ {product.rating.toFixed(1)} {product.reviews != null ? `(${product.reviews})` : ""}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       ) : !loading && !error && searched ? (
         <div className="glass rounded-2xl p-8 md:p-16 text-center">
