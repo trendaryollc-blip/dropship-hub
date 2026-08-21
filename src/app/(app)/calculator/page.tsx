@@ -247,7 +247,7 @@ function CalculatorContent() {
                 <label className={labelClass}>Weight (kg)</label>
                 <input type="number" step="0.1" value={weight} onChange={(e) => setWeight(+e.target.value)} className={inputClass} />
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className={labelClass}>Length (cm)</label>
                   <input type="number" value={length} onChange={(e) => setLength(+e.target.value)} className={inputClass} />

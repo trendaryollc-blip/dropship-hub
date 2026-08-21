@@ -122,7 +122,7 @@ export default function AIPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto h-[calc(100vh-8rem)] flex flex-col">
+    <div className="max-w-4xl mx-auto h-[calc(100dvh-8rem)] flex flex-col">
       <div className="mb-4">
         <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
           <Brain className="h-7 w-7 text-accent" /> AI Assistant

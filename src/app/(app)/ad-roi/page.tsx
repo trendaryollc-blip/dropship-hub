@@ -95,14 +95,14 @@ export default function AdRoiPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 overflow-x-auto pb-2">
         {[
           { id: "calculator" as const, label: "ROI Calculator", icon: DollarSign },
           { id: "timing" as const, label: "Market Timing", icon: Calendar },
           { id: "platforms" as const, label: "Platform Comparison", icon: BarChart3 },
         ].map((tab) => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeTab === tab.id ? "bg-accent text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]" : "bg-surface border border-border text-muted-foreground hover:text-foreground"}`}>
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${activeTab === tab.id ? "bg-accent text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]" : "bg-surface border border-border text-muted-foreground hover:text-foreground"}`}>
             <tab.icon className="h-4 w-4" /> {tab.label}
           </button>
         ))}
@@ -113,7 +113,7 @@ export default function AdRoiPage() {
         <div className="space-y-6 animate-slide-up">
           <div className="glass rounded-2xl p-6">
             <h3 className="font-display text-lg font-semibold text-foreground mb-4">Custom Parameters</h3>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Cost Per Click ($)</label>
                 <input type="number" step="0.01" value={customCPC} onChange={(e) => setCustomCPC(e.target.value)} className={inputClass} />

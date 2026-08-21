@@ -65,7 +65,7 @@ export default function CompetitorsPage() {
       </div>
 
       <div className="glass rounded-2xl p-4 mb-6">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
@@ -96,7 +96,7 @@ export default function CompetitorsPage() {
 
       {results.length > 0 && (
         <>
-          <div className="flex items-center gap-6 mb-6 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-4 md:gap-6 mb-6 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <Package className="h-3.5 w-3.5" />
               {results.length} competitor listings found
@@ -141,7 +141,7 @@ export default function CompetitorsPage() {
       )}
 
       {loading && (
-        <div className="glass rounded-2xl p-16 text-center">
+        <div className="glass rounded-2xl p-8 md:p-16 text-center">
           <Loader2 className="h-12 w-12 text-accent mx-auto mb-4 animate-spin" />
           <h3 className="font-display text-lg font-semibold text-foreground mb-2">Researching...</h3>
           <p className="text-sm text-muted-foreground">Fetching competitor prices from Google Shopping</p>
@@ -149,7 +149,7 @@ export default function CompetitorsPage() {
       )}
 
       {!loading && searched && results.length === 0 && !error && (
-        <div className="glass rounded-2xl p-16 text-center">
+        <div className="glass rounded-2xl p-8 md:p-16 text-center">
           <Package className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
           <h3 className="font-display text-lg font-semibold text-foreground mb-2">No results found</h3>
           <p className="text-sm text-muted-foreground">Try a different product search</p>
@@ -157,7 +157,7 @@ export default function CompetitorsPage() {
       )}
 
       {!searched && !loading && (
-        <div className="glass rounded-2xl p-16 text-center">
+        <div className="glass rounded-2xl p-8 md:p-16 text-center">
           <Globe className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
           <h3 className="font-display text-lg font-semibold text-foreground mb-2">Research Competitor Prices</h3>
           <p className="text-sm text-muted-foreground">Search Google Shopping to see real competitor pricing data</p>

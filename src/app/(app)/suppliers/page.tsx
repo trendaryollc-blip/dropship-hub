@@ -175,7 +175,7 @@ export default function SuppliersPage() {
       </div>
 
       <div className="glass rounded-2xl p-4 mb-6">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
@@ -187,7 +187,7 @@ export default function SuppliersPage() {
               className="w-full pl-11 pr-4 py-3 rounded-xl bg-surface border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all text-sm"
             />
           </div>
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)} className="px-4 py-3 rounded-xl bg-surface border border-border text-sm text-foreground">
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)} className="px-4 py-3 rounded-xl bg-surface border border-border text-sm text-foreground sm:w-auto w-full">
             <option value="rating">Sort: Rating</option>
             <option value="orders">Sort: Orders</option>
             <option value="products">Sort: Products</option>
@@ -221,7 +221,7 @@ export default function SuppliersPage() {
       </div>
 
       {!loading && !searched && (
-        <div className="glass rounded-2xl p-16 text-center">
+        <div className="glass rounded-2xl p-8 md:p-16 text-center">
           <Shield className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
           <h3 className="font-display text-lg font-semibold text-foreground mb-2">Search Suppliers</h3>
           <p className="text-sm text-muted-foreground">Enter a category or product type to find real suppliers from CJ Dropshipping</p>
@@ -229,7 +229,7 @@ export default function SuppliersPage() {
       )}
 
       {loading && (
-        <div className="glass rounded-2xl p-16 text-center">
+        <div className="glass rounded-2xl p-8 md:p-16 text-center">
           <Loader2 className="h-12 w-12 text-accent mx-auto mb-4 animate-spin" />
           <h3 className="font-display text-lg font-semibold text-foreground mb-2">Searching...</h3>
           <p className="text-sm text-muted-foreground">Fetching supplier data from CJ Dropshipping</p>
@@ -237,7 +237,7 @@ export default function SuppliersPage() {
       )}
 
       {!loading && searched && suppliers.length === 0 && !error && (
-        <div className="glass rounded-2xl p-16 text-center">
+        <div className="glass rounded-2xl p-8 md:p-16 text-center">
           <Package className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
           <h3 className="font-display text-lg font-semibold text-foreground mb-2">No suppliers found</h3>
           <p className="text-sm text-muted-foreground">Try a different search query</p>

@@ -1,11 +1,15 @@
 "use client";
 
 import { useAuth } from "@/components/auth/AuthProvider";
-import { Bell, Search, LogOut, ChevronDown } from "lucide-react";
+import { Bell, Search, LogOut, ChevronDown, Menu } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-export default function Topbar() {
+interface TopbarProps {
+  onMenuToggle: () => void;
+}
+
+export default function Topbar({ onMenuToggle }: TopbarProps) {
   const { user, signOut } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -40,7 +44,16 @@ export default function Topbar() {
     : "U";
 
   return (
-    <header className="sticky top-0 z-30 h-16 flex items-center justify-between px-6 border-b border-border bg-background/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-30 h-16 flex items-center gap-3 px-4 md:px-6 border-b border-border bg-background/80 backdrop-blur-xl">
+      {/* Mobile hamburger */}
+      <button
+        onClick={onMenuToggle}
+        className="md:hidden p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all"
+        aria-label="Toggle menu"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
       {/* Search */}
       <div className="flex-1 max-w-md">
         <form onSubmit={handleSearch} className="relative">
@@ -56,7 +69,7 @@ export default function Topbar() {
       </div>
 
       {/* Right side */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 md:gap-3">
         {/* Notifications */}
         <button className="relative p-2.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all">
           <Bell className="h-4 w-4" />

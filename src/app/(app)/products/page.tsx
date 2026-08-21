@@ -171,7 +171,7 @@ function ProductsContent() {
           ))}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
@@ -222,7 +222,7 @@ function ProductsContent() {
       )}
 
       {results.length > 0 && (
-        <div className="flex items-center gap-6 mb-6 text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-4 md:gap-6 mb-6 text-sm text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <BarChart3 className="h-3.5 w-3.5" />
             {results.length} products found
@@ -277,13 +277,13 @@ function ProductsContent() {
           ))}
         </div>
       ) : !loading && !error && searched ? (
-        <div className="glass rounded-2xl p-16 text-center">
+        <div className="glass rounded-2xl p-8 md:p-16 text-center">
           <Package className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
           <h3 className="font-display text-lg font-semibold text-foreground mb-2">No products found</h3>
           <p className="text-sm text-muted-foreground">Try a different search query or enable more platforms</p>
         </div>
       ) : !loading && !searched ? (
-        <div className="glass rounded-2xl p-16 text-center">
+        <div className="glass rounded-2xl p-8 md:p-16 text-center">
           <Globe className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
           <h3 className="font-display text-lg font-semibold text-foreground mb-2">Search Real Products</h3>
           <p className="text-sm text-muted-foreground">Enter a search query to find products across Amazon, eBay, AliExpress, and more</p>
@@ -291,7 +291,7 @@ function ProductsContent() {
       ) : null}
 
       {loading && (
-        <div className="glass rounded-2xl p-16 text-center">
+        <div className="glass rounded-2xl p-8 md:p-16 text-center">
           <Loader2 className="h-12 w-12 text-accent mx-auto mb-4 animate-spin" />
           <h3 className="font-display text-lg font-semibold text-foreground mb-2">Searching...</h3>
           <p className="text-sm text-muted-foreground">Fetching products from multiple platforms</p>

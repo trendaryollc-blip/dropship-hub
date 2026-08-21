@@ -86,7 +86,7 @@ export default function NichesPage() {
       </div>
 
       <div className="glass rounded-2xl p-4 mb-6">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
@@ -170,7 +170,7 @@ export default function NichesPage() {
       )}
 
       {loading && (
-        <div className="glass rounded-2xl p-16 text-center">
+        <div className="glass rounded-2xl p-8 md:p-8 md:p-16 text-center">
           <Loader2 className="h-12 w-12 text-accent mx-auto mb-4 animate-spin" />
           <h3 className="font-display text-lg font-semibold text-foreground mb-2">Exploring Niche...</h3>
           <p className="text-sm text-muted-foreground">Fetching products from multiple platforms</p>
@@ -178,7 +178,7 @@ export default function NichesPage() {
       )}
 
       {!searched && !loading && (
-        <div className="glass rounded-2xl p-16 text-center">
+        <div className="glass rounded-2xl p-8 md:p-8 md:p-16 text-center">
           <Target className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
           <h3 className="font-display text-lg font-semibold text-foreground mb-2">Explore a Niche</h3>
           <p className="text-sm text-muted-foreground">Click a popular niche above or search for a product category</p>

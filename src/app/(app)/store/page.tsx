@@ -187,7 +187,7 @@ export default function StorePage() {
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mt-1 text-xs text-muted-foreground">
                         {platform.customUrl && <span className="flex items-center gap-1"><Globe className="h-3 w-3" />{platform.customUrl}</span>}
                         <span>{platform.products} products</span>
                         <span>{platform.orders} orders</span>
@@ -195,7 +195,7 @@ export default function StorePage() {
                         <span>Last sync: {platform.lastSync}</span>
                       </div>
                     </div>
-                    <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
                       <button className="px-3 py-1.5 rounded-lg bg-surface border border-border text-xs text-muted-foreground hover:text-foreground transition-colors">
                         <Settings className="h-3 w-3 inline mr-1" /> Sync
                       </button>
@@ -286,11 +286,11 @@ export default function StorePage() {
             <div className="space-y-3">
               {benchmarks.map((b) => (
                 <div key={b.label} className="p-4 rounded-xl bg-surface/50 border border-border">
-                  <div className="flex items-center gap-4 mb-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-3">
                     <div className="flex-1">
                       <h4 className="text-sm font-semibold text-foreground">{b.label}</h4>
                     </div>
-                    <div className="flex items-center gap-6 text-xs">
+                    <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs">
                       <div className="text-center">
                         <p className="text-muted-foreground mb-0.5">You</p>
                         <p className="font-bold text-foreground">{b.yourValue}</p>
