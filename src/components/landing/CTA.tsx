@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles, Brain, Target, Flame } from "lucide-react";
 
 export default function CTA() {
   return (
@@ -8,26 +8,38 @@ export default function CTA() {
 
       <div className="mx-auto max-w-7xl px-6">
         <div className="relative glass rounded-3xl p-12 md:p-16 text-center overflow-hidden">
-          {/* Background effects */}
           <div className="absolute top-0 left-1/4 w-[400px] h-[300px] bg-accent/[0.06] rounded-full blur-[100px]" />
           <div className="absolute bottom-0 right-1/4 w-[300px] h-[200px] bg-accent-warm/[0.04] rounded-full blur-[80px]" />
 
           <div className="relative z-10">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border border-accent/20 text-xs font-medium text-accent mb-8">
-              <Sparkles className="h-3.5 w-3.5" />
-              Limited Early Access
-            </div>
-
             <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight mb-6">
-              Ready to{" "}
-              <span className="gradient-text">Transform Your Business?</span>
+              Your Next Winning Product is{" "}
+              <span className="gradient-text">One Click Away</span>
             </h2>
 
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-              Join thousands of dropshippers who are already using DropShip Hub
-              to find winning products, maximize profits, and build scalable
-              ecommerce businesses.
+              AI picks your winners. Radar finds your niches. Missions keep
+              you sharp. Join thousands of dropshippers who moved from
+              guesswork to data-driven decisions.
             </p>
+
+            {/* Mini feature pills */}
+            <div className="flex flex-wrap items-center justify-center gap-3 mb-10">
+              {[
+                { icon: Brain, label: "AI Daily Pick" },
+                { icon: Target, label: "Niche Radar" },
+                { icon: Sparkles, label: "Live Intelligence" },
+                { icon: Flame, label: "Trending Scores" },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full glass border border-border text-xs font-medium text-muted-foreground"
+                >
+                  <item.icon className="h-3.5 w-3.5 text-accent" />
+                  {item.label}
+                </div>
+              ))}
+            </div>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
@@ -39,7 +51,7 @@ export default function CTA() {
                 <div className="absolute inset-0 rounded-2xl bg-accent/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
               </Link>
               <p className="text-sm text-muted-foreground">
-                No credit card required
+                Free forever — No credit card required
               </p>
             </div>
           </div>

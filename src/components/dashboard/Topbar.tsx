@@ -45,7 +45,8 @@ export default function Topbar({ onMenuToggle }: TopbarProps) {
 
   return (
     <header className="sticky top-0 z-30 h-16 flex items-center gap-3 px-4 md:px-6 border-b border-border bg-background/80 backdrop-blur-xl">
-      {/* Mobile hamburger */}
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent" />
+
       <button
         onClick={onMenuToggle}
         className="md:hidden p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all"
@@ -54,7 +55,6 @@ export default function Topbar({ onMenuToggle }: TopbarProps) {
         <Menu className="h-5 w-5" />
       </button>
 
-      {/* Search */}
       <div className="flex-1 max-w-md">
         <form onSubmit={handleSearch} className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -68,15 +68,14 @@ export default function Topbar({ onMenuToggle }: TopbarProps) {
         </form>
       </div>
 
-      {/* Right side */}
       <div className="flex items-center gap-2 md:gap-3">
-        {/* Notifications */}
         <button className="relative p-2.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all">
           <Bell className="h-4 w-4" />
-          <span className="absolute top-2 right-2 h-2 w-2 bg-accent rounded-full" />
+          <span className="absolute top-2 right-2 h-2 w-2 bg-accent rounded-full">
+            <span className="absolute inset-0 rounded-full bg-accent animate-ping opacity-75" />
+          </span>
         </button>
 
-        {/* User menu */}
         <div ref={dropdownRef} className="relative">
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}

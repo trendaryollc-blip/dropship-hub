@@ -1,127 +1,249 @@
-export interface Competitor {
+export interface CompetitorListing {
   id: string;
-  storeName: string;
-  platform: "Shopify" | "WooCommerce" | "BigCommerce" | "Squarespace" | "Custom";
-  niche: string;
-  monthlyTraffic: number;
-  domainAuthority: number;
-  socialFollowers: { platform: string; count: number }[];
-  avgProductPrice: number;
-  bestSellers: { name: string; price: number; sales: number; reviews: number }[];
-  pricingStrategy: "premium" | "competitive" | "budget";
-  fulfillmentMethod: "self-fulfilled" | "3pl" | "supplier-direct" | "hybrid";
-  strengths: string[];
-  weaknesses: string[];
-  adPlatforms: string[];
-  estimatedRevenue: number;
-  growthRate: number;
-  founded: number;
-  country: string;
+  title: string;
+  price: number;
+  source: string;
+  seller: string;
+  sellerRating: number;
+  sellerProducts: number;
+  link: string;
+  shipping: string;
+  condition: "New" | "Used" | "Refurbished";
+  daysAgo: number;
 }
 
-export const mockCompetitors: Competitor[] = [
-  {
-    id: "c1", storeName: "GadgetZone Pro", platform: "Shopify", niche: "Consumer Electronics",
-    monthlyTraffic: 320000, domainAuthority: 62,
-    socialFollowers: [{ platform: "Instagram", count: 45000 }, { platform: "TikTok", count: 128000 }, { platform: "Facebook", count: 32000 }],
-    avgProductPrice: 34.99,
-    bestSellers: [
-      { name: "Wireless Earbuds X1", price: 29.99, sales: 12400, reviews: 3200 },
-      { name: "LED Desk Lamp Pro", price: 44.99, sales: 8700, reviews: 1900 },
-      { name: "Phone Stand Magnetic", price: 19.99, sales: 15600, reviews: 4100 },
-    ],
-    pricingStrategy: "competitive", fulfillmentMethod: "3pl",
-    strengths: ["Strong brand identity", "Fast shipping (2-3 days)", "Excellent product photography"],
-    weaknesses: ["Limited product range", "No loyalty program", "High return rate on electronics"],
-    adPlatforms: ["Facebook Ads", "Google Shopping", "TikTok Ads"],
-    estimatedRevenue: 185000, growthRate: 24, founded: 2021, country: "US",
-  },
-  {
-    id: "c2", storeName: "HomeGlow Essentials", platform: "Shopify", niche: "Home & Kitchen",
-    monthlyTraffic: 180000, domainAuthority: 48,
-    socialFollowers: [{ platform: "Instagram", count: 28000 }, { platform: "Pinterest", count: 95000 }, { platform: "YouTube", count: 12000 }],
-    avgProductPrice: 27.50,
-    bestSellers: [
-      { name: "Aroma Diffuser Set", price: 32.99, sales: 9800, reviews: 2400 },
-      { name: "Bamboo Cutting Board", price: 18.99, sales: 7200, reviews: 1800 },
-      { name: "LED Candle Pack", price: 22.99, sales: 11300, reviews: 3100 },
-    ],
-    pricingStrategy: "premium", fulfillmentMethod: "supplier-direct",
-    strengths: ["Beautiful brand aesthetic", "Strong Pinterest presence", "High AOV"],
-    weaknesses: ["Slow shipping (7-14 days)", "No email marketing", "Weak customer support"],
-    adPlatforms: ["Pinterest Ads", "Instagram Ads", "Google Display"],
-    estimatedRevenue: 92000, growthRate: 18, founded: 2022, country: "US",
-  },
-  {
-    id: "c3", storeName: "FitLife Arsenal", platform: "WooCommerce", niche: "Fitness & Health",
-    monthlyTraffic: 520000, domainAuthority: 71,
-    socialFollowers: [{ platform: "Instagram", count: 185000 }, { platform: "TikTok", count: 340000 }, { platform: "YouTube", count: 67000 }],
-    avgProductPrice: 38.00,
-    bestSellers: [
-      { name: "Resistance Band Set", price: 24.99, sales: 28000, reviews: 8900 },
-      { name: "Foam Roller Pro", price: 34.99, sales: 16500, reviews: 5200 },
-      { name: "Yoga Block 2-Pack", price: 14.99, sales: 22000, reviews: 6100 },
-    ],
-    pricingStrategy: "competitive", fulfillmentMethod: "3pl",
-    strengths: ["Massive social following", "Strong community", "Excellent content marketing"],
-    weaknesses: ["Saturated market", "Low margins", "Heavy reliance on paid ads"],
-    adPlatforms: ["Facebook Ads", "TikTok Ads", "YouTube Ads"],
-    estimatedRevenue: 420000, growthRate: 32, founded: 2020, country: "US",
-  },
-  {
-    id: "c4", storeName: "PetPamper Co", platform: "BigCommerce", niche: "Pet Supplies",
-    monthlyTraffic: 95000, domainAuthority: 38,
-    socialFollowers: [{ platform: "Instagram", count: 22000 }, { platform: "TikTok", count: 45000 }, { platform: "Facebook", count: 18000 }],
-    avgProductPrice: 29.99,
-    bestSellers: [
-      { name: "GPS Smart Collar", price: 49.99, sales: 3200, reviews: 890 },
-      { name: "Interactive Cat Toy", price: 19.99, sales: 5600, reviews: 1400 },
-      { name: "Pet Water Fountain", price: 34.99, sales: 4100, reviews: 1100 },
-    ],
-    pricingStrategy: "premium", fulfillmentMethod: "supplier-direct",
-    strengths: ["Niche focus", "High customer LTV", "Viral TikTok content"],
-    weaknesses: ["Small team", "Limited inventory", "No international shipping"],
-    adPlatforms: ["TikTok Ads", "Instagram Ads", "Google Shopping"],
-    estimatedRevenue: 68000, growthRate: 45, founded: 2023, country: "US",
-  },
-  {
-    id: "c5", storeName: "StyleVault", platform: "Shopify", niche: "Fashion Accessories",
-    monthlyTraffic: 280000, domainAuthority: 55,
-    socialFollowers: [{ platform: "Instagram", count: 92000 }, { platform: "TikTok", count: 180000 }, { platform: "Pinterest", count: 45000 }],
-    avgProductPrice: 22.00,
-    bestSellers: [
-      { name: "Minimalist Wallet", price: 24.99, sales: 18000, reviews: 4500 },
-      { name: "Sunglasses Retro", price: 19.99, sales: 22000, reviews: 5800 },
-      { name: "Chain Necklace Gold", price: 16.99, sales: 14000, reviews: 3200 },
-    ],
-    pricingStrategy: "budget", fulfillmentMethod: "hybrid",
-    strengths: ["Trendy products", "Fast trend response", "Strong influencer partnerships"],
-    weaknesses: ["Low quality perception", "High returns", "No brand differentiation"],
-    adPlatforms: ["Instagram Ads", "TikTok Ads", "Facebook Ads"],
-    estimatedRevenue: 156000, growthRate: 15, founded: 2021, country: "US",
-  },
-  {
-    id: "c6", storeName: "TechNest Hub", platform: "Shopify", niche: "Smart Home",
-    monthlyTraffic: 145000, domainAuthority: 44,
-    socialFollowers: [{ platform: "YouTube", count: 38000 }, { platform: "Instagram", count: 25000 }, { platform: "Reddit", count: 15000 }],
-    avgProductPrice: 42.00,
-    bestSellers: [
-      { name: "Smart Plug 4-Pack", price: 29.99, sales: 9200, reviews: 2800 },
-      { name: "WiFi Door Sensor", price: 19.99, sales: 6800, reviews: 1900 },
-      { name: "Smart LED Bulb Set", price: 34.99, sales: 11400, reviews: 3400 },
-    ],
-    pricingStrategy: "competitive", fulfillmentMethod: "3pl",
-    strengths: ["Tech-savvy audience", "YouTube reviews driving traffic", "Bundling strategy"],
-    weaknesses: ["Complex products", "High support costs", "Long shipping from China"],
-    adPlatforms: ["YouTube Ads", "Google Shopping", "Reddit Ads"],
-    estimatedRevenue: 112000, growthRate: 28, founded: 2022, country: "US",
-  },
+export interface PlatformData {
+  platform: string;
+  icon: string;
+  avgPrice: number;
+  minPrice: number;
+  maxPrice: number;
+  sellerCount: number;
+  trend: "up" | "down" | "stable";
+  trendPercent: number;
+  sparkline: number[];
+  listings: CompetitorListing[];
+}
+
+export interface SellerProfile {
+  name: string;
+  platform: string;
+  rating: number;
+  totalProducts: number;
+  price: number;
+  threatLevel: "low" | "medium" | "high";
+  isDropshipper: boolean;
+  otherProducts: { name: string; price: number }[];
+  responseTime: string;
+  returnPolicy: string;
+}
+
+export interface PriceTier {
+  range: string;
+  count: number;
+  percent: number;
+  isSweetSpot: boolean;
+}
+
+export interface Opportunity {
+  type: "opportunity" | "gap" | "avoid";
+  title: string;
+  description: string;
+  count: number;
+  potentialMargin?: number;
+  actionLabel: string;
+}
+
+export interface PricingOption {
+  label: string;
+  icon: string;
+  price: number;
+  margin: number;
+  description: string;
+  tradeoff: string;
+  isRecommended: boolean;
+  color: string;
+}
+
+export interface MarketData {
+  query: string;
+  totalListings: number;
+  avgPrice: number;
+  medianPrice: number;
+  minPrice: number;
+  maxPrice: number;
+  profitZone: { min: number; max: number; label: string };
+  priceDistribution: PriceTier[];
+  platforms: PlatformData[];
+  topSellers: SellerProfile[];
+  opportunities: Opportunity[];
+  pricingOptions: PricingOption[];
+  priceHistory: { date: string; avg: number; min: number; max: number }[];
+  insights: string[];
+}
+
+const sellerNames = [
+  "TechGadgets Store", "DirectSales Co", "BudgetFinds Shop", "PremiumTech Hub",
+  "QuickDrop Supply", "QualityGoods Plus", "MegaMart Deals", "ValueZone Store",
+  "PrimeSelect Shop", "TopSeller Express", "SmartBuy outlet", "BestDeal Central",
 ];
 
-export function getCompetitorById(id: string): Competitor | undefined {
-  return mockCompetitors.find((c) => c.id === id);
+const platformIcons: Record<string, string> = {
+  Amazon: "\ud83d\udce6", eBay: "\ud83c\udff7\ufe0f", Walmart: "\ud83c\udfea",
+  Shopify: "\ud83d\udd25", AliExpress: "\ud83c\udde8\ud83c\uddf3", Target: "\ud83c\udfaf",
+};
+
+function seededRandom(seed: string): number {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = ((h << 5) - h + seed.charCodeAt(i)) | 0;
+  return Math.abs(h) / 2147483647;
 }
 
-export function getCompetitorsByNiche(niche: string): Competitor[] {
-  return mockCompetitors.filter((c) => c.niche.toLowerCase().includes(niche.toLowerCase()));
+export function generateMarketData(query: string): MarketData {
+  const basePrice = 15 + seededRandom(query) * 60;
+
+  const platforms: PlatformData[] = [
+    { platform: "Amazon", icon: platformIcons.Amazon, avgPrice: +(basePrice * (0.9 + seededRandom(query + "amz") * 0.3)).toFixed(2), minPrice: +(basePrice * 0.6).toFixed(2), maxPrice: +(basePrice * 1.8).toFixed(2), sellerCount: Math.round(8 + seededRandom(query + "amzc") * 20), trend: "up", trendPercent: +(seededRandom(query + "amzt") * 8 - 2).toFixed(1), sparkline: Array.from({ length: 7 }, (_, i) => +(basePrice * (0.85 + seededRandom(query + "amzs" + i) * 0.3)).toFixed(2)), listings: [] },
+    { platform: "eBay", icon: platformIcons.eBay, avgPrice: +(basePrice * (0.75 + seededRandom(query + "eb") * 0.25)).toFixed(2), minPrice: +(basePrice * 0.45).toFixed(2), maxPrice: +(basePrice * 1.5).toFixed(2), sellerCount: Math.round(12 + seededRandom(query + "ebc") * 25), trend: "down", trendPercent: -(seededRandom(query + "ebt") * 5).toFixed(1), sparkline: Array.from({ length: 7 }, (_, i) => +(basePrice * (0.7 + seededRandom(query + "ebs" + i) * 0.3)).toFixed(2)), listings: [] },
+    { platform: "Walmart", icon: platformIcons.Walmart, avgPrice: +(basePrice * (0.95 + seededRandom(query + "wm") * 0.2)).toFixed(2), minPrice: +(basePrice * 0.7).toFixed(2), maxPrice: +(basePrice * 1.6).toFixed(2), sellerCount: Math.round(5 + seededRandom(query + "wmc") * 10), trend: "stable", trendPercent: +(seededRandom(query + "wmt") * 2 - 1).toFixed(1), sparkline: Array.from({ length: 7 }, (_, i) => +(basePrice * (0.9 + seededRandom(query + "wms" + i) * 0.15)).toFixed(2)), listings: [] },
+    { platform: "Shopify Stores", icon: platformIcons.Shopify, avgPrice: +(basePrice * (1.1 + seededRandom(query + "sh") * 0.4)).toFixed(2), minPrice: +(basePrice * 0.8).toFixed(2), maxPrice: +(basePrice * 2.2).toFixed(2), sellerCount: Math.round(15 + seededRandom(query + "shc") * 30), trend: "up", trendPercent: +(seededRandom(query + "sht") * 10).toFixed(1), sparkline: Array.from({ length: 7 }, (_, i) => +(basePrice * (1.0 + seededRandom(query + "shs" + i) * 0.4)).toFixed(2)), listings: [] },
+  ];
+
+  const allListings: CompetitorListing[] = [];
+  platforms.forEach((p) => {
+    const count = 5 + Math.floor(seededRandom(query + p.platform) * 8);
+    for (let i = 0; i < count; i++) {
+      const sellerIdx = Math.floor(seededRandom(query + p.platform + i) * sellerNames.length);
+      const priceOffset = 0.6 + seededRandom(query + p.platform + "p" + i) * 1.2;
+      allListings.push({
+        id: `${p.platform.toLowerCase()}-${i}`,
+        title: `${query} - ${p.platform} Listing ${i + 1}`,
+        price: +(basePrice * priceOffset).toFixed(2),
+        source: p.platform,
+        seller: sellerNames[sellerIdx],
+        sellerRating: +(3.5 + seededRandom(query + "sr" + i) * 1.5).toFixed(1),
+        sellerProducts: Math.round(50 + seededRandom(query + "sp" + i) * 5000),
+        link: "#",
+        shipping: seededRandom(query + "shp" + i) > 0.4 ? "Free" : `$${(3 + seededRandom(query + "shc" + i) * 8).toFixed(2)}`,
+        condition: seededRandom(query + "cond" + i) > 0.15 ? "New" : seededRandom(query + "cond" + i) > 0.5 ? "Refurbished" : "Used",
+        daysAgo: Math.floor(seededRandom(query + "days" + i) * 30),
+      });
+    }
+  });
+
+  const prices = allListings.map((l) => l.price).sort((a, b) => a - b);
+  const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
+  const medianPrice = prices[Math.floor(prices.length / 2)];
+  const minPrice = prices[0];
+  const maxPrice = prices[prices.length - 1];
+
+  const tiers = [
+    { range: `$0-$${(avgPrice * 0.5).toFixed(0)}`, min: 0, max: avgPrice * 0.5 },
+    { range: `$${(avgPrice * 0.5).toFixed(0)}-$${(avgPrice * 0.8).toFixed(0)}`, min: avgPrice * 0.5, max: avgPrice * 0.8 },
+    { range: `$${(avgPrice * 0.8).toFixed(0)}-$${(avgPrice * 1.1).toFixed(0)}`, min: avgPrice * 0.8, max: avgPrice * 1.1 },
+    { range: `$${(avgPrice * 1.1).toFixed(0)}-$${(avgPrice * 1.5).toFixed(0)}`, min: avgPrice * 1.1, max: avgPrice * 1.5 },
+    { range: `$${(avgPrice * 1.5).toFixed(0)}+`, min: avgPrice * 1.5, max: Infinity },
+  ];
+
+  const distribution: PriceTier[] = tiers.map((t, i) => {
+    const count = prices.filter((p) => p >= t.min && p < t.max).length;
+    return {
+      range: t.range,
+      count,
+      percent: Math.round((count / prices.length) * 100),
+      isSweetSpot: i === 2,
+    };
+  });
+
+  const uniqueSellers = [...new Set(allListings.map((l) => l.seller))];
+  const topSellers: SellerProfile[] = uniqueSellers.slice(0, 6).map((name) => {
+    const sellerListings = allListings.filter((l) => l.seller === name);
+    const avgSellerPrice = sellerListings.reduce((a, l) => a + l.price, 0) / sellerListings.length;
+    const isCheap = avgSellerPrice < avgPrice * 0.8;
+    const isExpensive = avgSellerPrice > avgPrice * 1.2;
+    return {
+      name,
+      platform: sellerListings[0].source,
+      rating: sellerListings[0].sellerRating,
+      totalProducts: sellerListings[0].sellerProducts,
+      price: +avgSellerPrice.toFixed(2),
+      threatLevel: (isCheap ? "high" : isExpensive ? "low" : "medium") as "low" | "medium" | "high",
+      isDropshipper: sellerListings[0].sellerProducts > 500,
+      otherProducts: [
+        { name: `${query} Accessory A`, price: +(avgSellerPrice * 0.4).toFixed(2) },
+        { name: `${query} Accessory B`, price: +(avgSellerPrice * 0.25).toFixed(2) },
+        { name: `${query} Case Pro`, price: +(avgSellerPrice * 0.3).toFixed(2) },
+      ],
+      responseTime: seededRandom(name) > 0.5 ? "< 4 hours" : "< 24 hours",
+      returnPolicy: seededRandom(name + "ret") > 0.5 ? "30-day returns" : "14-day returns",
+    };
+  }).sort((a, b) => a.price - b.price);
+
+  const opportunities: Opportunity[] = [
+    {
+      type: "opportunity",
+      title: "Underpriced Listings Found",
+      description: `${Math.round(seededRandom(query + "opp1") * 5) + 2} products priced 30%+ below average. Quick flip potential.`,
+      count: Math.round(seededRandom(query + "opp1") * 5) + 2,
+      potentialMargin: Math.round(40 + seededRandom(query + "opp1m") * 20),
+      actionLabel: "View Products",
+    },
+    {
+      type: "gap",
+      title: "Profit Gap Available",
+      description: `Price between $${(avgPrice * 0.7).toFixed(2)} and $${(avgPrice * 0.9).toFixed(2)} for 25-40% margins with minimal competition.`,
+      count: Math.round(seededRandom(query + "opp2") * 3) + 1,
+      potentialMargin: Math.round(25 + seededRandom(query + "opp2m") * 15),
+      actionLabel: "See Strategy",
+    },
+    {
+      type: "avoid",
+      title: "Price War Zone",
+      description: `${Math.round(seededRandom(query + "opp3") * 8) + 3} sellers in aggressive pricing. Margins below 10%. Avoid this segment.`,
+      count: Math.round(seededRandom(query + "opp3") * 8) + 3,
+      actionLabel: "Learn Why",
+    },
+  ];
+
+  const pricingOptions: PricingOption[] = [
+    { label: "Minimum", icon: "\ud83d\udcb0", price: +(avgPrice * 0.72).toFixed(2), margin: 15, description: "Beat everyone on price", tradeoff: "Low profit, high volume", isRecommended: false, color: "blue" },
+    { label: "Recommended", icon: "\u26a1", price: +(avgPrice * 0.95).toFixed(2), margin: 35, description: "Best balance of profit & volume", tradeoff: "Sweet spot for most sellers", isRecommended: true, color: "emerald" },
+    { label: "Premium", icon: "\ud83d\udc51", price: +(avgPrice * 1.3).toFixed(2), margin: 55, description: "Premium positioning", tradeoff: "High margin, lower volume", isRecommended: false, color: "purple" },
+  ];
+
+  const priceHistory = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (13 - i));
+    return {
+      date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      avg: +(avgPrice * (0.92 + seededRandom(query + "hist" + i) * 0.16)).toFixed(2),
+      min: +(minPrice * (0.9 + seededRandom(query + "histmin" + i) * 0.2)).toFixed(2),
+      max: +(maxPrice * (0.85 + seededRandom(query + "histmax" + i) * 0.3)).toFixed(2),
+    };
+  });
+
+  const insights = [
+    `Average competitor price is $${avgPrice.toFixed(2)}. Median is $${medianPrice.toFixed(2)} — ${medianPrice < avgPrice ? "a few high-priced outliers are skewing the average up" : "prices are fairly evenly distributed"}.`,
+    `Amazon has the most sellers (${platforms[0].sellerCount}) but ${platforms[2].platform} has the highest avg price ($${platforms[2].avgPrice.toFixed(2)}).`,
+    `${topSellers[0]?.name || "Top seller"} is the cheapest at $${topSellers[0]?.price.toFixed(2)} but has ${topSellers[0]?.threatLevel} threat level.`,
+    `The price sweet spot is $${(avgPrice * 0.8).toFixed(2)}-$${(avgPrice * 1.1).toFixed(2)} where ${distribution[2]?.count || 0} sellers compete.`,
+    `Shopify stores charge ${((platforms[3].avgPrice / avgPrice - 1) * 100).toFixed(0)}% more than average — customers pay premium for branded stores.`,
+  ];
+
+  return {
+    query,
+    totalListings: allListings.length,
+    avgPrice: +avgPrice.toFixed(2),
+    medianPrice: +medianPrice.toFixed(2),
+    minPrice: +minPrice.toFixed(2),
+    maxPrice: +maxPrice.toFixed(2),
+    profitZone: { min: +(avgPrice * 0.65).toFixed(2), max: +(avgPrice * 0.95).toFixed(2), label: "Your Profit Zone" },
+    priceDistribution: distribution,
+    platforms,
+    topSellers,
+    opportunities,
+    pricingOptions,
+    priceHistory,
+    insights,
+  };
 }

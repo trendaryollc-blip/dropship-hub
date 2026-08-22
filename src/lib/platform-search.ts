@@ -8,6 +8,7 @@ export interface SearchResult {
   title: string;
   price: number | null;
   image: string | null;
+  images?: string[];
   link: string;
   source: string;
   rating?: number;
@@ -32,7 +33,7 @@ export async function searchAmazon(query: string): Promise<{ search_results: Sea
     type: "search",
     amazon_domain: "amazon.com",
     search_term: query,
-    include_clause: "search_results(title,price,image,link,asin,rating,total_ratings)",
+    include_clause: "search_results(title,price,image,images,link,asin,rating,total_ratings)",
   });
 
   const res = await fetch(`https://api.rainforestapi.com/request?${params}`, {
@@ -41,15 +42,23 @@ export async function searchAmazon(query: string): Promise<{ search_results: Sea
   if (!res.ok) throw new Error(`Rainforest ${res.status}`);
 
   const data = await res.json();
-  const items = (data.search_results || []).map((item: Record<string, unknown>) => ({
-    title: String(item.title || ""),
-    price: typeof item.price === "number" ? item.price : null,
-    image: String(item.image || ""),
-    link: String(item.link || ""),
-    source: "amazon",
-    rating: typeof item.rating === "number" ? item.rating : undefined,
-    reviews: typeof item.total_ratings === "number" ? item.total_ratings : undefined,
-  }));
+  const items = (data.search_results || []).map((item: Record<string, unknown>) => {
+    const primaryImage = String(item.image || "");
+    const additionalImages = Array.isArray(item.images)
+      ? (item.images as unknown[]).map((img) => String(img)).filter((u) => u && u !== "null")
+      : [];
+    const allImages = [primaryImage, ...additionalImages].filter((u) => u && u !== "null" && u !== "");
+    return {
+      title: String(item.title || ""),
+      price: typeof item.price === "number" ? item.price : null,
+      image: primaryImage || null,
+      images: allImages.length > 0 ? allImages : undefined,
+      link: String(item.link || ""),
+      source: "amazon",
+      rating: typeof item.rating === "number" ? item.rating : undefined,
+      reviews: typeof item.total_ratings === "number" ? item.total_ratings : undefined,
+    };
+  });
 
   return { search_results: items };
 }
@@ -121,13 +130,21 @@ export async function searchCJProducts(query: string): Promise<{ search_results:
   if (!res.ok) throw new Error(`CJ Products ${res.status}`);
 
   const data = await res.json();
-  const items = (data.data || []).map((p: Record<string, unknown>) => ({
-    title: String(p.productNameEn || p.productName || ""),
-    price: typeof p.sellPrice === "number" ? p.sellPrice : typeof p.productPrice === "number" ? p.productPrice : null,
-    image: String(p.productImage || (Array.isArray(p.productImageSet) ? p.productImageSet[0] : "") || ""),
-    link: `https://cjdropshipping.com/product-p-${p.pid || ""}`,
-    source: "cj",
-  }));
+  const items = (data.data || []).map((p: Record<string, unknown>) => {
+    const primaryImage = String(p.productImage || "");
+    const imageSet = Array.isArray(p.productImageSet)
+      ? (p.productImageSet as unknown[]).map((img) => String(img)).filter((u) => u && u !== "null")
+      : [];
+    const allImages = [primaryImage, ...imageSet].filter((u) => u && u !== "null" && u !== "");
+    return {
+      title: String(p.productNameEn || p.productName || ""),
+      price: typeof p.sellPrice === "number" ? p.sellPrice : typeof p.productPrice === "number" ? p.productPrice : null,
+      image: primaryImage || null,
+      images: allImages.length > 0 ? allImages : undefined,
+      link: `https://cjdropshipping.com/product-p-${p.pid || ""}`,
+      source: "cj",
+    };
+  });
 
   return { search_results: items };
 }
