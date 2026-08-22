@@ -30,7 +30,7 @@ export default function PlatformBreakdown({ platforms }: { platforms: PlatformDa
         {platforms.map((p, i) => (
           <div
             key={p.platform}
-            className={`glass rounded-xl p-5 border border-border hover:border-accent/20 transition-all duration-500 group cursor-pointer ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+            className={`glass rounded-xl p-3 sm:p-5 border border-border hover:border-accent/20 transition-all duration-500 group cursor-pointer ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
             style={{ transitionDelay: `${i * 100}ms` }}
           >
             <div className="flex items-center justify-between mb-3">
@@ -50,7 +50,7 @@ export default function PlatformBreakdown({ platforms }: { platforms: PlatformDa
 
             <div className="space-y-2 mb-4">
               <div className="flex justify-between items-baseline">
-                <span className="text-2xl font-bold text-foreground">${p.avgPrice.toFixed(2)}</span>
+                <span className="text-xl sm:text-2xl font-bold text-foreground">${p.avgPrice.toFixed(2)}</span>
                 <span className="text-[10px] text-muted-foreground uppercase">avg price</span>
               </div>
               <div className="flex justify-between text-xs text-muted-foreground">

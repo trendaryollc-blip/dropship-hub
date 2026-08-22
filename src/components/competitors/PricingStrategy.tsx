@@ -24,7 +24,7 @@ export default function PricingStrategy({ options }: { options: PricingOption[] 
           return (
             <div
               key={opt.label}
-              className={`relative glass rounded-2xl p-6 border transition-all duration-500 hover:scale-[1.02] cursor-pointer group overflow-hidden ${
+              className={`relative glass rounded-2xl p-4 sm:p-6 border transition-all duration-500 hover:scale-[1.02] cursor-pointer group overflow-hidden ${
                 opt.isRecommended ? `${c.border} shadow-lg ${c.glow}` : "border-border hover:border-accent/20"
               } ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
               style={{ transitionDelay: `${i * 120}ms` }}
@@ -48,7 +48,7 @@ export default function PricingStrategy({ options }: { options: PricingOption[] 
                 </div>
 
                 <div className="mb-4">
-                  <span className="font-display text-3xl font-bold text-foreground">${opt.price.toFixed(2)}</span>
+                  <span className="font-display text-2xl sm:text-3xl font-bold text-foreground">${opt.price.toFixed(2)}</span>
                   <div className="flex items-center gap-2 mt-1">
                     <span className={`text-sm font-medium ${opt.isRecommended ? "text-emerald-400" : "text-muted-foreground"}`}>
                       {opt.margin}% margin

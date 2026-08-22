@@ -70,7 +70,7 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between py-2.5 border-b border-border/50 last:border-0">
       <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-xs font-medium text-foreground text-right">{value}</span>
+      <span className="text-xs font-medium text-foreground text-right min-w-0 truncate max-w-[60%]">{value}</span>
     </div>
   );
 }
@@ -90,7 +90,7 @@ function SectionCard({ children, delay = 0 }: { children: React.ReactNode; delay
   return (
     <div
       ref={ref}
-      className={`glass rounded-2xl border border-border p-5 transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+      className={`glass rounded-2xl border border-border p-4 sm:p-5 transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
       style={{ transitionDelay: `${delay}ms` }}
     >
       {children}
@@ -109,7 +109,7 @@ function SupplierDetailContent({ id }: { id: string }) {
         <Link href="/suppliers" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-4 w-4" /> Back to Suppliers
         </Link>
-        <div className="glass rounded-2xl border border-border p-12 text-center">
+        <div className="glass rounded-2xl border border-border p-6 md:p-12 text-center">
           <AlertTriangle className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
           <h2 className="font-display text-xl font-semibold text-foreground mb-2">Supplier Not Found</h2>
           <p className="text-sm text-muted-foreground mb-4">The supplier you&apos;re looking for doesn&apos;t exist or has been removed.</p>
@@ -124,7 +124,7 @@ function SupplierDetailContent({ id }: { id: string }) {
   const badge = badgeConfig[supplier.trustBadge] || badgeConfig.bronze;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-24">
+    <div className="max-w-5xl mx-auto space-y-6 pb-16 md:pb-24">
       <Link href="/suppliers" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Suppliers
       </Link>

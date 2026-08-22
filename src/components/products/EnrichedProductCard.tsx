@@ -58,7 +58,7 @@ export default function EnrichedProductCard({ product, index }: { product: Searc
               <Package className="h-12 w-12" />
             </div>
           )}
-          <span className="absolute top-2 left-2 px-2 py-1 rounded-lg bg-black/60 text-white text-[10px] font-medium backdrop-blur-sm flex items-center gap-1">
+          <span className="absolute top-2 left-2 px-2 py-1 rounded-lg bg-black/60 text-white text-[10px] font-medium backdrop-blur-sm flex items-center gap-1 max-w-[calc(100%-16px)] truncate">
             {platformIcons[product.source] || "\ud83d\udd17"} {product.source}
           </span>
           {imageCount > 1 && (
@@ -66,20 +66,20 @@ export default function EnrichedProductCard({ product, index }: { product: Searc
               <Images className="h-2.5 w-2.5" /> {imageCount}
             </span>
           )}
-          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute top-2 right-2 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-              className="p-1.5 rounded-lg bg-black/60 text-white backdrop-blur-sm hover:bg-accent/80 transition-colors"
+              className="p-2.5 rounded-lg bg-black/60 text-white backdrop-blur-sm hover:bg-accent/80 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
               title="Save to favorites"
             >
-              <Heart className="h-3 w-3" />
+              <Heart className="h-4 w-4" />
             </button>
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-              className="p-1.5 rounded-lg bg-black/60 text-white backdrop-blur-sm hover:bg-accent/80 transition-colors"
+              className="p-2.5 rounded-lg bg-black/60 text-white backdrop-blur-sm hover:bg-accent/80 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
               title="Add to compare"
             >
-              <Plus className="h-3 w-3" />
+              <Plus className="h-4 w-4" />
             </button>
           </div>
         </div>

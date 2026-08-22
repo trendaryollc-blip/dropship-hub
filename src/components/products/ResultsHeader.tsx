@@ -31,7 +31,7 @@ export default function ResultsHeader({
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as "relevance" | "price-asc" | "price-desc" | "rating" | "reviews")}
-            className="text-xs bg-surface border border-border rounded-lg px-2.5 py-1.5 text-foreground focus:outline-none focus:border-accent/50"
+            className="text-xs bg-surface border border-border rounded-lg px-2.5 py-2.5 text-foreground focus:outline-none focus:border-accent/50 min-h-[36px]"
           >
             <option value="relevance">Relevance</option>
             <option value="price-asc">Price: Low to High</option>
@@ -44,15 +44,15 @@ export default function ResultsHeader({
         <div className="flex items-center bg-surface border border-border rounded-lg overflow-hidden">
           <button
             onClick={() => setViewMode("grid")}
-            className={`p-1.5 transition-colors ${viewMode === "grid" ? "bg-accent/10 text-accent" : "text-muted-foreground hover:text-foreground"}`}
+            className={`p-2.5 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center ${viewMode === "grid" ? "bg-accent/10 text-accent" : "text-muted-foreground hover:text-foreground"}`}
           >
-            <LayoutGrid className="h-3.5 w-3.5" />
+            <LayoutGrid className="h-4 w-4" />
           </button>
           <button
             onClick={() => setViewMode("list")}
-            className={`p-1.5 transition-colors ${viewMode === "list" ? "bg-accent/10 text-accent" : "text-muted-foreground hover:text-foreground"}`}
+            className={`p-2.5 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center ${viewMode === "list" ? "bg-accent/10 text-accent" : "text-muted-foreground hover:text-foreground"}`}
           >
-            <List className="h-3.5 w-3.5" />
+            <List className="h-4 w-4" />
           </button>
         </div>
       </div>

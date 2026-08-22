@@ -349,3 +349,11 @@ body {
 .animate-number-pop {
   animation: number-pop 0.3s ease-out;
 }
+
+/* Hide scrollbar for WebKit browsers */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  scrollbar-width: none;
+}

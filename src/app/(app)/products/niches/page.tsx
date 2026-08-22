@@ -40,7 +40,7 @@ export default function NichesPage() {
   const selectedNiche = selectedNicheId ? allNiches.find((n) => n.id === selectedNicheId) : null;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-24">
+    <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 pb-16 md:pb-24">
       {/* Hero */}
       <div ref={heroRef} className={`transition-all duration-700 ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
         <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
@@ -68,7 +68,7 @@ export default function NichesPage() {
               <button
                 key={opt.value}
                 onClick={() => setSortBy(opt.value)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-medium whitespace-nowrap transition-all ${sortBy === opt.value ? "bg-accent/10 border-accent/20 text-accent" : "bg-surface border-border text-muted-foreground hover:text-foreground"}`}
+                className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs font-medium whitespace-nowrap transition-all min-h-[36px] ${sortBy === opt.value ? "bg-accent/10 border-accent/20 text-accent" : "bg-surface border-border text-muted-foreground hover:text-foreground"}`}
               >
                 <opt.icon className="h-3.5 w-3.5" /> {opt.label}
               </button>
@@ -86,8 +86,8 @@ export default function NichesPage() {
           { label: "Avg Margin", value: `${Math.round(allNiches.reduce((a, n) => a + n.avgMargin, 0) / allNiches.length)}%`, color: "text-emerald-400" },
           { label: "Rising Trends", value: allNiches.filter((n) => n.trend === "up").length, color: "text-blue-400" },
         ].map((stat) => (
-          <div key={stat.label} className="glass rounded-xl p-4 border border-border text-center">
-            <p className={`font-display text-xl font-bold ${stat.color}`}>{stat.value}</p>
+          <div key={stat.label} className="glass rounded-xl p-3 sm:p-4 border border-border text-center">
+            <p className={`font-display text-lg sm:text-xl font-bold ${stat.color}`}>{stat.value}</p>
             <p className="text-[10px] text-muted-foreground uppercase">{stat.label}</p>
           </div>
         ))}

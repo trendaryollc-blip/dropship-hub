@@ -54,35 +54,40 @@ function SupplierCard({ supplier, index }: { supplier: ExtendedSupplier; index: 
   return (
     <Link href={`/suppliers/${supplier.id}`}>
       <div ref={ref} className={`glass rounded-2xl border border-border p-5 hover:border-accent/20 transition-all duration-500 cursor-pointer ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transitionDelay: `${index * 60}ms` }}>
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent/20 to-purple-400/20 border border-border flex items-center justify-center font-display text-sm font-bold text-foreground shrink-0">
-            {supplier.name.split(" ").map((w) => w[0]).join("").slice(0, 2)}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <h3 className="font-display text-sm font-semibold text-foreground">{supplier.name}</h3>
-              <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-bold uppercase ${badge.color} ${badge.border}`}>{badge.label}</span>
+        <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+          <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent/20 to-purple-400/20 border border-border flex items-center justify-center font-display text-sm font-bold text-foreground shrink-0">
+              {supplier.name.split(" ").map((w) => w[0]).join("").slice(0, 2)}
             </div>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
-              <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {flag} {supplier.location}</span>
-              <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {supplier.responseTime}</span>
-              <span className="flex items-center gap-1"><Truck className="h-3 w-3" /> {supplier.shippingDays}d shipping</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <h3 className="font-display text-sm font-semibold text-foreground">{supplier.name}</h3>
+                <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-bold uppercase ${badge.color} ${badge.border}`}>{badge.label}</span>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {flag} {supplier.location}</span>
+                <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {supplier.responseTime}</span>
+                <span className="flex items-center gap-1"><Truck className="h-3 w-3" /> {supplier.shippingDays}d shipping</span>
+              </div>
             </div>
           </div>
-          <div className="shrink-0 flex flex-col items-center gap-1.5">
-            <ScoreRing score={supplier.reliabilityScore} size={36} />
-            <span className="text-[8px] text-muted-foreground">Reliability</span>
-          </div>
-          <div className="shrink-0 text-right">
-            <div className="flex items-center gap-1 text-amber-400">
-              <Star className="h-4 w-4 fill-current" />
-              <span className="font-display text-sm font-bold">{supplier.rating.toFixed(1)}</span>
+          <div className="flex items-center gap-3 sm:gap-4 sm:shrink-0">
+            <div className="flex flex-col items-center gap-1.5">
+              <ScoreRing score={supplier.reliabilityScore} size={36} />
+              <span className="text-[8px] text-muted-foreground">Reliability</span>
             </div>
-            <p className="text-[9px] text-muted-foreground mt-0.5">{supplier.reviews.toLocaleString()} reviews</p>
+            <div className="text-right">
+              <div className="flex items-center gap-1 text-amber-400">
+                <Star className="h-4 w-4 fill-current" />
+                <span className="font-display text-sm font-bold">{supplier.rating.toFixed(1)}</span>
+              </div>
+              <p className="text-[9px] text-muted-foreground mt-0.5">{supplier.reviews.toLocaleString()} reviews</p>
+            </div>
+            <ArrowRight className="h-4 w-4 text-muted-foreground hidden sm:block" />
           </div>
         </div>
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
-          <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+          <div className="flex items-center gap-4 text-[10px] text-muted-foreground flex-wrap">
             <span><Package className="h-3 w-3 inline mr-1" />{supplier.categories.slice(0, 2).join(", ")}</span>
             <span>{supplier.monthlyOrders.toLocaleString()} orders/mo</span>
           </div>
@@ -156,20 +161,62 @@ function SuppliersContent() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input type="text" value={filters.search} onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))} placeholder="Search by name, category, or location..." className="w-full pl-11 pr-4 py-3 rounded-xl bg-surface border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 text-sm" />
           </div>
-          <div className="flex gap-2 items-center">
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)} className="px-4 py-3 rounded-xl bg-surface border border-border text-sm text-foreground">
+          <div className="flex gap-2 items-center flex-wrap">
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)} className="px-4 py-3 rounded-xl bg-surface border border-border text-sm text-foreground min-h-[44px]">
               <option value="rating">Top Rated</option>
               <option value="reliability">Most Reliable</option>
               <option value="response">Fastest Response</option>
               <option value="orders">Most Orders</option>
             </select>
             <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
-            <button onClick={() => setShowFilters(!showFilters)} className={`px-4 py-3 rounded-xl border text-sm font-medium flex items-center gap-2 transition-all ${showFilters || hasFilters ? "bg-accent/10 border-accent/20 text-accent" : "bg-surface border-border text-muted-foreground hover:text-foreground"}`}>
+            <button onClick={() => setShowFilters(!showFilters)} className={`px-4 py-3 rounded-xl border text-sm font-medium flex items-center gap-2 transition-all min-h-[44px] ${showFilters || hasFilters ? "bg-accent/10 border-accent/20 text-accent" : "bg-surface border-border text-muted-foreground hover:text-foreground"}`}>
               <Filter className="h-4 w-4" /> Filters {hasFilters && <span className="w-5 h-5 rounded-full bg-accent text-white text-[10px] flex items-center justify-center">{filters.badges.length + filters.locations.length + (filters.minRating > 0 ? 1 : 0) + (filters.shippingSpeed ? 1 : 0)}</span>}
             </button>
           </div>
         </div>
       </div>
+
+      {/* Mobile Filter Panel */}
+      {showFilters && (
+        <div className="lg:hidden glass rounded-2xl border border-border p-5 space-y-5">
+          <div className="flex items-center justify-between">
+            <h3 className="font-display text-sm font-semibold text-foreground">Filters</h3>
+            {hasFilters && <button onClick={clearFilters} className="text-[10px] text-accent hover:text-accent/80">Clear all</button>}
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Trust Badge</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(["gold", "silver", "bronze"] as const).map((b) => (
+                <button key={b} onClick={() => toggleBadge(b)} className={`text-[10px] px-2.5 py-1 rounded-lg border transition-all ${filters.badges.includes(b) ? `${badgeConfig[b].color} ${badgeConfig[b].border}` : "bg-surface border-border text-muted-foreground hover:text-foreground"}`}>{badgeConfig[b].label}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Location</p>
+            <div className="flex flex-wrap gap-1.5">
+              {uniqueLocations.map((l) => (
+                <button key={l} onClick={() => toggleLocation(l)} className={`text-[10px] px-2.5 py-1 rounded-lg border transition-all ${filters.locations.includes(l) ? "bg-accent/10 border-accent/20 text-accent" : "bg-surface border-border text-muted-foreground hover:text-foreground"}`}>{locationFlags[l] || "\ud83c\uddf3"} {l}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Min Rating</p>
+            <div className="flex gap-2">
+              {[0, 3, 3.5, 4, 4.5].map((r) => (
+                <button key={r} onClick={() => setFilters((f) => ({ ...f, minRating: r }))} className={`text-[10px] px-2.5 py-1 rounded-lg border transition-all ${filters.minRating === r ? "bg-accent/10 border-accent/20 text-accent" : "bg-surface border-border text-muted-foreground hover:text-foreground"}`}>{r === 0 ? "Any" : `${r}+`}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Shipping Speed</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(["", "3", "5", "7"] as const).map((s) => (
+                <button key={s} onClick={() => setFilters((f) => ({ ...f, shippingSpeed: s }))} className={`text-[10px] px-2.5 py-1 rounded-lg border transition-all ${filters.shippingSpeed === s || (!filters.shippingSpeed && !s) ? "bg-accent/10 border-accent/20 text-accent" : "bg-surface border-border text-muted-foreground hover:text-foreground"}`}>{s ? `≤${s}d` : "Any"}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-6">
         {/* Filter Sidebar */}

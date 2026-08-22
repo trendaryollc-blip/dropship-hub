@@ -115,8 +115,8 @@ function HowItWorksSection() {
 function EmptyState() {
   const suggestions = ["wireless earbuds", "phone accessories", "pet supplies", "kitchen gadgets", "led strip lights"];
   return (
-    <div className="glass rounded-2xl p-8 md:p-16 text-center">
-      <Compass className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+    <div className="glass rounded-2xl p-4 sm:p-8 md:p-16 text-center">
+      <Compass className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground/30 mx-auto mb-4" />
       <h3 className="font-display text-lg font-semibold text-foreground mb-2">No products found</h3>
       <p className="text-sm text-muted-foreground mb-4">Try a different search query or enable more platforms</p>
       <div className="flex items-center justify-center gap-2 flex-wrap">
@@ -125,7 +125,7 @@ function EmptyState() {
           <Link
             key={s}
             href={`/products?q=${encodeURIComponent(s)}`}
-            className="text-xs px-3 py-1.5 rounded-lg bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 transition-colors"
+            className="text-xs px-3 py-2.5 rounded-lg bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 transition-colors min-h-[36px] flex items-center"
           >
             {s}
           </Link>
@@ -248,7 +248,7 @@ function CategoriesSection({ viewMode }: { viewMode: "grid" | "list" }) {
 
 export default function ProductsPage() {
   return (
-    <Suspense fallback={<div className="max-w-7xl mx-auto p-8 text-center text-muted-foreground">Loading...</div>}>
+    <Suspense fallback={<div className="max-w-7xl mx-auto p-4 md:p-8 text-center text-muted-foreground">Loading...</div>}>
       <ProductsContent />
     </Suspense>
   );
@@ -345,7 +345,7 @@ function ProductsContent() {
   }, [results, sortBy]);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 pb-24">
+    <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 pb-16 md:pb-24">
       <SearchHeader
         query={query}
         setQuery={setQuery}
@@ -367,7 +367,7 @@ function ProductsContent() {
       )}
 
       {loading && (
-        <div className="glass rounded-2xl p-8 md:p-16 text-center">
+        <div className="glass rounded-2xl p-6 md:p-8 lg:p-16 text-center">
           <Loader2 className="h-12 w-12 text-accent mx-auto mb-4 animate-spin" />
           <h3 className="font-display text-lg font-semibold text-foreground mb-2">Searching...</h3>
           <p className="text-sm text-muted-foreground">Fetching products from multiple platforms</p>

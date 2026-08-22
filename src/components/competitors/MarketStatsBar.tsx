@@ -18,11 +18,11 @@ export default function MarketStatsBar({ data }: { data: MarketData }) {
     <div ref={ref} className={`transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {stats.map((stat, i) => (
-          <div key={stat.label} className={`glass rounded-xl p-4 border border-border text-center transition-all duration-500 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transitionDelay: `${i * 80}ms` }}>
+          <div key={stat.label} className={`glass rounded-xl p-3 sm:p-4 border border-border text-center transition-all duration-500 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transitionDelay: `${i * 80}ms` }}>
             <div className={`w-8 h-8 rounded-lg ${stat.bgColor} flex items-center justify-center mx-auto mb-2`}>
               <stat.icon className={`h-4 w-4 ${stat.color}`} />
             </div>
-            <p className="font-display text-lg font-bold text-foreground">{stat.value}</p>
+            <p className="font-display text-base sm:text-lg font-bold text-foreground">{stat.value}</p>
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{stat.label}</p>
           </div>
         ))}

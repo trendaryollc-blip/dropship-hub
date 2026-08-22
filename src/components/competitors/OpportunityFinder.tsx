@@ -25,7 +25,7 @@ export default function OpportunityFinder({ opportunities }: { opportunities: Op
           return (
             <div
               key={opp.type}
-              className={`relative glass rounded-2xl p-6 border ${c.border} ${c.bg} overflow-hidden transition-all duration-500 hover:scale-[1.02] cursor-pointer group ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+              className={`relative glass rounded-2xl p-4 sm:p-6 border ${c.border} ${c.bg} overflow-hidden transition-all duration-500 hover:scale-[1.02] cursor-pointer group ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
               style={{ transitionDelay: `${i * 120}ms` }}
             >
               <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl ${c.ring} opacity-5 rounded-bl-full`} />
@@ -36,7 +36,7 @@ export default function OpportunityFinder({ opportunities }: { opportunities: Op
                     {opp.type === "opportunity" ? "OPPORTUNITY" : opp.type === "gap" ? "PRICING GAP" : "AVOID"}
                   </div>
                   {opp.potentialMargin && (
-                    <span className="text-2xl font-bold text-foreground">{opp.potentialMargin}%</span>
+                    <span className="text-xl sm:text-2xl font-bold text-foreground">{opp.potentialMargin}%</span>
                   )}
                 </div>
                 <h4 className="font-display text-lg font-bold text-foreground mb-2">{opp.title}</h4>

@@ -25,7 +25,7 @@ export default function PriceDistribution({ tiers, avgPrice }: { tiers: PriceTie
         {tiers.map((tier, i) => (
           <div key={tier.range} className={`group transition-all duration-500 ${isInView ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4"}`} style={{ transitionDelay: `${i * 100}ms` }}>
             <div className="flex items-center gap-3">
-              <span className={`text-xs font-mono w-28 text-right shrink-0 ${tier.isSweetSpot ? "text-emerald-400 font-bold" : "text-muted-foreground"}`}>{tier.range}</span>
+              <span className={`text-[10px] sm:text-xs font-mono w-16 sm:w-28 text-right shrink-0 ${tier.isSweetSpot ? "text-emerald-400 font-bold" : "text-muted-foreground"}`}>{tier.range}</span>
               <div className="flex-1 relative">
                 <div className="h-8 rounded-lg bg-surface/50 border border-border/50 overflow-hidden">
                   <div
@@ -33,8 +33,8 @@ export default function PriceDistribution({ tiers, avgPrice }: { tiers: PriceTie
                     style={{ width: isInView ? `${(tier.count / maxCount) * 100}%` : "0%", transitionDelay: `${200 + i * 120}ms` }}
                   />
                 </div>
-                <div className="absolute inset-0 flex items-center justify-between px-3">
-                  <span className="text-xs font-medium text-foreground/90">{tier.count} sellers</span>
+                <div className="absolute inset-0 flex items-center justify-between px-3 overflow-hidden">
+                  <span className="text-xs font-medium text-foreground/90 truncate">{tier.count} sellers</span>
                   {tier.isSweetSpot && (
                     <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-400/15 px-2 py-0.5 rounded-full border border-emerald-400/20">
                       <Sparkles className="h-2.5 w-2.5" />

@@ -47,29 +47,29 @@ export default function CompetitorProfiles({ sellers }: { sellers: SellerProfile
             >
               <button
                 onClick={() => setExpanded(isOpen ? null : seller.name)}
-                className="w-full p-4 flex items-center gap-4 text-left"
+                className="w-full p-3 sm:p-4 flex items-center gap-2 sm:gap-4 text-left"
               >
-                <TrustRing rating={seller.rating} />
+                <TrustRing rating={seller.rating} size={36} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <h4 className="font-display text-sm font-semibold text-foreground truncate">{seller.name}</h4>
                     {seller.isDropshipper && (
-                      <span className="text-[9px] font-bold text-purple-400 bg-purple-400/10 px-1.5 py-0.5 rounded-full border border-purple-400/20 shrink-0">DROPSHIPPER</span>
+                      <span className="hidden sm:inline text-[9px] font-bold text-purple-400 bg-purple-400/10 px-1.5 py-0.5 rounded-full border border-purple-400/20 shrink-0">DROPSHIPPER</span>
                     )}
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Store className="h-3 w-3 shrink-0" />
-                    <span>{seller.platform}</span>
+                    <span className="truncate">{seller.platform}</span>
                     <span className="text-border">·</span>
                     <ShoppingCart className="h-3 w-3 shrink-0" />
-                    <span>{seller.totalProducts.toLocaleString()} products</span>
+                    <span className="hidden sm:inline">{seller.totalProducts.toLocaleString()} products</span>
                   </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <span className="font-display text-lg font-bold text-foreground block">${seller.price.toFixed(2)}</span>
+                <div className="text-right shrink-0 hidden sm:block">
+                  <span className="font-display text-sm sm:text-lg font-bold text-foreground block">${seller.price.toFixed(2)}</span>
                   <span className="text-[10px] text-muted-foreground">avg price</span>
                 </div>
-                <div className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${tc.color} ${tc.bg} ${tc.border} shrink-0`}>
+                <div className={`hidden sm:flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${tc.color} ${tc.bg} ${tc.border} shrink-0`}>
                   <div className={`w-1.5 h-1.5 rounded-full ${tc.ring}`} />
                   {tc.label}
                 </div>
@@ -77,8 +77,8 @@ export default function CompetitorProfiles({ sellers }: { sellers: SellerProfile
               </button>
 
               {isOpen && (
-                <div className="px-4 pb-4 border-t border-border/50">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 mb-4">
+                <div className="px-3 sm:px-4 pb-4 border-t border-border/50">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 mt-4 mb-4">
                     <div className="bg-surface/50 rounded-lg p-3 border border-border/50">
                       <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1"><Star className="h-3 w-3" /> Rating</div>
                       <span className="font-display text-sm font-bold text-foreground">{seller.rating}/5.0</span>
@@ -101,9 +101,9 @@ export default function CompetitorProfiles({ sellers }: { sellers: SellerProfile
                     <h5 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Other Products They Sell</h5>
                     <div className="flex flex-wrap gap-2">
                       {seller.otherProducts.map((p) => (
-                        <div key={p.name} className="flex items-center gap-2 bg-surface/50 rounded-lg px-3 py-2 border border-border/50 text-xs">
-                          <span className="text-foreground">{p.name}</span>
-                          <span className="text-accent font-medium">${p.price.toFixed(2)}</span>
+                        <div key={p.name} className="flex items-center gap-2 bg-surface/50 rounded-lg px-3 py-2 border border-border/50 text-xs max-w-full">
+                          <span className="truncate">{p.name}</span>
+                          <span className="text-accent font-medium shrink-0">${p.price.toFixed(2)}</span>
                         </div>
                       ))}
                     </div>

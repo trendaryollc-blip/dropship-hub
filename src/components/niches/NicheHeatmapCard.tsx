@@ -38,10 +38,10 @@ export default function NicheHeatmapCard({ niche, index, onSelect }: { niche: Ni
     <div
       ref={ref}
       onClick={() => onSelect(niche.id)}
-      className={`glass rounded-2xl border border-border p-5 cursor-pointer hover:border-accent/20 transition-all duration-500 group ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+      className={`glass rounded-2xl border border-border p-3 sm:p-5 cursor-pointer hover:border-accent/20 transition-all duration-500 group ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
       style={{ transitionDelay: `${index * 60}ms` }}
     >
-      <div className="relative h-24 overflow-hidden rounded-xl mb-3">
+      <div className="relative h-20 sm:h-24 overflow-hidden rounded-xl mb-3">
         <img
           src={niche.image}
           alt={niche.name}
@@ -60,7 +60,7 @@ export default function NicheHeatmapCard({ niche, index, onSelect }: { niche: Ni
       <div className="flex items-center gap-3 mb-3">
         <div className="flex items-center gap-1">
           <Flame className="h-3.5 w-3.5" style={{ color: heatColor }} />
-          <span className="font-display text-lg font-bold" style={{ color: heatColor }}>{niche.heat}</span>
+          <span className="font-display text-base sm:text-lg font-bold" style={{ color: heatColor }}>{niche.heat}</span>
         </div>
         <div className="flex-1 h-1.5 rounded-full bg-surface overflow-hidden">
           <div className="h-full rounded-full transition-all duration-700" style={{ width: `${niche.heat}%`, backgroundColor: heatColor }} />
@@ -75,13 +75,13 @@ export default function NicheHeatmapCard({ niche, index, onSelect }: { niche: Ni
         <MiniSparkline points={niche.weeklyData} color={heatColor} />
       </div>
 
-      <div className="grid grid-cols-3 gap-2 mb-3">
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mb-3">
         {[
           { label: "Products", value: niche.productCount },
           { label: "Avg Margin", value: `${niche.avgMargin}%` },
           { label: "Saturation", value: `${niche.saturation}%` },
         ].map((stat) => (
-          <div key={stat.label} className="text-center p-1.5 rounded-lg bg-surface/50">
+          <div key={stat.label} className="text-center p-1 sm:p-1.5 rounded-lg bg-surface/50">
             <p className="text-[10px] text-muted-foreground">{stat.label}</p>
             <p className="text-xs font-bold text-foreground">{stat.value}</p>
           </div>

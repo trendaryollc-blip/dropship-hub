@@ -41,7 +41,7 @@ export default function SearchHeader({
             <button
               key={p}
               onClick={() => togglePlatform(p)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all min-h-[36px] ${
                 selectedPlatforms.includes(p) || selectedPlatforms.length === 0
                   ? "bg-accent/10 text-accent border border-accent/20"
                   : "bg-surface border border-border text-muted-foreground hover:text-foreground"
@@ -98,7 +98,7 @@ export default function SearchHeader({
               <button
                 key={s}
                 onClick={() => onRecentClick(s)}
-                className="text-[11px] px-2.5 py-1 rounded-lg bg-surface/50 border border-border/50 text-muted-foreground hover:text-foreground hover:border-accent/20 transition-all"
+                className="text-[11px] px-2.5 py-2 rounded-lg bg-surface/50 border border-border/50 text-muted-foreground hover:text-foreground hover:border-accent/20 transition-all min-h-[36px]"
               >
                 {s}
               </button>

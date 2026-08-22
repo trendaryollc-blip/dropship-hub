@@ -34,12 +34,12 @@ export default function PriceHistory({ data }: { data: PricePoint[] }) {
 
   return (
     <div ref={ref} className={`glass rounded-2xl p-6 border border-border transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
         <div className="flex items-center gap-2">
           <TrendingUp className="h-5 w-5 text-accent" />
-          <h3 className="font-display text-base font-semibold text-foreground">Price History (14 Days)</h3>
+          <h3 className="font-display text-base font-semibold text-foreground truncate shrink-0">Price History (14 Days)</h3>
         </div>
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <div className="flex items-center gap-3 sm:gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-accent rounded-full" /> Average</span>
           <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-emerald-400/50 rounded-full" /> Min</span>
           <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-red-400/50 rounded-full" /> Max</span>
@@ -78,8 +78,8 @@ export default function PriceHistory({ data }: { data: PricePoint[] }) {
         </svg>
       </div>
 
-      <div className="flex items-center justify-between mt-3">
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-muted-foreground">
           <span>Current: <span className="text-foreground font-medium">${latestAvg.toFixed(2)}</span></span>
           <span className={`flex items-center gap-1 ${trendUp ? "text-emerald-400" : "text-red-400"}`}>
             {trendUp ? "▲" : "▼"} {Math.abs(((latestAvg - prevAvg) / prevAvg) * 100).toFixed(1)}% vs yesterday

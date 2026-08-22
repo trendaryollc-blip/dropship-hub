@@ -78,7 +78,7 @@ export default function CompetitorsPage() {
         </div>
 
         {/* Quick Access */}
-        <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
+        <div className="mt-4 flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5"><BookmarkPlus className="h-3 w-3" /> Saved:</span>
           {savedSearches.map((s) => (
             <button key={s.query} onClick={() => { setQuery(s.query); handleSearch(s.query); }} className="hover:text-accent transition-colors truncate max-w-[140px]">{s.query}</button>
@@ -88,7 +88,7 @@ export default function CompetitorsPage() {
 
       {/* Loading */}
       {loading && (
-        <div className="glass rounded-2xl p-12 text-center border border-border">
+        <div className="glass rounded-2xl p-6 sm:p-12 text-center border border-border">
           <div className="relative w-16 h-16 mx-auto mb-4">
             <Loader2 className="h-16 w-16 text-accent animate-spin" />
             <div className="absolute inset-0 flex items-center justify-center">
@@ -97,7 +97,7 @@ export default function CompetitorsPage() {
           </div>
           <h3 className="font-display text-lg font-semibold text-foreground mb-2">Scanning 50+ Platforms...</h3>
           <p className="text-sm text-muted-foreground">Analyzing competitor prices, sellers, and market trends</p>
-          <div className="mt-4 flex justify-center gap-2">
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
             {["Google Shopping", "Amazon", "eBay", "Walmart"].map((p, i) => (
               <span key={p} className="text-[10px] text-accent/70 bg-accent/5 px-2 py-1 rounded-full border border-accent/10" style={{ animationDelay: `${i * 200}ms` }}>{p}</span>
             ))}
@@ -121,11 +121,11 @@ export default function CompetitorsPage() {
 
       {/* Empty State */}
       {!marketData && !loading && (
-        <div className="glass rounded-2xl p-12 text-center border border-border">
+        <div className="glass rounded-2xl p-6 sm:p-12 text-center border border-border">
           <div className="w-20 h-20 rounded-2xl bg-accent/5 flex items-center justify-center mx-auto mb-5 border border-accent/10">
             <Crosshair className="h-10 w-10 text-accent/40" />
           </div>
-          <h3 className="font-display text-xl font-bold text-foreground mb-2">Ready to Spy on Competitors</h3>
+          <h3 className="font-display text-lg sm:text-xl font-bold text-foreground mb-2">Ready to Spy on Competitors</h3>
           <p className="text-sm text-muted-foreground max-w-md mx-auto mb-6">
             Enter any product to get a complete competitive analysis: pricing intelligence, platform breakdown, opportunity finder, and AI-powered pricing strategy.
           </p>

@@ -62,7 +62,7 @@ function ImageGallery({ images, title }: { images: string[]; title: string }) {
   if (images.length === 0) {
     return (
       <div className="aspect-square bg-surface flex items-center justify-center rounded-2xl border border-border">
-        <Package className="h-24 w-24 text-muted-foreground/20" />
+        <Package className="h-16 w-16 sm:h-24 sm:w-24 text-muted-foreground/20" />
       </div>
     );
   }
@@ -70,26 +70,26 @@ function ImageGallery({ images, title }: { images: string[]; title: string }) {
   return (
     <>
       <div className="glass rounded-2xl overflow-hidden border border-border">
-        <div className="aspect-square bg-surface relative cursor-zoom-in" onClick={() => setLightboxOpen(true)}>
+        <div className="aspect-[4/3] sm:aspect-square bg-surface relative cursor-zoom-in" onClick={() => setLightboxOpen(true)}>
           <img src={images[activeIndex]} alt={`${title} - Image ${activeIndex + 1}`} className="w-full h-full object-contain p-4 hover:scale-110 transition-transform duration-300" />
           {images.length > 1 && (
             <>
-              <button onClick={(e) => { e.stopPropagation(); goPrev(); }} className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg bg-black/50 text-white backdrop-blur-sm hover:bg-black/70 transition-colors">
-                <ChevronLeft className="h-4 w-4" />
+              <button onClick={(e) => { e.stopPropagation(); goPrev(); }} className="absolute left-2 top-1/2 -translate-y-1/2 p-3 rounded-lg bg-black/50 text-white backdrop-blur-sm hover:bg-black/70 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center">
+                <ChevronLeft className="h-5 w-5" />
               </button>
-              <button onClick={(e) => { e.stopPropagation(); goNext(); }} className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg bg-black/50 text-white backdrop-blur-sm hover:bg-black/70 transition-colors">
-                <ChevronRight className="h-4 w-4" />
+              <button onClick={(e) => { e.stopPropagation(); goNext(); }} className="absolute right-2 top-1/2 -translate-y-1/2 p-3 rounded-lg bg-black/50 text-white backdrop-blur-sm hover:bg-black/70 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center">
+                <ChevronRight className="h-5 w-5" />
               </button>
-              <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/60 text-white text-[10px] font-medium backdrop-blur-sm">
+              <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/60 text-white text-xs font-medium backdrop-blur-sm">
                 {activeIndex + 1} / {images.length}
               </span>
             </>
           )}
         </div>
         {images.length > 1 && (
-          <div className="flex gap-1 p-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+          <div className="flex gap-1 p-2 overflow-x-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }}>
             {images.map((img, i) => (
-              <button key={i} onClick={() => setActiveIndex(i)} className={`w-14 h-14 rounded-lg overflow-hidden shrink-0 border-2 transition-all ${i === activeIndex ? "border-accent" : "border-transparent opacity-60 hover:opacity-100"}`}>
+              <button key={i} onClick={() => setActiveIndex(i)} className={`w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden shrink-0 border-2 transition-all ${i === activeIndex ? "border-accent" : "border-transparent opacity-60 hover:opacity-100"}`}>
                 <img src={img} alt="" className="w-full h-full object-cover" />
               </button>
             ))}
@@ -98,11 +98,11 @@ function ImageGallery({ images, title }: { images: string[]; title: string }) {
       </div>
       {lightboxOpen && (
         <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center" onClick={() => setLightboxOpen(false)}>
-          <button onClick={(e) => { e.stopPropagation(); goPrev(); }} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-colors">
+          <button onClick={(e) => { e.stopPropagation(); goPrev(); }} className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-colors min-w-[48px] min-h-[48px] flex items-center justify-center">
             <ChevronLeft className="h-6 w-6" />
           </button>
           <img src={images[activeIndex]} alt={title} className="max-w-[90vw] max-h-[90vh] object-contain" onClick={(e) => e.stopPropagation()} />
-          <button onClick={(e) => { e.stopPropagation(); goNext(); }} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-colors">
+          <button onClick={(e) => { e.stopPropagation(); goNext(); }} className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-colors min-w-[48px] min-h-[48px] flex items-center justify-center">
             <ChevronRight className="h-6 w-6" />
           </button>
           <span className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-lg bg-white/10 text-white text-sm backdrop-blur-sm">
@@ -154,7 +154,7 @@ function ProductDetailContent() {
   const enriched = useMemo(() => enrichProduct(title, source, priceNum, ratingNum || undefined, reviewsNum || undefined), [title, source, priceNum, ratingNum, reviewsNum]);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 pb-24">
+    <div className="max-w-5xl mx-auto space-y-6 md:space-y-8 pb-16 md:pb-24">
       <ProductActionBar platform={source} platformUrl={link} productTitle={title} category={category} />
 
       <Link href="/products" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -162,7 +162,7 @@ function ProductDetailContent() {
       </Link>
 
       {/* === SECTION 1: ENHANCED PRODUCT HERO === */}
-      <div ref={heroRef} className={`grid grid-cols-1 md:grid-cols-2 gap-8 transition-all duration-700 ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+      <div ref={heroRef} className={`grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 transition-all duration-700 ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
         <div className="space-y-3">
           <ImageGallery images={images} title={title} />
           {images.length > 1 && (
@@ -173,38 +173,38 @@ function ProductDetailContent() {
           )}
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div>
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs mb-3 ${platformColors[source] || "bg-surface border-border text-muted-foreground"}`}>
               {platformIcons[source] || "\ud83d\udd17"} {source.replace("_", " ")}
             </span>
-            <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground leading-tight">{title}</h1>
+            <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground leading-tight">{title}</h1>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <span className="text-[10px] px-2 py-1 rounded-lg bg-surface/50 border border-border/50 text-muted-foreground flex items-center gap-1">
-              <Layers className="h-2.5 w-2.5" /> {category}
+            <span className="text-xs px-2 py-1 rounded-lg bg-surface/50 border border-border/50 text-muted-foreground flex items-center gap-1">
+              <Layers className="h-3 w-3" /> {category}
             </span>
             {tags.slice(0, 4).map((t) => (
-              <span key={t} className="text-[10px] px-2 py-1 rounded-lg bg-accent/10 border border-accent/20 text-accent">{t}</span>
+              <span key={t} className="text-xs px-2 py-1 rounded-lg bg-accent/10 border border-accent/20 text-accent">{t}</span>
             ))}
           </div>
 
-          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-            <Barcode className="h-3 w-3" />
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Barcode className="h-3.5 w-3.5" />
             <span>ID: {productId}</span>
           </div>
 
           {hasPrice && (
-            <div className="glass rounded-xl p-5 border border-border">
+            <div className="glass rounded-xl p-4 sm:p-5 border border-border">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Listed Price</p>
-              <p className="font-display text-4xl font-bold text-accent">${priceNum!.toFixed(2)}</p>
+              <p className="font-display text-3xl sm:text-4xl font-bold text-accent">${priceNum!.toFixed(2)}</p>
             </div>
           )}
 
           {(hasRating || hasReviews) && (
             <div className="glass rounded-xl p-4 border border-border">
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4">
                 {hasRating && (
                   <div className="flex items-center gap-2">
                     <Star className="h-5 w-5 text-amber-400 fill-current" />
@@ -213,7 +213,7 @@ function ProductDetailContent() {
                 )}
                 {hasReviews && <span className="text-sm text-muted-foreground">({reviewsNum!.toLocaleString()} reviews)</span>}
                 {hasRating && ratingNum && ratingNum >= 4.5 && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-400/10 text-emerald-400 font-medium border border-emerald-400/20">Top Rated</span>
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-400/10 text-emerald-400 font-medium border border-emerald-400/20">Top Rated</span>
                 )}
               </div>
             </div>
