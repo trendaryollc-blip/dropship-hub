@@ -32,6 +32,8 @@ export default function PriceComparison({ platforms, listedPrice }: { platforms:
   const cheapest = sorted[0];
   const bestRated = [...platforms].sort((a, b) => b.rating - a.rating)[0];
 
+  if (!sorted.length || !cheapest || !bestRated) return null;
+
   return (
     <div ref={ref} className={`glass rounded-2xl border border-border overflow-hidden transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
       <div className="p-5 border-b border-border">
