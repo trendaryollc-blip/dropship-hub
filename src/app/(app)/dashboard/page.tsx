@@ -24,6 +24,7 @@ import MarketplaceHeatmap from "@/components/dashboard/MarketplaceHeatmap";
 import InlineCalculator from "@/components/dashboard/InlineCalculator";
 import QuickCompareBar from "@/components/dashboard/QuickCompareBar";
 import TrendingProducts from "@/components/dashboard/TrendingProducts";
+import GreetingCard from "@/components/dashboard/GreetingCard";
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -74,6 +75,9 @@ export default function DashboardHome() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-24">
+      {/* [0] Smart Greeting Card */}
+      <GreetingCard username="trendaryo206" />
+
       {/* [1] Market Pulse Ticker */}
       <MarketPulseTicker items={data.ticker} />
 
