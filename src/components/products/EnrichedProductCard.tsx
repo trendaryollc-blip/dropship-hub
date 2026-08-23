@@ -21,6 +21,7 @@ interface SearchResult {
   source: string;
   rating?: number;
   reviews?: number;
+  asin?: string;
 }
 
 export default function EnrichedProductCard({ product, index }: { product: SearchResult; index: number }) {

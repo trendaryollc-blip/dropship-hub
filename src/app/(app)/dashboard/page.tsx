@@ -73,11 +73,11 @@ export default function DashboardHome() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-24">
-      {/* Smart Greeting Card */}
-      <GreetingCard username="trendaryo206" />
-
       {/* Market Pulse Ticker */}
       <MarketPulseTicker items={data.ticker} />
+
+      {/* Smart Greeting Card */}
+      <GreetingCard username="trendaryo206" />
 
       {/* [2] AI Product of the Day */}
       <AIDailyPick pick={data.dailyPick} />

@@ -8,7 +8,7 @@ async function searchAmazonProducts(query: string) {
     type: "search",
     amazon_domain: "amazon.com",
     search_term: query,
-    include_clause: "search_results(title,price,image,link,asin,rating,total_ratings,prime,delivery,offer_count)",
+    include_clause: "search_results(title,price,image,images,link,asin,rating,total_ratings,prime,delivery,offer_count)",
   });
 
   const res = await fetch(`https://api.rainforestapi.com/request?${params}`);
@@ -22,7 +22,7 @@ async function getAmazonProductDetails(asin: string) {
     type: "product",
     amazon_domain: "amazon.com",
     asin: asin,
-    include_clause: "product(title,price,image,features,description,brand,manufacturer,rating,total_ratings,prime,delivery,buybox,variants,seller_info)",
+    include_clause: "product(title,price,image,images,features,description,brand,manufacturer,rating,total_ratings,prime,delivery,buybox,variants,seller_info)",
   });
 
   const res = await fetch(`https://api.rainforestapi.com/request?${params}`);

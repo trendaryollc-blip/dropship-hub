@@ -55,6 +55,7 @@ export async function searchAmazon(query: string): Promise<{ search_results: Sea
       images: allImages.length > 0 ? allImages : undefined,
       link: String(item.link || ""),
       source: "amazon",
+      asin: String(item.asin || ""),
       rating: typeof item.rating === "number" ? item.rating : undefined,
       reviews: typeof item.total_ratings === "number" ? item.total_ratings : undefined,
     };

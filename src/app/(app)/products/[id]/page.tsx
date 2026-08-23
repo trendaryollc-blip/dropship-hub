@@ -51,6 +51,7 @@ interface ProductData {
   category?: string;
   tags?: string[];
   productId?: string;
+  asin?: string;
 }
 
 function ImageGallery({ images, title }: { images: string[]; title: string }) {
@@ -119,6 +120,8 @@ function ProductDetailContent() {
   const { ref: heroRef, isInView: heroVisible } = useInView({ threshold: 0.1 });
   const [showDetails, setShowDetails] = useState(true);
   const [product, setProduct] = useState<ProductData | null>(null);
+  const [fetchedImages, setFetchedImages] = useState<string[]>([]);
+  const [loadingImages, setLoadingImages] = useState(false);
 
   useEffect(() => {
     const stored = sessionStorage.getItem("selectedProduct");
@@ -137,12 +140,32 @@ function ProductDetailContent() {
   const category = product?.category || "General";
   const tags = product?.tags || title.toLowerCase().split(" ").slice(0, 4);
   const productId = product?.productId || `SKU-${title.slice(0, 8).replace(/\s+/g, "").toUpperCase()}`;
-  const realImages = product?.images || (image ? [image] : []);
-  const images = realImages.length > 1
-    ? realImages
-    : realImages.length === 1
-      ? [realImages[0], realImages[0], realImages[0], realImages[0], realImages[0]]
-      : [];
+  const asin = product?.asin || product?.id || "";
+
+  const storedImages = product?.images || (image ? [image] : []);
+  const images = fetchedImages.length > 0 ? fetchedImages : storedImages;
+
+  useEffect(() => {
+    if (storedImages.length > 1 || !source) return;
+
+    const fetchImages = async () => {
+      setLoadingImages(true);
+      try {
+        const res = await fetch("/api/platforms/product-images", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ asin, url: link, source }),
+        });
+        const data = await res.json();
+        if (data.images && data.images.length > storedImages.length) {
+          setFetchedImages(data.images);
+        }
+      } catch {}
+      setLoadingImages(false);
+    };
+
+    fetchImages();
+  }, [asin, link, source, storedImages.length]);
 
   const hasPrice = price && price !== "" && price !== "null";
   const hasRating = rating && rating !== "" && rating !== "null";
@@ -165,7 +188,13 @@ function ProductDetailContent() {
       <div ref={heroRef} className={`grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 transition-all duration-700 ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
         <div className="space-y-3">
           <ImageGallery images={images} title={title} />
-          {images.length > 1 && (
+          {loadingImages && (
+            <div className="flex items-center gap-2 text-xs text-accent">
+              <div className="w-3 h-3 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+              <span>Fetching all product images...</span>
+            </div>
+          )}
+          {images.length > 1 && !loadingImages && (
             <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
               <Images className="h-3 w-3" />
               <span>{images.length} images available from {source.replace("_", " ")}</span>
