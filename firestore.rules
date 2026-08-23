@@ -6,54 +6,65 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
 
-      // User settings subcollection
+      // User settings
       match /settings/{docId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
 
-      // Favorites subcollection
+      // Favorites
       match /favorites/{favId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
 
-      // Calculator history subcollection
+      // Calculator history
       match /calcHistory/{docId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
 
-      // Chat history subcollection
+      // Chat history
       match /chatHistory/{docId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
 
-      // Product notes subcollection
+      // Product notes
       match /notes/{productId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
-    }
 
-    // Products (read-only for all authenticated users)
-    match /products/{productId} {
-      allow read: if request.auth != null;
-      allow write: if false; // Admin-only via Admin SDK
-    }
+      // Revenue tracking
+      match /revenue/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
 
-    // Suppliers (read-only for all authenticated users)
-    match /suppliers/{supplierId} {
-      allow read: if request.auth != null;
-      allow write: if false;
-    }
+      // Smart alerts
+      match /alerts/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
 
-    // Competitors (read-only for all authenticated users)
-    match /competitors/{competitorId} {
-      allow read: if request.auth != null;
-      allow write: if false;
-    }
+      // Daily missions
+      match /missions/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
 
-    // Niches (read-only for all authenticated users)
-    match /niches/{nicheId} {
-      allow read: if request.auth != null;
-      allow write: if false;
+      // Watchlist
+      match /watchlist/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Search history
+      match /searchHistory/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Competitor searches
+      match /competitorSearches/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Product enrichment cache
+      match /enrichmentCache/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
   }
 }
