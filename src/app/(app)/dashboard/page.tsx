@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import {
   Search,
@@ -23,6 +24,7 @@ import MarketplaceHeatmap from "@/components/dashboard/MarketplaceHeatmap";
 import InlineCalculator from "@/components/dashboard/InlineCalculator";
 import QuickCompareBar from "@/components/dashboard/QuickCompareBar";
 import TrendingProducts from "@/components/dashboard/TrendingProducts";
+import GreetingCard from "@/components/dashboard/GreetingCard";
 function QuickActionCard({ action, index, visible }: { action: { label: string; description: string; href: string; color: string }; index: number; visible: boolean }) {
   const colorMap: Record<string, { icon: typeof Search; color: string; bg: string; gradient: string }> = {
     blue: { icon: Search, color: "text-blue-400", bg: "bg-blue-400/10", gradient: "from-blue-400/20 to-blue-500/5" },
@@ -56,6 +58,12 @@ function QuickActionCard({ action, index, visible }: { action: { label: string; 
 }
 
 export default function DashboardHome() {
+  const [greeting] = useState(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+  });
   const { data, markAlertRead, markAllAlertsRead, addToCompare, removeFromCompare, clearCompare } = useDashboardData();
 
   const completedTasks = data.tasks.filter((t) => t.done).length;
@@ -64,6 +72,9 @@ export default function DashboardHome() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-24">
+      {/* Smart Greeting Card */}
+      <GreetingCard username="trendaryo206" />
+
       {/* Market Pulse Ticker */}
       <MarketPulseTicker items={data.ticker} />
 
