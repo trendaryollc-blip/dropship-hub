@@ -25,6 +25,7 @@ import InlineCalculator from "@/components/dashboard/InlineCalculator";
 import QuickCompareBar from "@/components/dashboard/QuickCompareBar";
 import TrendingProducts from "@/components/dashboard/TrendingProducts";
 import GreetingCard from "@/components/dashboard/GreetingCard";
+
 function QuickActionCard({ action, index, visible }: { action: { label: string; description: string; href: string; color: string }; index: number; visible: boolean }) {
   const colorMap: Record<string, { icon: typeof Search; color: string; bg: string; gradient: string }> = {
     blue: { icon: Search, color: "text-blue-400", bg: "bg-blue-400/10", gradient: "from-blue-400/20 to-blue-500/5" },
