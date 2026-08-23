@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense, useMemo } from "react";
+import { useState, useEffect, Suspense, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -24,6 +24,11 @@ const platformIcons: Record<string, string> = {
   walmart: "\ud83c\udfea", temu: "\ud83d\udd25", shein: "\ud83d\udc57",
   etsy: "\ud83c\udfa8", alibaba: "\ud83c\udfed", banggood: "\u26a1", dhgate: "\ud83d\udd17",
 };
+
+function seededRandom(seed: number) {
+  let s = seed;
+  return () => { s = (s * 16807 + 0) % 2147483647; return s / 2147483647; };
+}
 
 const platformColors: Record<string, string> = {
   amazon: "bg-amber-400/10 text-amber-400 border-amber-400/20",
@@ -200,7 +205,8 @@ function ProductDetailContent() {
   const enriched = useMemo(() => {
     if (enrichmentData?.platforms) {
       const platformsRaw = enrichmentData.platforms as { platform: string; price: number; rating: number; reviews: number; inStock: boolean; url: string }[];
-      const platforms = platformsRaw.map((p) => ({ ...p, sparkline: Array.from({ length: 7 }, () => +(p.price * (0.9 + Math.random() * 0.2)).toFixed(2)) }));
+      const rand = seededRandom(title.length * 7 + (priceNum || 0) * 13);
+      const platforms = platformsRaw.map((p) => ({ ...p, sparkline: Array.from({ length: 7 }, () => +(p.price * (0.9 + rand() * 0.2)).toFixed(2)) }));
       const cheapest = enrichmentData.cheapest as { platform: string; price: number } | null;
       const supplierMatchesRaw = (enrichmentData.supplierMatches || []) as { id: string; name: string; trustBadge: string; location: string; flag: string; price: number; shippingToUS: string; shippingToEU: string; reliabilityScore: number; responseTime: string }[];
       const supplierMatches = supplierMatchesRaw.map((s) => ({ ...s, trustBadge: s.trustBadge as "gold" | "silver" | "bronze" }));
@@ -210,25 +216,25 @@ function ProductDetailContent() {
       const baseReviewsForCalc = reviewsNum || 1000;
       const priceSpreadNum = typeof enrichmentData.priceSpread === "number" ? enrichmentData.priceSpread : 0;
 
-      const vol = Math.random();
+      const vol = rand();
       const marketIntel = {
         searchVolume: (vol > 0.66 ? "high" : vol > 0.33 ? "medium" : "low") as "high" | "medium" | "low",
-        searchVolumeNumber: Math.round(5000 + Math.random() * 145000),
-        trendDirection: (Math.random() > 0.6 ? "rising" : Math.random() > 0.4 ? "stable" : "declining") as "rising" | "stable" | "declining",
-        trendSparkline: Array.from({ length: 14 }, (_, i) => Math.round(30 + Math.random() * 40 + (i * (Math.random() * 6 - 2)))),
+        searchVolumeNumber: Math.round(5000 + rand() * 145000),
+        trendDirection: (rand() > 0.6 ? "rising" : rand() > 0.4 ? "stable" : "declining") as "rising" | "stable" | "declining",
+        trendSparkline: Array.from({ length: 14 }, (_, i) => Math.round(30 + rand() * 40 + (i * (rand() * 6 - 2)))),
         seasonality: "Year-round demand with holiday peaks",
         bestTimeToSell: "Q4 (Oct-Dec) for holiday gifts, Q1 for New Year resolutions",
         competitionLevel: (priceSpreadNum > basePriceForCalc * 0.5 ? "medium" : "high") as "low" | "medium" | "high" | "very-high",
-        estimatedSellers: Math.round(200 + Math.random() * 4800),
-        avgSellerRating: +(baseRatingForCalc + (Math.random() * 0.4 - 0.2)).toFixed(1),
+        estimatedSellers: Math.round(200 + rand() * 4800),
+        avgSellerRating: +(baseRatingForCalc + (rand() * 0.4 - 0.2)).toFixed(1),
         priceWarRisk: (priceSpreadNum > basePriceForCalc * 0.6 ? "low" : "medium") as "low" | "medium" | "high",
         canCompete: priceSpreadNum > basePriceForCalc * 0.4 ? "Yes - good price spread allows competitive margins" : "Challenging - tight margins across platforms",
-        riskScore: Math.round(15 + Math.random() * 50),
+        riskScore: Math.round(15 + rand() * 50),
         riskFactors: [
-          { label: "Brand trademark risk", level: Math.random() > 0.7 ? "caution" : "safe" as "safe" | "caution" | "avoid" },
-          { label: "Counterfeit likelihood", level: Math.random() > 0.8 ? "caution" : "safe" as "safe" | "caution" | "avoid" },
+          { label: "Brand trademark risk", level: rand() > 0.7 ? "caution" : "safe" as "safe" | "caution" | "avoid" },
+          { label: "Counterfeit likelihood", level: rand() > 0.8 ? "caution" : "safe" as "safe" | "caution" | "avoid" },
           { label: "Return rate estimate", level: "safe" as "safe" | "caution" | "avoid" },
-          { label: "Shipping complexity", level: Math.random() > 0.6 ? "caution" : "safe" as "safe" | "caution" | "avoid" },
+          { label: "Shipping complexity", level: rand() > 0.6 ? "caution" : "safe" as "safe" | "caution" | "avoid" },
           { label: "Seasonal dependency", level: "safe" as "safe" | "caution" | "avoid" },
         ],
       };
@@ -237,10 +243,10 @@ function ProductDetailContent() {
         averageRating: baseRatingForCalc,
         totalReviews: baseReviewsForCalc,
         distribution: [
-          { stars: 5, percent: Math.round(35 + Math.random() * 20) },
-          { stars: 4, percent: Math.round(15 + Math.random() * 15) },
-          { stars: 3, percent: Math.round(8 + Math.random() * 10) },
-          { stars: 2, percent: Math.round(3 + Math.random() * 7) },
+          { stars: 5, percent: Math.round(35 + rand() * 20) },
+          { stars: 4, percent: Math.round(15 + rand() * 15) },
+          { stars: 3, percent: Math.round(8 + rand() * 10) },
+          { stars: 2, percent: Math.round(3 + rand() * 7) },
           { stars: 1, percent: 0 },
         ],
         sentiment: {
@@ -251,7 +257,7 @@ function ProductDetailContent() {
         topKeywords: ["quality", "value", "fast shipping", "as described", "recommend", "good product", "works well"],
         commonComplaints: ["Shipping time varies", "Packaging could improve", "Color slightly different from photos"],
         commonPraise: ["Excellent value for money", "Fast delivery", "Product matches description", "Good customer service"],
-        trustworthyScore: Math.round(72 + Math.random() * 24),
+        trustworthyScore: Math.round(72 + rand() * 24),
       };
 
       const listingSuggestion = {
@@ -293,7 +299,7 @@ function ProductDetailContent() {
       },
       marketIntel: {
         searchVolume: "medium" as const, searchVolumeNumber: 50000, trendDirection: "stable" as const,
-        trendSparkline: Array.from({ length: 14 }, (_, i) => Math.round(30 + Math.random() * 40)),
+        trendSparkline: Array.from({ length: 14 }, (_, i) => Math.round(30 + seededRandom(title.length + i)() * 40)),
         seasonality: "Year-round", bestTimeToSell: "Q4", competitionLevel: "medium" as const,
         estimatedSellers: 1000, avgSellerRating: 4.3, priceWarRisk: "medium" as const,
         canCompete: "Analyzing...", riskScore: 40, riskFactors: [],

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { TrendingUp, TrendingDown, Minus, BarChart3, Users, Swords, Shield, AlertTriangle, Clock } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { MarketIntel } from "@/lib/mock-enrichment";
@@ -23,6 +24,9 @@ function ScoreRing({ score, size = 48 }: { score: number; size?: number }) {
 }
 
 function MiniSparkline({ points, color = "#3b82f6" }: { points: number[]; color?: string }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  if (!mounted) return <div className="w-[80px] h-[24px] shrink-0" />;
   const max = Math.max(...points);
   const min = Math.min(...points);
   const range = max - min || 1;

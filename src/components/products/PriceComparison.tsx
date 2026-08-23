@@ -1,10 +1,14 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { ExternalLink, TrendingUp, TrendingDown, Minus, Star, ShieldCheck, BadgeCheck } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { PlatformPrice } from "@/lib/mock-enrichment";
 
 function MiniSparkline({ points, id }: { points: number[]; id: string }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  if (!mounted) return <div className="w-[60px] h-[20px] shrink-0" />;
   const max = Math.max(...points);
   const min = Math.min(...points);
   const range = max - min || 1;
@@ -75,7 +79,7 @@ export default function PriceComparison({ platforms, listedPrice }: { platforms:
               const isCheapest = p.platform === cheapest.platform;
               const isBestRated = p.platform === bestRated.platform;
               return (
-                <tr key={p.platform} className={`border-b border-border/30 transition-all ${isInView ? "opacity-100" : "opacity-0"} hover:bg-surface/50`}>
+                <tr key={`${p.platform}-${i}`} className={`border-b border-border/30 transition-all ${isInView ? "opacity-100" : "opacity-0"} hover:bg-surface/50`}>
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-foreground">{p.platform}</span>
