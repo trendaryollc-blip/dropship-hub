@@ -202,25 +202,24 @@ function RevenueChart({ actual, predicted }: { actual: { date: string; value: nu
   );
 }
 
-export default function RevenueForecast({ actual, predicted, stats, greeting, username }: {
+export default function RevenueForecast({ actual, predicted, stats, username }: {
   actual: { date: string; value: number }[];
   predicted: { date: string; value: number }[];
   stats: RevenueStat[];
-  greeting: string;
   username: string;
 }) {
   const [timeframe, setTimeframe] = useState<"7d" | "30d" | "90d">("30d");
 
   return (
     <div className="space-y-6">
-      {/* Greeting + Actions Row */}
+      {/* Actions Row */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-1">
-            {greeting}, <span className="gradient-text">{username}</span>
+            Revenue Forecast
           </h1>
           <p className="text-sm text-muted-foreground max-w-xl">
-            Your dropshipping command center. Search products, analyze competitors, calculate profits, and find the best suppliers.
+            Your dropshipping command center. Track revenue, analyze trends, and forecast growth.
           </p>
         </div>
         <div className="flex items-center gap-3">
