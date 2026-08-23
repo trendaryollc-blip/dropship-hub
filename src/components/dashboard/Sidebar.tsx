@@ -135,6 +135,27 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-4 px-3">
+        {/* Dashboard - top level */}
+        {(() => {
+          const dashItem = navItems.find((i) => i.section === null);
+          if (!dashItem) return null;
+          const active = pathname === dashItem.href || pathname.startsWith(dashItem.href + "/");
+          return (
+            <Link
+              href={dashItem.href}
+              onClick={onClose}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all mb-4 ${
+                active
+                  ? "bg-accent/10 text-accent border border-accent/20"
+                  : "text-muted-foreground hover:text-foreground hover:bg-surface-hover border border-transparent"
+              }`}
+              title={collapsed && !isOpen ? dashItem.label : undefined}
+            >
+              <dashItem.icon className={`h-4 w-4 shrink-0 ${active ? "text-accent" : ""}`} />
+              {!(collapsed && !isOpen) && <span>{dashItem.label}</span>}
+            </Link>
+          );
+        })()}
         {grouped.map((section) => (
           <div key={section.id} className="mb-4">
             {!(collapsed && !isOpen) && (
