@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { TrendingUp, TrendingDown, Package, DollarSign, ShoppingCart, BarChart3, Search, ArrowUpRight } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
@@ -54,17 +55,29 @@ function MiniSparkline({ points, color }: { points: number[]; color: string }) {
   );
 }
 
+const statLinks: Record<string, string> = {
+  "Revenue This Month": "/products",
+  "Products Analyzed": "/products",
+  "Active Orders": "/products",
+  "Est. Profit": "/products",
+};
+
 function AnimatedStatCard({ stat, delay }: { stat: RevenueStat; delay: number }) {
   const { ref, isInView } = useInView({ threshold: 0.3 });
   const count = useAnimatedCounter(stat.value, 1500, isInView);
   const Icon = iconMap[stat.icon] || DollarSign;
+  const href = statLinks[stat.label] || "/products";
 
   return (
     <div
       ref={ref}
-      className={`glass rounded-xl p-4 transition-all duration-500 hover:border-accent/20 hover:bg-surface-hover cursor-pointer group ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+      className={`transition-all duration-500 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
       style={{ transitionDelay: `${delay}ms` }}
     >
+      <Link
+        href={href}
+        className={`block glass rounded-xl p-4 transition-all duration-500 hover:border-accent/20 hover:bg-surface-hover group`}
+      >
       <div className="flex items-center justify-between mb-2">
         <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${stat.color}/10 group-hover:scale-110 transition-transform`}>
           <Icon className={`h-4 w-4 ${stat.color}`} />
@@ -81,6 +94,7 @@ function AnimatedStatCard({ stat, delay }: { stat: RevenueStat; delay: number })
         <p className="text-[11px] text-muted-foreground">{stat.label}</p>
         <MiniSparkline points={stat.sparkline} color={stat.color} />
       </div>
+      </Link>
     </div>
   );
 }

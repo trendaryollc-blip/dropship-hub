@@ -1,6 +1,7 @@
 "use client";
 
 import { X, BarChart3, ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 interface CompareItem {
   name: string;
@@ -56,9 +57,12 @@ export default function QuickCompareBar({
               ))}
 
               {items.length < 4 && (
-                <div className="w-[140px] h-[48px] rounded-xl border border-dashed border-border flex items-center justify-center shrink-0">
-                  <span className="text-[10px] text-muted-foreground/40">+ Add product</span>
-                </div>
+                <Link
+                  href="/products"
+                  className="w-[140px] h-[48px] rounded-xl border border-dashed border-border flex items-center justify-center shrink-0 hover:border-accent/30 hover:bg-accent/5 transition-all"
+                >
+                  <span className="text-[10px] text-muted-foreground/40 hover:text-accent transition-colors">+ Add product</span>
+                </Link>
               )}
             </div>
 

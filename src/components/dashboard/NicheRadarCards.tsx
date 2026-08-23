@@ -99,7 +99,7 @@ function NicheCard({ card, index }: { card: NicheCardType; index: number }) {
       style={{ transitionDelay: `${index * 80}ms` }}
     >
       {/* Top section */}
-      <div className="p-5 pb-3">
+      <Link href="/products/niches" className="block p-5 pb-3">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold uppercase tracking-wider text-accent">{card.category}</span>
@@ -143,7 +143,7 @@ function NicheCard({ card, index }: { card: NicheCardType; index: number }) {
           <span className="text-[10px] text-muted-foreground">7-day demand trend</span>
           <MiniSparkline points={card.demandSparkline} />
         </div>
-      </div>
+      </Link>
 
       {/* Expand toggle */}
       <button
@@ -181,7 +181,9 @@ function NicheCard({ card, index }: { card: NicheCardType; index: number }) {
               ))}
               <div className="pt-2 mt-2 border-t border-border">
                 <p className="text-[10px] text-muted-foreground mb-0.5">Top product</p>
-                <p className="text-xs font-semibold text-accent">{card.topProduct}</p>
+                <Link href="/products" className="text-xs font-semibold text-accent hover:text-accent-hover transition-colors">
+                  {card.topProduct}
+                </Link>
               </div>
             </div>
           </div>

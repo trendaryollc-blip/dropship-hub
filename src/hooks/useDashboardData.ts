@@ -65,18 +65,18 @@ export function useDashboardData() {
           const apiData = await res.json();
           setData((prev) => ({
             ...prev,
-            ticker: apiData.ticker || prev.ticker,
+            ticker: apiData.ticker?.length ? apiData.ticker : prev.ticker,
             dailyPick: apiData.dailyPick || prev.dailyPick,
             revenue: apiData.revenue || prev.revenue,
-            alerts: apiData.alerts || prev.alerts,
-            niches: apiData.niches || prev.niches,
-            suppliers: apiData.suppliers || prev.suppliers,
+            alerts: apiData.alerts?.length ? apiData.alerts : prev.alerts,
+            niches: apiData.niches?.length ? apiData.niches : prev.niches,
+            suppliers: apiData.suppliers?.length ? apiData.suppliers : prev.suppliers,
             mission: apiData.mission || prev.mission,
-            heatmap: apiData.heatmap || prev.heatmap,
-            trending: apiData.trending || prev.trending,
+            heatmap: apiData.heatmap?.length ? apiData.heatmap : prev.heatmap,
+            trending: apiData.trending?.length ? apiData.trending : prev.trending,
             briefing: apiData.briefing || prev.briefing,
-            pulse: apiData.pulse || prev.pulse,
-            actionStats: apiData.actionStats || prev.actionStats,
+            pulse: apiData.pulse?.length ? apiData.pulse : prev.pulse,
+            actionStats: apiData.actionStats?.length ? apiData.actionStats : prev.actionStats,
           }));
         }
       } catch {}

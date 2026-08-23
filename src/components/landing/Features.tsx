@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useInView } from "@/hooks/useInView";
 import {
   Brain,
@@ -10,6 +11,7 @@ import {
   BarChart3,
   Trophy,
   Calculator,
+  ArrowUpRight,
 } from "lucide-react";
 
 const features = [
@@ -21,6 +23,7 @@ const features = [
     color: "text-pink-400",
     bg: "bg-pink-400/10",
     gradient: "from-pink-400/20 via-pink-500/10 to-transparent",
+    href: "/dashboard",
   },
   {
     icon: Sparkles,
@@ -30,6 +33,7 @@ const features = [
     color: "text-blue-400",
     bg: "bg-blue-400/10",
     gradient: "from-blue-400/20 via-blue-500/10 to-transparent",
+    href: "/dashboard",
   },
   {
     icon: Target,
@@ -39,6 +43,7 @@ const features = [
     color: "text-purple-400",
     bg: "bg-purple-400/10",
     gradient: "from-purple-400/20 via-purple-500/10 to-transparent",
+    href: "/products/niches",
   },
   {
     icon: TrendingUp,
@@ -48,6 +53,7 @@ const features = [
     color: "text-emerald-400",
     bg: "bg-emerald-400/10",
     gradient: "from-emerald-400/20 via-emerald-500/10 to-transparent",
+    href: "/dashboard",
   },
   {
     icon: Flame,
@@ -57,6 +63,7 @@ const features = [
     color: "text-orange-400",
     bg: "bg-orange-400/10",
     gradient: "from-orange-400/20 via-orange-500/10 to-transparent",
+    href: "/products",
   },
   {
     icon: BarChart3,
@@ -66,6 +73,7 @@ const features = [
     color: "text-amber-400",
     bg: "bg-amber-400/10",
     gradient: "from-amber-400/20 via-amber-500/10 to-transparent",
+    href: "/competitors",
   },
   {
     icon: Trophy,
@@ -75,6 +83,7 @@ const features = [
     color: "text-yellow-400",
     bg: "bg-yellow-400/10",
     gradient: "from-yellow-400/20 via-yellow-500/10 to-transparent",
+    href: "/dashboard",
   },
   {
     icon: Calculator,
@@ -84,6 +93,7 @@ const features = [
     color: "text-cyan-400",
     bg: "bg-cyan-400/10",
     gradient: "from-cyan-400/20 via-cyan-500/10 to-transparent",
+    href: "/calculator",
   },
 ];
 
@@ -112,9 +122,10 @@ export default function Features() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {features.map((feature, i) => (
-            <div
+            <Link
               key={feature.title}
-              className={"group relative rounded-2xl p-6 transition-all duration-500 cursor-default overflow-hidden " + (isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8")}
+              href={feature.href}
+              className={"group relative rounded-2xl p-6 transition-all duration-500 cursor-pointer overflow-hidden block " + (isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8")}
               style={{ transitionDelay: i * 80 + "ms" }}
             >
               <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-accent/0 via-accent/0 to-accent/0 group-hover:from-accent/20 group-hover:via-purple-500/10 group-hover:to-accent-warm/10 transition-all duration-500" />
@@ -131,11 +142,12 @@ export default function Features() {
                 <h3 className="font-display text-lg font-semibold text-foreground mb-2 group-hover:text-accent transition-colors duration-300">
                   {feature.title}
                 </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
+                <p className="text-sm text-muted-foreground leading-relaxed mb-3">
                   {feature.description}
                 </p>
+                <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Check, Lightbulb, Tag, FileText, DollarSign, ShoppingBag } from "lucide-react";
+import { Copy, Check, Lightbulb, Tag, FileText, DollarSign, ShoppingBag, Sparkles } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { ListingSuggestion } from "@/lib/mock-enrichment";
 
@@ -9,77 +9,105 @@ function CopyBtn({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const copy = () => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); };
   return (
-    <button onClick={copy} className="shrink-0 p-1.5 rounded-md hover:bg-surface transition-colors" title="Copy to clipboard">
-      {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
+    <button onClick={copy} className={`copy-btn ${copied ? "copy-btn-copied" : ""}`} title="Copy to clipboard">
+      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
     </button>
   );
 }
 
-export default function ListingOptimization({ data, platform }: { data: ListingSuggestion; platform?: string }) {
+export default function ListingOptimization({ data, platform }: { data: ListingSuggestion | null; platform?: string }) {
   const { ref, isInView } = useInView({ threshold: 0.1 });
-  const tip = data.platformTips.find((t) => t.platform.toLowerCase().includes(platform?.toLowerCase() || "")) || data.platformTips[0];
 
-  return (
-    <div ref={ref} className={`glass rounded-2xl border border-border overflow-hidden transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
-      <div className="p-5 border-b border-border">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-purple-400/10 flex items-center justify-center">
-            <Lightbulb className="h-4 w-4 text-purple-400" />
-          </div>
+  if (!data) {
+    return (
+      <div ref={ref} className={`listing-card transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+        <div className="p-5 border-b border-border/50 flex items-center gap-3 listing-header-glow">
+          <div className="icon-container-purple"><Lightbulb className="h-4 w-4 text-purple-400" /></div>
           <div>
             <h3 className="font-display text-sm font-semibold text-foreground">Listing Optimization</h3>
             <p className="text-[10px] text-muted-foreground">AI-powered suggestions for your store</p>
           </div>
         </div>
+        <div className="p-8 text-center">
+          <Lightbulb className="h-8 w-8 text-muted-foreground/20 mx-auto mb-2" />
+          <p className="text-xs text-muted-foreground">Listing suggestions unavailable</p>
+          <p className="text-[10px] text-muted-foreground/60 mt-1">Could not generate listing optimization for this product</p>
+        </div>
       </div>
+    );
+  }
+  const tip = data.platformTips.find((t) => t.platform.toLowerCase().includes(platform?.toLowerCase() || "")) || data.platformTips[0];
+
+  return (
+    <div ref={ref} className={`listing-card transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+      {/* Header with gradient glow */}
+      <div className="p-5 border-b border-border/50 flex items-center gap-3 listing-header-glow">
+        <div className="icon-container-purple">
+          <Lightbulb className="h-4 w-4 text-purple-400" />
+        </div>
+        <div>
+          <h3 className="font-display text-sm font-semibold text-foreground">Listing Optimization</h3>
+          <p className="text-[10px] text-muted-foreground">AI-powered suggestions for your store</p>
+        </div>
+      </div>
+
       <div className="p-5 space-y-4">
-        {/* Suggested title */}
-        <div className="p-3 rounded-xl bg-surface/50 border border-border/50">
-          <div className="flex items-center justify-between mb-1.5">
+        {/* Suggested title — premium display */}
+        <div className="listing-block">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              <ShoppingBag className="h-3 w-3 text-accent" />
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Suggested Title</span>
+              <ShoppingBag className="h-3.5 w-3.5 text-purple-400" />
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Suggested Title</span>
             </div>
             <CopyBtn text={data.title} />
           </div>
-          <p className="text-sm text-foreground font-medium">{data.title}</p>
+          <p className="listing-title-display">{data.title}</p>
         </div>
-        {/* Description */}
-        <div className="p-3 rounded-xl bg-surface/50 border border-border/50">
-          <div className="flex items-center justify-between mb-1.5">
+
+        {/* Description — quote block style */}
+        <div className="listing-block">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              <FileText className="h-3 w-3 text-accent" />
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Description</span>
+              <FileText className="h-3.5 w-3.5 text-purple-400" />
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Description</span>
             </div>
             <CopyBtn text={data.description} />
           </div>
-          <p className="text-xs text-foreground/80 leading-relaxed">{data.description}</p>
+          <p className="listing-description">{data.description}</p>
         </div>
-        {/* Tags */}
+
+        {/* Tags — gradient pills */}
         <div>
-          <div className="flex items-center gap-1.5 mb-2">
-            <Tag className="h-3 w-3 text-accent" />
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Suggested Tags</span>
+          <div className="flex items-center gap-1.5 mb-2.5">
+            <Tag className="h-3.5 w-3.5 text-purple-400" />
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Suggested Tags</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {data.tags.map((t) => (
-              <span key={t} className="text-[10px] px-2 py-1 rounded-lg bg-accent/10 border border-accent/20 text-accent">{t}</span>
+              <span key={t} className="listing-tag">{t}</span>
             ))}
           </div>
         </div>
-        {/* Price range */}
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-400/5 border border-emerald-400/10">
-          <DollarSign className="h-4 w-4 text-emerald-400 shrink-0" />
+
+        {/* Price range — prominent */}
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-emerald-400/5 to-emerald-400/3 border border-emerald-400/10">
+          <div className="icon-container-emerald">
+            <DollarSign className="h-4 w-4 text-emerald-400" />
+          </div>
           <div>
-            <span className="text-[10px] text-muted-foreground">Suggested price range: </span>
-            <span className="text-sm font-bold text-emerald-400">{data.suggestedPriceRange}</span>
+            <span className="text-[10px] text-muted-foreground block mb-0.5">Suggested price range</span>
+            <span className="listing-price-range">{data.suggestedPriceRange}</span>
           </div>
         </div>
-        {/* Platform tip */}
+
+        {/* Platform tip — distinctive card */}
         {tip && (
-          <div className="p-3 rounded-xl bg-accent/5 border border-accent/10">
-            <p className="text-[10px] font-semibold text-accent mb-1">{tip.platform} Tip</p>
-            <p className="text-xs text-foreground/80">{tip.tip}</p>
+          <div className="listing-tip-card">
+            <div className="flex items-center gap-2 mb-1.5 relative z-10">
+              <Sparkles className="h-3.5 w-3.5 text-accent" />
+              <p className="text-[10px] font-bold text-accent uppercase tracking-wider">{tip.platform} Tip</p>
+            </div>
+            <p className="text-xs text-foreground/80 leading-relaxed relative z-10">{tip.tip}</p>
           </div>
         )}
       </div>

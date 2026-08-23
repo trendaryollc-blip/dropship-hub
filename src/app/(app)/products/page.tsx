@@ -5,16 +5,10 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   Search, Globe, Loader2, Compass, Zap, ArrowRight,
-  Flame, TrendingUp, Sparkles, ShoppingCart,
+  Flame, TrendingUp, Sparkles, ShoppingCart, Package,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import {
-  trendingSearchProducts, productCategories, nicheQuickCards,
-} from "@/lib/mock-products";
 import SearchHeader from "@/components/products/SearchHeader";
-import TrendingProductCard from "@/components/products/TrendingProductCard";
-import CategoryCard from "@/components/products/CategoryCard";
-import NicheQuickCard from "@/components/products/NicheQuickCard";
 import ViewToggle from "@/components/ui/ViewToggle";
 import EnrichedProductCard from "@/components/products/EnrichedProductCard";
 import ListItemCard from "@/components/products/ListItemCard";
@@ -39,6 +33,49 @@ interface PlatformResult {
   data: unknown;
 }
 
+interface TrendingProduct {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  sellPrice: number;
+  profit: number;
+  margin: number;
+  platform: string;
+  trend: number;
+  sparkline: number[];
+  confidence: number;
+  demandLevel: "low" | "medium" | "high";
+  competitionLevel: "low" | "medium" | "high";
+  image: string;
+  tags: string[];
+}
+
+interface NicheData {
+  id: string;
+  name: string;
+  icon: string;
+  image: string;
+  category: string;
+  heat: number;
+  productCount: number;
+  avgMargin: number;
+  growth: number;
+  trend: "up" | "down" | "stable";
+  avgSellingPrice: number;
+}
+
+interface CategoryData {
+  id: string;
+  name: string;
+  icon: string;
+  image: string;
+  productCount: number;
+  avgMargin: number;
+  trending: boolean;
+  query: string;
+}
+
 function normalizeResults(platform: string, data: unknown): SearchResult[] {
   const results: SearchResult[] = [];
   const sourceData = data as Record<string, unknown>;
@@ -58,7 +95,14 @@ function normalizeResults(platform: string, data: unknown): SearchResult[] {
             : null;
     const rawImages = product.images;
     const imagesArray = Array.isArray(rawImages)
-      ? rawImages.map(String).filter((u) => u && u !== "null" && u !== "")
+      ? rawImages.map((img) => {
+          if (typeof img === "string") return img;
+          if (typeof img === "object" && img !== null) {
+            const o = img as Record<string, unknown>;
+            return String(o.link || o.url || o.large || o.high_res || o.thumbnail || "");
+          }
+          return "";
+        }).filter((u) => u && u !== "null" && u !== "")
       : undefined;
 
     results.push({
@@ -137,6 +181,33 @@ function EmptyState() {
 
 function TrendingSection() {
   const { ref, isInView } = useInView({ threshold: 0.1 });
+  const [products, setProducts] = useState<TrendingProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/products/trending")
+      .then((r) => r.json())
+      .then((data) => { if (data.products) setProducts(data.products); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const demandConfig: Record<string, { label: string; cls: string }> = {
+    low: { label: "Low demand", cls: "text-blue-400 bg-blue-400/10 border-blue-400/20" },
+    medium: { label: "Med demand", cls: "text-amber-400 bg-amber-400/10 border-amber-400/20" },
+    high: { label: "High demand", cls: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" },
+  };
+  const compConfig: Record<string, { label: string; cls: string }> = {
+    low: { label: "Low comp", cls: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" },
+    medium: { label: "Med comp", cls: "text-amber-400 bg-amber-400/10 border-amber-400/20" },
+    high: { label: "High comp", cls: "text-red-400 bg-red-400/10 border-red-400/20" },
+  };
+  const rankGradients = [
+    "from-yellow-400 to-amber-500", "from-slate-300 to-slate-400",
+    "from-orange-400 to-orange-500", "from-blue-400/60 to-blue-500",
+    "from-purple-400/60 to-purple-500", "from-pink-400/60 to-pink-500",
+  ];
+
   return (
     <div ref={ref} className={`transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
       <div className="flex items-center justify-between mb-4">
@@ -144,24 +215,102 @@ function TrendingSection() {
           <Flame className="h-4 w-4 text-accent-warm" />
           <div>
             <h3 className="font-display text-sm font-semibold text-foreground">Trending Right Now</h3>
-            <p className="text-[10px] text-muted-foreground">AI-ranked products with highest profit potential</p>
+            <p className="text-[10px] text-muted-foreground">Real products with highest profit potential</p>
           </div>
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent-warm/10 text-accent-warm font-medium animate-pulse-badge">
-            {trendingSearchProducts.length} hot
-          </span>
+          {products.length > 0 && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent-warm/10 text-accent-warm font-medium animate-pulse-badge">
+              {products.length} hot
+            </span>
+          )}
         </div>
       </div>
-      <div className="space-y-3">
-        {trendingSearchProducts.map((product, i) => (
-          <TrendingProductCard key={product.id} product={product} index={i} rank={i + 1} />
-        ))}
-      </div>
+
+      {loading && (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="glass rounded-2xl p-5 animate-pulse">
+              <div className="flex items-center gap-4">
+                <div className="w-9 h-9 rounded-xl bg-surface" />
+                <div className="w-11 h-11 rounded-xl bg-surface" />
+                <div className="flex-1 space-y-2"><div className="h-4 bg-surface rounded w-1/3" /><div className="h-3 bg-surface rounded w-1/4" /></div>
+                <div className="h-6 w-16 bg-surface rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!loading && products.length === 0 && (
+        <div className="glass rounded-2xl p-6 text-center">
+          <Package className="h-8 w-8 text-muted-foreground/20 mx-auto mb-2" />
+          <p className="text-xs text-muted-foreground">No trending data available right now</p>
+          <p className="text-[10px] text-muted-foreground/60 mt-1">Try searching for products above</p>
+        </div>
+      )}
+
+      {!loading && products.length > 0 && (
+        <div className="space-y-3">
+          {products.map((product, i) => {
+            const demand = demandConfig[product.demandLevel];
+            const comp = compConfig[product.competitionLevel];
+            const rankBg = rankGradients[Math.min(i, rankGradients.length - 1)];
+            return (
+              <div key={product.id} className={`transition-all duration-500 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transitionDelay: `${i * 80}ms` }}>
+                <Link href={`/products?q=${encodeURIComponent(product.name)}`} className="glass-card-animated rounded-2xl overflow-hidden block hover:bg-surface/30 transition-colors p-4 sm:p-5">
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${rankBg} flex items-center justify-center shrink-0 shadow-lg`}>
+                      <span className="text-xs font-black text-white">#{i + 1}</span>
+                    </div>
+                    <div className="w-11 h-11 rounded-xl bg-accent/10 flex items-center justify-center shrink-0 overflow-hidden">
+                      {product.image ? (
+                        <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Package className="h-5 w-5 text-accent" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">{product.name}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        <span className="text-[10px] text-muted-foreground">{product.platform}</span>
+                        {demand && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border ${demand.cls}`}>{demand.label}</span>}
+                        {comp && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border ${comp.cls}`}>{comp.label}</span>}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold text-emerald-400">${product.profit.toFixed(2)}</p>
+                      <p className="text-[10px] text-muted-foreground">margin {product.margin}%</p>
+                    </div>
+                    <div className="text-right shrink-0 hidden sm:block">
+                      <span className="text-xs font-bold text-emerald-400">+{product.trend}%</span>
+                      <p className="text-[10px] text-muted-foreground flex items-center justify-end gap-0.5">
+                        <TrendingUp className="h-2.5 w-2.5" /> trending
+                      </p>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+                  </div>
+                </Link>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
-function NichesSection({ viewMode }: { viewMode: "grid" | "list" }) {
+function NichesSection() {
   const { ref, isInView } = useInView({ threshold: 0.1 });
+  const [niches, setNiches] = useState<NicheData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/niches")
+      .then((r) => r.json())
+      .then((data) => { if (data.niches) setNiches(data.niches.slice(0, 8)); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <div ref={ref} className={`transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
       <div className="flex items-center justify-between mb-4">
@@ -169,42 +318,76 @@ function NichesSection({ viewMode }: { viewMode: "grid" | "list" }) {
           <Sparkles className="h-4 w-4 text-purple-400" />
           <div>
             <h3 className="font-display text-sm font-semibold text-foreground">Popular Niches</h3>
-            <p className="text-[10px] text-muted-foreground">Click a niche to search across all platforms</p>
+            <p className="text-[10px] text-muted-foreground">Real CJ categories ranked by profit potential</p>
           </div>
         </div>
         <Link href="/products/niches" className="text-xs text-accent hover:text-accent-hover transition-colors flex items-center gap-1">
           View all <ArrowRight className="h-3 w-3" />
         </Link>
       </div>
-      {viewMode === "grid" ? (
+
+      {loading && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {nicheQuickCards.map((niche, i) => (
-            <NicheQuickCard key={niche.name} niche={niche} index={i} />
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="rounded-xl border border-border bg-surface/50 overflow-hidden animate-pulse">
+              <div className="h-28 bg-surface" />
+              <div className="p-3 space-y-2"><div className="h-4 bg-surface rounded w-2/3" /><div className="h-3 bg-surface rounded w-1/2" /></div>
+            </div>
           ))}
         </div>
-      ) : (
-        <div className="space-y-2">
-          {nicheQuickCards.map((niche, i) => (
-            <a key={niche.name} href={`/products?q=${encodeURIComponent(niche.query)}`} className="flex items-center gap-3 p-3 rounded-xl bg-surface/50 border border-border hover:border-accent/20 transition-all group">
-              <div className="w-12 h-12 rounded-lg overflow-hidden border border-border shrink-0">
-                <img src={niche.image} alt={niche.name} className="w-full h-full object-cover" />
+      )}
+
+      {!loading && niches.length === 0 && (
+        <div className="glass rounded-2xl p-6 text-center">
+          <Sparkles className="h-8 w-8 text-muted-foreground/20 mx-auto mb-2" />
+          <p className="text-xs text-muted-foreground">No niche data available</p>
+        </div>
+      )}
+
+      {!loading && niches.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {niches.map((niche, i) => {
+            const trendColor = niche.trend === "up" ? "text-emerald-400" : niche.trend === "down" ? "text-red-400" : "text-muted-foreground";
+            const trendBg = niche.trend === "up" ? "bg-emerald-400/10" : niche.trend === "down" ? "bg-red-400/10" : "bg-surface/50";
+            return (
+              <div key={niche.id} className={`transition-all duration-500 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transitionDelay: `${i * 60}ms` }}>
+                <a href={`/products?q=${encodeURIComponent(niche.name)}`} className="group block rounded-xl border border-border overflow-hidden bg-surface/50 hover:border-accent/20 hover:bg-accent/5 transition-all duration-300 hover:scale-[1.02]">
+                  <div className="relative h-28 overflow-hidden bg-gradient-to-br from-surface to-muted/20 flex items-center justify-center">
+                    <span className="text-4xl opacity-20 group-hover:opacity-40 transition-opacity">{niche.icon}</span>
+                    <div className={`absolute top-2 right-2 flex items-center gap-0.5 px-1.5 py-0.5 rounded-md backdrop-blur-sm ${trendBg}`}>
+                      <span className={`text-[9px] font-bold ${trendColor}`}>{niche.growth > 0 ? "+" : ""}{niche.growth}%</span>
+                    </div>
+                  </div>
+                  <div className="p-3">
+                    <h4 className="text-sm font-medium text-foreground group-hover:text-accent transition-colors mb-1 line-clamp-1">{niche.name}</h4>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-muted-foreground">{niche.productCount} products</span>
+                      <span className="text-[10px] text-muted-foreground">${niche.avgSellingPrice.toFixed(0)} avg</span>
+                    </div>
+                  </div>
+                </a>
               </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-medium text-foreground group-hover:text-accent transition-colors truncate">{niche.name}</h4>
-                <span className="text-[10px] text-muted-foreground">{niche.productCount} products</span>
-              </div>
-              <span className="text-[10px] text-muted-foreground shrink-0">{niche.avgPrice}</span>
-              <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-accent shrink-0" />
-            </a>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
   );
 }
 
-function CategoriesSection({ viewMode }: { viewMode: "grid" | "list" }) {
+function CategoriesSection() {
   const { ref, isInView } = useInView({ threshold: 0.1 });
+  const [categories, setCategories] = useState<CategoryData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/products/categories")
+      .then((r) => r.json())
+      .then((data) => { if (data.categories) setCategories(data.categories); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <div ref={ref} className={`transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
       <div className="flex items-center justify-between mb-4">
@@ -212,33 +395,54 @@ function CategoriesSection({ viewMode }: { viewMode: "grid" | "list" }) {
           <Compass className="h-4 w-4 text-cyan-400" />
           <div>
             <h3 className="font-display text-sm font-semibold text-foreground">Browse by Category</h3>
-            <p className="text-[10px] text-muted-foreground">Explore products across popular categories</p>
+            <p className="text-[10px] text-muted-foreground">Real categories with live product counts</p>
           </div>
         </div>
       </div>
-      {viewMode === "grid" ? (
+
+      {loading && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {productCategories.map((category, i) => (
-            <CategoryCard key={category.id} category={category} index={i} />
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="rounded-2xl overflow-hidden animate-pulse">
+              <div className="h-32 bg-surface" />
+              <div className="p-4 space-y-2"><div className="h-4 bg-surface rounded w-2/3" /><div className="h-3 bg-surface rounded w-1/2" /></div>
+            </div>
           ))}
         </div>
-      ) : (
-        <div className="space-y-2">
-          {productCategories.map((category, i) => (
-            <a key={category.id} href={`/products?q=${encodeURIComponent(category.name)}`} className="flex items-center gap-3 p-3 rounded-xl bg-surface/50 border border-border hover:border-accent/20 transition-all group">
-              <div className="w-12 h-12 rounded-lg overflow-hidden border border-border shrink-0">
-                <img src={category.image} alt={category.name} className="w-full h-full object-cover" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-medium text-foreground group-hover:text-accent transition-colors">{category.name}</h4>
-                <span className="text-[10px] text-muted-foreground">{category.productCount.toLocaleString()} products</span>
-              </div>
-              <span className="text-[10px] text-muted-foreground shrink-0">~{category.avgMargin}% margin</span>
-              {category.trending && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-accent-warm/10 text-accent-warm border border-accent-warm/20 shrink-0">Hot</span>
-              )}
-              <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-accent shrink-0" />
-            </a>
+      )}
+
+      {!loading && categories.length === 0 && (
+        <div className="glass rounded-2xl p-6 text-center">
+          <Compass className="h-8 w-8 text-muted-foreground/20 mx-auto mb-2" />
+          <p className="text-xs text-muted-foreground">No category data available</p>
+        </div>
+      )}
+
+      {!loading && categories.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {categories.map((cat, i) => (
+            <div key={cat.id} className={`transition-all duration-500 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transitionDelay: `${i * 60}ms` }}>
+              <a href={`/products?q=${encodeURIComponent(cat.query)}`} className="group relative block rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02]">
+                <div className="relative h-32 overflow-hidden bg-gradient-to-br from-surface to-muted/20 flex items-center justify-center">
+                  <span className="text-5xl opacity-20 group-hover:opacity-40 transition-opacity">{cat.icon}</span>
+                  {cat.trending && (
+                    <span className="absolute top-2 right-2 flex items-center gap-0.5 text-[10px] font-bold text-accent-warm bg-accent-warm/10 px-2 py-0.5 rounded-full border border-accent-warm/20 backdrop-blur-sm">
+                      <TrendingUp className="h-2.5 w-2.5" /> Hot
+                    </span>
+                  )}
+                </div>
+                <div className="relative p-4 bg-surface/50 border border-border/50 border-t-0 rounded-b-2xl">
+                  <h3 className="font-display text-sm font-semibold text-foreground mb-1 group-hover:text-accent transition-colors flex items-center gap-1.5">
+                    {cat.name}
+                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </h3>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="text-[10px] text-muted-foreground">{cat.productCount.toLocaleString()} products</span>
+                    <span className="text-[10px] text-muted-foreground">~{cat.avgMargin}% margin</span>
+                  </div>
+                </div>
+              </a>
+            </div>
           ))}
         </div>
       )}
@@ -273,6 +477,12 @@ function ProductsContent() {
       const stored = JSON.parse(localStorage.getItem("recentSearches") || "[]");
       if (Array.isArray(stored)) setRecentSearches(stored);
     } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (searchParams.get("q")) {
+      handleSearch(searchParams.get("q")!);
+    }
   }, []);
 
   const allPlatforms = ["amazon", "ebay", "aliexpress", "cj", "google_shopping"];
@@ -411,8 +621,8 @@ function ProductsContent() {
             <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
           </div>
           <TrendingSection />
-          <NichesSection viewMode={viewMode} />
-          <CategoriesSection viewMode={viewMode} />
+          <NichesSection />
+          <CategoriesSection />
           <HowItWorksSection />
         </>
       )}

@@ -45,14 +45,21 @@ export async function searchAmazon(query: string): Promise<{ search_results: Sea
   const items = (data.search_results || []).map((item: Record<string, unknown>) => {
     const primaryImage = String(item.image || "");
     const additionalImages = Array.isArray(item.images)
-      ? (item.images as unknown[]).map((img) => String(img)).filter((u) => u && u !== "null")
+      ? (item.images as unknown[]).map((img) => {
+          if (typeof img === "string") return img;
+          if (typeof img === "object" && img !== null) {
+            const o = img as Record<string, unknown>;
+            return String(o.link || o.url || o.large || o.high_res || "");
+          }
+          return "";
+        }).filter((u) => u && u !== "null" && u !== "")
       : [];
     const allImages = [primaryImage, ...additionalImages].filter((u) => u && u !== "null" && u !== "");
     return {
       title: String(item.title || ""),
       price: typeof item.price === "number" ? item.price : null,
       image: primaryImage || null,
-      images: allImages.length > 0 ? allImages : undefined,
+      images: allImages.length > 1 ? allImages : undefined,
       link: String(item.link || ""),
       source: "amazon",
       asin: String(item.asin || ""),
@@ -82,15 +89,28 @@ export async function searchGoogleShopping(query: string): Promise<{ search_resu
   if (!res.ok) throw new Error(`SerpAPI ${res.status}`);
 
   const data = await res.json();
-  const items = (data.shopping_results || []).map((item: Record<string, unknown>) => ({
-    title: String(item.title || ""),
-    price: typeof item.extracted_price === "number" ? item.extracted_price : typeof item.price === "number" ? item.price : null,
-    image: String(item.thumbnail || ""),
-    link: String(item.link || item.product_link || ""),
-    source: String(item.source || "google_shopping"),
-    rating: typeof item.rating === "number" ? item.rating : undefined,
-    reviews: typeof item.reviews === "number" ? item.reviews : undefined,
-  }));
+  const items = (data.shopping_results || []).map((item: Record<string, unknown>) => {
+    const primaryImage = String(item.thumbnail || "");
+    const serpImages = Array.isArray(item.images) ? (item.images as unknown[]).map((img) => {
+      if (typeof img === "string") return img;
+      if (typeof img === "object" && img !== null) {
+        const o = img as Record<string, unknown>;
+        return String(o.original || o.large || o.link || o.url || "");
+      }
+      return "";
+    }).filter((u) => u && u !== "null" && u !== "") : [];
+    const allImages = [primaryImage, ...serpImages].filter((u) => u && u !== "null" && u !== "");
+    return {
+      title: String(item.title || ""),
+      price: typeof item.extracted_price === "number" ? item.extracted_price : typeof item.price === "number" ? item.price : null,
+      image: primaryImage || null,
+      images: allImages.length > 1 ? allImages : undefined,
+      link: String(item.link || item.product_link || ""),
+      source: "google_shopping",
+      rating: typeof item.rating === "number" ? item.rating : undefined,
+      reviews: typeof item.reviews === "number" ? item.reviews : undefined,
+    };
+  });
 
   return { search_results: items };
 }
@@ -134,14 +154,21 @@ export async function searchCJProducts(query: string): Promise<{ search_results:
   const items = (data.data || []).map((p: Record<string, unknown>) => {
     const primaryImage = String(p.productImage || "");
     const imageSet = Array.isArray(p.productImageSet)
-      ? (p.productImageSet as unknown[]).map((img) => String(img)).filter((u) => u && u !== "null")
+      ? (p.productImageSet as unknown[]).map((img) => {
+          if (typeof img === "string") return img;
+          if (typeof img === "object" && img !== null) {
+            const o = img as Record<string, unknown>;
+            return String(o.url || o.image || o.productImage || "");
+          }
+          return "";
+        }).filter((u) => u && u !== "null" && u !== "")
       : [];
     const allImages = [primaryImage, ...imageSet].filter((u) => u && u !== "null" && u !== "");
     return {
       title: String(p.productNameEn || p.productName || ""),
       price: typeof p.sellPrice === "number" ? p.sellPrice : typeof p.productPrice === "number" ? p.productPrice : null,
       image: primaryImage || null,
-      images: allImages.length > 0 ? allImages : undefined,
+      images: allImages.length > 1 ? allImages : undefined,
       link: `https://cjdropshipping.com/product-p-${p.pid || ""}`,
       source: "cj",
     };

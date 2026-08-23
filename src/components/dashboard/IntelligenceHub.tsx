@@ -246,6 +246,13 @@ function LiveIntelligenceFeed({ alerts, onRead, onReadAll }: { alerts: SmartAler
   );
 }
 
+const pulseCardLinks: Record<string, string> = {
+  "Trending Products": "/products",
+  "Supplier Activity": "/suppliers",
+  "Price Changes": "/products",
+  "Niche Momentum": "/products/niches",
+};
+
 function MarketPulseGrid({ cards }: { cards: MarketPulseCard[] }) {
   const { ref, isInView } = useInView({ threshold: 0.1 });
   return (
@@ -260,8 +267,9 @@ function MarketPulseGrid({ cards }: { cards: MarketPulseCard[] }) {
       <div className="grid grid-cols-2 gap-3">
         {cards.map((card, i) => {
           const PIcon = pulseIconMap[card.icon] || Flame;
+          const href = pulseCardLinks[card.label] || "/products";
           return (
-            <div key={card.label} className={`p-3 rounded-xl bg-surface/50 border border-border hover:border-accent/20 transition-all duration-500 group cursor-pointer hover:bg-surface-hover ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transitionDelay: `${i * 80}ms` }}>
+            <Link key={card.label} href={href} className={`block p-3 rounded-xl bg-surface/50 border border-border hover:border-accent/20 transition-all duration-500 group hover:bg-surface-hover ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transitionDelay: `${i * 80}ms` }}>
               <div className="flex items-center justify-between mb-2">
                 <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${card.color}/10 group-hover:scale-110 transition-transform`}>
                   <PIcon className={`h-3.5 w-3.5 ${card.color}`} />
@@ -273,7 +281,7 @@ function MarketPulseGrid({ cards }: { cards: MarketPulseCard[] }) {
                 <p className="text-[10px] text-muted-foreground">{card.label}</p>
                 <span className={`text-[10px] font-semibold ${card.up ? "text-emerald-400" : "text-amber-400"}`}>{card.change}</span>
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>

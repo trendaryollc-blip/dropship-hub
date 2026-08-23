@@ -112,7 +112,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const navContent = (
     <>
       {/* Logo */}
-      <div className="flex items-center justify-between px-5 h-16 border-b border-border">
+      <div className="flex items-center justify-between px-5 h-16 border-b border-white/[0.04]">
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/10 border border-accent/20">
             <Zap className="h-4 w-4 text-accent" />
@@ -208,15 +208,17 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     <>
       {/* Desktop sidebar */}
       <aside
-        className={`hidden md:flex fixed left-0 top-0 bottom-0 z-40 flex-col border-r border-border bg-surface/50 backdrop-blur-xl transition-all duration-300 ${
+        className={`hidden md:flex fixed left-0 top-0 bottom-0 z-40 flex-col border-r border-white/[0.04] backdrop-blur-xl transition-all duration-300 ${
           collapsed ? "w-[68px]" : "w-[240px]"
         }`}
+        style={{ backgroundColor: "rgba(10, 11, 18, 0.95)" }}
       >
         {navContent}
         {/* Collapse toggle */}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="absolute -right-3 top-20 flex h-6 w-6 items-center justify-center rounded-full bg-surface border border-border text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors"
+          className="absolute -right-3 top-20 flex h-6 w-6 items-center justify-center rounded-full border border-white/[0.06] text-muted-foreground hover:text-foreground transition-colors"
+          style={{ backgroundColor: "rgba(10, 11, 18, 0.95)" }}
         >
           {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
         </button>
@@ -231,7 +233,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             onClick={onClose}
           />
           {/* Drawer */}
-          <aside className="absolute left-0 top-0 bottom-0 w-[280px] flex flex-col border-r border-border bg-surface/95 backdrop-blur-xl animate-in slide-in-from-left duration-300">
+          <aside className="absolute left-0 top-0 bottom-0 w-[280px] flex flex-col border-r border-white/[0.04] backdrop-blur-xl animate-in slide-in-from-left duration-300" style={{ backgroundColor: "rgba(10, 11, 18, 0.98)" }}>
             {navContent}
           </aside>
         </div>

@@ -1,28 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Zap, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2,
   ArrowUpRight, Target, Shield, DollarSign, Users,
-  BarChart3, ShoppingCart, Package,
+  BarChart3, ShoppingCart, Package, RotateCcw, ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
+
+interface HealthItem {
+  label: string;
+  done: boolean;
+  impact: string;
+}
 
 interface HealthCategory {
   id: string;
   label: string;
-  score: number;
-  maxScore: number;
   icon: typeof Zap;
   color: string;
   bgColor: string;
-  items: { label: string; done: boolean; impact: string }[];
+  borderColor: string;
+  href: string;
+  hrefLabel: string;
+  items: HealthItem[];
 }
 
-const categories: HealthCategory[] = [
+const STORAGE_KEY = "dropship-health-state";
+
+const defaultCategories: HealthCategory[] = [
   {
-    id: "product", label: "Product Research", score: 0, maxScore: 25,
-    icon: Package, color: "text-blue-400", bgColor: "bg-blue-400/10",
+    id: "product", label: "Product Research",
+    icon: Package, color: "text-blue-400", bgColor: "bg-blue-400/10", borderColor: "border-blue-400/20",
+    href: "/products", hrefLabel: "Search Products",
     items: [
       { label: "Search for trending products", done: false, impact: "high" },
       { label: "Analyze product profit margins", done: false, impact: "high" },
@@ -31,8 +41,9 @@ const categories: HealthCategory[] = [
     ],
   },
   {
-    id: "supplier", label: "Supplier Network", score: 0, maxScore: 25,
-    icon: Shield, color: "text-emerald-400", bgColor: "bg-emerald-400/10",
+    id: "supplier", label: "Supplier Network",
+    icon: Shield, color: "text-emerald-400", bgColor: "bg-emerald-400/10", borderColor: "border-emerald-400/20",
+    href: "/suppliers", hrefLabel: "Find Suppliers",
     items: [
       { label: "Find 3+ reliable suppliers", done: false, impact: "high" },
       { label: "Set up backup suppliers", done: false, impact: "high" },
@@ -41,8 +52,9 @@ const categories: HealthCategory[] = [
     ],
   },
   {
-    id: "financial", label: "Financial Health", score: 0, maxScore: 25,
-    icon: DollarSign, color: "text-amber-400", bgColor: "bg-amber-400/10",
+    id: "financial", label: "Financial Health",
+    icon: DollarSign, color: "text-amber-400", bgColor: "bg-amber-400/10", borderColor: "border-amber-400/20",
+    href: "/calculator", hrefLabel: "Open Calculator",
     items: [
       { label: "Calculate break-even point", done: false, impact: "high" },
       { label: "Set up profit tracking", done: false, impact: "high" },
@@ -51,8 +63,9 @@ const categories: HealthCategory[] = [
     ],
   },
   {
-    id: "market", label: "Market Intelligence", score: 0, maxScore: 25,
-    icon: BarChart3, color: "text-purple-400", bgColor: "bg-purple-400/10",
+    id: "market", label: "Market Intelligence",
+    icon: BarChart3, color: "text-purple-400", bgColor: "bg-purple-400/10", borderColor: "border-purple-400/20",
+    href: "/competitors", hrefLabel: "Analyze Competitors",
     items: [
       { label: "Analyze top competitors", done: false, impact: "high" },
       { label: "Identify market gaps", done: false, impact: "high" },
@@ -70,10 +83,81 @@ const recommendations = [
   { priority: "low", text: "Set up AI providers for automated insights", href: "/settings", icon: Zap },
 ];
 
+function loadState(): Record<string, boolean[]> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return {};
+}
+
+function saveState(state: Record<string, boolean[]>) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {}
+}
+
 export default function HealthPage() {
-  const totalScore = categories.reduce((sum, c) => sum + c.score, 0);
-  const maxTotal = categories.reduce((sum, c) => sum + c.maxScore, 0);
-  const percentage = Math.round((totalScore / maxTotal) * 100);
+  const [categories, setCategories] = useState<HealthCategory[]>(defaultCategories);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const saved = loadState();
+    if (Object.keys(saved).length > 0) {
+      setCategories((prev) =>
+        prev.map((cat) => {
+          const savedItems = saved[cat.id];
+          if (savedItems && savedItems.length === cat.items.length) {
+            return {
+              ...cat,
+              items: cat.items.map((item, i) => ({ ...item, done: savedItems[i] })),
+            };
+          }
+          return cat;
+        })
+      );
+    }
+    setMounted(true);
+  }, []);
+
+  const toggleItem = useCallback((catId: string, itemIndex: number) => {
+    setCategories((prev) => {
+      const next = prev.map((cat) => {
+        if (cat.id !== catId) return cat;
+        const newItems = cat.items.map((item, i) =>
+          i === itemIndex ? { ...item, done: !item.done } : item
+        );
+        return { ...cat, items: newItems };
+      });
+      const stateToSave: Record<string, boolean[]> = {};
+      next.forEach((cat) => {
+        stateToSave[cat.id] = cat.items.map((item) => item.done);
+      });
+      saveState(stateToSave);
+      return next;
+    });
+  }, []);
+
+  const resetAll = useCallback(() => {
+    setCategories((prev) =>
+      prev.map((cat) => ({
+        ...cat,
+        items: cat.items.map((item) => ({ ...item, done: false })),
+      }))
+    );
+    localStorage.removeItem(STORAGE_KEY);
+  }, []);
+
+  const catScores = categories.map((cat) => {
+    const doneCount = cat.items.filter((i) => i.done).length;
+    return Math.round((doneCount / cat.items.length) * 25);
+  });
+
+  const totalScore = catScores.reduce((a, b) => a + b, 0);
+  const percentage = totalScore;
+  const totalDone = categories.reduce((sum, cat) => sum + cat.items.filter((i) => i.done).length, 0);
+  const totalItems = categories.reduce((sum, cat) => sum + cat.items.length, 0);
 
   const getScoreColor = (pct: number) => {
     if (pct >= 80) return "from-emerald-400 to-emerald-500";
@@ -89,13 +173,25 @@ export default function HealthPage() {
     return "Needs Improvement";
   };
 
+  const circumference = 2 * Math.PI * 88;
+
   return (
     <div className="max-w-6xl mx-auto space-y-8">
-      <div>
-        <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
-          <Zap className="h-7 w-7 text-accent" /> Business Health Score
-        </h1>
-        <p className="text-muted-foreground">Your comprehensive dropshipping readiness assessment with actionable recommendations.</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
+            <Zap className="h-7 w-7 text-accent" /> Business Health Score
+          </h1>
+          <p className="text-muted-foreground">Your comprehensive dropshipping readiness assessment with actionable recommendations.</p>
+        </div>
+        {totalDone > 0 && (
+          <button
+            onClick={resetAll}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:border-red-400/20 hover:text-red-400 transition-all shrink-0"
+          >
+            <RotateCcw className="h-3.5 w-3.5" /> Reset
+          </button>
+        )}
       </div>
 
       {/* Main Score */}
@@ -104,10 +200,12 @@ export default function HealthPage() {
           <div className="relative w-48 h-48 shrink-0">
             <svg className="w-full h-full -rotate-90" viewBox="0 0 200 200">
               <circle cx="100" cy="100" r="88" fill="none" stroke="currentColor" strokeWidth="10" className="text-surface" />
-              <circle cx="100" cy="100" r="88" fill="none" strokeWidth="10" strokeLinecap="round"
-                strokeDasharray={`${(percentage / 100) * 553} 553`}
-                className="transition-all duration-1000"
-                style={{ stroke: `url(#mainGradient)` }} />
+              <circle
+                cx="100" cy="100" r="88" fill="none" strokeWidth="10" strokeLinecap="round"
+                strokeDasharray={`${(percentage / 100) * circumference} ${circumference}`}
+                className="transition-all duration-700"
+                style={{ stroke: "url(#mainGradient)" }}
+              />
               <defs>
                 <linearGradient id="mainGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                   <stop offset="0%" stopColor="#3b82f6" />
@@ -116,26 +214,26 @@ export default function HealthPage() {
               </defs>
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="font-display text-5xl font-bold text-foreground">{percentage}</span>
+              <span className="font-display text-5xl font-bold text-foreground">{mounted ? percentage : 0}</span>
               <span className="text-sm text-muted-foreground mt-1">{getScoreLabel(percentage)}</span>
             </div>
           </div>
 
           <div className="flex-1 text-center md:text-left">
             <h2 className="font-display text-xl font-bold text-foreground mb-2">
-              {percentage === 0 ? "Start Your Journey" : `Your Score: ${percentage}/100`}
+              {totalDone === 0 ? "Start Your Journey" : `Your Score: ${percentage}/100`}
             </h2>
             <p className="text-muted-foreground mb-4">
-              {percentage === 0
+              {totalDone === 0
                 ? "Complete the tasks below to build your business health score. Each action improves your readiness for success."
-                : `You've completed ${totalScore} out of ${maxTotal} possible points. Keep going to reach the next level!`}
+                : `You've completed ${totalDone} of ${totalItems} tasks (${percentage}%). Keep going to reach the next level!`}
             </p>
             <div className="flex flex-wrap gap-2 justify-center md:justify-start">
-              {categories.map((cat) => (
+              {categories.map((cat, i) => (
                 <div key={cat.id} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-border">
-                  <div className={`w-2 h-2 rounded-full ${cat.score > 0 ? "bg-emerald-400" : "bg-muted-foreground/30"}`} />
+                  <div className={`w-2 h-2 rounded-full ${catScores[i] > 0 ? "bg-emerald-400" : "bg-muted-foreground/30"}`} />
                   <span className="text-xs text-muted-foreground">{cat.label}</span>
-                  <span className="text-xs font-bold text-foreground">{cat.score}/{cat.maxScore}</span>
+                  <span className="text-xs font-bold text-foreground">{catScores[i]}/25</span>
                 </div>
               ))}
             </div>
@@ -145,39 +243,69 @@ export default function HealthPage() {
 
       {/* Category Breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {categories.map((cat) => {
-          const catPct = Math.round((cat.score / cat.maxScore) * 100);
+        {categories.map((cat, catIdx) => {
+          const catPct = Math.round((cat.items.filter((i) => i.done).length / cat.items.length) * 100);
+          const catScore = catScores[catIdx];
           return (
-            <div key={cat.id} className="glass rounded-2xl p-5">
+            <div key={cat.id} className={`glass rounded-2xl p-5 border transition-all ${catPct === 100 ? cat.borderColor : "border-transparent"}`}>
               <div className="flex items-center gap-3 mb-4">
                 <div className={`p-2 rounded-xl ${cat.bgColor}`}>
                   <cat.icon className={`h-5 w-5 ${cat.color}`} />
                 </div>
                 <div className="flex-1">
                   <h3 className="font-display text-sm font-semibold text-foreground">{cat.label}</h3>
-                  <p className="text-xs text-muted-foreground">{cat.score}/{cat.maxScore} points</p>
+                  <p className="text-xs text-muted-foreground">{catScore}/25 points · {cat.items.filter((i) => i.done).length}/{cat.items.length} done</p>
                 </div>
                 <span className={`text-lg font-bold font-display ${catPct >= 50 ? "text-emerald-400" : "text-muted-foreground"}`}>{catPct}%</span>
               </div>
 
               <div className="h-2 rounded-full bg-surface overflow-hidden mb-4">
-                <div className={`h-full rounded-full transition-all duration-500 ${cat.score > 0 ? "bg-gradient-to-r from-accent to-emerald-400" : "bg-muted-foreground/20"}`}
-                  style={{ width: `${catPct}%` }} />
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${catPct > 0 ? "bg-gradient-to-r from-accent to-emerald-400" : "bg-muted-foreground/20"}`}
+                  style={{ width: `${catPct}%` }}
+                />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {cat.items.map((item, i) => (
-                  <div key={i} className="flex items-center gap-3 p-2.5 rounded-xl bg-surface/50">
-                    <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${item.done ? "bg-emerald-400/10 border-emerald-400/20" : "border-border"}`}>
-                      {item.done ? <CheckCircle2 className="h-3 w-3 text-emerald-400" /> : <div className="w-2 h-2 rounded-full bg-muted-foreground/20" />}
+                  <button
+                    key={i}
+                    onClick={() => toggleItem(cat.id, i)}
+                    className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-surface/50 hover:bg-surface transition-all text-left group"
+                  >
+                    <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-all ${
+                      item.done
+                        ? "bg-emerald-400/10 border-emerald-400/30"
+                        : "border-border group-hover:border-muted-foreground/50"
+                    }`}>
+                      {item.done ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                      ) : (
+                        <div className="w-2 h-2 rounded-full bg-muted-foreground/20 group-hover:bg-muted-foreground/40 transition-colors" />
+                      )}
                     </div>
-                    <span className={`text-xs flex-1 ${item.done ? "text-foreground" : "text-muted-foreground"}`}>{item.label}</span>
-                    <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${item.impact === "high" ? "bg-red-400/10 text-red-400" : item.impact === "medium" ? "bg-amber-400/10 text-amber-400" : "bg-surface text-muted-foreground"}`}>
+                    <span className={`text-xs flex-1 transition-colors ${
+                      item.done ? "text-foreground line-through decoration-muted-foreground/40" : "text-muted-foreground group-hover:text-foreground"
+                    }`}>
+                      {item.label}
+                    </span>
+                    <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                      item.impact === "high" ? "bg-red-400/10 text-red-400"
+                        : item.impact === "medium" ? "bg-amber-400/10 text-amber-400"
+                        : "bg-surface text-muted-foreground"
+                    }`}>
                       {item.impact}
                     </span>
-                  </div>
+                  </button>
                 ))}
               </div>
+
+              <Link
+                href={cat.href}
+                className="mt-4 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:border-accent/30 hover:bg-accent/5 transition-all"
+              >
+                {cat.hrefLabel} <ExternalLink className="h-3 w-3" />
+              </Link>
             </div>
           );
         })}
@@ -191,7 +319,7 @@ export default function HealthPage() {
         <div className="space-y-2">
           {recommendations.map((rec, i) => (
             <Link key={i} href={rec.href}
-              className="flex items-center gap-3 p-3 rounded-xl bg-surface/50 hover:bg-surface-hover transition-all group">
+              className="flex items-center gap-3 p-3 rounded-xl bg-surface/50 hover:bg-surface transition-all group">
               <div className={`p-2 rounded-lg ${rec.priority === "high" ? "bg-red-400/10" : rec.priority === "medium" ? "bg-amber-400/10" : "bg-surface"}`}>
                 <rec.icon className={`h-4 w-4 ${rec.priority === "high" ? "text-red-400" : rec.priority === "medium" ? "text-amber-400" : "text-muted-foreground"}`} />
               </div>

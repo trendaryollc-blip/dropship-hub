@@ -4,7 +4,7 @@ import { useState } from "react";
 import {
   Store, ShoppingCart, Users, DollarSign,
   BarChart3, Settings, ExternalLink, CheckCircle2, AlertTriangle,
-  Zap, Package, Globe, Key, Link2, Loader2, X,
+  Zap, Package, Globe, Key, Link2, Loader2, X, RefreshCw,
 } from "lucide-react";
 
 interface StorePlatform {
@@ -73,6 +73,21 @@ export default function StorePage() {
   const [customConfig, setCustomConfig] = useState<CustomStoreConfig>(defaultCustomConfig);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
+
+  const handleSync = (platformId: string) => {
+    setSyncingId(platformId);
+    setTimeout(() => {
+      setConnectedStores((prev) =>
+        prev.map((p) =>
+          p.id === platformId
+            ? { ...p, lastSync: "Just now" }
+            : p
+        )
+      );
+      setSyncingId(null);
+    }, 2000);
+  };
 
   const handleConnect = (platformId: string) => {
     setConnectedStores((prev) =>
@@ -196,8 +211,16 @@ export default function StorePage() {
                       </div>
                     </div>
       <div className="flex flex-col sm:flex-row gap-2">
-                      <button className="px-3 py-1.5 rounded-lg bg-surface border border-border text-xs text-muted-foreground hover:text-foreground transition-colors">
-                        <Settings className="h-3 w-3 inline mr-1" /> Sync
+                      <button
+                        onClick={() => handleSync(platform.id)}
+                        disabled={syncingId === platform.id}
+                        className="px-3 py-1.5 rounded-lg bg-surface border border-border text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                      >
+                        {syncingId === platform.id ? (
+                          <><Loader2 className="h-3 w-3 inline mr-1 animate-spin" /> Syncing...</>
+                        ) : (
+                          <><RefreshCw className="h-3 w-3 inline mr-1" /> Sync</>
+                        )}
                       </button>
                       <button onClick={() => handleDisconnect(platform.id)}
                         className="px-3 py-1.5 rounded-lg bg-red-400/10 border border-red-400/20 text-xs text-red-400 hover:bg-red-400/20 transition-colors">
@@ -343,38 +366,38 @@ export default function StorePage() {
 
       {/* Custom Store Modal */}
       {showCustomModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="glass rounded-2xl border border-border w-full max-w-lg p-6 space-y-5 animate-slide-up">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-accent/10 border border-accent/20">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6 overflow-hidden">
+          <div className="glass rounded-2xl border border-border w-full max-w-lg max-h-[90vh] overflow-y-auto p-5 sm:p-6 space-y-5 animate-slide-up">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2 rounded-xl bg-accent/10 border border-accent/20 shrink-0">
                   <Link2 className="h-5 w-5 text-accent" />
                 </div>
-                <div>
-                  <h2 className="font-display text-lg font-semibold text-foreground">Connect Custom Store</h2>
-                  <p className="text-xs text-muted-foreground">Link any store you built from scratch</p>
+                <div className="min-w-0">
+                  <h2 className="font-display text-base sm:text-lg font-semibold text-foreground">Connect Custom Store</h2>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground">Link any store you built from scratch</p>
                 </div>
               </div>
               <button onClick={() => { setShowCustomModal(false); setTestResult(null); }}
-                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition-colors">
+                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition-colors shrink-0">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">Store Name</label>
+                <label className="block text-xs sm:text-sm font-medium text-foreground mb-1.5">Store Name</label>
                 <input
                   type="text"
                   value={customConfig.name}
                   onChange={(e) => setCustomConfig((p) => ({ ...p, name: e.target.value }))}
                   placeholder="My Custom Store"
-                  className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all"
+                  className="w-full px-3 sm:px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">Store URL</label>
+                <label className="block text-xs sm:text-sm font-medium text-foreground mb-1.5">Store URL</label>
                 <div className="relative">
                   <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <input
@@ -382,13 +405,13 @@ export default function StorePage() {
                     value={customConfig.url}
                     onChange={(e) => setCustomConfig((p) => ({ ...p, url: e.target.value }))}
                     placeholder="https://my-store.com"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all"
+                    className="w-full pl-10 pr-3 sm:pr-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">API Key / Token</label>
+                <label className="block text-xs sm:text-sm font-medium text-foreground mb-1.5">API Key / Token</label>
                 <div className="relative">
                   <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <input
@@ -396,42 +419,42 @@ export default function StorePage() {
                     value={customConfig.apiKey}
                     onChange={(e) => setCustomConfig((p) => ({ ...p, apiKey: e.target.value }))}
                     placeholder="sk_xxxxxxxxxxxxxxxxxxxx"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all"
+                    className="w-full pl-10 pr-3 sm:pr-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all"
                   />
                 </div>
               </div>
 
               <div className="border-t border-border pt-4">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">API Endpoints (optional)</p>
+                <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">API Endpoints (optional)</p>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Products Endpoint</label>
+                    <label className="block text-[11px] sm:text-xs text-muted-foreground mb-1">Products Endpoint</label>
                     <input
                       type="text"
                       value={customConfig.productsEndpoint}
                       onChange={(e) => setCustomConfig((p) => ({ ...p, productsEndpoint: e.target.value }))}
                       placeholder="/api/products"
-                      className="w-full px-4 py-2 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 transition-all font-mono text-xs"
+                      className="w-full px-3 sm:px-4 py-2 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 transition-all font-mono text-[11px] sm:text-xs"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Orders Endpoint</label>
+                    <label className="block text-[11px] sm:text-xs text-muted-foreground mb-1">Orders Endpoint</label>
                     <input
                       type="text"
                       value={customConfig.ordersEndpoint}
                       onChange={(e) => setCustomConfig((p) => ({ ...p, ordersEndpoint: e.target.value }))}
                       placeholder="/api/orders"
-                      className="w-full px-4 py-2 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 transition-all font-mono text-xs"
+                      className="w-full px-3 sm:px-4 py-2 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 transition-all font-mono text-[11px] sm:text-xs"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Customers Endpoint</label>
+                    <label className="block text-[11px] sm:text-xs text-muted-foreground mb-1">Customers Endpoint</label>
                     <input
                       type="text"
                       value={customConfig.customersEndpoint}
                       onChange={(e) => setCustomConfig((p) => ({ ...p, customersEndpoint: e.target.value }))}
                       placeholder="/api/customers"
-                      className="w-full px-4 py-2 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 transition-all font-mono text-xs"
+                      className="w-full px-3 sm:px-4 py-2 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 transition-all font-mono text-[11px] sm:text-xs"
                     />
                   </div>
                 </div>
@@ -439,7 +462,7 @@ export default function StorePage() {
 
               {/* Test Result */}
               {testResult && (
-                <div className={`px-4 py-3 rounded-xl text-sm ${testResult.success ? "bg-emerald-400/10 border border-emerald-400/20 text-emerald-400" : "bg-red-400/10 border border-red-400/20 text-red-400"}`}>
+                <div className={`px-3 sm:px-4 py-3 rounded-xl text-xs sm:text-sm ${testResult.success ? "bg-emerald-400/10 border border-emerald-400/20 text-emerald-400" : "bg-red-400/10 border border-red-400/20 text-red-400"}`}>
                   {testResult.message}
                 </div>
               )}
@@ -449,7 +472,7 @@ export default function StorePage() {
                 <button
                   onClick={handleTestCustomStore}
                   disabled={testing || !customConfig.url}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-surface border border-border text-sm font-medium text-muted-foreground hover:text-foreground transition-all disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl bg-surface border border-border text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground transition-all disabled:opacity-50"
                 >
                   {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
                   Test Connection
@@ -457,7 +480,7 @@ export default function StorePage() {
                 <button
                   onClick={handleConnectCustomStore}
                   disabled={!customConfig.name || !customConfig.url}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-all disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl bg-accent text-white text-xs sm:text-sm font-semibold hover:bg-accent-hover transition-all disabled:opacity-50"
                 >
                   <Link2 className="h-4 w-4" />
                   Connect Store

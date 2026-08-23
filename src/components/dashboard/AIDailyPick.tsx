@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   ChevronRight,
   BookmarkPlus,
+  BookmarkCheck,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { AIDailyPick as AIDailyPickType } from "@/lib/mock-dashboard";
@@ -89,6 +90,7 @@ export default function AIDailyPick({ pick }: { pick: AIDailyPickType }) {
   const risk = riskConfig[pick.risk];
   const RiskIcon = risk.icon;
   const timeLeft = useCountdown(pick.expiresAt);
+  const [watchlisted, setWatchlisted] = useState(false);
 
   return (
     <div
@@ -116,7 +118,7 @@ export default function AIDailyPick({ pick }: { pick: AIDailyPickType }) {
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             {pick.yesterdayPick && (
-              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium border ${pick.yesterdayPick.up ? "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" : "text-red-400 bg-red-400/10 border-red-400/20"}`}>
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium border cursor-pointer hover:opacity-80 transition-opacity ${pick.yesterdayPick.up ? "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" : "text-red-400 bg-red-400/10 border-red-400/20"}`}>
                 <CheckCircle2 className="h-3 w-3" />
                 Yesterday: {pick.yesterdayPick.result}
               </div>
@@ -131,7 +133,7 @@ export default function AIDailyPick({ pick }: { pick: AIDailyPickType }) {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
           <div className="lg:col-span-3 space-y-5">
             <div className="flex items-start gap-4">
-              <div className="relative group shrink-0">
+              <Link href="/products" className="relative group shrink-0">
                 <div className="absolute inset-0 bg-gradient-to-br from-accent/20 to-purple-500/20 rounded-xl blur-lg group-hover:blur-xl transition-all" />
                 <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-xl overflow-hidden border border-white/10">
                   <img src={pick.image} alt={pick.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -139,11 +141,11 @@ export default function AIDailyPick({ pick }: { pick: AIDailyPickType }) {
                 <div className="absolute -top-1.5 -right-1.5 animate-pulse-badge px-2 py-0.5 rounded-full bg-accent text-white text-[9px] font-bold uppercase shadow-lg shadow-accent/30">
                   AI Pick
                 </div>
-              </div>
+              </Link>
               <div className="flex-1 min-w-0">
-                <span className="inline-block px-2 py-0.5 rounded-md bg-accent/10 text-accent text-[10px] font-bold uppercase tracking-wider mb-1.5">
+                <Link href="/products" className="inline-block px-2 py-0.5 rounded-md bg-accent/10 text-accent text-[10px] font-bold uppercase tracking-wider mb-1.5 hover:bg-accent/20 transition-colors">
                   {pick.category}
-                </span>
+                </Link>
                 <h3 className="font-display text-xl md:text-2xl font-bold text-foreground leading-tight">{pick.title}</h3>
                 <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{pick.description}</p>
                 <div className="flex flex-wrap gap-2 mt-2">
@@ -204,9 +206,12 @@ export default function AIDailyPick({ pick }: { pick: AIDailyPickType }) {
                 Start Selling This
                 <ArrowUpRight className="h-4 w-4" />
               </Link>
-              <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all">
-                <BookmarkPlus className="h-4 w-4" />
-                Add to Watchlist
+              <button
+                onClick={() => setWatchlisted(!watchlisted)}
+                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${watchlisted ? "border-accent/30 bg-accent/10 text-accent" : "border-border text-muted-foreground hover:text-foreground hover:bg-surface-hover"}`}
+              >
+                {watchlisted ? <BookmarkCheck className="h-4 w-4" /> : <BookmarkPlus className="h-4 w-4" />}
+                {watchlisted ? "Watching" : "Add to Watchlist"}
               </button>
               <Link
                 href="/calculator"

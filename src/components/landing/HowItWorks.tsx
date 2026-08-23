@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useInView } from "@/hooks/useInView";
-import { Search, Calculator, Rocket } from "lucide-react";
+import { Search, Calculator, Rocket, ArrowUpRight } from "lucide-react";
 
 const steps = [
   {
@@ -13,6 +14,7 @@ const steps = [
     color: "text-accent",
     bg: "bg-accent/10",
     border: "border-accent/20",
+    href: "/products",
   },
   {
     number: "02",
@@ -23,6 +25,7 @@ const steps = [
     color: "text-accent-warm",
     bg: "bg-accent-warm/10",
     border: "border-accent-warm/20",
+    href: "/competitors",
   },
   {
     number: "03",
@@ -33,6 +36,7 @@ const steps = [
     color: "text-emerald-400",
     bg: "bg-emerald-400/10",
     border: "border-emerald-400/20",
+    href: "/store",
   },
 ];
 
@@ -69,24 +73,25 @@ export default function HowItWorks() {
                 <div className="hidden md:block absolute top-12 left-[calc(50%+80px)] right-[calc(-50%+80px)] h-px bg-gradient-to-r from-border via-border to-transparent" />
               )}
 
-              <div className="glass rounded-2xl p-8 text-center relative">
+              <Link href={step.href} className="glass rounded-2xl p-8 text-center relative block group hover:border-accent/20 transition-all hover:bg-surface-hover cursor-pointer">
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-background border border-border text-xs font-mono text-muted-foreground">
                   {step.number}
                 </div>
 
                 <div
-                  className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl ${step.bg} border ${step.border} mb-6 mt-4`}
+                  className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl ${step.bg} border ${step.border} mb-6 mt-4 group-hover:scale-110 transition-transform`}
                 >
                   <step.icon className={`h-8 w-8 ${step.color}`} />
                 </div>
 
-                <h3 className="font-display text-xl font-semibold text-foreground mb-3">
+                <h3 className="font-display text-xl font-semibold text-foreground mb-3 group-hover:text-accent transition-colors">
                   {step.title}
                 </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
+                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
                   {step.description}
                 </p>
-              </div>
+                <ArrowUpRight className="h-4 w-4 text-muted-foreground mx-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+              </Link>
             </div>
           ))}
         </div>

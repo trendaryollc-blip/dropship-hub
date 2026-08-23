@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { TrendingUp, TrendingDown, Activity } from "lucide-react";
 import type { TickerItem } from "@/lib/mock-dashboard";
 
@@ -49,7 +50,7 @@ export default function MarketPulseTicker({ items }: { items: TickerItem[] }) {
             {doubled.map((item, i) => {
               const positive = item.change >= 0;
               return (
-                <div key={i} className="inline-flex items-center gap-2.5 px-4 py-2.5 shrink-0">
+                <Link key={i} href="/products" className="inline-flex items-center gap-2.5 px-4 py-2.5 shrink-0 hover:bg-surface/50 transition-colors">
                   <span className="text-xs font-medium text-foreground">{item.name}</span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted-foreground">
                     {item.platform}
@@ -61,7 +62,7 @@ export default function MarketPulseTicker({ items }: { items: TickerItem[] }) {
                     {positive ? "+" : ""}{item.change}%
                   </span>
                   <span className="text-border mx-1">|</span>
-                </div>
+                </Link>
               );
             })}
           </div>

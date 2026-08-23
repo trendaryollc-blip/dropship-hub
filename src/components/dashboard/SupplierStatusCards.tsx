@@ -32,9 +32,13 @@ function SupplierMiniCard({ supplier, index }: { supplier: SupplierStatus; index
   return (
     <div
       ref={ref}
-      className={`shrink-0 w-[200px] glass rounded-xl p-3.5 transition-all duration-500 hover:border-accent/20 hover:bg-surface-hover group ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+      className={`shrink-0 transition-all duration-500 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
       style={{ transitionDelay: `${index * 60}ms` }}
     >
+      <Link
+        href="/suppliers"
+        className={`block w-[200px] glass rounded-xl p-3.5 transition-all duration-500 hover:border-accent/20 hover:bg-surface-hover group`}
+      >
       <div className="flex items-center justify-between mb-2.5">
         <div className="flex items-center gap-1.5">
           <div className={`flex h-6 w-6 items-center justify-center rounded-md ${badge.bg} shadow-lg ${badge.glow}`}>
@@ -83,6 +87,7 @@ function SupplierMiniCard({ supplier, index }: { supplier: SupplierStatus; index
           </span>
         </div>
       </div>
+      </Link>
     </div>
   );
 }

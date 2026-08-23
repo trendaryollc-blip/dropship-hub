@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { ArrowRight, Sparkles, Flame, Target, Trophy } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Sparkles, Flame, Target, Trophy } from "lucide-react";
 import ParticleField from "./ParticleField";
 import TypeWriter from "./TypeWriter";
 
@@ -168,7 +168,7 @@ export default function Hero() {
                     <Flame className="h-4 w-4 text-amber-400" />
                     <span className="text-xs font-semibold text-foreground">Trending Products</span>
                     <span className="px-2 py-0.5 rounded-md bg-amber-400/10 text-[10px] font-medium text-amber-400">3 hot</span>
-                    <span className="ml-auto text-[10px] text-accent font-medium cursor-pointer hover:underline">View all</span>
+                    <Link href="/products" className="ml-auto text-[10px] text-accent font-medium hover:underline flex items-center gap-1">View all <ArrowUpRight className="h-3 w-3" /></Link>
                   </div>
                   <div className="space-y-2">
                     {trendingProducts.map(function(p, i) {
@@ -228,34 +228,38 @@ export default function Hero() {
 
         <div className="relative max-w-5xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-            <div className="group glass rounded-2xl p-4 md:p-5 hover:border-accent/20 transition-all hover:bg-surface-hover hover:scale-[1.02] cursor-default">
+            <Link href="/dashboard" className="group glass rounded-2xl p-4 md:p-5 hover:border-accent/20 transition-all hover:bg-surface-hover hover:scale-[1.02] cursor-pointer block">
               <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-accent/10 mb-3">
                 <Sparkles className="h-5 w-5 text-accent" />
               </div>
-              <p className="font-display text-sm font-semibold text-foreground mb-1">AI Daily Pick</p>
+              <p className="font-display text-sm font-semibold text-foreground mb-1 group-hover:text-accent transition-colors">AI Daily Pick</p>
               <p className="text-xs text-muted-foreground">New pick every 24h</p>
-            </div>
-            <div className="group glass rounded-2xl p-4 md:p-5 hover:border-accent/20 transition-all hover:bg-surface-hover hover:scale-[1.02] cursor-default">
+              <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-2" />
+            </Link>
+            <Link href="/products" className="group glass rounded-2xl p-4 md:p-5 hover:border-accent/20 transition-all hover:bg-surface-hover hover:scale-[1.02] cursor-pointer block">
               <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-400/10 mb-3">
                 <Flame className="h-5 w-5 text-emerald-400" />
               </div>
-              <p className="font-display text-sm font-semibold text-foreground mb-1">Live Monitoring</p>
+              <p className="font-display text-sm font-semibold text-foreground mb-1 group-hover:text-accent transition-colors">Live Monitoring</p>
               <p className="text-xs text-muted-foreground">Real-time market data</p>
-            </div>
-            <div className="group glass rounded-2xl p-4 md:p-5 hover:border-accent/20 transition-all hover:bg-surface-hover hover:scale-[1.02] cursor-default">
+              <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-2" />
+            </Link>
+            <Link href="/calculator" className="group glass rounded-2xl p-4 md:p-5 hover:border-accent/20 transition-all hover:bg-surface-hover hover:scale-[1.02] cursor-pointer block">
               <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-amber-400/10 mb-3">
                 <Target className="h-5 w-5 text-amber-400" />
               </div>
-              <p className="font-display text-sm font-semibold text-foreground mb-1">Smart Calculator</p>
+              <p className="font-display text-sm font-semibold text-foreground mb-1 group-hover:text-accent transition-colors">Smart Calculator</p>
               <p className="text-xs text-muted-foreground">AI-powered margins</p>
-            </div>
-            <div className="group glass rounded-2xl p-4 md:p-5 hover:border-accent/20 transition-all hover:bg-surface-hover hover:scale-[1.02] cursor-default">
+              <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-2" />
+            </Link>
+            <Link href="/products/niches" className="group glass rounded-2xl p-4 md:p-5 hover:border-accent/20 transition-all hover:bg-surface-hover hover:scale-[1.02] cursor-pointer block">
               <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-purple-400/10 mb-3">
                 <Trophy className="h-5 w-5 text-purple-400" />
               </div>
-              <p className="font-display text-sm font-semibold text-foreground mb-1">Niche Radar</p>
+              <p className="font-display text-sm font-semibold text-foreground mb-1 group-hover:text-accent transition-colors">Niche Radar</p>
               <p className="text-xs text-muted-foreground">Score &amp; analyze niches</p>
-            </div>
+              <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-2" />
+            </Link>
           </div>
           <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-3/4 h-16 bg-accent/[0.06] blur-[60px] rounded-full" />
         </div>

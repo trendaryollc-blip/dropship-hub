@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Package, Heart, Plus, Star, Images } from "lucide-react";
+import { useState } from "react";
+import { Package, Heart, Plus, Star, Images, Check } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 
 const platformIcons: Record<string, string> = {
@@ -27,6 +28,8 @@ interface SearchResult {
 export default function EnrichedProductCard({ product, index }: { product: SearchResult; index: number }) {
   const { ref, isInView } = useInView({ threshold: 0.15 });
   const router = useRouter();
+  const [saved, setSaved] = useState(false);
+  const [compared, setCompared] = useState(false);
 
   const imageCount = product.images?.length || (product.image ? 1 : 0);
 
@@ -69,18 +72,18 @@ export default function EnrichedProductCard({ product, index }: { product: Searc
           )}
           <div className="absolute top-2 right-2 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
             <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-              className="p-2.5 rounded-lg bg-black/60 text-white backdrop-blur-sm hover:bg-accent/80 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
-              title="Save to favorites"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSaved(!saved); }}
+              className={`p-2.5 rounded-lg backdrop-blur-sm transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center ${saved ? "bg-accent text-white" : "bg-black/60 text-white hover:bg-accent/80"}`}
+              title={saved ? "Remove from favorites" : "Save to favorites"}
             >
-              <Heart className="h-4 w-4" />
+              <Heart className={`h-4 w-4 ${saved ? "fill-current" : ""}`} />
             </button>
             <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-              className="p-2.5 rounded-lg bg-black/60 text-white backdrop-blur-sm hover:bg-accent/80 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
-              title="Add to compare"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCompared(!compared); }}
+              className={`p-2.5 rounded-lg backdrop-blur-sm transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center ${compared ? "bg-emerald-500 text-white" : "bg-black/60 text-white hover:bg-accent/80"}`}
+              title={compared ? "Remove from compare" : "Add to compare"}
             >
-              <Plus className="h-4 w-4" />
+              {compared ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             </button>
           </div>
         </div>

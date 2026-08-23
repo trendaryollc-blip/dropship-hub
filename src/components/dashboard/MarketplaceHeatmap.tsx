@@ -148,17 +148,17 @@ function HeatTile({ cat, index }: { cat: HeatmapCategory; index: number }) {
 
       <div className="relative z-10 p-4">
         {/* Header */}
-        <div className="flex items-center justify-between mb-3">
+        <Link href="/products" className="flex items-center justify-between mb-3">
           <h4 className="font-display text-xs font-semibold text-foreground truncate">{cat.category}</h4>
           <HeatRing heat={cat.heat} size={40} />
-        </div>
+        </Link>
 
         {/* Top Product */}
-        <div className="flex items-center gap-1.5 mb-2">
+        <Link href="/products" className="flex items-center gap-1.5 mb-2 hover:opacity-80 transition-opacity">
           <ShoppingCart className="h-3 w-3 text-accent shrink-0" />
           <span className="text-[10px] font-medium text-foreground truncate">{cat.topProduct}</span>
           <span className="text-[9px] text-emerald-400 shrink-0">{cat.topProductMargin}%</span>
-        </div>
+        </Link>
 
         {/* AI Insight */}
         <p className="text-[10px] text-muted-foreground leading-relaxed mb-3 line-clamp-2">{cat.aiInsight}</p>

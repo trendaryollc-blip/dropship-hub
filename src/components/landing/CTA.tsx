@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { ArrowRight, Sparkles, Brain, Target, Flame } from "lucide-react";
 
+const pills = [
+  { icon: Brain, label: "AI Daily Pick", href: "/dashboard" },
+  { icon: Target, label: "Niche Radar", href: "/products/niches" },
+  { icon: Sparkles, label: "Live Intelligence", href: "/dashboard" },
+  { icon: Flame, label: "Trending Scores", href: "/products" },
+];
+
 export default function CTA() {
   return (
     <section className="relative py-24 md:py-32">
@@ -25,19 +32,15 @@ export default function CTA() {
 
             {/* Mini feature pills */}
             <div className="flex flex-wrap items-center justify-center gap-3 mb-10">
-              {[
-                { icon: Brain, label: "AI Daily Pick" },
-                { icon: Target, label: "Niche Radar" },
-                { icon: Sparkles, label: "Live Intelligence" },
-                { icon: Flame, label: "Trending Scores" },
-              ].map((item) => (
-                <div
+              {pills.map((item) => (
+                <Link
                   key={item.label}
-                  className="flex items-center gap-2 px-4 py-2 rounded-full glass border border-border text-xs font-medium text-muted-foreground"
+                  href={item.href}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full glass border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:border-accent/20 transition-all"
                 >
                   <item.icon className="h-3.5 w-3.5 text-accent" />
                   {item.label}
-                </div>
+                </Link>
               ))}
             </div>
 

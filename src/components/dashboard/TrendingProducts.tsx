@@ -197,10 +197,10 @@ function TrendingProductCard({ product, index, rank, onAddCompare }: {
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Top Competitors</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {product.competitors.map((comp, ci) => (
-                  <div key={ci} className="flex items-center justify-between p-2.5 rounded-lg bg-surface/50 border border-border/50">
+                  <Link key={ci} href="/products" className="flex items-center justify-between p-2.5 rounded-lg bg-surface/50 border border-border/50 hover:border-accent/20 hover:bg-surface-hover transition-all">
                     <span className="text-xs text-foreground truncate">{comp.name}</span>
                     <span className="text-xs font-semibold text-muted-foreground shrink-0">${comp.price.toFixed(2)}</span>
-                  </div>
+                  </Link>
                 ))}
               </div>
             </div>

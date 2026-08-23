@@ -169,9 +169,9 @@ function SupplierDetailContent({ id }: { id: string }) {
               <Mail className="h-4 w-4" /> Visit Supplier
             </a>
             {supplier.source === "cj" && (
-              <button className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-surface transition-all">
+              <Link href={`/products?q=${encodeURIComponent(supplier.name)}`} className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-surface transition-all">
                 <Package className="h-4 w-4" /> Browse Products
-              </button>
+              </Link>
             )}
           </div>
         </div>
