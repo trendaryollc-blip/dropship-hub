@@ -59,7 +59,7 @@ export default function PricingStrategy({ options }: { options: PricingOption[] 
                 <p className="text-sm text-muted-foreground mb-2">{opt.description}</p>
                 <p className="text-xs text-muted-foreground/70 mb-5">{opt.tradeoff}</p>
 
-                <button className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-white transition-all ${opt.isRecommended ? c.btn : "bg-surface hover:bg-surface/80 text-foreground border border-border"}`}>
+                <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(`$${opt.price.toFixed(2)}`); const btn = e.currentTarget as HTMLButtonElement; const original = btn.textContent; btn.textContent = "Copied!"; setTimeout(() => { btn.textContent = original; }, 1500); }} className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-white transition-all active:scale-95 ${opt.isRecommended ? c.btn : "bg-surface hover:bg-surface/80 text-foreground border border-border"}`}>
                   <Check className="h-4 w-4" />
                   Use This Price
                 </button>
