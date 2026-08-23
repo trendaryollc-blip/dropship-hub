@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Search, Globe, Loader2, Crosshair, BookmarkPlus, RotateCcw } from "lucide-react";
+import { Search, Globe, Loader2, Crosshair, BookmarkPlus } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import { generateMarketData, type MarketData } from "@/lib/mock-competitors";
+import { type MarketData } from "@/lib/mock-competitors";
 import MarketStatsBar from "@/components/competitors/MarketStatsBar";
 import PriceDistribution from "@/components/competitors/PriceDistribution";
 import PlatformBreakdown from "@/components/competitors/PlatformBreakdown";
@@ -12,6 +12,90 @@ import PricingStrategy from "@/components/competitors/PricingStrategy";
 import CompetitorProfiles from "@/components/competitors/CompetitorProfiles";
 import PriceHistory from "@/components/competitors/PriceHistory";
 import InsightsPanel from "@/components/competitors/InsightsPanel";
+
+interface RawMarketData {
+  platforms: { platform: string; icon: string; avgPrice: number; minPrice: number; maxPrice: number; sellerCount: number; trend: string; trendPercent: number; sparkline: number[]; listings: { id: string; title: string; price: number; source: string; seller: string; sellerRating: number; sellerProducts: number; link: string; shipping: string; condition: string; daysAgo: number }[] }[];
+  avgPrice: number;
+  priceRange: { min: number; max: number };
+  totalListings: number;
+  priceDistribution: { range: string; count: number; percent: number; isSweetSpot: boolean }[];
+  priceHistory: { date: string; price: number; volume: number }[];
+  topSellers: { name: string; platform: string; rating: number; totalProducts: number; price: number; threatLevel: string; isDropshipper: boolean; otherProducts: { name: string; price: number }[]; responseTime: string; returnPolicy: string }[];
+  opportunities: { type: string; title: string; description: string; count: number; potentialMargin?: number; actionLabel: string }[];
+  pricingOptions: { label: string; icon: string; price: number; margin: number; competition: string; recommendation: string }[];
+  insights: string[];
+}
+
+function castToMarketData(raw: RawMarketData): MarketData {
+  return {
+    query: "",
+    totalListings: raw.totalListings,
+    avgPrice: raw.avgPrice,
+    medianPrice: (raw.priceRange.min + raw.priceRange.max) / 2,
+    minPrice: raw.priceRange.min,
+    maxPrice: raw.priceRange.max,
+    profitZone: { min: raw.priceRange.min, max: raw.avgPrice, label: "Sweet spot" },
+    priceDistribution: raw.priceDistribution.map((t) => ({ range: t.range, count: t.count, percent: t.percent, isSweetSpot: t.isSweetSpot })),
+    platforms: raw.platforms.map((p) => ({
+      platform: p.platform,
+      icon: p.icon,
+      avgPrice: p.avgPrice,
+      minPrice: p.minPrice,
+      maxPrice: p.maxPrice,
+      sellerCount: p.sellerCount,
+      trend: p.trend as "up" | "down" | "stable",
+      trendPercent: p.trendPercent,
+      sparkline: p.sparkline,
+      listings: p.listings.map((l) => ({
+        id: l.id,
+        title: l.title,
+        price: l.price,
+        source: l.source,
+        seller: l.seller,
+        sellerRating: l.sellerRating,
+        sellerProducts: l.sellerProducts,
+        link: l.link,
+        shipping: l.shipping,
+        condition: l.condition as "New" | "Used" | "Refurbished",
+        daysAgo: l.daysAgo,
+      })),
+    })),
+    topSellers: raw.topSellers.map((s) => ({
+      name: s.name,
+      platform: s.platform,
+      rating: s.rating,
+      totalProducts: s.totalProducts,
+      price: s.price,
+      threatLevel: s.threatLevel as "low" | "medium" | "high",
+      isDropshipper: s.isDropshipper,
+      otherProducts: s.otherProducts,
+      responseTime: s.responseTime,
+      returnPolicy: s.returnPolicy,
+    })),
+    opportunities: raw.opportunities.map((o) => ({
+      type: o.type as "opportunity" | "gap" | "avoid",
+      title: o.title,
+      description: o.description,
+      count: o.count,
+      potentialMargin: o.potentialMargin,
+      actionLabel: o.actionLabel,
+    })),
+    pricingOptions: raw.pricingOptions.map((o) => ({
+      label: o.label,
+      icon: o.icon,
+      price: o.price,
+      margin: o.margin,
+      description: "",
+      tradeoff: o.competition,
+      isRecommended: false,
+      color: "accent",
+      competition: o.competition,
+      recommendation: o.recommendation,
+    })),
+    priceHistory: raw.priceHistory.map((h) => ({ date: h.date, avg: h.price, min: h.price * 0.9, max: h.price * 1.1 })),
+    insights: raw.insights,
+  };
+}
 
 const savedSearches = [
   { query: "wireless earbuds", date: "2 hours ago", results: 47 },
@@ -23,6 +107,7 @@ export default function CompetitorsPage() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [marketData, setMarketData] = useState<MarketData | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const { ref: heroRef, isInView: heroInView } = useInView({ threshold: 0.1 });
 
@@ -31,16 +116,28 @@ export default function CompetitorsPage() {
     if (!searchQuery.trim()) return;
     setLoading(true);
     setMarketData(null);
-    await new Promise((r) => setTimeout(r, 800 + Math.random() * 600));
-    const data = generateMarketData(searchQuery.trim());
-    setMarketData(data);
-    setSearchHistory((prev) => [searchQuery.trim(), ...prev.filter((h) => h !== searchQuery.trim()).slice(0, 9)]);
+    setError(null);
+    try {
+      const res = await fetch("/api/competitors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: searchQuery.trim() }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setError(data.error);
+      } else if (data.platforms) {
+        setMarketData(castToMarketData(data));
+        setSearchHistory((prev) => [searchQuery.trim(), ...prev.filter((h) => h !== searchQuery.trim()).slice(0, 9)]);
+      }
+    } catch {
+      setError("Failed to analyze market. Please try again.");
+    }
     setLoading(false);
   }, [query]);
 
   return (
     <div className="max-w-7xl mx-auto">
-      {/* Hero */}
       <div ref={heroRef} className={`mb-8 transition-all duration-700 ${heroInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-accent/60 flex items-center justify-center">
@@ -48,12 +145,11 @@ export default function CompetitorsPage() {
           </div>
           <div>
             <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">Competitor Intelligence</h1>
-            <p className="text-sm text-muted-foreground">Real-time market analysis across 50+ platforms</p>
+            <p className="text-sm text-muted-foreground">Real-time market analysis across 5+ platforms</p>
           </div>
         </div>
       </div>
 
-      {/* Search */}
       <div className={`glass rounded-2xl p-5 mb-6 border border-border transition-all duration-700 delay-100 ${heroInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="relative flex-1">
@@ -77,16 +173,14 @@ export default function CompetitorsPage() {
           </button>
         </div>
 
-        {/* Quick Access */}
         <div className="mt-4 flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1.5"><BookmarkPlus className="h-3 w-3" /> Saved:</span>
+          <span className="flex items-center gap-1.5"><BookmarkPlus className="h-3 w-3" /> Quick search:</span>
           {savedSearches.map((s) => (
             <button key={s.query} onClick={() => { setQuery(s.query); handleSearch(s.query); }} className="hover:text-accent transition-colors truncate max-w-[140px]">{s.query}</button>
           ))}
         </div>
       </div>
 
-      {/* Loading */}
       {loading && (
         <div className="glass rounded-2xl p-6 sm:p-12 text-center border border-border">
           <div className="relative w-16 h-16 mx-auto mb-4">
@@ -95,17 +189,25 @@ export default function CompetitorsPage() {
               <Crosshair className="h-6 w-6 text-accent" />
             </div>
           </div>
-          <h3 className="font-display text-lg font-semibold text-foreground mb-2">Scanning 50+ Platforms...</h3>
-          <p className="text-sm text-muted-foreground">Analyzing competitor prices, sellers, and market trends</p>
+          <h3 className="font-display text-lg font-semibold text-foreground mb-2">Scanning Platforms...</h3>
+          <p className="text-sm text-muted-foreground">Searching Amazon, Google Shopping, CJ, Keepa, and AliExpress for real data</p>
           <div className="mt-4 flex flex-wrap justify-center gap-2">
-            {["Google Shopping", "Amazon", "eBay", "Walmart"].map((p, i) => (
+            {["Amazon", "Google Shopping", "CJ Dropshipping", "Keepa", "AliExpress"].map((p, i) => (
               <span key={p} className="text-[10px] text-accent/70 bg-accent/5 px-2 py-1 rounded-full border border-accent/10" style={{ animationDelay: `${i * 200}ms` }}>{p}</span>
             ))}
           </div>
         </div>
       )}
 
-      {/* Results */}
+      {error && !loading && (
+        <div className="glass rounded-2xl p-6 sm:p-12 text-center border border-border">
+          <Crosshair className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+          <h3 className="font-display text-lg font-semibold text-foreground mb-2">Analysis Failed</h3>
+          <p className="text-sm text-muted-foreground mb-4">{error}</p>
+          <button onClick={() => handleSearch()} className="text-sm text-accent hover:text-accent/80">Try again</button>
+        </div>
+      )}
+
       {marketData && !loading && (
         <div className="space-y-6">
           <MarketStatsBar data={marketData} />
@@ -119,15 +221,14 @@ export default function CompetitorsPage() {
         </div>
       )}
 
-      {/* Empty State */}
-      {!marketData && !loading && (
+      {!marketData && !loading && !error && (
         <div className="glass rounded-2xl p-6 sm:p-12 text-center border border-border">
           <div className="w-20 h-20 rounded-2xl bg-accent/5 flex items-center justify-center mx-auto mb-5 border border-accent/10">
             <Crosshair className="h-10 w-10 text-accent/40" />
           </div>
           <h3 className="font-display text-lg sm:text-xl font-bold text-foreground mb-2">Ready to Spy on Competitors</h3>
           <p className="text-sm text-muted-foreground max-w-md mx-auto mb-6">
-            Enter any product to get a complete competitive analysis: pricing intelligence, platform breakdown, opportunity finder, and AI-powered pricing strategy.
+            Enter any product to get a complete competitive analysis: real pricing intelligence, platform breakdown, opportunity finder, and AI-powered pricing strategy.
           </p>
           <div className="flex flex-wrap justify-center gap-2">
             {["wireless earbuds", "phone case", "usb hub", "laptop stand", "ring light"].map((s) => (

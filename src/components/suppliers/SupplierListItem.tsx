@@ -3,18 +3,12 @@
 import Link from "next/link";
 import { Star, MapPin, Clock, Truck, Package, ArrowRight } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { ExtendedSupplier } from "@/lib/mock-suppliers";
+import type { SupplierProfile } from "@/types/supplier";
 
 const badgeConfig: Record<string, { label: string; color: string; border: string }> = {
   gold: { label: "Gold", color: "text-amber-400 bg-amber-400/10", border: "border-amber-400/20" },
   silver: { label: "Silver", color: "text-slate-300 bg-slate-300/10", border: "border-slate-300/20" },
   bronze: { label: "Bronze", color: "text-orange-400 bg-orange-400/10", border: "border-orange-400/20" },
-};
-
-const locationFlags: Record<string, string> = {
-  "China": "\ud83c\udde8\ud83c\uddf3", "US": "\ud83c\uddfa\ud83c\uddf8", "Germany": "\ud83c\udde9\ud83c\uddea",
-  "Sweden": "\ud83c\uddf8\ud83c\uddea", "Canada": "\ud83c\udde8\ud83c\udde6", "Vietnam": "\ud83c\uddfb\ud83c\uddf3",
-  "India": "\ud83c\uddee\ud83c\uddf3", "Japan": "\ud83c\uddef\ud83c\uddf5", "Brazil": "\ud83c\udde7\ud83c\uddf7",
 };
 
 function ScoreRing({ score, size = 32 }: { score: number; size?: number }) {
@@ -35,10 +29,8 @@ function ScoreRing({ score, size = 32 }: { score: number; size?: number }) {
   );
 }
 
-export default function SupplierListItem({ supplier, index }: { supplier: ExtendedSupplier; index: number }) {
+export default function SupplierListItem({ supplier, index }: { supplier: SupplierProfile; index: number }) {
   const { ref, isInView } = useInView({ threshold: 0.1 });
-  const country = supplier.location.split(", ").pop() || "China";
-  const flag = locationFlags[country] || "\ud83c\uddf3";
   const badge = badgeConfig[supplier.trustBadge] || badgeConfig.bronze;
 
   return (
@@ -57,18 +49,18 @@ export default function SupplierListItem({ supplier, index }: { supplier: Extend
               </span>
             </div>
             <div className="flex items-center gap-2 sm:gap-3 text-[10px] text-muted-foreground flex-wrap">
-              <span className="flex items-center gap-1"><MapPin className="h-2.5 w-2.5" /> {flag} {supplier.location}</span>
-              <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {supplier.responseTime}</span>
-              <span className="flex items-center gap-1"><Truck className="h-2.5 w-2.5" /> {supplier.shippingDays}d</span>
-              <span className="hidden sm:flex items-center gap-1"><Package className="h-2.5 w-2.5" /> {supplier.monthlyOrders.toLocaleString()}/mo</span>
+              <span className="flex items-center gap-1"><MapPin className="h-2.5 w-2.5" /> {supplier.flag} {supplier.location}</span>
+              <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {supplier.stats.responseTime}</span>
+              <span className="flex items-center gap-1"><Truck className="h-2.5 w-2.5" /> {supplier.stats.shippingDays}d</span>
+              <span className="hidden sm:flex items-center gap-1"><Package className="h-2.5 w-2.5" /> {supplier.stats.monthlyOrders.toLocaleString()}/mo</span>
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <div className="flex items-center gap-1 text-amber-400">
               <Star className="h-3.5 w-3.5 fill-current" />
-              <span className="text-xs font-bold">{supplier.rating.toFixed(1)}</span>
+              <span className="text-xs font-bold">{supplier.stats.rating.toFixed(1)}</span>
             </div>
-            <ScoreRing score={supplier.reliabilityScore} size={32} />
+            <ScoreRing score={supplier.stats.reliabilityScore} size={32} />
             <ArrowRight className="h-4 w-4 text-muted-foreground hidden sm:block" />
           </div>
         </div>

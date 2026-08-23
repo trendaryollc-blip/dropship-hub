@@ -1,36 +1,36 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
-  tickerItems,
-  aiDailyPick,
-  revenueData,
-  smartAlerts,
-  nicheCards,
-  supplierStatuses,
-  dailyMission,
-  heatmapCategories,
-  trendingProducts,
-  gettingStartedTasks,
-  quickActions,
-  aiBriefing,
-  marketPulseCards,
-  quickActionStats,
+  tickerItems as fallbackTicker,
+  aiDailyPick as fallbackPick,
+  revenueData as fallbackRevenue,
+  smartAlerts as fallbackAlerts,
+  nicheCards as fallbackNiches,
+  supplierStatuses as fallbackSuppliers,
+  dailyMission as fallbackMission,
+  heatmapCategories as fallbackHeatmap,
+  trendingProducts as fallbackTrending,
+  gettingStartedTasks as fallbackTasks,
+  quickActions as fallbackActions,
+  aiBriefing as fallbackBriefing,
+  marketPulseCards as fallbackPulse,
+  quickActionStats as fallbackActionStats,
 } from "@/lib/mock-dashboard";
 import type { TickerItem, AIDailyPick, SmartAlert, NicheCard, SupplierStatus, DailyMission, HeatmapCategory, AIBriefing, MarketPulseCard, QuickActionStat, TrendingProduct } from "@/lib/mock-dashboard";
 
 export interface DashboardData {
   ticker: TickerItem[];
   dailyPick: AIDailyPick;
-  revenue: typeof revenueData;
+  revenue: typeof fallbackRevenue;
   alerts: SmartAlert[];
   niches: NicheCard[];
   suppliers: SupplierStatus[];
   mission: DailyMission;
   heatmap: HeatmapCategory[];
   trending: TrendingProduct[];
-  tasks: typeof gettingStartedTasks;
-  actions: typeof quickActions;
+  tasks: typeof fallbackTasks;
+  actions: typeof fallbackActions;
   compareItems: { name: string; price: number; margin: number; image: string }[];
   briefing: AIBriefing;
   pulse: MarketPulseCard[];
@@ -38,8 +38,59 @@ export interface DashboardData {
 }
 
 export function useDashboardData() {
-  const [alerts, setAlerts] = useState(smartAlerts);
+  const [data, setData] = useState<DashboardData>({
+    ticker: fallbackTicker,
+    dailyPick: fallbackPick,
+    revenue: fallbackRevenue,
+    alerts: fallbackAlerts,
+    niches: fallbackNiches,
+    suppliers: fallbackSuppliers,
+    mission: fallbackMission,
+    heatmap: fallbackHeatmap,
+    trending: fallbackTrending,
+    tasks: fallbackTasks,
+    actions: fallbackActions,
+    compareItems: [],
+    briefing: fallbackBriefing,
+    pulse: fallbackPulse,
+    actionStats: fallbackActionStats,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        const res = await fetch("/api/dashboard");
+        if (res.ok) {
+          const apiData = await res.json();
+          setData((prev) => ({
+            ...prev,
+            ticker: apiData.ticker || prev.ticker,
+            dailyPick: apiData.dailyPick || prev.dailyPick,
+            revenue: apiData.revenue || prev.revenue,
+            alerts: apiData.alerts || prev.alerts,
+            niches: apiData.niches || prev.niches,
+            suppliers: apiData.suppliers || prev.suppliers,
+            mission: apiData.mission || prev.mission,
+            heatmap: apiData.heatmap || prev.heatmap,
+            trending: apiData.trending || prev.trending,
+            briefing: apiData.briefing || prev.briefing,
+            pulse: apiData.pulse || prev.pulse,
+            actionStats: apiData.actionStats || prev.actionStats,
+          }));
+        }
+      } catch {}
+      setLoading(false);
+    };
+    fetchDashboard();
+  }, []);
+
+  const [alerts, setAlerts] = useState(data.alerts);
   const [compareItems, setCompareItems] = useState<DashboardData["compareItems"]>([]);
+
+  useEffect(() => {
+    setAlerts(data.alerts);
+  }, [data.alerts]);
 
   const markAlertRead = useCallback((id: string) => {
     setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, read: true } : a)));
@@ -65,26 +116,9 @@ export function useDashboardData() {
     setCompareItems([]);
   }, []);
 
-  const data: DashboardData = {
-    ticker: tickerItems,
-    dailyPick: aiDailyPick,
-    revenue: revenueData,
-    alerts,
-    niches: nicheCards,
-    suppliers: supplierStatuses,
-    mission: dailyMission,
-    heatmap: heatmapCategories,
-    trending: trendingProducts,
-    tasks: gettingStartedTasks,
-    actions: quickActions,
-    compareItems,
-    briefing: aiBriefing,
-    pulse: marketPulseCards,
-    actionStats: quickActionStats,
-  };
-
   return {
-    data,
+    data: { ...data, alerts, compareItems },
+    loading,
     markAlertRead,
     markAllAlertsRead,
     addToCompare,

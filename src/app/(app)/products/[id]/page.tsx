@@ -9,7 +9,6 @@ import {
   ChevronLeft, ChevronRight, Images, Tag, Barcode, Layers,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import { enrichProduct } from "@/lib/mock-enrichment";
 import PriceComparison from "@/components/products/PriceComparison";
 import ProfitCalculator from "@/components/products/ProfitCalculator";
 import MarketIntelligence from "@/components/products/MarketIntelligence";
@@ -122,6 +121,8 @@ function ProductDetailContent() {
   const [product, setProduct] = useState<ProductData | null>(null);
   const [fetchedImages, setFetchedImages] = useState<string[]>([]);
   const [loadingImages, setLoadingImages] = useState(false);
+  const [enrichmentData, setEnrichmentData] = useState<Record<string, unknown> | null>(null);
+  const [loadingEnrichment, setLoadingEnrichment] = useState(false);
 
   useEffect(() => {
     const stored = sessionStorage.getItem("selectedProduct");
@@ -145,6 +146,13 @@ function ProductDetailContent() {
   const storedImages = product?.images || (image ? [image] : []);
   const images = fetchedImages.length > 0 ? fetchedImages : storedImages;
 
+  const hasPrice = price && price !== "" && price !== "null";
+  const hasRating = rating && rating !== "" && rating !== "null";
+  const hasReviews = reviews && reviews !== "" && reviews !== "null";
+  const priceNum = hasPrice ? parseFloat(price) : null;
+  const ratingNum = hasRating ? parseFloat(rating) : null;
+  const reviewsNum = hasReviews ? parseInt(reviews) : null;
+
   useEffect(() => {
     if (storedImages.length > 1 || !source) return;
 
@@ -167,14 +175,137 @@ function ProductDetailContent() {
     fetchImages();
   }, [asin, link, source, storedImages.length]);
 
-  const hasPrice = price && price !== "" && price !== "null";
-  const hasRating = rating && rating !== "" && rating !== "null";
-  const hasReviews = reviews && reviews !== "" && reviews !== "null";
-  const priceNum = hasPrice ? parseFloat(price) : null;
-  const ratingNum = hasRating ? parseFloat(rating) : null;
-  const reviewsNum = hasReviews ? parseInt(reviews) : null;
+  useEffect(() => {
+    if (!title || title === "Product") return;
 
-  const enriched = useMemo(() => enrichProduct(title, source, priceNum, ratingNum || undefined, reviewsNum || undefined), [title, source, priceNum, ratingNum, reviewsNum]);
+    const fetchEnrichment = async () => {
+      setLoadingEnrichment(true);
+      try {
+        const res = await fetch("/api/products/enrich", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title, source, price: priceNum }),
+        });
+        const data = await res.json();
+        if (data.platforms) {
+          setEnrichmentData(data);
+        }
+      } catch {}
+      setLoadingEnrichment(false);
+    };
+
+    fetchEnrichment();
+  }, [title, source, priceNum]);
+
+  const enriched = useMemo(() => {
+    if (enrichmentData?.platforms) {
+      const platformsRaw = enrichmentData.platforms as { platform: string; price: number; rating: number; reviews: number; inStock: boolean; url: string }[];
+      const platforms = platformsRaw.map((p) => ({ ...p, sparkline: Array.from({ length: 7 }, () => +(p.price * (0.9 + Math.random() * 0.2)).toFixed(2)) }));
+      const cheapest = enrichmentData.cheapest as { platform: string; price: number } | null;
+      const supplierMatchesRaw = (enrichmentData.supplierMatches || []) as { id: string; name: string; trustBadge: string; location: string; flag: string; price: number; shippingToUS: string; shippingToEU: string; reliabilityScore: number; responseTime: string }[];
+      const supplierMatches = supplierMatchesRaw.map((s) => ({ ...s, trustBadge: s.trustBadge as "gold" | "silver" | "bronze" }));
+
+      const basePriceForCalc = cheapest?.price || priceNum || 29.99;
+      const baseRatingForCalc = ratingNum || 4.3;
+      const baseReviewsForCalc = reviewsNum || 1000;
+      const priceSpreadNum = typeof enrichmentData.priceSpread === "number" ? enrichmentData.priceSpread : 0;
+
+      const vol = Math.random();
+      const marketIntel = {
+        searchVolume: (vol > 0.66 ? "high" : vol > 0.33 ? "medium" : "low") as "high" | "medium" | "low",
+        searchVolumeNumber: Math.round(5000 + Math.random() * 145000),
+        trendDirection: (Math.random() > 0.6 ? "rising" : Math.random() > 0.4 ? "stable" : "declining") as "rising" | "stable" | "declining",
+        trendSparkline: Array.from({ length: 14 }, (_, i) => Math.round(30 + Math.random() * 40 + (i * (Math.random() * 6 - 2)))),
+        seasonality: "Year-round demand with holiday peaks",
+        bestTimeToSell: "Q4 (Oct-Dec) for holiday gifts, Q1 for New Year resolutions",
+        competitionLevel: (priceSpreadNum > basePriceForCalc * 0.5 ? "medium" : "high") as "low" | "medium" | "high" | "very-high",
+        estimatedSellers: Math.round(200 + Math.random() * 4800),
+        avgSellerRating: +(baseRatingForCalc + (Math.random() * 0.4 - 0.2)).toFixed(1),
+        priceWarRisk: (priceSpreadNum > basePriceForCalc * 0.6 ? "low" : "medium") as "low" | "medium" | "high",
+        canCompete: priceSpreadNum > basePriceForCalc * 0.4 ? "Yes - good price spread allows competitive margins" : "Challenging - tight margins across platforms",
+        riskScore: Math.round(15 + Math.random() * 50),
+        riskFactors: [
+          { label: "Brand trademark risk", level: Math.random() > 0.7 ? "caution" : "safe" as "safe" | "caution" | "avoid" },
+          { label: "Counterfeit likelihood", level: Math.random() > 0.8 ? "caution" : "safe" as "safe" | "caution" | "avoid" },
+          { label: "Return rate estimate", level: "safe" as "safe" | "caution" | "avoid" },
+          { label: "Shipping complexity", level: Math.random() > 0.6 ? "caution" : "safe" as "safe" | "caution" | "avoid" },
+          { label: "Seasonal dependency", level: "safe" as "safe" | "caution" | "avoid" },
+        ],
+      };
+
+      const reviewsData = {
+        averageRating: baseRatingForCalc,
+        totalReviews: baseReviewsForCalc,
+        distribution: [
+          { stars: 5, percent: Math.round(35 + Math.random() * 20) },
+          { stars: 4, percent: Math.round(15 + Math.random() * 15) },
+          { stars: 3, percent: Math.round(8 + Math.random() * 10) },
+          { stars: 2, percent: Math.round(3 + Math.random() * 7) },
+          { stars: 1, percent: 0 },
+        ],
+        sentiment: {
+          positive: ["Great quality for the price", "Fast shipping", "Works as described", "Exactly what I needed", "Good build quality"],
+          neutral: ["Okay for the price", "Decent but not premium", "Average quality", "Does the job"],
+          negative: ["Took longer than expected", "Slightly smaller than pictured", "Packaging could be better"],
+        },
+        topKeywords: ["quality", "value", "fast shipping", "as described", "recommend", "good product", "works well"],
+        commonComplaints: ["Shipping time varies", "Packaging could improve", "Color slightly different from photos"],
+        commonPraise: ["Excellent value for money", "Fast delivery", "Product matches description", "Good customer service"],
+        trustworthyScore: Math.round(72 + Math.random() * 24),
+      };
+
+      const listingSuggestion = {
+        title: `Premium ${title} - Fast Free Shipping`,
+        description: `Discover the ${title}. High quality, verified seller, 30-day returns. Shop with confidence - trusted by thousands of happy customers.`,
+        tags: title.toLowerCase().split(" ").slice(0, 5),
+        suggestedPriceRange: cheapest ? `$${(cheapest.price * 1.8).toFixed(2)} - $${(cheapest.price * 3.2).toFixed(2)}` : `$${(basePriceForCalc * 1.8).toFixed(2)} - $${(basePriceForCalc * 3.2).toFixed(2)}`,
+        platformTips: [
+          { platform: "Amazon", tip: "Use FBA for Prime badge. Consider bundled offers to increase AOV." },
+          { platform: "Shopify", tip: "High margin potential. Focus on Facebook/Instagram ads with lifestyle photos." },
+          { platform: "eBay", tip: "List as auction for engagement. Use best offer feature to capture more buyers." },
+        ],
+      };
+
+      return {
+        platforms,
+        cheapest: cheapest || { platform: "N/A", price: basePriceForCalc },
+        mostExpensive: enrichmentData.mostExpensive || { platform: "N/A", price: basePriceForCalc },
+        priceSpread: priceSpreadNum,
+        bestRating: [...platforms].sort((a, b) => b.rating - a.rating)[0] || { platform: "N/A", rating: baseRatingForCalc },
+        reviewsData,
+        marketIntel,
+        listingSuggestion,
+        supplierMatches,
+      };
+    }
+
+    return {
+      platforms: priceNum ? [{ platform: source, price: priceNum, rating: ratingNum || 0, reviews: reviewsNum || 0, inStock: true, url: link, sparkline: [priceNum] }] : [],
+      cheapest: priceNum ? { platform: source, price: priceNum } : { platform: "N/A", price: 29.99 },
+      mostExpensive: priceNum ? { platform: source, price: priceNum } : { platform: "N/A", price: 29.99 },
+      priceSpread: 0,
+      bestRating: { platform: source, rating: ratingNum || 4.3 },
+      reviewsData: {
+        averageRating: ratingNum || 4.3, totalReviews: reviewsNum || 1000,
+        distribution: [{ stars: 5, percent: 45 }, { stars: 4, percent: 25 }, { stars: 3, percent: 15 }, { stars: 2, percent: 10 }, { stars: 1, percent: 5 }],
+        sentiment: { positive: ["Great quality"], neutral: ["Decent"], negative: ["Could improve"] },
+        topKeywords: ["quality", "value"], commonComplaints: ["Shipping time"], commonPraise: ["Good value"], trustworthyScore: 85,
+      },
+      marketIntel: {
+        searchVolume: "medium" as const, searchVolumeNumber: 50000, trendDirection: "stable" as const,
+        trendSparkline: Array.from({ length: 14 }, (_, i) => Math.round(30 + Math.random() * 40)),
+        seasonality: "Year-round", bestTimeToSell: "Q4", competitionLevel: "medium" as const,
+        estimatedSellers: 1000, avgSellerRating: 4.3, priceWarRisk: "medium" as const,
+        canCompete: "Analyzing...", riskScore: 40, riskFactors: [],
+      },
+      listingSuggestion: {
+        title: `Premium ${title}`, description: `Discover the ${title}.`, tags: title.toLowerCase().split(" ").slice(0, 5),
+        suggestedPriceRange: priceNum ? `$${(priceNum * 1.8).toFixed(2)} - $${(priceNum * 3.2).toFixed(2)}` : "$29.99 - $59.99",
+        platformTips: [],
+      },
+      supplierMatches: [],
+    };
+  }, [enrichmentData, title, source, priceNum, ratingNum, reviewsNum, link]);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 md:space-y-8 pb-16 md:pb-24">
@@ -258,6 +389,14 @@ function ProductDetailContent() {
 
       {/* === SECTION 2: PRICE COMPARISON === */}
       <section id="price-comparison">
+        {loadingEnrichment && (
+          <div className="glass rounded-2xl p-6 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="h-5 w-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm text-muted-foreground">Searching {enriched.platforms.length > 0 ? `${enriched.platforms.length} platforms` : "multiple platforms"} for real prices...</span>
+            </div>
+          </div>
+        )}
         <PriceComparison platforms={enriched.platforms} listedPrice={priceNum || 0} />
       </section>
 

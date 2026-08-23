@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Target, Search, Flame, BarChart3, TrendingUp, ArrowRight } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Target, Search, Flame, BarChart3, TrendingUp, RefreshCw } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import { allNiches, searchNiches, type NicheData } from "@/lib/mock-niches";
+import type { NicheData } from "@/lib/mock-niches";
 import NicheHeatmapCard from "@/components/niches/NicheHeatmapCard";
 import NicheListItem from "@/components/niches/NicheListItem";
 import NicheDetail from "@/components/niches/NicheDetail";
@@ -20,14 +20,39 @@ type SortKey = typeof sortOptions[number]["value"];
 
 export default function NichesPage() {
   const { ref: heroRef, isInView: heroVisible } = useInView({ threshold: 0.1 });
+  const [niches, setNiches] = useState<NicheData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("heat");
   const [selectedNicheId, setSelectedNicheId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
+  const fetchNiches = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/niches");
+      const data = await res.json();
+      if (data.niches) {
+        setNiches(data.niches);
+      } else if (data.error) {
+        setError(data.error);
+      }
+    } catch {
+      setError("Failed to load niche data");
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchNiches();
+  }, []);
+
   const filteredNiches = useMemo(() => {
-    let list = searchQuery ? searchNiches(searchQuery) : [...allNiches];
+    let list = query
+      ? niches.filter((n) => n.name.toLowerCase().includes(query.toLowerCase()) || n.keywords.some((k) => k.toLowerCase().includes(query.toLowerCase())))
+      : [...niches];
     switch (sortBy) {
       case "score": list.sort((a, b) => b.overallScore - a.overallScore); break;
       case "growth": list.sort((a, b) => b.growth - a.growth); break;
@@ -35,21 +60,19 @@ export default function NichesPage() {
       default: list.sort((a, b) => b.heat - a.heat);
     }
     return list;
-  }, [sortBy, searchQuery]);
+  }, [sortBy, query, niches]);
 
-  const selectedNiche = selectedNicheId ? allNiches.find((n) => n.id === selectedNicheId) : null;
+  const selectedNiche = selectedNicheId ? niches.find((n) => n.id === selectedNicheId) : null;
 
   return (
     <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 pb-16 md:pb-24">
-      {/* Hero */}
       <div ref={heroRef} className={`transition-all duration-700 ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
         <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
           <Target className="h-7 w-7 text-accent" /> Niche Explorer
         </h1>
-        <p className="text-muted-foreground text-sm">Discover trending niches, analyze competition, and find winning products.</p>
+        <p className="text-muted-foreground text-sm">Discover trending niches from real CJ Dropshipping data, analyze competition, and find winning products.</p>
       </div>
 
-      {/* Search + Sort */}
       <div className="glass rounded-2xl p-4">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
@@ -57,81 +80,72 @@ export default function NichesPage() {
             <input
               type="text"
               value={query}
-              onChange={(e) => { setQuery(e.target.value); setSearchQuery(e.target.value); }}
-              onKeyDown={(e) => { if (e.key === "Enter") setSearchQuery(query); }}
-              placeholder="Search niches by name, category, or keyword..."
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search niches..."
               className="w-full pl-11 pr-4 py-3 rounded-xl bg-surface border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 text-sm"
             />
           </div>
-          <div className="flex gap-2 overflow-x-auto items-center" style={{ scrollbarWidth: "none" }}>
-            {sortOptions.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setSortBy(opt.value)}
-                className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs font-medium whitespace-nowrap transition-all min-h-[36px] ${sortBy === opt.value ? "bg-accent/10 border-accent/20 text-accent" : "bg-surface border-border text-muted-foreground hover:text-foreground"}`}
-              >
-                <opt.icon className="h-3.5 w-3.5" /> {opt.label}
-              </button>
-            ))}
+          <div className="flex gap-2 items-center flex-wrap">
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortKey)} className="px-4 py-3 rounded-xl bg-surface border border-border text-sm text-foreground min-h-[44px]">
+              {sortOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
             <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
+            <button onClick={fetchNiches} disabled={loading} className="px-4 py-3 rounded-xl bg-surface border border-border text-sm text-muted-foreground hover:text-foreground transition-all min-h-[44px] flex items-center gap-2">
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Stats Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: "Total Niches", value: allNiches.length, color: "text-accent" },
-          { label: "Hot Niches (80+)", value: allNiches.filter((n) => n.heat >= 80).length, color: "text-red-400" },
-          { label: "Avg Margin", value: `${Math.round(allNiches.reduce((a, n) => a + n.avgMargin, 0) / allNiches.length)}%`, color: "text-emerald-400" },
-          { label: "Rising Trends", value: allNiches.filter((n) => n.trend === "up").length, color: "text-blue-400" },
-        ].map((stat) => (
-          <div key={stat.label} className="glass rounded-xl p-3 sm:p-4 border border-border text-center">
-            <p className={`font-display text-lg sm:text-xl font-bold ${stat.color}`}>{stat.value}</p>
-            <p className="text-[10px] text-muted-foreground uppercase">{stat.label}</p>
-          </div>
-        ))}
-      </div>
+      {loading && (
+        <div className="glass rounded-2xl p-12 text-center">
+          <div className="h-10 w-10 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm text-muted-foreground">Analyzing CJ Dropshipping categories...</p>
+        </div>
+      )}
 
-      <div className="flex gap-6">
-        {/* Niche Grid or Detail */}
-        <div className="flex-1">
-          {selectedNiche ? (
-            <div>
-              <button onClick={() => setSelectedNicheId(null)} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4">
-                <ArrowRight className="h-4 w-4 rotate-180" /> Back to All Niches
-              </button>
-              <NicheDetail niche={selectedNiche} />
+      {error && !loading && (
+        <div className="glass rounded-2xl p-8 text-center">
+          <Target className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+          <h3 className="font-display text-lg font-semibold text-foreground mb-2">Failed to load niches</h3>
+          <p className="text-sm text-muted-foreground mb-4">{error}</p>
+          <button onClick={fetchNiches} className="text-sm text-accent hover:text-accent/80">Retry</button>
+        </div>
+      )}
+
+      {!loading && !error && (
+        <>
+          {selectedNiche && (
+            <NicheDetail niche={selectedNiche} />
+          )}
+
+          <p className="text-sm text-muted-foreground">{filteredNiches.length} niches found</p>
+
+          {viewMode === "grid" ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredNiches.map((niche, i) => (
+                <NicheHeatmapCard key={niche.id} niche={niche} index={i} onSelect={(id) => setSelectedNicheId(id)} />
+              ))}
             </div>
           ) : (
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Flame className="h-4 w-4 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">{filteredNiches.length} niches found</p>
-              </div>
-              {filteredNiches.length === 0 ? (
-                <div className="glass rounded-2xl p-8 md:p-16 text-center">
-                  <Target className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-                  <h3 className="font-display text-lg font-semibold text-foreground mb-2">No niches match your search</h3>
-                  <p className="text-sm text-muted-foreground">Try a different keyword or clear your search</p>
-                </div>
-              ) : viewMode === "grid" ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredNiches.map((niche, i) => (
-                    <NicheHeatmapCard key={niche.id} niche={niche} index={i} onSelect={setSelectedNicheId} />
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {filteredNiches.map((niche, i) => (
-                    <NicheListItem key={niche.id} niche={niche} index={i} onSelect={setSelectedNicheId} />
-                  ))}
-                </div>
-              )}
+            <div className="space-y-2">
+              {filteredNiches.map((niche, i) => (
+                <NicheListItem key={niche.id} niche={niche} index={i} onSelect={(id) => setSelectedNicheId(id)} />
+              ))}
             </div>
           )}
-        </div>
-      </div>
+
+          {filteredNiches.length === 0 && (
+            <div className="glass rounded-2xl p-8 text-center">
+              <Target className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+              <h3 className="font-display text-lg font-semibold text-foreground mb-2">No niches found</h3>
+              <p className="text-sm text-muted-foreground">Try a different search term</p>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
