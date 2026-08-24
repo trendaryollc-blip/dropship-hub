@@ -71,12 +71,13 @@ interface NicheCard {
 
 interface SupplierStatus {
   name: string;
-  platform: string;
-  status: "online" | "degraded" | "offline";
-  responseTime: number;
-  successRate: number;
-  productsListed: number;
-  lastChecked: string;
+  trustBadge: "gold" | "silver" | "bronze";
+  responseTime: string;
+  responseLevel: "fast" | "moderate" | "slow";
+  completionRate: number;
+  status: "online" | "busy" | "offline";
+  rating: number;
+  location: string;
 }
 
 interface DailyMission {
@@ -469,12 +470,13 @@ export async function GET() {
 
     const supplierStatus: SupplierStatus = {
       name: "CJ Dropshipping",
-      platform: "cj",
-      status: Object.keys(categoryData).length >= 3 ? "online" : "degraded",
-      responseTime: Math.round(800 + Math.random() * 1200),
-      successRate: Number((90 + Math.random() * 9).toFixed(1)),
-      productsListed: totalProducts,
-      lastChecked: new Date().toISOString(),
+      trustBadge: Object.keys(categoryData).length >= 4 ? "gold" : Object.keys(categoryData).length >= 2 ? "silver" : "bronze",
+      responseTime: `${Math.round(800 + Math.random() * 1200)}ms`,
+      responseLevel: Math.random() > 0.5 ? "fast" : "moderate",
+      completionRate: Number((90 + Math.random() * 9).toFixed(1)),
+      status: Object.keys(categoryData).length >= 3 ? "online" : "busy",
+      rating: Number((4 + Math.random()).toFixed(1)),
+      location: "China / Global",
     };
 
     const dailyMissions: DailyMission[] = [
