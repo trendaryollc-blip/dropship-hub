@@ -4,7 +4,24 @@ import { Search, X, Globe, Loader2, SlidersHorizontal, Clock, ChevronDown, Chevr
 
 const platformIcons: Record<string, string> = {
   amazon: "\ud83d\udce6", ebay: "\ud83c\udff7\ufe0f", aliexpress: "\ud83c\udde8\ud83c\uddf3",
-  cj: "\ud83d\ude9a", google_shopping: "\ud83d\udd0d",
+  cj: "\ud83d\ude9a", google_shopping: "\ud83d\udd0d", walmart: "\ud83c\udfea",
+  etsy: "\ud83c\udfa8", temu: "\ud83d\udce8", shein: "\ud83d\udc57",
+  banggood: "\ud83d\udcb0", dhgate: "\ud83d\udce2", alibaba: "\ud83c\udf10",
+};
+
+const platformLabels: Record<string, string> = {
+  amazon: "Amazon",
+  ebay: "Ebay",
+  aliexpress: "Aliexpress",
+  cj: "CJ",
+  google_shopping: "Google Shopping",
+  walmart: "Walmart",
+  etsy: "Etsy",
+  temu: "Temu",
+  shein: "Shein",
+  banggood: "Banggood",
+  dhgate: "DHgate",
+  alibaba: "Alibaba",
 };
 
 export default function SearchHeader({
@@ -35,22 +52,24 @@ export default function SearchHeader({
       </div>
 
       <div className="glass rounded-2xl p-4">
-        <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <span className="text-xs text-muted-foreground mr-2">Platforms:</span>
-          {allPlatforms.map((p) => (
-            <button
-              key={p}
-              onClick={() => togglePlatform(p)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all min-h-[36px] ${
-                selectedPlatforms.includes(p) || selectedPlatforms.length === 0
-                  ? "bg-accent/10 text-accent border border-accent/20"
-                  : "bg-surface border border-border text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <span>{platformIcons[p]}</span>
-              {p === "google_shopping" ? "Google Shopping" : p.charAt(0).toUpperCase() + p.slice(1)}
-            </button>
-          ))}
+        <div className="mb-4">
+          <span className="text-xs text-muted-foreground mb-2 block">Platforms:</span>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+            {allPlatforms.map((p) => (
+              <button
+                key={p}
+                onClick={() => togglePlatform(p)}
+                className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all h-11 ${
+                  selectedPlatforms.includes(p) || selectedPlatforms.length === 0
+                    ? "bg-accent/10 text-accent border border-accent/20"
+                    : "bg-surface border border-border text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <span>{platformIcons[p]}</span>
+                {platformLabels[p] || p}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">

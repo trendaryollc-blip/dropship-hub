@@ -485,7 +485,7 @@ function ProductsContent() {
     }
   }, []);
 
-  const allPlatforms = ["amazon", "ebay", "aliexpress", "cj", "google_shopping"];
+  const allPlatforms = ["amazon", "ebay", "aliexpress", "cj", "google_shopping", "walmart", "etsy", "temu", "shein", "banggood", "dhgate", "alibaba"];
 
   const togglePlatform = (p: string) => {
     setSelectedPlatforms((prev) =>
