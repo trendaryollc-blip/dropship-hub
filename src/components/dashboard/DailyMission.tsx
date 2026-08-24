@@ -62,7 +62,7 @@ export default function DailyMission({ mission }: { mission: DailyMissionType })
     <div ref={ref} className={`glass rounded-2xl p-5 transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
       {/* Top row: Ring + Title + CTA */}
       <div className="flex items-center gap-4 mb-4">
-        <Link href="/health" className="relative w-14 h-14 shrink-0 hover:opacity-80 transition-opacity">
+        <Link href="/missions" className="relative w-14 h-14 shrink-0 hover:opacity-80 transition-opacity">
           <ProgressRing progress={challengeProgress} />
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <Flame className="h-3.5 w-3.5 text-amber-400" />
@@ -75,7 +75,7 @@ export default function DailyMission({ mission }: { mission: DailyMissionType })
             <Trophy className="h-3.5 w-3.5 text-amber-400" />
             <h3 className="font-display text-sm font-semibold text-foreground">Daily Mission</h3>
           </div>
-          <Link href="/products" className="text-xs text-muted-foreground leading-snug line-clamp-2 hover:text-foreground transition-colors">
+          <Link href="/missions" className="text-xs text-muted-foreground leading-snug line-clamp-2 hover:text-foreground transition-colors">
             {mission.challenge}
           </Link>
           <div className="flex items-center gap-1.5 mt-1">
@@ -84,7 +84,7 @@ export default function DailyMission({ mission }: { mission: DailyMissionType })
           </div>
         </div>
 
-        <Link href="/products" className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent/10 border border-accent/20 text-accent text-xs font-semibold hover:bg-accent/20 transition-all shrink-0">
+        <Link href="/missions" className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent/10 border border-accent/20 text-accent text-xs font-semibold hover:bg-accent/20 transition-all shrink-0">
           Continue
           <ChevronRight className="h-3.5 w-3.5" />
         </Link>
@@ -131,7 +131,7 @@ export default function DailyMission({ mission }: { mission: DailyMissionType })
               style={{ width: `${challengeProgress}%` }}
             />
           </div>
-          <Link href="/health" className="flex items-center justify-between mb-1 hover:opacity-80 transition-opacity">
+          <Link href="/missions" className="flex items-center justify-between mb-1 hover:opacity-80 transition-opacity">
             <span className="text-[10px] text-muted-foreground">Lv.{mission.level}</span>
             <span className="text-[10px] text-muted-foreground">
               {mission.currentXP.toLocaleString()}/{mission.nextLevelXP.toLocaleString()} XP
@@ -200,7 +200,7 @@ export default function DailyMission({ mission }: { mission: DailyMissionType })
                   </div>
                   {!badge.earned && (
                     <Link
-                      href="/products"
+                      href="/missions"
                       onClick={() => setSelectedBadge(null)}
                       className="flex items-center justify-center gap-1.5 w-full py-2 rounded-xl bg-accent/10 border border-accent/20 text-accent text-xs font-semibold hover:bg-accent/20 transition-all"
                     >

@@ -19,6 +19,7 @@ import {
   Globe,
   X,
   DollarSign,
+  Trophy,
 } from "lucide-react";
 
 const navItems = [
@@ -80,6 +81,12 @@ const navItems = [
     label: "My Store",
     href: "/store",
     icon: Store,
+    section: "manage",
+  },
+  {
+    label: "Missions",
+    href: "/missions",
+    icon: Trophy,
     section: "manage",
   },
   {
