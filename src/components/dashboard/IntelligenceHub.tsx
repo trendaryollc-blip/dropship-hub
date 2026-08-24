@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  Brain, TrendingUp, TrendingDown, AlertTriangle, Info, AlertOctagon,
+  Brain, TrendingUp, AlertTriangle, Info, AlertOctagon,
   CheckCheck, ArrowUpRight, Sparkles, Activity, ChevronDown, ChevronUp,
-  Flame, Truck, Target, Zap, Search, DollarSign,
+  Flame, Truck, Target, Zap, Search, DollarSign, Eye, Globe,
+  BarChart3, RefreshCw, Package,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { SmartAlert, AIBriefing, MarketPulseCard, QuickActionStat } from "@/lib/mock-dashboard";
@@ -87,8 +88,10 @@ function TypingBriefing({ insights }: { insights: string[] }) {
     if (!del && text === cur) {
       t = setTimeout(() => setDel(true), 3000);
     } else if (del && text === "") {
-      setDel(false);
-      setIdx((p) => (p + 1) % insights.length);
+      t = setTimeout(() => {
+        setDel(false);
+        setIdx((p) => (p + 1) % insights.length);
+      }, 0);
     } else {
       t = setTimeout(() => {
         setText(del ? cur.substring(0, text.length - 1) : cur.substring(0, text.length + 1));
@@ -105,46 +108,244 @@ function TypingBriefing({ insights }: { insights: string[] }) {
   );
 }
 
-function AIBriefingStrip({ briefing }: { briefing: AIBriefing }) {
-  const { ref, isInView } = useInView({ threshold: 0.2 });
+// ─── Market Signal Data ──────────────────────────────────────────────────────
+
+interface MarketSignal {
+  id: string;
+  type: "opportunity" | "risk" | "trend" | "action";
+  title: string;
+  detail: string;
+  metric: string;
+  metricLabel: string;
+  icon: typeof TrendingUp;
+  color: string;
+  bg: string;
+  sparkline: number[];
+  time: string;
+}
+
+const marketSignals: MarketSignal[] = [
+  { id: "s1", type: "opportunity", title: "Pet GPS Collar — Price Drop", detail: "Source price dropped 27% to $4.20. Historical low detected.", metric: "$4.20", metricLabel: "Source price", icon: DollarSign, color: "text-emerald-400", bg: "bg-emerald-400/10", sparkline: [5.80, 5.60, 5.20, 4.80, 4.50, 4.30, 4.20], time: "2m ago" },
+  { id: "s2", type: "trend", title: "Fitness Niche — Search Surge", detail: "Search volume +34% this week. January rush starting early.", metric: "+34%", metricLabel: "Search volume", icon: TrendingUp, color: "text-blue-400", bg: "bg-blue-400/10", sparkline: [45, 50, 55, 60, 68, 75, 79], time: "15m ago" },
+  { id: "s3", type: "risk", title: "Supplier Delay — CJ Direct", detail: "Response time increased to 8+ hours. Consider backup supplier.", metric: "8h+", metricLabel: "Response time", icon: AlertTriangle, color: "text-red-400", bg: "bg-red-400/10", sparkline: [4, 4, 5, 6, 7, 8, 8], time: "1h ago" },
+  { id: "s4", type: "action", title: "LED Strips — Competitor Alert", detail: "3 new sellers at $14.99 (below your $19.99). Monitor closely.", metric: "3", metricLabel: "New sellers", icon: Eye, color: "text-amber-400", bg: "bg-amber-400/10", sparkline: [0, 0, 1, 1, 2, 2, 3], time: "3h ago" },
+];
+
+interface ScanStat {
+  label: string;
+  value: string;
+  change: string;
+  up: boolean;
+  icon: typeof Package;
+  color: string;
+}
+
+const scanStats: ScanStat[] = [
+  { label: "Categories Scanned", value: "5", change: "All active", up: true, icon: Globe, color: "text-blue-400" },
+  { label: "Products Analyzed", value: "847", change: "+12% today", up: true, icon: Package, color: "text-emerald-400" },
+  { label: "Price Changes", value: "12", change: "8 down, 4 up", up: false, icon: BarChart3, color: "text-amber-400" },
+  { label: "Niches Tracked", value: "8", change: "2 heating up", up: true, icon: Target, color: "text-purple-400" },
+];
+
+interface AIAction {
+  action: string;
+  time: string;
+  icon: typeof Sparkles;
+  color: string;
+}
+
+const recentActions: AIAction[] = [
+  { action: "Scanned 847 products across 5 categories", time: "12 min ago", icon: Search, color: "text-blue-400" },
+  { action: "Detected price drop on Posture Corrector ($5.80 → $4.20)", time: "18 min ago", icon: DollarSign, color: "text-emerald-400" },
+  { action: "Identified fitness niche trend (+34% search volume)", time: "25 min ago", icon: TrendingUp, color: "text-purple-400" },
+  { action: "Flagged supplier response time increase (CJ Direct)", time: "1h ago", icon: AlertTriangle, color: "text-amber-400" },
+  { action: "Analyzed competitor pricing for LED Strips category", time: "2h ago", icon: Eye, color: "text-red-400" },
+];
+
+// ─── AI Monitoring Panel (replaces AIBriefingStrip) ─────────────────────────
+
+function AIMonitoringPanel({ briefing }: { briefing: AIBriefing }) {
+  const { ref, isInView } = useInView({ threshold: 0.1 });
+  const [expandedActions, setExpandedActions] = useState(false);
+
   return (
-    <div ref={ref} className={`glass rounded-2xl p-4 transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
-      <div className="flex flex-col md:flex-row md:items-center gap-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-accent/20 border border-accent/30">
-              <Brain className="h-3.5 w-3.5 text-accent" />
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+    <div ref={ref} className={`glass rounded-2xl overflow-hidden transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+      {/* Header */}
+      <div className="p-4 sm:p-5 border-b border-border/50">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-accent/20 border border-accent/30">
+              <Brain className="h-5 w-5 text-accent" />
+              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse border-2 border-background" />
             </div>
-            <span className="text-xs font-semibold text-foreground">AI is monitoring</span>
-            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-              <Activity className="h-2.5 w-2.5 text-emerald-400" /> Live
-            </span>
-            <span className="text-[10px] text-muted-foreground/60 ml-auto hidden sm:block">Last scan: {briefing.lastScan}</span>
+            <div>
+              <h3 className="font-display text-sm sm:text-base font-bold text-foreground">AI Market Intelligence</h3>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="flex items-center gap-1 text-[10px] text-emerald-400">
+                  <Activity className="h-2.5 w-2.5" /> Live Scanning
+                </span>
+                <span className="text-[10px] text-muted-foreground/60">•</span>
+                <span className="text-[10px] text-muted-foreground/60">Last scan: {briefing.lastScan}</span>
+              </div>
+            </div>
           </div>
-          <div className="h-5 overflow-hidden">
-            <TypingBriefing insights={briefing.insights} />
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border">
+              <RefreshCw className="h-3 w-3 text-muted-foreground animate-spin" style={{ animationDuration: "3s" }} />
+              <span className="text-[10px] font-semibold text-muted-foreground">Scanning...</span>
+            </div>
           </div>
         </div>
-        <div className="hidden md:block w-px h-14 bg-border shrink-0" />
-        <div className="shrink-0"><SentimentGauge value={briefing.sentiment} label={briefing.sentimentLabel} /></div>
-        <div className="hidden md:block w-px h-14 bg-border shrink-0" />
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-400/10 border border-emerald-400/20">
-            <TrendingUp className="h-3 w-3 text-emerald-400" />
-            <span className="text-[11px] font-semibold text-emerald-400">{briefing.opportunities}</span>
-            <span className="text-[10px] text-emerald-400/70 hidden sm:inline">opps</span>
+      </div>
+
+      {/* Main Content: Two columns on desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
+        {/* Left: Insights + Gauge + Confidence */}
+        <div className="lg:col-span-2 p-4 sm:p-5 border-b lg:border-b-0 lg:border-r border-border/50">
+          {/* Typing Insight */}
+          <div className="mb-4 p-3 rounded-xl bg-surface/50 border border-border/50">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Sparkles className="h-3 w-3 text-accent" />
+              <span className="text-[10px] font-semibold text-accent uppercase tracking-wider">Latest Insight</span>
+            </div>
+            <div className="h-5 overflow-hidden">
+              <TypingBriefing insights={briefing.insights} />
+            </div>
           </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-400/10 border border-red-400/20">
-            <AlertTriangle className="h-3 w-3 text-red-400" />
-            <span className="text-[11px] font-semibold text-red-400">{briefing.risks}</span>
-            <span className="text-[10px] text-red-400/70 hidden sm:inline">risks</span>
+
+          {/* Sentiment + Confidence row */}
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="p-3 rounded-xl bg-surface/50 border border-border/50 flex flex-col items-center">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Market Sentiment</span>
+              <SentimentGauge value={briefing.sentiment} label={briefing.sentimentLabel} />
+            </div>
+            <div className="p-3 rounded-xl bg-surface/50 border border-border/50 flex flex-col items-center">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">AI Confidence</span>
+              <div className="relative w-[90px] h-[50px] flex items-end justify-center">
+                <div className="flex items-end gap-1.5 h-full">
+                  {[65, 78, 82, 91, 88, 94, 89].map((v, i) => (
+                    <div key={i} className="flex flex-col items-center gap-0.5">
+                      <div
+                        className="w-3 sm:w-4 rounded-t-sm bg-gradient-to-t from-accent/40 to-accent transition-all duration-700"
+                        style={{ height: `${(v / 100) * 40}px`, transitionDelay: `${i * 100}ms` }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <span className="text-lg font-bold text-foreground mt-1">89%</span>
+              <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">High</span>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-400/10 border border-blue-400/20">
-            <Zap className="h-3 w-3 text-blue-400" />
-            <span className="text-[11px] font-semibold text-blue-400">{briefing.trends}</span>
-            <span className="text-[10px] text-blue-400/70 hidden sm:inline">trends</span>
+
+          {/* Stat Badges */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-400/10 border border-emerald-400/20">
+              <TrendingUp className="h-3 w-3 text-emerald-400" />
+              <span className="text-[11px] font-semibold text-emerald-400">{briefing.opportunities}</span>
+              <span className="text-[10px] text-emerald-400/70">opportunities</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-400/10 border border-red-400/20">
+              <AlertTriangle className="h-3 w-3 text-red-400" />
+              <span className="text-[11px] font-semibold text-red-400">{briefing.risks}</span>
+              <span className="text-[10px] text-red-400/70">risks</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-400/10 border border-blue-400/20">
+              <Zap className="h-3 w-3 text-blue-400" />
+              <span className="text-[11px] font-semibold text-blue-400">{briefing.trends}</span>
+              <span className="text-[10px] text-blue-400/70">trends</span>
+            </div>
           </div>
+        </div>
+
+        {/* Right: Scan Stats + Recent Actions */}
+        <div className="p-4 sm:p-5">
+          {/* Scan Stats */}
+          <div className="mb-4">
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">This Scan</span>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              {scanStats.map((stat) => {
+                const Icon = stat.icon;
+                return (
+                  <div key={stat.label} className="p-2.5 rounded-lg bg-surface/50 border border-border/50">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Icon className={`h-3 w-3 ${stat.color}`} />
+                      <span className="text-[9px] text-muted-foreground">{stat.label}</span>
+                    </div>
+                    <p className="font-display text-base font-bold text-foreground">{stat.value}</p>
+                    <p className="text-[9px] text-muted-foreground/70">{stat.change}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Recent AI Actions */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">AI Activity Log</span>
+              <button
+                onClick={() => setExpandedActions(!expandedActions)}
+                className="text-[10px] text-accent hover:text-accent-hover transition-colors flex items-center gap-0.5"
+              >
+                {expandedActions ? "Less" : "All"}
+                {expandedActions ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />}
+              </button>
+            </div>
+            <div className="space-y-1.5">
+              {(expandedActions ? recentActions : recentActions.slice(0, 3)).map((item, i) => {
+                const Icon = item.icon;
+                return (
+                  <div key={i} className="flex items-start gap-2 p-2 rounded-lg hover:bg-surface/50 transition-colors">
+                    <div className={`flex h-5 w-5 items-center justify-center rounded shrink-0 mt-0.5 ${item.color.replace("text-", "bg-")}/10`}>
+                      <Icon className={`h-2.5 w-2.5 ${item.color}`} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-muted-foreground leading-relaxed">{item.action}</p>
+                      <p className="text-[9px] text-muted-foreground/50 mt-0.5">{item.time}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom: Market Signals */}
+      <div className="p-4 sm:p-5 border-t border-border/50">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Activity className="h-3.5 w-3.5 text-accent" />
+            <span className="text-[11px] font-semibold text-foreground">Live Market Signals</span>
+          </div>
+          <span className="flex items-center gap-1 text-[10px] text-emerald-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Real-time
+          </span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+          {marketSignals.map((signal) => {
+            const Icon = signal.icon;
+            return (
+              <div key={signal.id} className={`p-3 rounded-xl border border-border/50 hover:border-accent/20 transition-all cursor-pointer group ${signal.type === "opportunity" ? "bg-emerald-400/5" : signal.type === "risk" ? "bg-red-400/5" : signal.type === "trend" ? "bg-blue-400/5" : "bg-amber-400/5"}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className={`flex h-6 w-6 items-center justify-center rounded-lg ${signal.bg}`}>
+                    <Icon className={`h-3 w-3 ${signal.color}`} />
+                  </div>
+                  <MiniSparkline points={signal.sparkline} color={signal.color} />
+                </div>
+                <p className="text-[11px] font-semibold text-foreground leading-snug mb-1 group-hover:text-accent transition-colors">{signal.title}</p>
+                <p className="text-[9px] text-muted-foreground leading-relaxed mb-2">{signal.detail}</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className={`text-sm font-bold ${signal.color}`}>{signal.metric}</span>
+                    <span className="text-[9px] text-muted-foreground ml-1">{signal.metricLabel}</span>
+                  </div>
+                  <span className="text-[9px] text-muted-foreground/50">{signal.time}</span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -342,7 +543,7 @@ export default function IntelligenceHub({
 }) {
   return (
     <div className="space-y-6">
-      <AIBriefingStrip briefing={briefing} />
+      <AIMonitoringPanel briefing={briefing} />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <LiveIntelligenceFeed alerts={alerts} onRead={onRead} onReadAll={onReadAll} />
