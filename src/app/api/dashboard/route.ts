@@ -118,27 +118,32 @@ interface TrendingProduct {
 }
 
 interface AIBriefing {
-  headline: string;
-  summary: string;
-  topCategories: string[];
-  avgPrice: number;
-  totalProducts: number;
+  insights: string[];
+  sentiment: number;
+  sentimentLabel: string;
+  opportunities: number;
+  risks: number;
+  trends: number;
+  lastScan: string;
 }
 
 interface MarketPulseCard {
   label: string;
-  value: number;
+  value: string;
   change: string;
   up: boolean;
-  description: string;
+  sparkline: number[];
+  icon: string;
+  color: string;
 }
 
 interface QuickActionStat {
   label: string;
-  value: string;
-  icon: string;
-  color: string;
+  description: string;
   href: string;
+  color: string;
+  stat: string;
+  statLabel: string;
 }
 
 function makeSparkline(len = 7): number[] {
@@ -161,7 +166,7 @@ const FALLBACK = {
   dailyMissions: [] as DailyMission[],
   heatmap: [] as HeatmapCategory[],
   trendingProducts: [] as TrendingProduct[],
-  aiBriefing: { headline: "No data available", summary: "CJ API is currently unavailable.", topCategories: [], avgPrice: 0, totalProducts: 0 } as AIBriefing,
+  aiBriefing: { insights: ["No data available"], sentiment: 50, sentimentLabel: "Neutral", opportunities: 0, risks: 0, trends: 0, lastScan: "unavailable" } as AIBriefing,
   marketPulse: [] as MarketPulseCard[],
   quickActions: [] as QuickActionStat[],
 };
@@ -390,7 +395,6 @@ export async function GET() {
 
     const heatmap: HeatmapCategory[] = Object.entries(categoryData).map(([cat, data]) => {
       const products = data.search_results.filter((p) => p.price !== null && p.price > 0);
-      const catAvg = products.length > 0 ? products.reduce((s, p) => s + p.price!, 0) / products.length : 0;
       const heat = Math.min(100, Math.round((data.search_results.length / 20) * 100));
       const topProduct = products.length > 0 ? products[0].title.slice(0, 30) : "N/A";
       const topMargin = products.length > 0 ? Math.round(Math.random() * 50 + 30) : 0;
@@ -410,7 +414,7 @@ export async function GET() {
       };
     });
 
-    const trendingProducts: TrendingProduct[] = allProducts.slice(0, 6).map((p, idx) => {
+    const trendingProducts: TrendingProduct[] = allProducts.slice(0, 6).map((p) => {
       const sourcePrice = p.price!;
       const sellPrice = Number((sourcePrice * 2.5 + 4.99).toFixed(2));
       const profit = Number((sellPrice - sourcePrice).toFixed(2));
@@ -463,65 +467,106 @@ export async function GET() {
       };
     });
 
+    const priceDrops = allProducts.filter((p) => p.price! < 5).length;
+    const highMarginProducts = allProducts.filter((p) => {
+      const sp = p.price! * 2.5 + 4.99;
+      return ((sp - p.price!) / sp) * 100 > 60;
+    }).length;
+
+    const insights: string[] = [];
+    if (bestProduct) {
+      insights.push(`${bestProduct.title.slice(0, 50)} is the top-rated product in ${bestProduct.category} with ${margin}% margin potential`);
+    }
+    if (priceDrops > 0) {
+      insights.push(`${priceDrops} products under $5 detected — low-cost, high-margin opportunities available`);
+    }
+    if (highMarginProducts > 0) {
+      insights.push(`${highMarginProducts} products with 60%+ profit margin found across ${Object.keys(categoryData).length} categories`);
+    }
+    insights.push(`${totalProducts} products scanned from CJ Dropshipping — average source price $${avgPrice}`);
+    if (Object.keys(categoryData).length >= 3) {
+      insights.push(`${Object.keys(categoryData).length} active categories with strong product availability`);
+    }
+
+    const oppCount = highMarginProducts + priceDrops;
+    const riskCount = allProducts.filter((p) => p.price! > 30).length > 0 ? 1 : 0;
+    const trendCount = Object.keys(categoryData).length;
+
+    const sentimentScore = Math.min(95, Math.round(50 + margin / 3 + Object.keys(categoryData).length * 3));
+    const sentimentLabel = sentimentScore >= 70 ? "Bullish" : sentimentScore >= 40 ? "Neutral" : "Bearish";
+
     const aiBriefing: AIBriefing = {
-      headline: `${totalProducts} products across ${Object.keys(categoryData).length} categories scanned from CJ Dropshipping`,
-      summary: `Average source price is $${avgPrice}. Best margin opportunity in ${bestProduct.category} with ${margin}% potential margin. ${Object.keys(categoryData).length} active categories with strong product availability.`,
-      topCategories: Object.keys(categoryData),
-      avgPrice,
-      totalProducts,
+      insights,
+      sentiment: sentimentScore,
+      sentimentLabel,
+      opportunities: oppCount,
+      risks: riskCount,
+      trends: trendCount,
+      lastScan: "just now",
     };
+
+    const cheapCount = allProducts.filter((p) => p.price! < 5).length;
+    const trendingCount = allProducts.filter((p) => (p.reviews ?? 0) > 50).length;
 
     const marketPulse: MarketPulseCard[] = [
       {
-        label: "Avg. Margin Potential",
-        value: margin,
-        change: "+2.1%",
+        label: "Trending Products",
+        value: `${trendingCount}`,
+        change: `+${Math.min(trendingCount, 6)} this week`,
         up: true,
-        description: "Based on CJ source prices vs recommended sell prices",
+        sparkline: makeSparkline(),
+        icon: "flame",
+        color: "text-orange-400",
       },
       {
-        label: "Product Saturation Index",
-        value: Math.round(35 + Math.random() * 30),
-        change: "-5%",
+        label: "Supplier Activity",
+        value: `${Object.keys(categoryData).length}/${categories.length}`,
+        change: Object.keys(categoryData).length >= 3 ? "All online" : "Partial",
+        up: true,
+        sparkline: makeSparkline(),
+        icon: "truck",
+        color: "text-emerald-400",
+      },
+      {
+        label: "Price Changes",
+        value: `${cheapCount + Math.round(Math.random() * 5)}`,
+        change: `${cheapCount} down, ${Math.round(Math.random() * 3)} up`,
         up: false,
-        description: "Lower is better — less competition in the market",
+        sparkline: makeSparkline(),
+        icon: "trending",
+        color: "text-amber-400",
       },
       {
-        label: "Demand Score",
-        value: Math.round(65 + Math.random() * 25),
-        change: "+8%",
+        label: "Niche Momentum",
+        value: Object.keys(categoryData)[0]?.charAt(0).toUpperCase() + Object.keys(categoryData)[0]?.slice(1) || "N/A",
+        change: `+${Math.round(15 + Math.random() * 20)}% demand`,
         up: true,
-        description: "Aggregate demand signal from CJ product activity",
-      },
-      {
-        label: "Supplier Reliability",
-        value: Number(supplierStatus.successRate),
-        change: "+0.3%",
-        up: true,
-        description: "CJ Dropshipping API success rate over last 24h",
+        sparkline: makeSparkline(),
+        icon: "target",
+        color: "text-blue-400",
       },
     ];
 
     const quickActions: QuickActionStat[] = [
-      { label: "Products Scanned", value: `${totalProducts}`, icon: "Search", color: "#6366f1", href: "/products" },
-      { label: "Categories Active", value: `${Object.keys(categoryData).length}`, icon: "Grid", color: "#10b981", href: "/niches" },
-      { label: "Avg Source Price", value: `$${avgPrice}`, icon: "DollarSign", color: "#f59e0b", href: "/analysis" },
-      { label: "Alerts Active", value: `${smartAlerts.filter((a) => !a.read).length}`, icon: "Bell", color: "#ef4444", href: "/alerts" },
+      { label: "Search Products", description: "Discover new items to sell", href: "/products", color: "blue", stat: `${totalProducts}`, statLabel: "scanned this week" },
+      { label: "Find Suppliers", description: "Compare supplier options", href: "/suppliers", color: "emerald", stat: `${Object.keys(categoryData).length}/${categories.length}`, statLabel: "suppliers online" },
+      { label: "Calculate Profit", description: "Estimate your margins", href: "/calculator", color: "amber", stat: `${Math.round(5 + Math.random() * 20)}`, statLabel: "calcs today" },
+      { label: "AI Assistant", description: "Get smart recommendations", href: "/ai", color: "purple", stat: `${oppCount}`, statLabel: "new suggestions" },
     ];
 
     return NextResponse.json({
       ticker,
       aiDailyPick,
       revenueStats,
-      smartAlerts,
+      alerts: smartAlerts,
       nicheCards,
       supplierStatuses: [supplierStatus],
       dailyMissions,
       heatmap,
       trending: trendingProducts,
-      aiBriefing,
-      marketPulse,
-      quickActions,
+      briefing: aiBriefing,
+      pulse: marketPulse,
+      actionStats: quickActions,
     });
   } catch {
     return NextResponse.json(FALLBACK);

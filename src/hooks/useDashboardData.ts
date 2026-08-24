@@ -13,11 +13,37 @@ import {
   trendingProducts as fallbackTrending,
   gettingStartedTasks as fallbackTasks,
   quickActions as fallbackActions,
-  aiBriefing as fallbackBriefing,
-  marketPulseCards as fallbackPulse,
-  quickActionStats as fallbackActionStats,
 } from "@/lib/mock-dashboard";
-import type { TickerItem, AIDailyPick, SmartAlert, NicheCard, SupplierStatus, DailyMission, HeatmapCategory, AIBriefing, MarketPulseCard, QuickActionStat, TrendingProduct } from "@/lib/mock-dashboard";
+import type { TickerItem, AIDailyPick, SmartAlert, NicheCard, SupplierStatus, DailyMission, HeatmapCategory, TrendingProduct } from "@/lib/mock-dashboard";
+
+interface AIBriefing {
+  insights: string[];
+  sentiment: number;
+  sentimentLabel: string;
+  opportunities: number;
+  risks: number;
+  trends: number;
+  lastScan: string;
+}
+
+interface MarketPulseCard {
+  label: string;
+  value: string;
+  change: string;
+  up: boolean;
+  sparkline: number[];
+  icon: string;
+  color: string;
+}
+
+interface QuickActionStat {
+  label: string;
+  description: string;
+  href: string;
+  color: string;
+  stat: string;
+  statLabel: string;
+}
 
 export interface DashboardData {
   ticker: TickerItem[];
@@ -36,6 +62,19 @@ export interface DashboardData {
   pulse: MarketPulseCard[];
   actionStats: QuickActionStat[];
 }
+
+const fallbackBriefing: AIBriefing = {
+  insights: ["Scanning CJ Dropshipping for products..."],
+  sentiment: 50,
+  sentimentLabel: "Neutral",
+  opportunities: 0,
+  risks: 0,
+  trends: 0,
+  lastScan: "loading...",
+};
+
+const fallbackPulse: MarketPulseCard[] = [];
+const fallbackActionStats: QuickActionStat[] = [];
 
 export function useDashboardData() {
   const [data, setData] = useState<DashboardData>({
@@ -66,12 +105,16 @@ export function useDashboardData() {
           setData((prev) => ({
             ...prev,
             ticker: apiData.ticker?.length ? apiData.ticker : prev.ticker,
-            dailyPick: apiData.dailyPick || prev.dailyPick,
-            revenue: apiData.revenue || prev.revenue,
+            dailyPick: apiData.aiDailyPick || prev.dailyPick,
+            revenue: apiData.revenueStats ? {
+              actual: prev.revenue.actual,
+              predicted: prev.revenue.predicted,
+              stats: apiData.revenueStats,
+            } : prev.revenue,
             alerts: apiData.alerts?.length ? apiData.alerts : prev.alerts,
-            niches: apiData.niches?.length ? apiData.niches : prev.niches,
-            suppliers: apiData.suppliers?.length ? apiData.suppliers : prev.suppliers,
-            mission: apiData.mission || prev.mission,
+            niches: apiData.nicheCards?.length ? apiData.nicheCards : prev.niches,
+            suppliers: apiData.supplierStatuses?.length ? apiData.supplierStatuses : prev.suppliers,
+            mission: prev.mission,
             heatmap: apiData.heatmap?.length ? apiData.heatmap : prev.heatmap,
             trending: apiData.trending?.length ? apiData.trending : prev.trending,
             briefing: apiData.briefing || prev.briefing,
@@ -85,19 +128,20 @@ export function useDashboardData() {
     fetchDashboard();
   }, []);
 
-  const [alerts, setAlerts] = useState(data.alerts);
   const [compareItems, setCompareItems] = useState<DashboardData["compareItems"]>([]);
 
-  useEffect(() => {
-    setAlerts(data.alerts);
-  }, [data.alerts]);
-
   const markAlertRead = useCallback((id: string) => {
-    setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, read: true } : a)));
+    setData((prev) => ({
+      ...prev,
+      alerts: prev.alerts.map((a) => (a.id === id ? { ...a, read: true } : a)),
+    }));
   }, []);
 
   const markAllAlertsRead = useCallback(() => {
-    setAlerts((prev) => prev.map((a) => ({ ...a, read: true })));
+    setData((prev) => ({
+      ...prev,
+      alerts: prev.alerts.map((a) => ({ ...a, read: true })),
+    }));
   }, []);
 
   const addToCompare = useCallback((item: { name: string; price: number; margin: number; image: string }) => {
@@ -117,7 +161,7 @@ export function useDashboardData() {
   }, []);
 
   return {
-    data: { ...data, alerts, compareItems },
+    data: { ...data, compareItems },
     loading,
     markAlertRead,
     markAllAlertsRead,

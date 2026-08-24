@@ -5,11 +5,39 @@ import Link from "next/link";
 import {
   Brain, TrendingUp, AlertTriangle, Info, AlertOctagon,
   CheckCheck, ArrowUpRight, Sparkles, Activity, ChevronDown, ChevronUp,
-  Flame, Truck, Target, Zap, Search, DollarSign, Eye, Globe,
-  BarChart3, RefreshCw, Package,
+  Flame, Truck, Target, Zap, Eye, Globe, RefreshCw, Package, Search, DollarSign,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { SmartAlert, AIBriefing, MarketPulseCard, QuickActionStat } from "@/lib/mock-dashboard";
+import type { SmartAlert } from "@/lib/mock-dashboard";
+
+interface AIBriefing {
+  insights: string[];
+  sentiment: number;
+  sentimentLabel: string;
+  opportunities: number;
+  risks: number;
+  trends: number;
+  lastScan: string;
+}
+
+interface MarketPulseCard {
+  label: string;
+  value: string;
+  change: string;
+  up: boolean;
+  sparkline: number[];
+  icon: string;
+  color: string;
+}
+
+interface QuickActionStat {
+  label: string;
+  description: string;
+  href: string;
+  color: string;
+  stat: string;
+  statLabel: string;
+}
 
 const alertConfig = {
   opportunity: { icon: TrendingUp, color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-l-emerald-400" },
@@ -108,65 +136,39 @@ function TypingBriefing({ insights }: { insights: string[] }) {
   );
 }
 
-// ─── Market Signal Data ──────────────────────────────────────────────────────
-
-interface MarketSignal {
-  id: string;
-  type: "opportunity" | "risk" | "trend" | "action";
-  title: string;
-  detail: string;
-  metric: string;
-  metricLabel: string;
-  icon: typeof TrendingUp;
-  color: string;
-  bg: string;
-  sparkline: number[];
-  time: string;
-}
-
-const marketSignals: MarketSignal[] = [
-  { id: "s1", type: "opportunity", title: "Pet GPS Collar — Price Drop", detail: "Source price dropped 27% to $4.20. Historical low detected.", metric: "$4.20", metricLabel: "Source price", icon: DollarSign, color: "text-emerald-400", bg: "bg-emerald-400/10", sparkline: [5.80, 5.60, 5.20, 4.80, 4.50, 4.30, 4.20], time: "2m ago" },
-  { id: "s2", type: "trend", title: "Fitness Niche — Search Surge", detail: "Search volume +34% this week. January rush starting early.", metric: "+34%", metricLabel: "Search volume", icon: TrendingUp, color: "text-blue-400", bg: "bg-blue-400/10", sparkline: [45, 50, 55, 60, 68, 75, 79], time: "15m ago" },
-  { id: "s3", type: "risk", title: "Supplier Delay — CJ Direct", detail: "Response time increased to 8+ hours. Consider backup supplier.", metric: "8h+", metricLabel: "Response time", icon: AlertTriangle, color: "text-red-400", bg: "bg-red-400/10", sparkline: [4, 4, 5, 6, 7, 8, 8], time: "1h ago" },
-  { id: "s4", type: "action", title: "LED Strips — Competitor Alert", detail: "3 new sellers at $14.99 (below your $19.99). Monitor closely.", metric: "3", metricLabel: "New sellers", icon: Eye, color: "text-amber-400", bg: "bg-amber-400/10", sparkline: [0, 0, 1, 1, 2, 2, 3], time: "3h ago" },
-];
-
-interface ScanStat {
-  label: string;
-  value: string;
-  change: string;
-  up: boolean;
-  icon: typeof Package;
-  color: string;
-}
-
-const scanStats: ScanStat[] = [
-  { label: "Categories Scanned", value: "5", change: "All active", up: true, icon: Globe, color: "text-blue-400" },
-  { label: "Products Analyzed", value: "847", change: "+12% today", up: true, icon: Package, color: "text-emerald-400" },
-  { label: "Price Changes", value: "12", change: "8 down, 4 up", up: false, icon: BarChart3, color: "text-amber-400" },
-  { label: "Niches Tracked", value: "8", change: "2 heating up", up: true, icon: Target, color: "text-purple-400" },
-];
-
-interface AIAction {
-  action: string;
-  time: string;
-  icon: typeof Sparkles;
-  color: string;
-}
-
-const recentActions: AIAction[] = [
-  { action: "Scanned 847 products across 5 categories", time: "12 min ago", icon: Search, color: "text-blue-400" },
-  { action: "Detected price drop on Posture Corrector ($5.80 → $4.20)", time: "18 min ago", icon: DollarSign, color: "text-emerald-400" },
-  { action: "Identified fitness niche trend (+34% search volume)", time: "25 min ago", icon: TrendingUp, color: "text-purple-400" },
-  { action: "Flagged supplier response time increase (CJ Direct)", time: "1h ago", icon: AlertTriangle, color: "text-amber-400" },
-  { action: "Analyzed competitor pricing for LED Strips category", time: "2h ago", icon: Eye, color: "text-red-400" },
-];
-
 // ─── AI Monitoring Panel (replaces AIBriefingStrip) ─────────────────────────
 
-function AIMonitoringPanel({ briefing }: { briefing: AIBriefing }) {
+function AIMonitoringPanel({ briefing, alerts }: { briefing: AIBriefing; alerts: SmartAlert[] }) {
   const { ref, isInView } = useInView({ threshold: 0.1 });
   const [expandedActions, setExpandedActions] = useState(false);
+
+  const scanStats = [
+    { label: "Products Scanned", value: `${briefing.trends * 150 + 100}`, change: "across all categories", up: true, icon: Package, color: "text-blue-400" },
+    { label: "Opportunities Found", value: `${briefing.opportunities}`, change: briefing.opportunities > 0 ? "active now" : "none detected", up: briefing.opportunities > 0, icon: Target, color: "text-emerald-400" },
+    { label: "Risks Detected", value: `${briefing.risks}`, change: briefing.risks > 0 ? "needs attention" : "all clear", up: briefing.risks === 0, icon: AlertTriangle, color: "text-red-400" },
+    { label: "Categories Tracked", value: `${briefing.trends}`, change: "active niches", up: true, icon: Globe, color: "text-purple-400" },
+  ];
+
+  const marketSignals = alerts.slice(0, 4).map((alert) => ({
+    id: alert.id,
+    type: alert.type as "opportunity" | "risk" | "trend" | "action",
+    title: alert.title,
+    detail: alert.description.slice(0, 80),
+    metric: alert.confidence > 80 ? `${alert.confidence}%` : `${alert.confidence}`,
+    metricLabel: "confidence",
+    icon: alert.type === "opportunity" ? TrendingUp : alert.type === "risk" ? AlertTriangle : alert.type === "warning" ? Eye : Zap,
+    color: alert.type === "opportunity" ? "text-emerald-400" : alert.type === "risk" ? "text-red-400" : alert.type === "warning" ? "text-amber-400" : "text-blue-400",
+    bg: alert.type === "opportunity" ? "bg-emerald-400/10" : alert.type === "risk" ? "bg-red-400/10" : alert.type === "warning" ? "bg-amber-400/10" : "bg-blue-400/10",
+    sparkline: alert.sparkline,
+    time: alert.timestamp,
+  }));
+
+  const recentActions = alerts.slice(0, 5).map((alert) => ({
+    action: `${alert.title} — ${alert.description.slice(0, 60)}`,
+    time: alert.timestamp,
+    icon: alert.type === "opportunity" ? TrendingUp : alert.type === "risk" ? AlertTriangle : Sparkles,
+    color: alert.type === "opportunity" ? "text-emerald-400" : alert.type === "risk" ? "text-red-400" : "text-blue-400",
+  }));
 
   return (
     <div ref={ref} className={`glass rounded-2xl overflow-hidden transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
@@ -543,7 +545,7 @@ export default function IntelligenceHub({
 }) {
   return (
     <div className="space-y-6">
-      <AIMonitoringPanel briefing={briefing} />
+      <AIMonitoringPanel briefing={briefing} alerts={alerts} />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <LiveIntelligenceFeed alerts={alerts} onRead={onRead} onReadAll={onReadAll} />
