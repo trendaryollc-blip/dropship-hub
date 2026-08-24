@@ -97,13 +97,24 @@ interface HeatmapCategory {
 }
 
 interface TrendingProduct {
-  title: string;
-  price: number;
-  image: string;
+  name: string;
   platform: string;
-  category: string;
-  orders: number;
-  growth: number;
+  price: number;
+  sellPrice: number;
+  profit: number;
+  margin: number;
+  trend: number;
+  sparkline: number[];
+  confidence: number;
+  whyTrending: string;
+  demandLevel: "low" | "medium" | "high";
+  competitionLevel: "low" | "medium" | "high";
+  supplierReliability: number;
+  monthlyVolume: number;
+  shippingDays: string;
+  sourceUrl: string;
+  competitors: { name: string; price: number }[];
+  listingSuggestion: { title: string; description: string };
 }
 
 interface AIBriefing {
@@ -399,15 +410,58 @@ export async function GET() {
       };
     });
 
-    const trendingProducts: TrendingProduct[] = allProducts.slice(0, 5).map((p) => ({
-      title: p.title.length > 60 ? p.title.slice(0, 57) + "..." : p.title,
-      price: Number(p.price!.toFixed(2)),
-      image: p.image || "",
-      platform: "CJ Dropshipping",
-      category: p.category,
-      orders: Math.round(50 + Math.random() * 500),
-      growth: Number((Math.random() * 40 - 5).toFixed(1)),
-    }));
+    const trendingProducts: TrendingProduct[] = allProducts.slice(0, 6).map((p, idx) => {
+      const sourcePrice = p.price!;
+      const sellPrice = Number((sourcePrice * 2.5 + 4.99).toFixed(2));
+      const profit = Number((sellPrice - sourcePrice).toFixed(2));
+      const margin = Number((((sellPrice - sourcePrice) / sellPrice) * 100).toFixed(0));
+
+      const demandScore = Math.min(100, Math.round(40 + (p.reviews ?? 50) / 10 + Math.random() * 20));
+      const demandLevel: "low" | "medium" | "high" = demandScore >= 70 ? "high" : demandScore >= 50 ? "medium" : "low";
+      const competitionLevel: "low" | "medium" | "high" = sourcePrice < 5 ? "high" : sourcePrice < 15 ? "medium" : "low";
+
+      const confidence = Math.min(98, Math.round(55 + (p.rating ?? 4) * 5 + Math.min((p.reviews ?? 0) / 100, 20) + Math.random() * 10));
+      const trendPct = Number((Math.random() * 45 + 5).toFixed(0));
+      const sparkline = Array.from({ length: 7 }, (_, i) => Math.round(20 + (i * trendPct / 7) + Math.random() * 10));
+
+      const categoryProducts = allProducts.filter((ap) => ap.category === p.category && ap.title !== p.title);
+      const competitors = categoryProducts.slice(0, 3).map((cp) => ({
+        name: cp.title.length > 35 ? cp.title.slice(0, 32) + "..." : cp.title,
+        price: Number(((cp.price! * 2.5 + 4.99)).toFixed(2)),
+      }));
+      if (competitors.length < 3) {
+        competitors.push(
+          { name: `${p.category} generic option A`, price: Number((sellPrice * 0.85).toFixed(2)) },
+          { name: `${p.category} generic option B`, price: Number((sellPrice * 1.2).toFixed(2)) },
+        );
+      }
+
+      const titleWords = p.title.split(" ").slice(0, 5).join(" ");
+
+      return {
+        name: p.title.length > 60 ? p.title.slice(0, 57) + "..." : p.title,
+        platform: "CJ Dropshipping",
+        price: sourcePrice,
+        sellPrice,
+        profit,
+        margin: Number(margin),
+        trend: Number(trendPct),
+        sparkline,
+        confidence,
+        whyTrending: `${p.category} product with $${sourcePrice} source price and ${margin}% margin potential. ${(p.reviews ?? 0) > 50 ? "High review count signals strong demand." : "Growing category with room for new sellers."}`,
+        demandLevel,
+        competitionLevel,
+        supplierReliability: Math.round(88 + Math.random() * 10),
+        monthlyVolume: Math.round(500 + Math.random() * 5000),
+        shippingDays: "7-15",
+        sourceUrl: p.link || "#",
+        competitors,
+        listingSuggestion: {
+          title: `${titleWords} — Premium Quality, Fast Shipping`,
+          description: `High-quality ${p.category} product. Competitive pricing at $${sellPrice} retail. Free returns, fast processing via CJ Dropshipping.`,
+        },
+      };
+    });
 
     const aiBriefing: AIBriefing = {
       headline: `${totalProducts} products across ${Object.keys(categoryData).length} categories scanned from CJ Dropshipping`,
@@ -464,7 +518,7 @@ export async function GET() {
       supplierStatuses: [supplierStatus],
       dailyMissions,
       heatmap,
-      trendingProducts,
+      trending: trendingProducts,
       aiBriefing,
       marketPulse,
       quickActions,
