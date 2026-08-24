@@ -254,7 +254,7 @@ export default function AdRoiPage() {
           { id: "platforms" as const, label: "Platform Comparison", icon: BarChart3 },
         ].map((tab) => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${activeTab === tab.id ? "bg-accent text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]" : "bg-surface border border-border text-muted-foreground hover:text-foreground"}`}>
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${activeTab === tab.id ? "bg-accent text-white shadow-[0_0_15px_rgba(var(--glow-color),0.3)]" : "bg-surface border border-border text-muted-foreground hover:text-foreground"}`}>
             <tab.icon className="h-4 w-4" /> {tab.label}
           </button>
         ))}

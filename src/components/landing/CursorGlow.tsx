@@ -5,6 +5,21 @@ import { useEffect, useState } from "react";
 export default function CursorGlow() {
   const [position, setPosition] = useState({ x: -100, y: -100 });
   const [visible, setVisible] = useState(false);
+  const [glowColor, setGlowColor] = useState("59,130,246");
+
+  useEffect(() => {
+    const updateGlowColor = () => {
+      const color = getComputedStyle(document.documentElement).getPropertyValue("--glow-color").trim();
+      if (color) setGlowColor(color);
+    };
+
+    updateGlowColor();
+
+    const observer = new MutationObserver(updateGlowColor);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -38,7 +53,7 @@ export default function CursorGlow() {
           top: position.y - 200,
           width: 400,
           height: 400,
-          background: "radial-gradient(circle, rgba(59,130,246,0.06) 0%, transparent 70%)",
+          background: `radial-gradient(circle, rgba(${glowColor},0.06) 0%, transparent 70%)`,
         }}
       />
     </div>

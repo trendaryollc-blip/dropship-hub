@@ -102,7 +102,7 @@ function ImageGallery({ images, title }: { images: string[]; title: string }) {
         {images.length > 1 && (
           <div className="flex gap-1.5 p-3 overflow-x-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }}>
             {images.map((img, i) => (
-              <button key={i} onClick={() => setActiveIndex(i)} className={`w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden shrink-0 border-2 transition-all ${i === activeIndex ? "border-accent shadow-[0_0_12px_rgba(59,130,246,0.3)]" : "border-transparent opacity-50 hover:opacity-90"}`}>
+              <button key={i} onClick={() => setActiveIndex(i)} className={`w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden shrink-0 border-2 transition-all ${i === activeIndex ? "border-accent shadow-[0_0_12px_rgba(var(--glow-color),0.3)]" : "border-transparent opacity-50 hover:opacity-90"}`}>
                 <img src={img} alt="" className="w-full h-full object-cover" />
               </button>
             ))}

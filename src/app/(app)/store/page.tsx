@@ -171,11 +171,11 @@ export default function StorePage() {
       {/* Tabs */}
       <div className="flex gap-2">
         <button onClick={() => setActiveTab("connect")}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeTab === "connect" ? "bg-accent text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]" : "bg-surface border border-border text-muted-foreground hover:text-foreground"}`}>
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeTab === "connect" ? "bg-accent text-white shadow-[0_0_15px_rgba(var(--glow-color),0.3)]" : "bg-surface border border-border text-muted-foreground hover:text-foreground"}`}>
           <Store className="h-4 w-4" /> Connect Store
         </button>
         <button onClick={() => setActiveTab("benchmark")}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeTab === "benchmark" ? "bg-accent text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]" : "bg-surface border border-border text-muted-foreground hover:text-foreground"}`}>
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeTab === "benchmark" ? "bg-accent text-white shadow-[0_0_15px_rgba(var(--glow-color),0.3)]" : "bg-surface border border-border text-muted-foreground hover:text-foreground"}`}>
           <BarChart3 className="h-4 w-4" /> Benchmarking
         </button>
       </div>

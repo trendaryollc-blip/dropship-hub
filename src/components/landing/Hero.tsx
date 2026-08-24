@@ -75,55 +75,56 @@ export default function Hero() {
     <section className="relative pt-32 pb-20 md:pt-40 md:pb-32 overflow-hidden">
       <ParticleField />
 
-      <div className="absolute inset-0 grid-pattern pointer-events-none" />
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-accent/[0.07] rounded-full blur-[120px]" />
-      <div className="absolute top-1/3 right-0 w-[400px] h-[400px] bg-accent-warm/[0.04] rounded-full blur-[100px]" />
+        <div className="absolute inset-0 grid-pattern pointer-events-none" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-accent/[0.07] rounded-full blur-[120px]" />
+        <div className="absolute top-1/3 right-0 w-[400px] h-[400px] bg-accent-warm/[0.04] rounded-full blur-[100px]" />
 
-      <div className="relative z-10 mx-auto max-w-7xl px-6">
-        <div className="animate-slide-up flex justify-center mb-8">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border border-accent/20 text-xs font-medium text-accent">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
-            </span>
-            AI-Powered Dashboard — Free to start
+        <div className="relative z-10 mx-auto max-w-7xl px-6">
+          <div className="animate-slide-up flex justify-center mb-8">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border border-accent/20 text-xs font-medium text-accent">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
+              </span>
+              AI-Powered Dashboard — Free to start
+            </div>
           </div>
-        </div>
 
-        <div className="text-center max-w-4xl mx-auto">
-          <h1 className="animate-slide-up font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] mb-6">
-            <span className="text-foreground">Your AI-Powered</span>
-            <br />
-            <span className="gradient-text">
-              Dropshipping {" "}
-              <TypeWriter
-                words={["Command Center", "Profit Engine", "Market Intelligence", "Winning Edge"]}
-                typingSpeed={80}
-                deletingSpeed={40}
-                pauseTime={2000}
-              />
-            </span>
-          </h1>
+          <div className="text-center max-w-4xl mx-auto">
+            <h1 className="animate-slide-up font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] mb-6">
+              <span className="text-foreground">Your AI-Powered</span>
+              <br />
+              <span className="gradient-text">
+                Dropshipping {" "}
+                <TypeWriter
+                  words={["Command Center", "Profit Engine", "Market Intelligence", "Winning Edge"]}
+                  typingSpeed={80}
+                  deletingSpeed={40}
+                  pauseTime={2000}
+                />
+              </span>
+            </h1>
 
-          <p className="animate-slide-up-delay-1 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-            One dashboard with AI daily picks, live market monitoring, niche radar, trending product scores, and gamified missions. Built for dropshippers who move fast.
-          </p>
+            <p className="animate-slide-up-delay-1 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
+              One dashboard with AI daily picks, live market monitoring, niche radar, trending product scores, and gamified missions. Built for dropshippers who move fast.
+            </p>
 
-          <div className="animate-slide-up-delay-2 flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-            <Link
-              href="/sign-up"
-              className="group relative inline-flex items-center gap-2 px-8 py-4 text-base font-semibold text-white rounded-2xl bg-accent hover:bg-accent-hover transition-all hover:shadow-[0_0_30px_rgba(59,130,246,0.4)] active:scale-[0.97]"
-            >
-              Start For Free
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              <div className="absolute inset-0 rounded-2xl bg-accent/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-            </Link>
-            <Link
-              href="#how-it-works"
-              className="inline-flex items-center gap-2 px-8 py-4 text-base font-medium text-muted-foreground hover:text-foreground rounded-2xl border border-border hover:border-muted-foreground/30 hover:bg-surface transition-all"
-            >
-              See How It Works
-            </Link>
+            <div className="animate-slide-up-delay-2 flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+              <Link
+                href="/sign-up"
+                className="group relative inline-flex items-center gap-2 px-8 py-4 text-base font-semibold text-white rounded-2xl bg-accent hover:bg-accent-hover transition-all hover:shadow-[0_0_30px_rgba(var(--glow-color),0.4)] active:scale-[0.97]"
+              >
+                Start For Free
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                <div className="absolute inset-0 rounded-2xl bg-accent/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+              </Link>
+              <Link
+                href="#how-it-works"
+                className="inline-flex items-center gap-2 px-8 py-4 text-base font-medium text-muted-foreground hover:text-foreground rounded-2xl border border-border hover:border-muted-foreground/30 hover:bg-surface transition-all"
+              >
+                See How It Works
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -257,13 +258,12 @@ export default function Hero() {
                 <Trophy className="h-5 w-5 text-purple-400" />
               </div>
               <p className="font-display text-sm font-semibold text-foreground mb-1 group-hover:text-accent transition-colors">Niche Radar</p>
-              <p className="text-xs text-muted-foreground">Score &amp; analyze niches</p>
+              <p className="text-xs text-muted-foreground">Score & analyze niches</p>
               <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-2" />
             </Link>
           </div>
           <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-3/4 h-16 bg-accent/[0.06] blur-[60px] rounded-full" />
         </div>
-      </div>
     </section>
   );
 }

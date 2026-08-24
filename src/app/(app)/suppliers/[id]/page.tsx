@@ -165,7 +165,7 @@ function SupplierDetailContent({ id }: { id: string }) {
         </div>
         <div ref={ctaRef} className={`mt-6 pt-5 border-t border-border/50 transition-all duration-700 ${ctaVisible ? "opacity-100" : "opacity-0"}`}>
           <div className="flex flex-col sm:flex-row gap-3">
-            <a href={supplier.sourceUrl || "#"} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-all hover:shadow-[0_0_20px_rgba(59,130,246,0.3)] active:scale-[0.97]">
+            <a href={supplier.sourceUrl || "#"} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-all hover:shadow-[0_0_20px_rgba(var(--glow-color),0.3)] active:scale-[0.97]">
               <Mail className="h-4 w-4" /> Visit Supplier
             </a>
             {supplier.source === "cj" && (

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Menu, X, Zap } from "lucide-react";
+import ThemeSwitcher from "@/components/theme/ThemeSwitcher";
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -55,6 +56,7 @@ export default function Navbar() {
 
         {/* Desktop CTA */}
         <div className="hidden md:flex items-center gap-3">
+          <ThemeSwitcher />
           <Link
             href="/sign-in"
             className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
@@ -63,7 +65,7 @@ export default function Navbar() {
           </Link>
           <Link
             href="/sign-up"
-            className="relative px-5 py-2.5 text-sm font-semibold text-white rounded-xl bg-accent hover:bg-accent-hover transition-all hover:shadow-[0_0_20px_rgba(59,130,246,0.3)] active:scale-[0.97]"
+            className="relative px-5 py-2.5 text-sm font-semibold text-white rounded-xl bg-accent hover:bg-accent-hover transition-all hover:shadow-[0_0_20px_rgba(var(--glow-color),0.3)] active:scale-[0.97]"
           >
             Get Started Free
           </Link>
@@ -94,6 +96,9 @@ export default function Navbar() {
               </a>
             ))}
             <div className="border-t border-border my-2" />
+            <div className="flex items-center justify-center py-2">
+              <ThemeSwitcher />
+            </div>
             <Link
               href="/sign-in"
               onClick={() => setMobileOpen(false)}

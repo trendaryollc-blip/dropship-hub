@@ -68,7 +68,7 @@ export default function QuickCompareBar({
 
             <div className="flex items-center gap-2 shrink-0">
               {items.length >= 2 && (
-                <button className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent text-white text-xs font-semibold hover:bg-accent-hover transition-all hover:shadow-[0_0_15px_rgba(59,130,246,0.3)] active:scale-[0.97]">
+                <button className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent text-white text-xs font-semibold hover:bg-accent-hover transition-all hover:shadow-[0_0_15px_rgba(var(--glow-color),0.3)] active:scale-[0.97]">
                   Compare
                   <ArrowRight className="h-3.5 w-3.5" />
                 </button>

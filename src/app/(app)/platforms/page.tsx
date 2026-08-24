@@ -390,7 +390,7 @@ export default function PlatformsPage() {
             onClick={() => setActiveCategory(cat.id)}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
               activeCategory === cat.id
-                ? "bg-accent text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]"
+                ? "bg-accent text-white shadow-[0_0_15px_rgba(var(--glow-color),0.3)]"
                 : "bg-surface border border-border text-muted-foreground hover:text-foreground"
             }`}
           >
