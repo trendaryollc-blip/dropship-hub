@@ -140,23 +140,23 @@ function KPICard({
   return (
     <div
       ref={ref}
-      className={`glass rounded-xl p-4 transition-all duration-500 hover:border-accent/20 hover:bg-surface-hover group ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+      className={`glass rounded-xl p-3 sm:p-4 transition-all duration-500 hover:border-accent/20 hover:bg-surface-hover group ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
       style={{ transitionDelay: `${delay}ms` }}
     >
-      <div className="flex items-center justify-between mb-3">
-        <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${color}/10 group-hover:scale-110 transition-transform`}>
-          <Icon className={`h-4 w-4 ${color}`} />
+      <div className="flex items-center justify-between mb-2 sm:mb-3">
+        <div className={`flex h-7 w-7 sm:h-9 sm:w-9 items-center justify-center rounded-lg ${color}/10 group-hover:scale-110 transition-transform`}>
+          <Icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${color}`} />
         </div>
-        <span className={`flex items-center gap-0.5 text-[11px] font-semibold ${up ? "text-emerald-400" : "text-red-400"}`}>
-          {up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+        <span className={`flex items-center gap-0.5 text-[10px] sm:text-[11px] font-semibold ${up ? "text-emerald-400" : "text-red-400"}`}>
+          {up ? <TrendingUp className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> : <TrendingDown className="h-2.5 w-2.5 sm:h-3 sm:w-3" />}
           {change}
         </span>
       </div>
-      <p className="font-display text-2xl font-bold text-foreground">
+      <p className="font-display text-lg sm:text-2xl font-bold text-foreground">
         {prefix || ""}{count.toLocaleString()}{suffix || ""}
       </p>
-      <div className="flex items-center justify-between mt-2">
-        <p className="text-[11px] text-muted-foreground">{label}</p>
+      <div className="flex items-center justify-between mt-1.5 sm:mt-2">
+        <p className="text-[10px] sm:text-[11px] text-muted-foreground truncate pr-2">{label}</p>
         <MiniSparkline points={sparkline} color={color === "text-emerald-400" ? "#22c55e" : color === "text-blue-400" ? "#3b82f6" : color === "text-amber-400" ? "#f59e0b" : "#a855f7"} />
       </div>
     </div>
@@ -173,9 +173,9 @@ function RevenueChart({ actual, predicted }: { actual: { date: string; value: nu
   const minVal = Math.min(...allPoints.map((p) => p.value));
   const range = maxVal - minVal || 1;
 
-  const padding = { top: 20, right: 20, bottom: 30, left: 50 };
+  const padding = { top: 20, right: 15, bottom: 30, left: 40 };
   const w = 800;
-  const h = 280;
+  const h = 260;
   const chartW = w - padding.left - padding.right;
   const chartH = h - padding.top - padding.bottom;
 
@@ -207,13 +207,13 @@ function RevenueChart({ actual, predicted }: { actual: { date: string; value: nu
   };
 
   return (
-    <div ref={ref} className={`glass rounded-2xl p-5 transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
-      <div className="flex items-center justify-between mb-4">
+    <div ref={ref} className={`glass rounded-2xl p-3 sm:p-5 transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
         <div>
-          <h3 className="font-display text-base font-semibold text-foreground">Revenue Trend</h3>
-          <p className="text-[11px] text-muted-foreground">Last 30 days actual + 14-day projection</p>
+          <h3 className="font-display text-sm sm:text-base font-semibold text-foreground">Revenue Trend</h3>
+          <p className="text-[10px] sm:text-[11px] text-muted-foreground">Last 30 days actual + 14-day projection</p>
         </div>
-        <div className="flex items-center gap-4 text-[11px]">
+        <div className="flex items-center gap-3 sm:gap-4 text-[10px] sm:text-[11px]">
           <span className="flex items-center gap-1.5">
             <span className="w-3 h-0.5 rounded bg-accent" />
             <span className="text-muted-foreground">Actual</span>
@@ -243,7 +243,7 @@ function RevenueChart({ actual, predicted }: { actual: { date: string; value: nu
           {yTicks.map((tick) => (
             <g key={tick}>
               <line x1={padding.left} y1={getY(tick)} x2={w - padding.right} y2={getY(tick)} stroke="rgba(255,255,255,0.04)" />
-              <text x={padding.left - 8} y={getY(tick) + 3} textAnchor="end" className="fill-muted-foreground text-[9px]">
+              <text x={padding.left - 6} y={getY(tick) + 3} textAnchor="end" className="fill-muted-foreground text-[8px] sm:text-[9px]">
                 ${tick}
               </text>
             </g>
@@ -269,7 +269,7 @@ function RevenueChart({ actual, predicted }: { actual: { date: string; value: nu
           )}
 
           {allPoints.filter((_, i) => i % 7 === 0 || i === allPoints.length - 1).map((p, i) => (
-            <text key={i} x={getX(allPoints.indexOf(p), allPoints.length)} y={h - 8} textAnchor="middle" className="fill-muted-foreground text-[8px]">
+            <text key={i} x={getX(allPoints.indexOf(p), allPoints.length)} y={h - 8} textAnchor="middle" className="fill-muted-foreground text-[7px] sm:text-[8px]">
               {p.date}
             </text>
           ))}
@@ -290,18 +290,18 @@ function CategoryBar({ category, maxRevenue, delay }: { category: CategoryBreakd
       style={{ transitionDelay: `${delay}ms` }}
     >
       <div className="flex items-center justify-between mb-1.5">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: category.color }} />
-          <span className="text-sm font-medium text-foreground">{category.name}</span>
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full shrink-0" style={{ backgroundColor: category.color }} />
+          <span className="text-xs sm:text-sm font-medium text-foreground truncate">{category.name}</span>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-bold text-foreground">${category.revenue.toLocaleString()}</span>
-          <span className={`text-[11px] font-semibold ${category.trend >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <span className="text-xs sm:text-sm font-bold text-foreground">${category.revenue.toLocaleString()}</span>
+          <span className={`text-[10px] sm:text-[11px] font-semibold ${category.trend >= 0 ? "text-emerald-400" : "text-red-400"}`}>
             {category.trend >= 0 ? "+" : ""}{category.trend}%
           </span>
         </div>
       </div>
-      <div className="h-2 rounded-full bg-surface overflow-hidden">
+      <div className="h-1.5 sm:h-2 rounded-full bg-surface overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-1000 ease-out"
           style={{
@@ -311,9 +311,9 @@ function CategoryBar({ category, maxRevenue, delay }: { category: CategoryBreakd
           }}
         />
       </div>
-      <div className="flex items-center gap-3 mt-1">
-        <span className="text-[10px] text-muted-foreground">{category.orders} orders</span>
-        <span className="text-[10px] text-muted-foreground">{category.margin}% margin</span>
+      <div className="flex items-center gap-2 sm:gap-3 mt-1">
+        <span className="text-[9px] sm:text-[10px] text-muted-foreground">{category.orders} orders</span>
+        <span className="text-[9px] sm:text-[10px] text-muted-foreground">{category.margin}% margin</span>
       </div>
     </div>
   );
@@ -330,18 +330,18 @@ function MonthlyBar({ data, maxRevenue, delay }: { data: MonthlyComparison; maxR
       className={`flex flex-col items-center transition-all duration-500 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
       style={{ transitionDelay: `${delay}ms` }}
     >
-      <div className="w-full flex items-end justify-center gap-1.5 h-32 mb-2">
+      <div className="w-full flex items-end justify-center gap-1 sm:gap-1.5 h-24 sm:h-32 mb-1.5 sm:mb-2">
         <div
-          className="w-5 rounded-t-md bg-accent/60 transition-all duration-700"
+          className="w-4 sm:w-5 rounded-t-md bg-accent/60 transition-all duration-700"
           style={{ height: isInView ? `${revenueH}%` : "0%", transitionDelay: `${delay + 200}ms` }}
         />
         <div
-          className="w-5 rounded-t-md bg-emerald-400/60 transition-all duration-700"
+          className="w-4 sm:w-5 rounded-t-md bg-emerald-400/60 transition-all duration-700"
           style={{ height: isInView ? `${profitH}%` : "0%", transitionDelay: `${delay + 400}ms` }}
         />
       </div>
-      <span className="text-[11px] font-medium text-muted-foreground">{data.month}</span>
-      <span className="text-[10px] text-foreground font-bold">${(data.revenue / 1000).toFixed(1)}K</span>
+      <span className="text-[10px] sm:text-[11px] font-medium text-muted-foreground">{data.month}</span>
+      <span className="text-[9px] sm:text-[10px] text-foreground font-bold">${(data.revenue / 1000).toFixed(1)}K</span>
     </div>
   );
 }
@@ -384,12 +384,12 @@ function PlatformDonut() {
           <span className="text-[9px] text-muted-foreground">Total</span>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 mt-4">
+      <div className="grid grid-cols-2 gap-x-4 sm:gap-x-6 gap-y-1 sm:gap-y-1.5 mt-3 sm:mt-4">
         {platformRevenue.map((p) => (
-          <div key={p.name} className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
-            <span className="text-[11px] text-muted-foreground">{p.name}</span>
-            <span className="text-[11px] font-semibold text-foreground">{p.share}%</span>
+          <div key={p.name} className="flex items-center gap-1.5 sm:gap-2">
+            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full" style={{ backgroundColor: p.color }} />
+            <span className="text-[10px] sm:text-[11px] text-muted-foreground">{p.name}</span>
+            <span className="text-[10px] sm:text-[11px] font-semibold text-foreground">{p.share}%</span>
           </div>
         ))}
       </div>
@@ -409,16 +409,16 @@ function InsightCard({ icon: Icon, title, description, type, delay }: { icon: ty
   return (
     <div
       ref={ref}
-      className={`p-4 rounded-xl ${c.bg} border ${c.border} transition-all duration-500 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+      className={`p-3 sm:p-4 rounded-xl ${c.bg} border ${c.border} transition-all duration-500 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
       style={{ transitionDelay: `${delay}ms` }}
     >
-      <div className="flex items-start gap-3">
-        <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${c.bg} shrink-0`}>
-          <Icon className={`h-4 w-4 ${c.icon}`} />
+      <div className="flex items-start gap-2.5 sm:gap-3">
+        <div className={`flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg ${c.bg} shrink-0`}>
+          <Icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${c.icon}`} />
         </div>
-        <div>
-          <h4 className="text-sm font-semibold text-foreground mb-0.5">{title}</h4>
-          <p className="text-[12px] text-muted-foreground leading-relaxed">{description}</p>
+        <div className="min-w-0">
+          <h4 className="text-xs sm:text-sm font-semibold text-foreground mb-0.5">{title}</h4>
+          <p className="text-[11px] sm:text-[12px] text-muted-foreground leading-relaxed">{description}</p>
         </div>
       </div>
     </div>
@@ -434,38 +434,38 @@ export default function RevenuePage() {
   const maxMonthlyRevenue = Math.max(...monthlyComparison.map((m) => m.revenue));
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 pb-24">
+    <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 px-3 sm:px-4 lg:px-6 pb-24">
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-1">
+          <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-1">
             Revenue Forecast
           </h1>
-          <p className="text-sm text-muted-foreground max-w-xl">
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">
             Track your revenue, analyze trends, and forecast growth across all platforms.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div className="flex items-center bg-surface rounded-xl border border-border p-0.5">
             {(["7d", "30d", "90d"] as const).map((tf) => (
               <button
                 key={tf}
                 onClick={() => setTimeframe(tf)}
-                className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${timeframe === tf ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-muted-foreground hover:text-foreground"}`}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-[11px] font-semibold transition-all ${timeframe === tf ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-muted-foreground hover:text-foreground"}`}
               >
                 {tf}
               </button>
             ))}
           </div>
-          <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all">
-            <Download className="h-4 w-4" />
-            Export
+          <button className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl border border-border text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all">
+            <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Export</span>
           </button>
         </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
         <KPICard label="Revenue This Month" value={4250} prefix="$" change="+18%" up icon={DollarSign} color="text-emerald-400" sparkline={[3200, 3400, 3600, 3800, 3900, 4100, 4250]} delay={0} />
         <KPICard label="Est. Profit" value={2847} prefix="$" change="+8%" up icon={TrendingUp} color="text-purple-400" sparkline={[2400, 2500, 2550, 2600, 2700, 2780, 2847]} delay={100} />
         <KPICard label="Active Orders" value={23} change="+24%" up icon={ShoppingCart} color="text-amber-400" sparkline={[12, 14, 16, 18, 19, 21, 23]} delay={200} />
@@ -476,19 +476,19 @@ export default function RevenuePage() {
       <RevenueChart actual={actual} predicted={predicted} />
 
       {/* Category Breakdown + Platform Split */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6">
         {/* Category Breakdown */}
-        <div className="lg:col-span-3 glass rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-5">
+        <div className="lg:col-span-3 glass rounded-2xl p-4 sm:p-5">
+          <div className="flex items-center justify-between mb-4 sm:mb-5">
             <div>
-              <h3 className="font-display text-base font-semibold text-foreground">Revenue by Category</h3>
-              <p className="text-[11px] text-muted-foreground">Performance breakdown across product categories</p>
+              <h3 className="font-display text-sm sm:text-base font-semibold text-foreground">Revenue by Category</h3>
+              <p className="text-[10px] sm:text-[11px] text-muted-foreground">Performance breakdown across product categories</p>
             </div>
-            <Link href="/products" className="text-[11px] text-accent hover:underline flex items-center gap-1">
+            <Link href="/products" className="text-[10px] sm:text-[11px] text-accent hover:underline flex items-center gap-1">
               View All <ChevronRight className="h-3 w-3" />
             </Link>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {categoryData.map((cat, i) => (
               <CategoryBar key={cat.name} category={cat} maxRevenue={maxCategoryRevenue} delay={i * 100} />
             ))}
@@ -496,36 +496,36 @@ export default function RevenuePage() {
         </div>
 
         {/* Platform Revenue Split */}
-        <div className="lg:col-span-2 glass rounded-2xl p-5">
-          <div className="mb-5">
-            <h3 className="font-display text-base font-semibold text-foreground">Revenue by Platform</h3>
-            <p className="text-[11px] text-muted-foreground">Where your sales are coming from</p>
+        <div className="lg:col-span-2 glass rounded-2xl p-4 sm:p-5">
+          <div className="mb-4 sm:mb-5">
+            <h3 className="font-display text-sm sm:text-base font-semibold text-foreground">Revenue by Platform</h3>
+            <p className="text-[10px] sm:text-[11px] text-muted-foreground">Where your sales are coming from</p>
           </div>
           <PlatformDonut />
         </div>
       </div>
 
       {/* Monthly Comparison + Top Products */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Monthly Comparison */}
-        <div className="glass rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-5">
+        <div className="glass rounded-2xl p-4 sm:p-5">
+          <div className="flex items-center justify-between mb-4 sm:mb-5">
             <div>
-              <h3 className="font-display text-base font-semibold text-foreground">Monthly Comparison</h3>
-              <p className="text-[11px] text-muted-foreground">Revenue vs Profit over time</p>
+              <h3 className="font-display text-sm sm:text-base font-semibold text-foreground">Monthly Comparison</h3>
+              <p className="text-[10px] sm:text-[11px] text-muted-foreground">Revenue vs Profit over time</p>
             </div>
-            <div className="flex items-center gap-3 text-[11px]">
-              <span className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-[11px]">
+              <span className="flex items-center gap-1 sm:gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-accent/60" />
                 <span className="text-muted-foreground">Revenue</span>
               </span>
-              <span className="flex items-center gap-1.5">
+              <span className="flex items-center gap-1 sm:gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400/60" />
                 <span className="text-muted-foreground">Profit</span>
               </span>
             </div>
           </div>
-          <div className="flex items-end justify-around h-40">
+          <div className="flex items-end justify-around h-28 sm:h-40">
             {monthlyComparison.map((m, i) => (
               <MonthlyBar key={m.month} data={m} maxRevenue={maxMonthlyRevenue} delay={i * 100} />
             ))}
@@ -533,31 +533,31 @@ export default function RevenuePage() {
         </div>
 
         {/* Top Performing Products */}
-        <div className="glass rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-5">
+        <div className="glass rounded-2xl p-4 sm:p-5">
+          <div className="flex items-center justify-between mb-4 sm:mb-5">
             <div>
-              <h3 className="font-display text-base font-semibold text-foreground">Top Products</h3>
-              <p className="text-[11px] text-muted-foreground">Best performing products this month</p>
+              <h3 className="font-display text-sm sm:text-base font-semibold text-foreground">Top Products</h3>
+              <p className="text-[10px] sm:text-[11px] text-muted-foreground">Best performing products this month</p>
             </div>
-            <Link href="/products" className="text-[11px] text-accent hover:underline flex items-center gap-1">
+            <Link href="/products" className="text-[10px] sm:text-[11px] text-accent hover:underline flex items-center gap-1">
               View All <ChevronRight className="h-3 w-3" />
             </Link>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             {topProducts.map((product, i) => (
-              <div key={product.name} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-surface-hover transition-colors group">
-                <span className="text-[11px] font-bold text-muted-foreground w-4">{i + 1}</span>
-                <span className="text-xl">{product.image}</span>
+              <div key={product.name} className="flex items-center gap-2 sm:gap-3 p-2 sm:p-2.5 rounded-xl hover:bg-surface-hover transition-colors group">
+                <span className="text-[10px] sm:text-[11px] font-bold text-muted-foreground w-3 sm:w-4">{i + 1}</span>
+                <span className="text-base sm:text-xl">{product.image}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate group-hover:text-accent transition-colors">{product.name}</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-muted-foreground">{product.platform}</span>
-                    <span className="text-[10px] text-emerald-400 font-semibold">{product.margin}% margin</span>
+                  <p className="text-xs sm:text-sm font-medium text-foreground truncate group-hover:text-accent transition-colors">{product.name}</p>
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <span className="text-[9px] sm:text-[10px] text-muted-foreground">{product.platform}</span>
+                    <span className="text-[9px] sm:text-[10px] text-emerald-400 font-semibold">{product.margin}% margin</span>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-foreground">${product.revenue}</p>
-                  <p className="text-[10px] text-muted-foreground">{product.orders} orders</p>
+                <div className="text-right shrink-0">
+                  <p className="text-xs sm:text-sm font-bold text-foreground">${product.revenue}</p>
+                  <p className="text-[9px] sm:text-[10px] text-muted-foreground">{product.orders} orders</p>
                 </div>
               </div>
             ))}
@@ -567,11 +567,11 @@ export default function RevenuePage() {
 
       {/* Growth Insights */}
       <div>
-        <div className="mb-4">
-          <h3 className="font-display text-base font-semibold text-foreground">Growth Insights</h3>
-          <p className="text-[11px] text-muted-foreground">AI-powered recommendations to boost your revenue</p>
+        <div className="mb-3 sm:mb-4">
+          <h3 className="font-display text-sm sm:text-base font-semibold text-foreground">Growth Insights</h3>
+          <p className="text-[10px] sm:text-[11px] text-muted-foreground">AI-powered recommendations to boost your revenue</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3">
           <InsightCard
             icon={TrendingUp}
             title="Scale Beauty Products"
@@ -597,43 +597,43 @@ export default function RevenuePage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="glass rounded-2xl p-5">
-        <h3 className="font-display text-base font-semibold text-foreground mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Link href="/products" className="flex items-center gap-3 p-3 rounded-xl bg-surface border border-border hover:border-accent/20 hover:bg-surface-hover transition-all group">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10 group-hover:scale-110 transition-transform">
-              <Package className="h-4 w-4 text-accent" />
+      <div className="glass rounded-2xl p-4 sm:p-5">
+        <h3 className="font-display text-sm sm:text-base font-semibold text-foreground mb-3 sm:mb-4">Quick Actions</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+          <Link href="/products" className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl bg-surface border border-border hover:border-accent/20 hover:bg-surface-hover transition-all group">
+            <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-accent/10 group-hover:scale-110 transition-transform shrink-0">
+              <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />
             </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">Find Products</p>
-              <p className="text-[10px] text-muted-foreground">Discover new items</p>
-            </div>
-          </Link>
-          <Link href="/calculator" className="flex items-center gap-3 p-3 rounded-xl bg-surface border border-border hover:border-accent/20 hover:bg-surface-hover transition-all group">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-400/10 group-hover:scale-110 transition-transform">
-              <DollarSign className="h-4 w-4 text-emerald-400" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">Calculator</p>
-              <p className="text-[10px] text-muted-foreground">Estimate profit</p>
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm font-medium text-foreground truncate">Find Products</p>
+              <p className="text-[9px] sm:text-[10px] text-muted-foreground">Discover new items</p>
             </div>
           </Link>
-          <Link href="/competitors" className="flex items-center gap-3 p-3 rounded-xl bg-surface border border-border hover:border-accent/20 hover:bg-surface-hover transition-all group">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-400/10 group-hover:scale-110 transition-transform">
-              <BarChart3 className="h-4 w-4 text-amber-400" />
+          <Link href="/calculator" className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl bg-surface border border-border hover:border-accent/20 hover:bg-surface-hover transition-all group">
+            <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-emerald-400/10 group-hover:scale-110 transition-transform shrink-0">
+              <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-400" />
             </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">Competitors</p>
-              <p className="text-[10px] text-muted-foreground">Analyze market</p>
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm font-medium text-foreground truncate">Calculator</p>
+              <p className="text-[9px] sm:text-[10px] text-muted-foreground">Estimate profit</p>
             </div>
           </Link>
-          <Link href="/suppliers" className="flex items-center gap-3 p-3 rounded-xl bg-surface border border-border hover:border-accent/20 hover:bg-surface-hover transition-all group">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-400/10 group-hover:scale-110 transition-transform">
-              <Truck className="h-4 w-4 text-purple-400" />
+          <Link href="/competitors" className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl bg-surface border border-border hover:border-accent/20 hover:bg-surface-hover transition-all group">
+            <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-amber-400/10 group-hover:scale-110 transition-transform shrink-0">
+              <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-400" />
             </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">Suppliers</p>
-              <p className="text-[10px] text-muted-foreground">Manage sources</p>
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm font-medium text-foreground truncate">Competitors</p>
+              <p className="text-[9px] sm:text-[10px] text-muted-foreground">Analyze market</p>
+            </div>
+          </Link>
+          <Link href="/suppliers" className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl bg-surface border border-border hover:border-accent/20 hover:bg-surface-hover transition-all group">
+            <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-purple-400/10 group-hover:scale-110 transition-transform shrink-0">
+              <Truck className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm font-medium text-foreground truncate">Suppliers</p>
+              <p className="text-[9px] sm:text-[10px] text-muted-foreground">Manage sources</p>
             </div>
           </Link>
         </div>
