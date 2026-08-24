@@ -35,13 +35,13 @@ function MiniSparkline({ points, id }: { points: number[]; id: string }) {
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
       <defs>
         <linearGradient id={`ts-${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#22c55e" stopOpacity="0.35" />
-          <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
+          <stop offset="0%" stopColor="var(--success)" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="var(--success)" stopOpacity="0" />
         </linearGradient>
       </defs>
       <path d={areaPath} fill={`url(#ts-${id})`} />
-      <path d={linePath} fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" />
-      <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="3" fill="#22c55e" />
+      <path d={linePath} fill="none" stroke="var(--success)" strokeWidth="2" strokeLinecap="round" />
+      <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="3" fill="var(--success)" />
     </svg>
   );
 }
@@ -50,7 +50,7 @@ function ConfidenceRing({ score }: { score: number }) {
   const r = 16;
   const c = 2 * Math.PI * r;
   const offset = c - (score / 100) * c;
-  const color = score >= 85 ? "#22c55e" : score >= 70 ? "#f59e0b" : "#ef4444";
+  const color = score >= 85 ? "var(--success)" : score >= 70 ? "var(--warning)" : "var(--danger)";
   return (
     <div className="flex flex-col items-center gap-0.5">
       <svg width={40} height={40} viewBox="0 0 40 40">
@@ -101,57 +101,63 @@ function TrendingProductCard({ product, index, rank, onAddCompare }: {
       style={{ transitionDelay: `${index * 80}ms` }}
     >
       <div className={`glass-card-animated rounded-2xl overflow-hidden transition-all duration-300 ${expanded ? "ring-1 ring-accent/30" : ""}`}>
+        {/* Main row */}
         <div
-          className="flex items-center gap-3 sm:gap-4 p-4 sm:p-5 cursor-pointer hover:bg-surface/30 transition-colors"
+          className="p-4 sm:p-5 cursor-pointer hover:bg-surface/30 transition-colors"
           onClick={() => setExpanded(!expanded)}
         >
-          <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${rankBg} flex items-center justify-center shrink-0 shadow-lg`}>
-            <span className="text-xs font-black text-white">#{rank}</span>
-          </div>
-
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="w-11 h-11 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
-              <Package className="h-5 w-5 text-accent" />
+          <div className="flex items-center gap-3">
+            {/* Rank badge */}
+            <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${rankBg} flex items-center justify-center shrink-0 shadow-lg`}>
+              <span className="text-xs font-black text-white">#{rank}</span>
             </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-foreground truncate">{product.name}</p>
-              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                <span className="text-[10px] text-muted-foreground">{product.platform}</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border ${demand.cls}`}>{demand.label}</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border ${comp.cls}`}>{comp.label}</span>
+
+            {/* Product image + info */}
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="w-11 h-11 rounded-xl bg-accent/10 flex items-center justify-center shrink-0 overflow-hidden">
+                <Package className="h-5 w-5 text-accent" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground truncate">{product.name}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{product.platform}</p>
+              </div>
+            </div>
+
+            {/* Price + Trend (always visible) */}
+            <div className="text-right shrink-0">
+              <p className="text-sm font-bold text-foreground">${product.price.toFixed(2)}</p>
+              <div className="flex items-center justify-end gap-1 mt-0.5">
+                <TrendingUp className="h-2.5 w-2.5 text-emerald-400" />
+                <span className="text-[11px] font-semibold text-emerald-400">+{product.trend}%</span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={(e) => { e.stopPropagation(); onAddCompare({ name: product.name, price: product.price, margin: product.margin, image: "https://placehold.co/60x60/0f0f17/3b82f6?text=P" }); }}
+                className="p-2 rounded-lg text-muted-foreground hover:text-accent hover:bg-accent/10 transition-all"
+                title="Add to compare"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+              <div className="p-2 rounded-lg text-muted-foreground">
+                {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </div>
             </div>
           </div>
 
-          <div className="hidden sm:block shrink-0">
-            <MiniSparkline points={product.sparkline} id={`rank-${rank}`} />
-          </div>
-
-          <div className="hidden md:block shrink-0">
-            <ConfidenceRing score={product.confidence} />
-          </div>
-
-          <div className="text-right shrink-0">
-            <p className="text-sm font-bold text-emerald-400">${product.profit.toFixed(2)}</p>
-            <p className="text-[10px] text-muted-foreground">margin {product.margin}%</p>
-          </div>
-
-          <div className="text-right shrink-0">
-            <span className="text-xs font-bold text-emerald-400">+{product.trend}%</span>
-            <p className="text-[10px] text-muted-foreground flex items-center justify-end gap-0.5">
-              <TrendingUp className="h-2.5 w-2.5" /> trending
-            </p>
-          </div>
-
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              onClick={(e) => { e.stopPropagation(); onAddCompare({ name: product.name, price: product.price, margin: product.margin, image: "https://placehold.co/60x60/0f0f17/3b82f6?text=P" }); }}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-accent hover:bg-accent/10 transition-all"
-              title="Add to compare"
-            >
-              <Plus className="h-3.5 w-3.5" />
-            </button>
-            {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          {/* Badges row */}
+          <div className="flex items-center gap-2 mt-3 ml-12 flex-wrap">
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${demand.cls}`}>{demand.label}</span>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${comp.cls}`}>{comp.label}</span>
+            <span className="text-[10px] text-muted-foreground">Margin {product.margin}%</span>
+            <div className="hidden sm:block ml-auto">
+              <MiniSparkline points={product.sparkline} id={`rank-${rank}`} />
+            </div>
+            <div className="hidden md:block ml-2">
+              <ConfidenceRing score={product.confidence} />
+            </div>
           </div>
         </div>
 
