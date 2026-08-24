@@ -17,6 +17,7 @@ import {
   BookmarkPlus,
   BookmarkCheck,
   Star,
+  Package,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { AIDailyPick as AIDailyPickType } from "@/lib/mock-dashboard";
@@ -139,11 +140,17 @@ export default function AIDailyPick({ pick }: { pick: AIDailyPickType }) {
             <Link href="/products" className="group relative block">
               <div className="absolute inset-0 bg-gradient-to-br from-accent/20 via-purple-500/10 to-accent-warm/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all opacity-60" />
               <div className="relative aspect-square max-h-[260px] rounded-2xl overflow-hidden border border-white/10 bg-surface">
-                <img
-                  src={pick.image}
-                  alt={pick.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                />
+                {pick.image ? (
+                  <img
+                    src={pick.image}
+                    alt={pick.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-accent/20 to-purple-500/10">
+                    <Package className="h-16 w-16 text-accent/40" />
+                  </div>
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                 <div className="absolute top-3 left-3 animate-pulse-badge px-3 py-1 rounded-full bg-accent text-white text-[10px] font-bold uppercase shadow-lg shadow-accent/30">
                   AI Pick
