@@ -18,6 +18,7 @@ import {
   Target,
   Globe,
   X,
+  DollarSign,
 } from "lucide-react";
 
 const navItems = [
@@ -44,6 +45,12 @@ const navItems = [
     href: "/suppliers",
     icon: Truck,
     section: "discover",
+  },
+  {
+    label: "Revenue",
+    href: "/revenue",
+    icon: DollarSign,
+    section: "analyze",
   },
   {
     label: "Calculator",
