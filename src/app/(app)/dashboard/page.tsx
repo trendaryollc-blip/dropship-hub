@@ -88,7 +88,6 @@ export default function DashboardHome() {
           actual={data.revenue.actual}
           predicted={data.revenue.predicted}
           stats={data.revenue.stats}
-          username="trendaryo206"
         />
         <DailyMission mission={data.mission} />
       </div>

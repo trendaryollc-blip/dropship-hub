@@ -2,8 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { TrendingUp, TrendingDown, Package, DollarSign, ShoppingCart, BarChart3, Search, ArrowUpRight } from "lucide-react";
+import { TrendingUp, TrendingDown, Package, DollarSign, ShoppingCart, BarChart3, ArrowUpRight } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
 import type { RevenueStat } from "@/lib/mock-dashboard";
@@ -56,10 +55,10 @@ function MiniSparkline({ points, color }: { points: number[]; color: string }) {
 }
 
 const statLinks: Record<string, string> = {
-  "Revenue This Month": "/products",
-  "Products Analyzed": "/products",
-  "Active Orders": "/products",
-  "Est. Profit": "/products",
+  "Revenue This Month": "/revenue",
+  "Products Analyzed": "/revenue",
+  "Active Orders": "/revenue",
+  "Est. Profit": "/revenue",
 };
 
 function AnimatedStatCard({ stat, delay }: { stat: RevenueStat; delay: number }) {
@@ -216,11 +215,10 @@ function RevenueChart({ actual, predicted }: { actual: { date: string; value: nu
   );
 }
 
-export default function RevenueForecast({ actual, predicted, stats, username }: {
+export default function RevenueForecast({ actual, predicted, stats }: {
   actual: { date: string; value: number }[];
   predicted: { date: string; value: number }[];
   stats: RevenueStat[];
-  username: string;
 }) {
   const [timeframe, setTimeframe] = useState<"7d" | "30d" | "90d">("30d");
 
@@ -228,14 +226,14 @@ export default function RevenueForecast({ actual, predicted, stats, username }: 
     <div className="space-y-6">
       {/* Actions Row */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-1">
+        <Link href="/revenue" className="group">
+          <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-1 group-hover:text-accent transition-colors">
             Revenue Forecast
           </h1>
-          <p className="text-sm text-muted-foreground max-w-xl">
+          <p className="text-sm text-muted-foreground max-w-xl group-hover:text-foreground/70 transition-colors">
             Your dropshipping command center. Track revenue, analyze trends, and forecast growth.
           </p>
-        </div>
+        </Link>
         <div className="flex items-center gap-3">
           <div className="flex items-center bg-surface rounded-xl border border-border p-0.5">
             {(["7d", "30d", "90d"] as const).map((tf) => (
@@ -249,11 +247,11 @@ export default function RevenueForecast({ actual, predicted, stats, username }: 
             ))}
           </div>
           <Link
-            href="/products"
+            href="/revenue"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-all hover:shadow-[0_0_20px_rgba(var(--glow-color),0.3)] active:scale-[0.97]"
           >
-            <Search className="h-4 w-4" />
-            Search Products
+            View Full Report
+            <ArrowUpRight className="h-4 w-4" />
           </Link>
         </div>
       </div>
@@ -261,7 +259,11 @@ export default function RevenueForecast({ actual, predicted, stats, username }: 
       {/* Chart + Stats Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3">
-          <RevenueChart actual={actual} predicted={predicted} />
+          <Link href="/revenue" className="block group">
+            <div className="transition-all group-hover:opacity-90">
+              <RevenueChart actual={actual} predicted={predicted} />
+            </div>
+          </Link>
         </div>
         <div className="lg:col-span-2 grid grid-cols-2 gap-3">
           {stats.map((stat, i) => (
