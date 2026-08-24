@@ -192,10 +192,17 @@ function AIMonitoringPanel({ briefing, alerts }: { briefing: AIBriefing; alerts:
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border">
-              <RefreshCw className="h-3 w-3 text-muted-foreground animate-spin" style={{ animationDuration: "3s" }} />
-              <span className="text-[10px] font-semibold text-muted-foreground">Scanning...</span>
-            </div>
+            {briefing.lastScan === "loading..." ? (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border">
+                <RefreshCw className="h-3 w-3 text-muted-foreground animate-spin" style={{ animationDuration: "3s" }} />
+                <span className="text-[10px] font-semibold text-muted-foreground">Scanning...</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-400/10 border border-emerald-400/20">
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span className="text-[10px] font-semibold text-emerald-400">Live</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
