@@ -3,15 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY;
 const ZENROWS_API_KEY = process.env.ZENROWS_API_KEY;
 
-const platformUrls: Record<string, (q: string) => string> = {
-  temu: (q) => `https://www.temu.com/search_result.html?search_key=${encodeURIComponent(q)}`,
-  shein: (q) => `https://us.shein.com/pdsearch/${encodeURIComponent(q)}`,
-  etsy: (q) => `https://www.etsy.com/search?q=${encodeURIComponent(q)}`,
-  alibaba: (q) => `https://www.alibaba.com/trade/search?SearchText=${encodeURIComponent(q)}`,
-  banggood: (q) => `https://www.banggood.com/search/${encodeURIComponent(q)}.html`,
-  dhgate: (q) => `https://www.dhgate.com/wholesale/search.html?searchkey=${encodeURIComponent(q)}`,
-};
-
 async function scrapeUrl(url: string) {
   if (SCRAPER_API_KEY) {
     const params = new URLSearchParams({ api_key: SCRAPER_API_KEY, url, render: "true" });

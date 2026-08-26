@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Target, ArrowUpRight, TrendingUp, TrendingDown, Package, DollarSign, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
+import { Target, ArrowUpRight, TrendingUp, TrendingDown, Package, DollarSign, ChevronDown, ChevronUp } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { NicheCard as NicheCardType } from "@/lib/mock-dashboard";
 

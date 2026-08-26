@@ -103,16 +103,18 @@ export default function ParticleField() {
     createParticles();
     draw();
 
-    window.addEventListener("resize", () => {
+    const handleResize = () => {
       resize();
       createParticles();
-    });
+    };
+
+    window.addEventListener("resize", handleResize);
     canvas.addEventListener("mousemove", handleMouseMove);
     canvas.addEventListener("mouseleave", handleMouseLeave);
 
     return () => {
       cancelAnimationFrame(animationId);
-      window.removeEventListener("resize", resize);
+      window.removeEventListener("resize", handleResize);
       canvas.removeEventListener("mousemove", handleMouseMove);
       canvas.removeEventListener("mouseleave", handleMouseLeave);
     };

@@ -122,7 +122,9 @@ export function useDashboardData() {
             actionStats: apiData.actionStats?.length ? apiData.actionStats : prev.actionStats,
           }));
         }
-      } catch {}
+      } catch (err) {
+        console.error("Dashboard fetch failed:", err);
+      }
       setLoading(false);
     };
     fetchDashboard();

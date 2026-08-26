@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ExternalLink, TrendingUp, TrendingDown, Minus, Star, ShieldCheck, BadgeCheck, ArrowDownRight } from "lucide-react";
+import { TrendingUp, Star, ShieldCheck, BadgeCheck, ArrowDownRight } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { PlatformPrice } from "@/lib/mock-enrichment";
 
 function MiniSparkline({ points, id }: { points: number[]; id: string }) {
   const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- standard SSR mount guard
   useEffect(() => { setMounted(true); }, []);
   if (!mounted) return <div className="w-[72px] h-[24px] shrink-0" />;
   const max = Math.max(...points);
@@ -82,7 +83,7 @@ export default function PriceComparison({ platforms, listedPrice }: { platforms:
               <p className="font-display text-2xl sm:text-3xl font-bold gradient-text-blue">${sorted[0].price.toFixed(2)}</p>
               <div className="flex items-center gap-1 justify-end mt-1">
                 <Star className="h-3 w-3 text-amber-400 fill-current" />
-                <span className="text-[10px] text-muted-foreground">{sorted[0].rating} ({sorted[0].reviews.toLocaleString()})</span>
+                <span className="text-[10px] text-muted-foreground">{sorted[0].rating} ({(sorted[0].reviews || 0).toLocaleString()})</span>
               </div>
             </div>
           </div>
@@ -166,7 +167,7 @@ export default function PriceComparison({ platforms, listedPrice }: { platforms:
                     <div className="flex items-center gap-1.5">
                       <Star className="h-3 w-3 text-amber-400 fill-current" />
                       <span className="text-xs text-foreground font-medium">{p.rating}</span>
-                      <span className="text-[10px] text-muted-foreground">({p.reviews.toLocaleString()})</span>
+                      <span className="text-[10px] text-muted-foreground">({(p.reviews || 0).toLocaleString()})</span>
                     </div>
                   </td>
                   <td className="px-4 py-3.5 hidden md:table-cell">

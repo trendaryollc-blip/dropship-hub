@@ -8,11 +8,15 @@ const STORAGE_KEY = "dropship-theme";
 interface ThemeContextType {
   theme: ThemeName;
   setTheme: (name: ThemeName) => void;
+  previewTheme: (name: ThemeName) => void;
+  restoreTheme: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: "midnight",
+  theme: "crimson-noir",
   setTheme: () => {},
+  previewTheme: () => {},
+  restoreTheme: () => {},
 });
 
 export function useTheme() {
@@ -20,7 +24,7 @@ export function useTheme() {
 }
 
 function getInitialTheme(): ThemeName {
-  if (typeof window === "undefined") return "midnight";
+  if (typeof window === "undefined") return "crimson-noir";
 
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored && themeOrder.includes(stored as ThemeName)) {
@@ -30,10 +34,10 @@ function getInitialTheme(): ThemeName {
   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   if (!prefersDark) return "arctic-white";
 
-  return "midnight";
+  return "crimson-noir";
 }
 
-function applyTheme(name: ThemeName) {
+function applyThemeToDOM(name: ThemeName) {
   const theme = themes[name];
   if (!theme) return;
 
@@ -50,6 +54,7 @@ function applyTheme(name: ThemeName) {
   root.style.setProperty("--accent-warm", theme.accentWarm);
   root.style.setProperty("--accent-warm-hover", theme.accentWarmHover);
   root.style.setProperty("--muted", theme.muted);
+  root.style.setProperty("--sidebar", theme.sidebar);
   root.style.setProperty("--muted-fg", theme.mutedFg);
   root.style.setProperty("--success", theme.success);
   root.style.setProperty("--warning", theme.warning);
@@ -60,7 +65,10 @@ function applyTheme(name: ThemeName) {
   root.style.setProperty("--gradient-mid", theme.gradientMid);
   root.style.setProperty("--gradient-end", theme.gradientEnd);
   root.style.setProperty("--glow-color", theme.glowColor);
+}
 
+function applyTheme(name: ThemeName) {
+  applyThemeToDOM(name);
   localStorage.setItem(STORAGE_KEY, name);
 }
 
@@ -69,8 +77,9 @@ export default function ThemeProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [theme, setThemeState] = useState<ThemeName>("midnight");
+  const [theme, setThemeState] = useState<ThemeName>("crimson-noir");
   const initializedRef = useRef(false);
+  const previewingRef = useRef<ThemeName | null>(null);
 
   useEffect(() => {
     if (initializedRef.current) return;
@@ -82,12 +91,30 @@ export default function ThemeProvider({
   }, []);
 
   const setTheme = useCallback((name: ThemeName) => {
+    previewingRef.current = null;
     setThemeState(name);
     applyTheme(name);
   }, []);
 
+  const previewTheme = useCallback((name: ThemeName) => {
+    previewingRef.current = name;
+    applyThemeToDOM(name);
+  }, []);
+
+  const restoreTheme = useCallback(() => {
+    if (previewingRef.current) {
+      previewingRef.current = null;
+      const root = document.documentElement;
+      const current = themes[theme];
+      if (current) {
+        root.setAttribute("data-theme", theme);
+        applyThemeToDOM(theme);
+      }
+    }
+  }, [theme]);
+
   return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme, previewTheme, restoreTheme }}>
       {children}
     </ThemeContext.Provider>
   );

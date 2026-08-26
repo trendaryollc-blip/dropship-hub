@@ -27,11 +27,19 @@ interface RawMarketData {
 }
 
 function castToMarketData(raw: RawMarketData): MarketData {
+  const allPrices = raw.platforms.flatMap((p) => p.listings.map((l) => l.price)).filter((p) => p > 0);
+  const sortedPrices = [...allPrices].sort((a, b) => a - b);
+  const median = sortedPrices.length > 0
+    ? sortedPrices.length % 2 === 0
+      ? (sortedPrices[sortedPrices.length / 2 - 1] + sortedPrices[sortedPrices.length / 2]) / 2
+      : sortedPrices[Math.floor(sortedPrices.length / 2)]
+    : (raw.priceRange.min + raw.priceRange.max) / 2;
+
   return {
     query: "",
     totalListings: raw.totalListings,
     avgPrice: raw.avgPrice,
-    medianPrice: (raw.priceRange.min + raw.priceRange.max) / 2,
+    medianPrice: median,
     minPrice: raw.priceRange.min,
     maxPrice: raw.priceRange.max,
     profitZone: { min: raw.priceRange.min, max: raw.avgPrice, label: "Sweet spot" },
@@ -80,7 +88,7 @@ function castToMarketData(raw: RawMarketData): MarketData {
       potentialMargin: o.potentialMargin,
       actionLabel: o.actionLabel,
     })),
-    pricingOptions: raw.pricingOptions.map((o) => ({
+    pricingOptions: raw.pricingOptions.map((o, i) => ({
       label: o.label,
       icon: o.icon,
       price: o.price,
@@ -88,7 +96,7 @@ function castToMarketData(raw: RawMarketData): MarketData {
       description: "",
       tradeoff: o.competition,
       isRecommended: false,
-      color: "accent",
+      color: (["blue", "emerald", "purple"] as const)[i % 3],
       competition: o.competition,
       recommendation: o.recommendation,
     })),
@@ -108,7 +116,6 @@ export default function CompetitorsPage() {
   const [loading, setLoading] = useState(false);
   const [marketData, setMarketData] = useState<MarketData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const { ref: heroRef, isInView: heroInView } = useInView({ threshold: 0.1 });
 
   const handleSearch = useCallback(async (q?: string) => {
@@ -128,7 +135,6 @@ export default function CompetitorsPage() {
         setError(data.error);
       } else if (data.platforms) {
         setMarketData(castToMarketData(data));
-        setSearchHistory((prev) => [searchQuery.trim(), ...prev.filter((h) => h !== searchQuery.trim()).slice(0, 9)]);
       }
     } catch {
       setError("Failed to analyze market. Please try again.");

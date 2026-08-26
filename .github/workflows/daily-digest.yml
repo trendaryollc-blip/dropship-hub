@@ -1,0 +1,37 @@
+name: Daily Intelligence Digest
+
+on:
+  schedule:
+    # Runs every day at 8:00 AM UTC (adjust to your timezone)
+    - cron: "0 8 * * *"
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+
+jobs:
+  generate-digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Daily Digest
+        run: |
+          APP_URL="${{ secrets.APP_URL }}"
+
+          if [ -z "$APP_URL" ]; then
+            echo "ERROR: APP_URL secret not set. Go to GitHub repo → Settings → Secrets → Actions and add APP_URL"
+            exit 1
+          fi
+
+          echo "Triggering digest generation for $APP_URL..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$APP_URL/api/digest" \
+            -H "Content-Type: application/json" \
+            -d '{"date":"'$(date -u +%Y-%m-%d)'"}')
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ Digest generated successfully"
+            echo "$BODY" | head -c 200
+          else
+            echo "❌ Failed with HTTP $HTTP_CODE"
+            echo "$BODY"
+            exit 1
+          fi

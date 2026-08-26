@@ -62,3 +62,59 @@ export interface CalculatorResult {
   landedCost: number;
   costBreakdown: { name: string; value: number; color: string }[];
 }
+
+// ── Product Lifecycle Manager ──────────────────────────────────
+
+export type LifecycleStage = "discovery" | "testing" | "winning" | "scaling" | "saturation" | "sunset";
+
+export interface ProductLifecycle {
+  id: string;
+  productId: string;
+  productTitle: string;
+  productImage: string;
+  category: string;
+  currentStage: LifecycleStage;
+  stageEnteredAt: string;
+  daysInStage: number;
+  totalDaysTracked: number;
+  snapshots: LifecycleSnapshot[];
+  metrics: {
+    totalOrders: number;
+    totalRevenue: number;
+    totalProfit: number;
+    avgProfitMargin: number;
+    competitionCount: number;
+    searchVolume: number;
+    trendDirection: "rising" | "stable" | "declining";
+  };
+  alerts: LifecycleAlert[];
+  recommendations: string[];
+}
+
+export interface LifecycleSnapshot {
+  date: string;
+  stage: LifecycleStage;
+  orders: number;
+  revenue: number;
+  profit: number;
+  competitionCount: number;
+  searchVolume: number;
+}
+
+export interface LifecycleAlert {
+  id: string;
+  type: "stage_transition" | "competition_spike" | "profit_decline" | "trend_shift" | "sunset_warning";
+  severity: "info" | "warning" | "critical";
+  title: string;
+  description: string;
+  detectedAt: string;
+}
+
+export interface LifecycleStageInfo {
+  stage: LifecycleStage;
+  label: string;
+  color: string;
+  bgColor: string;
+  description: string;
+  typicalDuration: string;
+}

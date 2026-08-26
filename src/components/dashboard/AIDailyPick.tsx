@@ -93,6 +93,10 @@ export default function AIDailyPick({ pick }: { pick: AIDailyPickType }) {
   const RiskIcon = risk.icon;
   const timeLeft = useCountdown(pick.expiresAt);
   const [watchlisted, setWatchlisted] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgFailed, setImgFailed] = useState(false);
+
+  const showImage = pick.image && pick.image.trim() !== "" && !imgFailed;
 
   return (
     <div
@@ -133,83 +137,94 @@ export default function AIDailyPick({ pick }: { pick: AIDailyPickType }) {
           </div>
         </div>
 
-        {/* Product showcase - Image left, details right */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-6">
-          {/* Left: Product Image Showcase */}
-          <div className="lg:col-span-2">
-            <Link href="/products" className="group relative block">
-              <div className="absolute inset-0 bg-gradient-to-br from-accent/20 via-purple-500/10 to-accent-warm/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all opacity-60" />
-              <div className="relative aspect-square max-h-[260px] rounded-2xl overflow-hidden border border-white/10 bg-surface">
-                {pick.image ? (
-                  <img
-                    src={pick.image}
-                    alt={pick.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-accent/20 to-purple-500/10">
-                    <Package className="h-16 w-16 text-accent/40" />
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-                <div className="absolute top-3 left-3 animate-pulse-badge px-3 py-1 rounded-full bg-accent text-white text-[10px] font-bold uppercase shadow-lg shadow-accent/30">
-                  AI Pick
+        {/* Product showcase - Full width layout */}
+        <div className="flex flex-col lg:flex-row gap-0 mb-6 rounded-2xl overflow-hidden border border-white/10 bg-surface/50">
+          {/* Left: Product Image (fills available space) */}
+          <Link href="/products" className="group relative block lg:w-[55%] shrink-0">
+            <div className="relative aspect-[4/3] lg:aspect-auto lg:h-full min-h-[280px] lg:min-h-[340px] overflow-hidden bg-gradient-to-br from-accent/10 via-purple-500/5 to-accent/10">
+              {showImage && (
+                <img
+                  src={pick.image}
+                  alt={pick.title}
+                  className={`w-full h-full object-cover group-hover:scale-105 transition-all duration-700 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+                  onLoad={() => setImgLoaded(true)}
+                  onError={() => setImgFailed(true)}
+                  loading="eager"
+                />
+              )}
+              {(!showImage || !imgLoaded) && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                  <Package className="h-20 w-20 text-accent/30" />
+                  <span className="text-xs text-muted-foreground/50">{pick.title}</span>
                 </div>
-                <div className="absolute bottom-3 left-3 right-3">
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-black/40 backdrop-blur-sm">
-                      <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
-                      <span className="text-[11px] font-semibold text-white">{pick.overallScore >= 80 ? "4.9" : pick.overallScore >= 60 ? "4.7" : "4.5"}</span>
-                    </div>
-                    <div className="px-2 py-1 rounded-lg bg-black/40 backdrop-blur-sm">
-                      <span className="text-[11px] font-semibold text-white">{pick.platform}</span>
-                    </div>
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+              <div className="absolute top-4 left-4 animate-pulse-badge px-3 py-1.5 rounded-full bg-accent text-white text-[11px] font-bold uppercase shadow-lg shadow-accent/30">
+                AI Pick
+              </div>
+              <div className="absolute bottom-4 left-4 right-4">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-black/50 backdrop-blur-sm">
+                    <Star className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />
+                    <span className="text-xs font-semibold text-white">{pick.overallScore >= 80 ? "4.9" : pick.overallScore >= 60 ? "4.7" : "4.5"}</span>
+                  </div>
+                  <div className="px-2.5 py-1.5 rounded-lg bg-black/50 backdrop-blur-sm">
+                    <span className="text-xs font-semibold text-white">{pick.platform}</span>
                   </div>
                 </div>
               </div>
-            </Link>
-          </div>
+            </div>
+          </Link>
 
-          {/* Right: Product Details */}
-          <div className="lg:col-span-3 flex flex-col justify-between">
+          {/* Right: Product Details (flex to fill remaining space) */}
+          <div className="lg:w-[45%] p-5 lg:p-6 flex flex-col justify-between">
             <div>
-              <Link href="/products" className="inline-block px-2.5 py-1 rounded-lg bg-accent/10 text-accent text-[10px] font-bold uppercase tracking-wider mb-2 hover:bg-accent/20 transition-colors">
+              <Link href="/products" className="inline-block px-2.5 py-1 rounded-lg bg-accent/10 text-accent text-[10px] font-bold uppercase tracking-wider mb-3 hover:bg-accent/20 transition-colors">
                 {pick.category}
               </Link>
               <h3 className="font-display text-xl sm:text-2xl font-bold text-foreground leading-tight mb-2">{pick.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 mb-3">{pick.description}</p>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-4">{pick.description}</p>
 
-              <div className="flex flex-wrap gap-2 mb-4">
-                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium border ${risk.color}`}>
+              <div className="flex flex-wrap gap-2 mb-5">
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium border ${risk.color}`}>
                   <RiskIcon className="h-3 w-3" />
                   {risk.label}
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface border border-border text-[11px] font-medium text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface border border-border text-[11px] font-medium text-muted-foreground">
                   <TrendingUp className="h-3 w-3 text-emerald-400" />
                   {pick.platform}
                 </span>
               </div>
 
-              {/* Quick Stats */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <div className="p-2.5 rounded-xl bg-surface/80 border border-border text-center">
-                  <DollarSign className="h-3.5 w-3.5 text-emerald-400 mx-auto mb-1" />
-                  <p className="font-display text-sm font-bold text-foreground">{pick.margin}%</p>
-                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Margin</p>
+              {/* Stats Grid - 2x2 */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                  <div className="flex items-center gap-2 mb-1">
+                    <DollarSign className="h-4 w-4 text-emerald-400" />
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Margin</span>
+                  </div>
+                  <p className="font-display text-xl font-bold text-foreground">{pick.margin}%</p>
                 </div>
-                <div className="p-2.5 rounded-xl bg-surface/80 border border-border text-center">
-                  <ShoppingCart className="h-3.5 w-3.5 text-blue-400 mx-auto mb-1" />
-                  <p className="font-display text-sm font-bold text-foreground">{(pick.ordersPerMonth / 1000).toFixed(1)}K</p>
-                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Orders/mo</p>
+                <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                  <div className="flex items-center gap-2 mb-1">
+                    <ShoppingCart className="h-4 w-4 text-blue-400" />
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Orders/mo</span>
+                  </div>
+                  <p className="font-display text-xl font-bold text-foreground">{(pick.ordersPerMonth / 1000).toFixed(1)}K</p>
                 </div>
-                <div className="p-2.5 rounded-xl bg-surface/80 border border-border text-center">
-                  <Layers className="h-3.5 w-3.5 text-amber-400 mx-auto mb-1" />
-                  <p className="font-display text-sm font-bold text-foreground">{pick.saturation}%</p>
-                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Saturation</p>
+                <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Layers className="h-4 w-4 text-amber-400" />
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Saturation</span>
+                  </div>
+                  <p className="font-display text-xl font-bold text-foreground">{pick.saturation}%</p>
                 </div>
-                <div className="p-2.5 rounded-xl bg-emerald-400/10 border border-emerald-400/20 text-center">
-                  <p className="font-display text-sm font-bold text-emerald-400">${pick.earningsPreview.profitPerOrder.toFixed(0)}</p>
-                  <p className="text-[9px] text-emerald-400/70 uppercase tracking-wider">Profit/unit</p>
+                <div className="p-3 rounded-xl bg-emerald-400/10 border border-emerald-400/20">
+                  <div className="flex items-center gap-2 mb-1">
+                    <DollarSign className="h-4 w-4 text-emerald-400" />
+                    <span className="text-[10px] text-emerald-400/70 uppercase tracking-wider">Profit/unit</span>
+                  </div>
+                  <p className="font-display text-xl font-bold text-emerald-400">${pick.earningsPreview.profitPerOrder.toFixed(0)}</p>
                 </div>
               </div>
             </div>

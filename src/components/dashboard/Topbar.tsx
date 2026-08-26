@@ -4,7 +4,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { Bell, Search, LogOut, ChevronDown, Menu, ArrowLeft, TrendingUp, AlertTriangle, Sparkles } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import ThemeSwitcher from "@/components/theme/ThemeSwitcher";
+import ThemeGallery from "@/components/theme/ThemeGallery";
 
 interface TopbarProps {
   onMenuToggle: () => void;
@@ -89,7 +89,7 @@ export default function Topbar({ onMenuToggle }: TopbarProps) {
       </div>
 
       <div className="flex items-center gap-2 md:gap-3">
-        <ThemeSwitcher />
+        <ThemeGallery />
 
         <div ref={notificationsRef} className="relative">
           <button

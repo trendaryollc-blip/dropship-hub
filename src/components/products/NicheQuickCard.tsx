@@ -1,6 +1,7 @@
 "use client";
 
-import { TrendingUp, TrendingDown, Minus, ArrowUpRight, Package } from "lucide-react";
+import Image from "next/image";
+import { TrendingUp, TrendingDown, Minus, ArrowUpRight } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { NicheQuickCard as NicheQuickCardType } from "@/lib/mock-products";
 
@@ -22,9 +23,12 @@ export default function NicheQuickCard({ niche, index }: { niche: NicheQuickCard
       className="group block rounded-xl border border-border overflow-hidden bg-surface/50 hover:border-accent/20 hover:bg-accent/5 transition-all duration-300 hover:scale-[1.02]"
     >
       <div className="relative h-28 overflow-hidden">
-        <img
+        <Image
           src={niche.image}
           alt={niche.name}
+          width={400}
+          height={112}
+          unoptimized
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-surface/90 via-surface/20 to-transparent" />

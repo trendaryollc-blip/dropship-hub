@@ -1,6 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { X, BarChart3, ArrowRight } from "lucide-react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 interface CompareItem {
@@ -19,6 +21,7 @@ export default function QuickCompareBar({
   onRemove: (name: string) => void;
   onClear: () => void;
 }) {
+  const router = useRouter();
   if (items.length === 0) return null;
 
   return (
@@ -41,7 +44,7 @@ export default function QuickCompareBar({
                   className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-surface/80 border border-border shrink-0 group"
                 >
                   <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 overflow-hidden">
-                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                    <Image src={item.image} alt={item.name} width={32} height={32} unoptimized className="w-full h-full object-cover" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-[11px] font-medium text-foreground truncate max-w-[100px]">{item.name}</p>
@@ -68,7 +71,14 @@ export default function QuickCompareBar({
 
             <div className="flex items-center gap-2 shrink-0">
               {items.length >= 2 && (
-                <button className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent text-white text-xs font-semibold hover:bg-accent-hover transition-all hover:shadow-[0_0_15px_rgba(var(--glow-color),0.3)] active:scale-[0.97]">
+                <button
+                  onClick={() => {
+                    const params = new URLSearchParams();
+                    items.forEach((item) => params.append("compare", item.name));
+                    router.push(`/products?compare=${params.toString().replace(/compare=/g, "")}`);
+                  }}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent text-white text-xs font-semibold hover:bg-accent-hover transition-all hover:shadow-[0_0_15px_rgba(var(--glow-color),0.3)] active:scale-[0.97]"
+                >
                   Compare
                   <ArrowRight className="h-3.5 w-3.5" />
                 </button>

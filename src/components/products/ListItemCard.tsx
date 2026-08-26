@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Package, Star, Images } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
@@ -48,7 +49,7 @@ export default function ListItemCard({ product, index }: { product: SearchResult
       >
         <div className="w-16 h-16 rounded-xl bg-surface overflow-hidden shrink-0 relative">
           {product.image ? (
-            <img src={product.image} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+            <Image src={product.image} alt={product.title} width={64} height={64} unoptimized className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
               <Package className="h-6 w-6" />

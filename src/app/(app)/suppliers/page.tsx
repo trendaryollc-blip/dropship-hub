@@ -130,7 +130,8 @@ function SuppliersContent() {
   };
 
   useEffect(() => {
-    fetchSuppliers();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetch is safe
+    void fetchSuppliers();
   }, []);
 
   const filtered = useMemo(() => {

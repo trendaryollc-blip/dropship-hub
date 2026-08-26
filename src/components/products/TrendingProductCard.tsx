@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { TrendingUp, ChevronDown, ChevronUp, Flame, ExternalLink, Package } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import MiniSparkline from "./MiniSparkline";
@@ -57,7 +58,7 @@ export default function TrendingProductCard({ product, index, rank }: {
 
           <div className="w-11 h-11 rounded-xl bg-accent/10 flex items-center justify-center shrink-0 overflow-hidden">
             {product.image ? (
-              <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+              <Image src={product.image} alt={product.name} width={44} height={44} unoptimized className="w-full h-full object-cover" />
             ) : (
               <Package className="h-5 w-5 text-accent" />
             )}

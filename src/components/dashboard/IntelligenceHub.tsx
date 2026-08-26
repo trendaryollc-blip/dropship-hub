@@ -111,7 +111,8 @@ function TypingBriefing({ insights }: { insights: string[] }) {
   const [del, setDel] = useState(false);
 
   useEffect(() => {
-    const cur = insights[idx];
+    if (!insights || insights.length === 0) return;
+    const cur = insights[idx % insights.length];
     let t: ReturnType<typeof setTimeout>;
     if (!del && text === cur) {
       t = setTimeout(() => setDel(true), 3000);
@@ -151,7 +152,7 @@ function AIMonitoringPanel({ briefing, alerts }: { briefing: AIBriefing; alerts:
 
   const marketSignals = alerts.slice(0, 4).map((alert) => ({
     id: alert.id,
-    type: alert.type as "opportunity" | "risk" | "trend" | "action",
+    type: alert.type as "opportunity" | "risk" | "info" | "warning",
     title: alert.title,
     detail: alert.description.slice(0, 80),
     metric: alert.confidence > 80 ? `${alert.confidence}%` : `${alert.confidence}`,
@@ -336,7 +337,7 @@ function AIMonitoringPanel({ briefing, alerts }: { briefing: AIBriefing; alerts:
           {marketSignals.map((signal) => {
             const Icon = signal.icon;
             return (
-              <div key={signal.id} className={`p-3 rounded-xl border border-border/50 hover:border-accent/20 transition-all cursor-pointer group ${signal.type === "opportunity" ? "bg-emerald-400/5" : signal.type === "risk" ? "bg-red-400/5" : signal.type === "trend" ? "bg-blue-400/5" : "bg-amber-400/5"}`}>
+              <div key={signal.id} className={`p-3 rounded-xl border border-border/50 hover:border-accent/20 transition-all cursor-pointer group ${signal.type === "opportunity" ? "bg-emerald-400/5" : signal.type === "risk" ? "bg-red-400/5" : signal.type === "info" ? "bg-blue-400/5" : "bg-amber-400/5"}`}>
                 <div className="flex items-center justify-between mb-2">
                   <div className={`flex h-6 w-6 items-center justify-center rounded-lg ${signal.bg}`}>
                     <Icon className={`h-3 w-3 ${signal.color}`} />

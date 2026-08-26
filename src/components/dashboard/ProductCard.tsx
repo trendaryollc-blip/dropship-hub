@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Product } from "@/types/product";
 import { TrendingUp, Star, AlertTriangle, Zap, ArrowUpRight } from "lucide-react";
@@ -29,9 +30,12 @@ export default function ProductCard({ product }: { product: Product }) {
     >
       {/* Image */}
       <div className="relative aspect-square overflow-hidden bg-surface">
-        <img
+        <Image
           src={product.images[0]}
           alt={product.title}
+          width={400}
+          height={400}
+          unoptimized
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
         {/* Badges */}

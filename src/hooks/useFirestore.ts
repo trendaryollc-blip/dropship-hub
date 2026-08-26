@@ -30,7 +30,8 @@ export function useFavorites(type?: Favorite["type"]) {
     setLoading(false);
   }, [user, type]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetch is safe
+  useEffect(() => { void refresh(); }, [refresh]);
 
   const toggle = useCallback(async (itemId: string, title: string) => {
     if (!user || !type) return;
@@ -66,7 +67,8 @@ export function useCalcHistory(type?: CalcHistoryEntry["type"]) {
     setLoading(false);
   }, [user, type]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetch is safe
+  useEffect(() => { void refresh(); }, [refresh]);
 
   const save = useCallback(async (entry: Omit<CalcHistoryEntry, "id" | "savedAt">) => {
     if (!user) return;
@@ -91,7 +93,8 @@ export function useChatHistory() {
     setLoading(false);
   }, [user]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetch is safe
+  useEffect(() => { void refresh(); }, [refresh]);
 
   const save = useCallback(async (msg: Omit<ChatMessage, "id" | "timestamp">) => {
     if (!user) return;

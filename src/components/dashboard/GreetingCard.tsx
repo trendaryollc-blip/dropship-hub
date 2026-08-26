@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Search, Truck, Calculator, Sparkles, ArrowDown, Zap } from "lucide-react";
+import { Search, Truck, Calculator, Sparkles, ArrowDown } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 
 function getTimeOfDay() {
@@ -69,10 +69,9 @@ const colorMap: Record<string, { bg: string; text: string; border: string; glow:
 
 export default function GreetingCard({ username }: { username: string }) {
   const { ref, isInView } = useInView({ threshold: 0.1 });
-  const [timeOfDay, setTimeOfDay] = useState("morning");
+  const [timeOfDay, setTimeOfDay] = useState(() => getTimeOfDay());
 
   useEffect(() => {
-    setTimeOfDay(getTimeOfDay());
     const interval = setInterval(() => setTimeOfDay(getTimeOfDay()), 60000);
     return () => clearInterval(interval);
   }, []);

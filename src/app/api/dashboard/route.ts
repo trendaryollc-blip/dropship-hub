@@ -228,10 +228,11 @@ function generateMockProducts(): MockProduct[] {
     for (let i = 0; i < count; i++) {
       const name = data.names[i % data.names.length];
       const price = Number((data.priceRange[0] + Math.random() * (data.priceRange[1] - data.priceRange[0])).toFixed(2));
+      const imgId = (cat.charCodeAt(0) + i * 7) % 1000 + 100;
       products.push({
         title: i >= data.names.length ? `${name} V${Math.floor(i / data.names.length) + 1}` : name,
         price,
-        image: null,
+        image: `https://picsum.photos/seed/${cat}${i}/400/400`,
         link: `https://cjdropshipping.com/product-p-mock-${cat}-${i}`,
         source: "cj",
         rating: Number((3.5 + Math.random() * 1.5).toFixed(1)),

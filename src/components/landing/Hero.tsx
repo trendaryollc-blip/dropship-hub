@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+
 import { ArrowRight, ArrowUpRight, Sparkles, Flame, Target, Trophy } from "lucide-react";
 import ParticleField from "./ParticleField";
 import TypeWriter from "./TypeWriter";
@@ -62,14 +62,6 @@ function ConfidenceRing({ score }: { score: number }) {
 }
 
 export default function Hero() {
-  const [activeProduct, setActiveProduct] = useState(0);
-
-  useEffect(function() {
-    const timer = setInterval(function() {
-      setActiveProduct(function(prev) { return (prev + 1) % trendingProducts.length; });
-    }, 2500);
-    return function() { clearInterval(timer); };
-  }, []);
 
   return (
     <section className="relative pt-32 pb-20 md:pt-40 md:pb-32 overflow-hidden">
@@ -173,7 +165,7 @@ export default function Hero() {
                   </div>
                   <div className="space-y-2">
                     {trendingProducts.map(function(p, i) {
-                      var rankColors = ["linear-gradient(135deg, #FFD700 0%, #FFA500 100%)", "linear-gradient(135deg, #C0C0C0 0%, #A0A0A0 100%)", "linear-gradient(135deg, #CD7F32 0%, #B87333 100%)"];
+                      const rankColors = ["linear-gradient(135deg, #FFD700 0%, #FFA500 100%)", "linear-gradient(135deg, #C0C0C0 0%, #A0A0A0 100%)", "linear-gradient(135deg, #CD7F32 0%, #B87333 100%)"];
                       return (
                         <div key={i} className="flex items-center gap-2 md:gap-3 p-2 rounded-lg hover:bg-surface/80 transition-colors">
                           <div className="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0" style={{ background: rankColors[i] || rankColors[0] }}>

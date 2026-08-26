@@ -3,10 +3,10 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import {
-  DollarSign, TrendingUp, TrendingDown, Target, Zap,
-  BarChart3, Calendar, AlertTriangle, CheckCircle2, ArrowUpRight,
-  ExternalLink, Info, ShoppingCart, Shield, Brain, Settings,
-  LayoutDashboard, Search, RefreshCcw, ChevronDown, ChevronUp,
+  DollarSign, Target, Zap,
+  BarChart3, Calendar, AlertTriangle, ArrowUpRight,
+  ExternalLink, Info, Settings,
+  Search, RefreshCcw, ChevronDown, ChevronUp,
 } from "lucide-react";
 
 interface BudgetScenario {
@@ -218,8 +218,6 @@ export default function AdRoiPage() {
     return [...marketTimingData].sort((a, b) => (b.demand - b.competition) - (a.demand - a.competition));
   }, []);
 
-  const inputClass = "w-full px-4 py-3 rounded-xl bg-surface border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all text-sm";
-
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       {/* Header */}
@@ -407,7 +405,6 @@ export default function AdRoiPage() {
                     maintain: "bg-amber-400/10 text-amber-400 border-amber-400/20",
                     reduce: "bg-red-400/10 text-red-400 border-red-400/20",
                   };
-                  const gap = m.demand - m.competition;
                   return (
                     <Link
                       key={m.month}

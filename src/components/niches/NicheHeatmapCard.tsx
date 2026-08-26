@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { TrendingUp, TrendingDown, Minus, Flame, ArrowRight } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { NicheData } from "@/lib/mock-niches";
@@ -42,9 +43,12 @@ export default function NicheHeatmapCard({ niche, index, onSelect }: { niche: Ni
       style={{ transitionDelay: `${index * 60}ms` }}
     >
       <div className="relative h-20 sm:h-24 overflow-hidden rounded-xl mb-3">
-        <img
+        <Image
           src={niche.image}
           alt={niche.name}
+          width={400}
+          height={200}
+          unoptimized
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-surface/80 to-transparent" />

@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import {
-  Globe, CheckCircle2, AlertTriangle, ExternalLink, Search,
-  Loader2, X, Package, ShoppingCart, Store, Zap, Key,
+  Globe, CheckCircle2, Search,
+  Loader2, X, Package, ShoppingCart, Zap, Key,
   TrendingUp, DollarSign, BarChart3,
 } from "lucide-react";
 
@@ -265,6 +265,7 @@ export default function PlatformsPage() {
 
   const configuredCount = platforms.filter((p) => p.configured).length;
   const activeCount = platforms.filter((p) => p.active).length;
+  const apiCount = new Set(platforms.map((p) => p.dataSource)).size;
 
   const handleConnect = async (platform: Platform) => {
     setConnecting(true);
@@ -356,7 +357,7 @@ export default function PlatformsPage() {
             <Key className="h-4 w-4 text-purple-400" />
             <span className="text-xs text-muted-foreground">APIs Used</span>
           </div>
-          <p className="text-2xl font-bold text-purple-400">8</p>
+            <p className="text-2xl font-bold text-purple-400">{apiCount}</p>
         </div>
       </div>
 

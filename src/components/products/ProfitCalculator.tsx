@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Calculator, Zap, ArrowRight, DollarSign, TrendingUp, Target, Sparkles } from "lucide-react";
+import { Calculator, ArrowRight, DollarSign, TrendingUp, Target } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 
 const presets = [

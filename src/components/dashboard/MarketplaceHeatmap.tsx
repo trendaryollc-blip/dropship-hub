@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Flame, TrendingUp, TrendingDown, Minus, ArrowUpRight, Zap, ShoppingCart, DollarSign, ChevronDown, ChevronUp, Activity } from "lucide-react";
+import { Flame, TrendingUp, TrendingDown, Minus, ArrowUpRight, ShoppingCart, ChevronDown, ChevronUp, Activity } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { HeatmapCategory } from "@/lib/mock-dashboard";
 

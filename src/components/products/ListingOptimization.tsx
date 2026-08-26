@@ -83,8 +83,8 @@ export default function ListingOptimization({ data, platform }: { data: ListingS
             <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Suggested Tags</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {data.tags.map((t) => (
-              <span key={t} className="listing-tag">{t}</span>
+            {[...new Set(data.tags)].map((t, i) => (
+              <span key={`${t}-${i}`} className="listing-tag">{t}</span>
             ))}
           </div>
         </div>

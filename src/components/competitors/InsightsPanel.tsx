@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Lightbulb, ChevronRight, Check, Copy } from "lucide-react";
+import { Lightbulb, Check, Copy } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 
 export default function InsightsPanel({ insights }: { insights: string[] }) {

@@ -26,6 +26,7 @@ import {
   Package,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
+import DemoBadge from "@/components/ui/DemoBadge";
 import { dailyMission } from "@/lib/mock-dashboard";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -299,9 +300,12 @@ export default function MissionsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-1">
-            Daily Missions
-          </h1>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground">
+              Daily Missions
+            </h1>
+            <DemoBadge />
+          </div>
           <p className="text-xs sm:text-sm text-muted-foreground">
             Complete tasks, earn XP, and level up your dropshipping game.
           </p>

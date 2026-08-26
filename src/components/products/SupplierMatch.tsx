@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Truck, Clock, ArrowRight, Award, MapPin, Star } from "lucide-react";
+import { Truck, Clock, ArrowRight, Award, MapPin } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { SupplierMatch } from "@/lib/mock-enrichment";
 

@@ -1,9 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   TrendingUp, TrendingDown, Minus, Flame, Target, BarChart3,
-  Shield, Zap, Award, ArrowRight, ShoppingCart, Users, Globe,
+  Shield, Zap, ArrowRight, ShoppingCart, Users, Globe,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { NicheData } from "@/lib/mock-niches";
@@ -78,7 +79,7 @@ export default function NicheDetail({ niche }: { niche: NicheData }) {
       <div ref={heroRef} className={`glass rounded-2xl border border-border p-6 transition-all duration-700 ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
         <div className="flex flex-col md:flex-row items-start gap-6">
           <div className="w-16 h-16 rounded-2xl overflow-hidden border border-border shrink-0">
-            <img src={niche.image} alt={niche.name} className="w-full h-full object-cover" />
+            <Image src={niche.image} alt={niche.name} width={64} height={64} unoptimized className="w-full h-full object-cover" />
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2 flex-wrap">

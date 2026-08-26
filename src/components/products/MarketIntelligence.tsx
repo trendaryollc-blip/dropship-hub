@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { TrendingUp, TrendingDown, Minus, BarChart3, Users, Swords, Shield, AlertTriangle, Clock, ChevronRight } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, BarChart3, Users, Swords, Shield, AlertTriangle, Clock } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { MarketIntel } from "@/lib/mock-enrichment";
 
@@ -25,6 +25,7 @@ function ScoreRing({ score, size = 52 }: { score: number; size?: number }) {
 
 function MiniSparkline({ points, color = "#3b82f6" }: { points: number[]; color?: string }) {
   const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- standard SSR mount guard
   useEffect(() => { setMounted(true); }, []);
   if (!mounted) return <div className="w-full h-[32px] shrink-0" />;
   const max = Math.max(...points);

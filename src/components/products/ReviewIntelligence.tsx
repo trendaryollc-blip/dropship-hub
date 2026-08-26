@@ -1,6 +1,6 @@
 "use client";
 
-import { Star, ThumbsUp, ThumbsDown, Minus, ShieldCheck, MessageSquare, Quote } from "lucide-react";
+import { Star, ThumbsUp, ThumbsDown, Minus, ShieldCheck, MessageSquare } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { ReviewData } from "@/lib/mock-enrichment";
 

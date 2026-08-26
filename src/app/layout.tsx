@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 const themeScript = `
 (function() {
   try {
-    var theme = localStorage.getItem('dropship-theme') || 'midnight';
+    var theme = localStorage.getItem('dropship-theme') || 'crimson-noir';
     document.documentElement.setAttribute('data-theme', theme);
   } catch(e) {}
 })()

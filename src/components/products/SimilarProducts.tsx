@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Package, Sparkles, ExternalLink, Star, ArrowRight } from "lucide-react";
+import Image from "next/image";
+import { Package, Sparkles, ExternalLink, Star } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 
 interface SimilarProduct {
@@ -22,7 +23,7 @@ function SimilarCard({ product, index }: { product: SimilarProduct; index: numbe
       <a href={product.link} target="_blank" rel="noopener noreferrer" className="block">
         <div className="similar-image-wrap h-36 bg-gradient-to-br from-surface to-muted/20 border-b border-border/30 flex items-center justify-center">
           {product.image ? (
-            <img src={product.image} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            <Image src={product.image} alt={product.title} width={400} height={144} unoptimized className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
           ) : (
             <Package className="h-10 w-10 text-muted-foreground/20" />
           )}
@@ -64,7 +65,7 @@ function BoughtTogetherCard({ product, index }: { product: SimilarProduct; index
       <a href={product.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 w-full">
         <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-surface to-muted/20 border border-border/50 flex items-center justify-center shrink-0 overflow-hidden">
           {product.image ? (
-            <img src={product.image} alt={product.title} className="w-full h-full object-cover" />
+            <Image src={product.image} alt={product.title} width={64} height={64} unoptimized className="w-full h-full object-cover" />
           ) : (
             <Package className="h-5 w-5 text-muted-foreground/30" />
           )}
@@ -95,6 +96,8 @@ export default function SimilarProducts({ category, title, currentPrice }: { cat
   useEffect(() => {
     if (!title && !category) return;
 
+    let cancelled = false;
+
     const fetchSimilar = async () => {
       setLoading(true);
       try {
@@ -104,13 +107,16 @@ export default function SimilarProducts({ category, title, currentPrice }: { cat
           body: JSON.stringify({ title, category, currentPrice }),
         });
         const data = await res.json();
-        if (data.similar) setSimilar(data.similar);
-        if (data.boughtTogether) setBoughtTogether(data.boughtTogether);
+        if (!cancelled) {
+          if (data.similar) setSimilar(data.similar);
+          if (data.boughtTogether) setBoughtTogether(data.boughtTogether);
+        }
       } catch {}
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     };
 
     fetchSimilar();
+    return () => { cancelled = true; };
   }, [title, category, currentPrice]);
 
   return (

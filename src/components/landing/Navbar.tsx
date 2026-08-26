@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Menu, X, Zap } from "lucide-react";
-import ThemeSwitcher from "@/components/theme/ThemeSwitcher";
+import ThemeGallery from "@/components/theme/ThemeGallery";
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -56,7 +56,7 @@ export default function Navbar() {
 
         {/* Desktop CTA */}
         <div className="hidden md:flex items-center gap-3">
-          <ThemeSwitcher />
+          <ThemeGallery />
           <Link
             href="/sign-in"
             className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
@@ -97,7 +97,7 @@ export default function Navbar() {
             ))}
             <div className="border-t border-border my-2" />
             <div className="flex items-center justify-center py-2">
-              <ThemeSwitcher />
+              <ThemeGallery />
             </div>
             <Link
               href="/sign-in"

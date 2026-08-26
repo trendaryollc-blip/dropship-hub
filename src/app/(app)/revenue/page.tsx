@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
+import DemoBadge from "@/components/ui/DemoBadge";
 import { revenueData } from "@/lib/mock-dashboard";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -429,6 +430,14 @@ function InsightCard({ icon: Icon, title, description, type, delay }: { icon: ty
 
 export default function RevenuePage() {
   const [timeframe, setTimeframe] = useState<Timeframe>("30d");
+
+  const kpiData: Record<Timeframe, { revenue: number; profit: number; orders: number; margin: number; revenueChange: string; profitChange: string; ordersChange: string; marginChange: string; revenueSparkline: number[]; profitSparkline: number[]; ordersSparkline: number[]; marginSparkline: number[] }> = {
+    "7d": { revenue: 1050, profit: 712, orders: 6, margin: 68, revenueChange: "+12%", profitChange: "+5%", ordersChange: "+20%", marginChange: "+2.1%", revenueSparkline: [800, 850, 900, 920, 950, 1000, 1050], profitSparkline: [550, 570, 600, 620, 640, 680, 712], ordersSparkline: [3, 4, 4, 5, 5, 6, 6], marginSparkline: [64, 65, 66, 67, 67, 68, 68] },
+    "30d": { revenue: 4250, profit: 2847, orders: 23, margin: 71, revenueChange: "+18%", profitChange: "+8%", ordersChange: "+24%", marginChange: "+3.2%", revenueSparkline: [3200, 3400, 3600, 3800, 3900, 4100, 4250], profitSparkline: [2400, 2500, 2550, 2600, 2700, 2780, 2847], ordersSparkline: [12, 14, 16, 18, 19, 21, 23], marginSparkline: [65, 66, 68, 69, 70, 70, 71] },
+    "90d": { revenue: 12800, profit: 8540, orders: 68, margin: 67, revenueChange: "+25%", profitChange: "+15%", ordersChange: "+32%", marginChange: "+4.5%", revenueSparkline: [8500, 9200, 10000, 10500, 11200, 12000, 12800], profitSparkline: [5600, 6000, 6500, 6800, 7200, 7900, 8540], ordersSparkline: [35, 40, 45, 50, 55, 62, 68], marginSparkline: [62, 63, 64, 65, 66, 66, 67] },
+  };
+
+  const kpi = kpiData[timeframe];
   const { actual, predicted } = revenueData;
   const maxCategoryRevenue = Math.max(...categoryData.map((c) => c.revenue));
   const maxMonthlyRevenue = Math.max(...monthlyComparison.map((m) => m.revenue));
@@ -438,9 +447,12 @@ export default function RevenuePage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-1">
-            Revenue Forecast
-          </h1>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground">
+              Revenue Forecast
+            </h1>
+            <DemoBadge />
+          </div>
           <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">
             Track your revenue, analyze trends, and forecast growth across all platforms.
           </p>
@@ -466,10 +478,10 @@ export default function RevenuePage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-        <KPICard label="Revenue This Month" value={4250} prefix="$" change="+18%" up icon={DollarSign} color="text-emerald-400" sparkline={[3200, 3400, 3600, 3800, 3900, 4100, 4250]} delay={0} />
-        <KPICard label="Est. Profit" value={2847} prefix="$" change="+8%" up icon={TrendingUp} color="text-purple-400" sparkline={[2400, 2500, 2550, 2600, 2700, 2780, 2847]} delay={100} />
-        <KPICard label="Active Orders" value={23} change="+24%" up icon={ShoppingCart} color="text-amber-400" sparkline={[12, 14, 16, 18, 19, 21, 23]} delay={200} />
-        <KPICard label="Avg. Margin" value={71} suffix="%" change="+3.2%" up icon={Target} color="text-blue-400" sparkline={[65, 66, 68, 69, 70, 70, 71]} delay={300} />
+        <KPICard label="Revenue This Month" value={kpi.revenue} prefix="$" change={kpi.revenueChange} up icon={DollarSign} color="text-emerald-400" sparkline={kpi.revenueSparkline} delay={0} />
+        <KPICard label="Est. Profit" value={kpi.profit} prefix="$" change={kpi.profitChange} up icon={TrendingUp} color="text-purple-400" sparkline={kpi.profitSparkline} delay={100} />
+        <KPICard label="Active Orders" value={kpi.orders} change={kpi.ordersChange} up icon={ShoppingCart} color="text-amber-400" sparkline={kpi.ordersSparkline} delay={200} />
+        <KPICard label="Avg. Margin" value={kpi.margin} suffix="%" change={kpi.marginChange} up icon={Target} color="text-blue-400" sparkline={kpi.marginSparkline} delay={300} />
       </div>
 
       {/* Main Revenue Chart */}

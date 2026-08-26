@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { TrendingUp, TrendingDown, Minus, Flame, ArrowRight } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { NicheData } from "@/lib/mock-niches";
@@ -20,7 +21,7 @@ export default function NicheListItem({ niche, index, onSelect }: { niche: Niche
     >
       <div className="flex items-center gap-3 sm:gap-4">
         <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl overflow-hidden border border-border shrink-0">
-          <img src={niche.image} alt={niche.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+          <Image src={niche.image} alt={niche.name} width={64} height={64} unoptimized className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">

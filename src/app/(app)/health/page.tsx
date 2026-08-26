@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
-  Zap, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2,
-  ArrowUpRight, Target, Shield, DollarSign, Users,
-  BarChart3, ShoppingCart, Package, RotateCcw, ExternalLink,
+  Zap, CheckCircle2, ArrowUpRight, Target, Shield, DollarSign,
+  BarChart3, Package, RotateCcw, ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -98,26 +97,25 @@ function saveState(state: Record<string, boolean[]>) {
   } catch {}
 }
 
+function mergeWithSaved(cats: HealthCategory[]): HealthCategory[] {
+  const saved = loadState();
+  if (Object.keys(saved).length === 0) return cats;
+  return cats.map((cat) => {
+    const savedItems = saved[cat.id];
+    if (savedItems && savedItems.length === cat.items.length) {
+      return { ...cat, items: cat.items.map((item, i) => ({ ...item, done: savedItems[i] })) };
+    }
+    return cat;
+  });
+}
+
 export default function HealthPage() {
   const [categories, setCategories] = useState<HealthCategory[]>(defaultCategories);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const saved = loadState();
-    if (Object.keys(saved).length > 0) {
-      setCategories((prev) =>
-        prev.map((cat) => {
-          const savedItems = saved[cat.id];
-          if (savedItems && savedItems.length === cat.items.length) {
-            return {
-              ...cat,
-              items: cat.items.map((item, i) => ({ ...item, done: savedItems[i] })),
-            };
-          }
-          return cat;
-        })
-      );
-    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe localStorage hydration
+    setCategories(mergeWithSaved(defaultCategories));
     setMounted(true);
   }, []);
 
@@ -158,13 +156,6 @@ export default function HealthPage() {
   const percentage = totalScore;
   const totalDone = categories.reduce((sum, cat) => sum + cat.items.filter((i) => i.done).length, 0);
   const totalItems = categories.reduce((sum, cat) => sum + cat.items.length, 0);
-
-  const getScoreColor = (pct: number) => {
-    if (pct >= 80) return "from-emerald-400 to-emerald-500";
-    if (pct >= 60) return "from-accent to-blue-400";
-    if (pct >= 40) return "from-amber-400 to-orange-400";
-    return "from-red-400 to-red-500";
-  };
 
   const getScoreLabel = (pct: number) => {
     if (pct >= 80) return "Excellent";

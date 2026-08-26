@@ -59,7 +59,7 @@ export function calculateProfit(
   const netProfit = revenue - totalCost;
   const profitMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0;
   const roi = totalCost > 0 ? (netProfit / totalCost) * 100 : 0;
-  const breakEvenUnits = netProfit > 0 ? 1 : Math.ceil(Math.abs(netProfit) > 0 ? Math.abs(totalCost - revenue) / (sellingPrice - productCost - (sellingPrice * platformFeePercent / 100) - shippingCost - adSpendPerUnit) : 0);
+  const breakEvenUnits = netProfit > 0 ? 1 : Math.ceil(Math.abs(netProfit) > 0 ? Math.abs(totalCost - revenue) / Math.max(sellingPrice - productCost - (sellingPrice * platformFeePercent / 100) - shippingCost - adSpendPerUnit, 0.01) : 0);
 
   const costBreakdown = [
     { name: "Product Cost", value: productCost * units, pct: totalCost > 0 ? ((productCost * units) / totalCost) * 100 : 0, color: "#3b82f6" },
@@ -201,5 +201,75 @@ export function calculateAdROI(
     monthlyRevenue: +monthlyRevenue.toFixed(2),
     monthlyProfit: +monthlyProfit.toFixed(2),
     scenarios,
+  };
+}
+
+// ── Real-Time Profit Tracker ─────────────────────────────────────
+
+export interface OrderProfitResult {
+  netProfit: number;
+  profitMargin: number;
+  totalCosts: number;
+  breakdown: { name: string; value: number; pct: number; color: string }[];
+}
+
+export function calculateOrderProfit(
+  revenue: number,
+  cogs: number,
+  shippingCost: number,
+  platformFeePercent: number,
+  paymentProcessingPercent: number,
+  refunds: number = 0,
+  adSpend: number = 0,
+  otherCosts: number = 0
+): OrderProfitResult {
+  const platformFee = +(revenue * platformFeePercent / 100).toFixed(2);
+  const paymentProcessing = +(revenue * paymentProcessingPercent / 100).toFixed(2);
+  const totalCosts = +(cogs + shippingCost + platformFee + paymentProcessing + refunds + adSpend + otherCosts).toFixed(2);
+  const netProfit = +(revenue - totalCosts).toFixed(2);
+  const profitMargin = revenue > 0 ? +((netProfit / revenue) * 100).toFixed(1) : 0;
+
+  const breakdown = [
+    { name: "COGS", value: cogs, pct: totalCosts > 0 ? +((cogs / totalCosts) * 100).toFixed(1) : 0, color: "#3b82f6" },
+    { name: "Shipping", value: shippingCost, pct: totalCosts > 0 ? +((shippingCost / totalCosts) * 100).toFixed(1) : 0, color: "#f97316" },
+    { name: "Platform Fees", value: platformFee, pct: totalCosts > 0 ? +((platformFee / totalCosts) * 100).toFixed(1) : 0, color: "#a855f7" },
+    { name: "Payment Processing", value: paymentProcessing, pct: totalCosts > 0 ? +((paymentProcessing / totalCosts) * 100).toFixed(1) : 0, color: "#eab308" },
+    { name: "Refunds", value: refunds, pct: totalCosts > 0 ? +((refunds / totalCosts) * 100).toFixed(1) : 0, color: "#ef4444" },
+    { name: "Ad Spend", value: adSpend, pct: totalCosts > 0 ? +((adSpend / totalCosts) * 100).toFixed(1) : 0, color: "#ec4899" },
+    { name: "Other", value: otherCosts, pct: totalCosts > 0 ? +((otherCosts / totalCosts) * 100).toFixed(1) : 0, color: "#6b7280" },
+  ].filter((item) => item.value > 0);
+
+  return { netProfit, profitMargin, totalCosts, breakdown };
+}
+
+export interface AggregatedProfitResult {
+  totalRevenue: number;
+  totalCosts: number;
+  totalProfit: number;
+  profitMargin: number;
+  totalOrders: number;
+  avgOrderProfit: number;
+  avgOrderValue: number;
+}
+
+export function calculateAggregatedProfit(
+  orders: { revenue: number; cogs: number; shippingCost: number; platformFee: number; paymentProcessing: number; refunds: number; adSpend: number; otherCosts: number; netProfit: number }[]
+): AggregatedProfitResult {
+  const totalRevenue = orders.reduce((sum, o) => sum + o.revenue, 0);
+  const totalCosts = orders.reduce((sum, o) => sum + o.cogs + o.shippingCost + o.platformFee + o.paymentProcessing + o.refunds + o.adSpend + o.otherCosts, 0);
+  const totalProfit = orders.reduce((sum, o) => sum + o.netProfit, 0);
+  const totalOrders = orders.length;
+  const profitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+  const avgOrderProfit = totalOrders > 0 ? totalProfit / totalOrders : 0;
+  const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+  return {
+    totalRevenue: +totalRevenue.toFixed(2),
+    totalCosts: +totalCosts.toFixed(2),
+    totalProfit: +totalProfit.toFixed(2),
+    profitMargin: +profitMargin.toFixed(1),
+    totalOrders,
+    avgOrderProfit: +avgOrderProfit.toFixed(2),
+    avgOrderValue: +avgOrderValue.toFixed(2),
   };
 }

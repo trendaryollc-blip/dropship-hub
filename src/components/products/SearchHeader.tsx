@@ -47,20 +47,30 @@ export default function SearchHeader({
           Product Search
         </h1>
         <p className="text-muted-foreground">
-          Search real products across {allPlatforms.length}+ platforms
+          Search real products across {selectedPlatforms.length > 0 ? selectedPlatforms.length : allPlatforms.length} platform{selectedPlatforms.length !== 1 ? "s" : ""}
         </p>
       </div>
 
       <div className="glass rounded-2xl p-4">
         <div className="mb-4">
-          <span className="text-xs text-muted-foreground mb-2 block">Platforms:</span>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-muted-foreground">Platforms:</span>
+            {selectedPlatforms.length > 0 && (
+              <button
+                onClick={() => selectedPlatforms.forEach((p) => togglePlatform(p))}
+                className="text-[10px] text-accent hover:text-accent-hover transition-colors"
+              >
+                Clear ({selectedPlatforms.length})
+              </button>
+            )}
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
             {allPlatforms.map((p) => (
               <button
                 key={p}
                 onClick={() => togglePlatform(p)}
                 className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all h-11 ${
-                  selectedPlatforms.includes(p) || selectedPlatforms.length === 0
+                  selectedPlatforms.includes(p)
                     ? "bg-accent/10 text-accent border border-accent/20"
                     : "bg-surface border border-border text-muted-foreground hover:text-foreground"
                 }`}
@@ -106,7 +116,9 @@ export default function SearchHeader({
             className="flex items-center gap-2 px-6 py-3 rounded-xl bg-accent text-white text-sm font-medium hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
-            Search All
+            {selectedPlatforms.length > 0
+              ? `Search ${selectedPlatforms.length} Platform${selectedPlatforms.length > 1 ? "s" : ""}`
+              : "Search All"}
           </button>
         </div>
 

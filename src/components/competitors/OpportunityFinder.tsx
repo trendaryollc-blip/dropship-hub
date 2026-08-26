@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Zap, AlertTriangle, ShieldAlert, ArrowRight, X, ExternalLink } from "lucide-react";
+import { Zap, AlertTriangle, ShieldAlert, ArrowRight, X } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { Opportunity } from "@/lib/mock-competitors";
 

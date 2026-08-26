@@ -101,7 +101,7 @@ function generateListingFromCompetitors(
 
 export async function POST(request: NextRequest) {
   try {
-    const { title, category, price, platform } = await request.json();
+    const { title, category, price, platform: _platform } = await request.json();
 
     if (!title) {
       return NextResponse.json({ error: "Product title is required" }, { status: 400 });

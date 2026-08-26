@@ -4,9 +4,10 @@ import { useState, useMemo, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
-  Search, Globe, Loader2, Compass, Zap, ArrowRight,
+  Search, Loader2, Compass, Zap, ArrowRight,
   Flame, TrendingUp, Sparkles, ShoppingCart, Package,
 } from "lucide-react";
+import Image from "next/image";
 import { useInView } from "@/hooks/useInView";
 import SearchHeader from "@/components/products/SearchHeader";
 import ViewToggle from "@/components/ui/ViewToggle";
@@ -263,7 +264,7 @@ function TrendingSection() {
                     </div>
                     <div className="w-11 h-11 rounded-xl bg-accent/10 flex items-center justify-center shrink-0 overflow-hidden">
                       {product.image ? (
-                        <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                        <Image src={product.image} alt={product.name} width={44} height={44} unoptimized className="w-full h-full object-cover" />
                       ) : (
                         <Package className="h-5 w-5 text-accent" />
                       )}
@@ -351,7 +352,7 @@ function NichesSection() {
             const trendBg = niche.trend === "up" ? "bg-emerald-400/10" : niche.trend === "down" ? "bg-red-400/10" : "bg-surface/50";
             return (
               <div key={niche.id} className={`transition-all duration-500 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transitionDelay: `${i * 60}ms` }}>
-                <a href={`/products?q=${encodeURIComponent(niche.name)}`} className="group block rounded-xl border border-border overflow-hidden bg-surface/50 hover:border-accent/20 hover:bg-accent/5 transition-all duration-300 hover:scale-[1.02]">
+                <Link href={`/products?q=${encodeURIComponent(niche.name)}`} className="group block rounded-xl border border-border overflow-hidden bg-surface/50 hover:border-accent/20 hover:bg-accent/5 transition-all duration-300 hover:scale-[1.02]">
                   <div className="relative h-28 overflow-hidden bg-gradient-to-br from-surface to-muted/20 flex items-center justify-center">
                     <span className="text-4xl opacity-20 group-hover:opacity-40 transition-opacity">{niche.icon}</span>
                     <div className={`absolute top-2 right-2 flex items-center gap-0.5 px-1.5 py-0.5 rounded-md backdrop-blur-sm ${trendBg}`}>
@@ -365,7 +366,7 @@ function NichesSection() {
                       <span className="text-[10px] text-muted-foreground">${niche.avgSellingPrice.toFixed(0)} avg</span>
                     </div>
                   </div>
-                </a>
+                </Link>
               </div>
             );
           })}
@@ -422,7 +423,7 @@ function CategoriesSection() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {categories.map((cat, i) => (
             <div key={cat.id} className={`transition-all duration-500 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transitionDelay: `${i * 60}ms` }}>
-              <a href={`/products?q=${encodeURIComponent(cat.query)}`} className="group relative block rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02]">
+              <Link href={`/products?q=${encodeURIComponent(cat.query)}`} className="group relative block rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02]">
                 <div className="relative h-32 overflow-hidden bg-gradient-to-br from-surface to-muted/20 flex items-center justify-center">
                   <span className="text-5xl opacity-20 group-hover:opacity-40 transition-opacity">{cat.icon}</span>
                   {cat.trending && (
@@ -441,7 +442,7 @@ function CategoriesSection() {
                     <span className="text-[10px] text-muted-foreground">~{cat.avgMargin}% margin</span>
                   </div>
                 </div>
-              </a>
+              </Link>
             </div>
           ))}
         </div>
@@ -475,15 +476,57 @@ function ProductsContent() {
   useEffect(() => {
     try {
       const stored = JSON.parse(localStorage.getItem("recentSearches") || "[]");
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe localStorage hydration
       if (Array.isArray(stored)) setRecentSearches(stored);
     } catch {}
   }, []);
 
+  const saveRecentSearch = (q: string) => {
+    const updated = [q, ...recentSearches.filter((s) => s !== q)].slice(0, 5);
+    setRecentSearches(updated);
+    localStorage.setItem("recentSearches", JSON.stringify(updated));
+  };
+
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (searchParams.get("q")) {
-      handleSearch(searchParams.get("q")!);
+      const q = searchParams.get("q")!;
+      setQuery(q);
+      setLoading(true);
+      setError(null);
+      setResults([]);
+      setPlatformResults([]);
+      setSearched(true);
+      saveRecentSearch(q);
+
+      fetch("/api/platforms/search-all", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: q,
+          platforms: selectedPlatforms.length > 0 ? selectedPlatforms : undefined,
+        }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.error) {
+            setError(data.error);
+            return;
+          }
+          const allResults: SearchResult[] = [];
+          const platforms: PlatformResult[] = data.platforms || [];
+          platforms.forEach((p: PlatformResult) => {
+            allResults.push(...normalizeResults(p.platform, p.data));
+          });
+          setPlatformResults(platforms);
+          setResults(allResults);
+        })
+        .catch(() => setError("Network error - please try again"))
+        .finally(() => setLoading(false));
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const allPlatforms = ["amazon", "ebay", "aliexpress", "cj", "google_shopping", "walmart", "etsy", "temu", "shein", "banggood", "dhgate", "alibaba"];
 
@@ -491,12 +534,6 @@ function ProductsContent() {
     setSelectedPlatforms((prev) =>
       prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
     );
-  };
-
-  const saveRecentSearch = (q: string) => {
-    const updated = [q, ...recentSearches.filter((s) => s !== q)].slice(0, 5);
-    setRecentSearches(updated);
-    localStorage.setItem("recentSearches", JSON.stringify(updated));
   };
 
   const handleSearch = async (searchQuery?: string) => {

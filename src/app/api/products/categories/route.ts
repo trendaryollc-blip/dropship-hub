@@ -27,7 +27,7 @@ const CATEGORY_QUERIES = [
 ];
 
 function getCategoryImage(name: string): string {
-  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "+").replace(/\+$/g, "");
+  const _slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "+").replace(/\+$/g, "");
   return `https://placehold.co/400x250/0f172a/3b82f6?text=${encodeURIComponent(name)}`;
 }
 

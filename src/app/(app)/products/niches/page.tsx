@@ -46,11 +46,12 @@ export default function NichesPage() {
   };
 
   useEffect(() => {
-    fetchNiches();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetch is safe
+    void fetchNiches();
   }, []);
 
   const filteredNiches = useMemo(() => {
-    let list = query
+    const list = query
       ? niches.filter((n) => n.name.toLowerCase().includes(query.toLowerCase()) || n.keywords.some((k) => k.toLowerCase().includes(query.toLowerCase())))
       : [...niches];
     switch (sortBy) {

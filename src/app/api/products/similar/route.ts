@@ -61,7 +61,7 @@ async function searchSimilarProducts(query: string, category: string): Promise<S
 
 export async function POST(request: NextRequest) {
   try {
-    const { title, category, currentPrice } = await request.json();
+    const { title, category, currentPrice: _currentPrice } = await request.json();
 
     if (!title && !category) {
       return NextResponse.json({ error: "Title or category is required" }, { status: 400 });

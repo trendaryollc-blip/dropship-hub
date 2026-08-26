@@ -13,7 +13,6 @@ interface TypeWriterProps {
 export default function TypeWriter({
   words,
   typingSpeed = 80,
-  deletingSpeed = 50,
   pauseTime = 2000,
   className = "",
 }: TypeWriterProps) {

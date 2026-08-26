@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { getAuth, sendPasswordResetEmail } from "firebase/auth";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import { Zap, Mail, ArrowRight, Loader2, CheckCircle2, ArrowLeft } from "lucide-react";
 
 export default function ForgotPasswordPage() {
@@ -16,7 +17,6 @@ export default function ForgotPasswordPage() {
     setError("");
     setLoading(true);
     try {
-      const auth = getAuth();
       await sendPasswordResetEmail(auth, email);
       setSent(true);
     } catch (err: unknown) {

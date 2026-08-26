@@ -1,17 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  Search,
-  Truck,
-  Calculator,
-  ArrowUpRight,
-  Zap,
-  Target,
-  CheckCircle2,
+  ArrowUpRight, Target, CheckCircle2, Search, DollarSign,
+  Truck, Brain, Zap, BarChart3, Eye, EyeOff,
 } from "lucide-react";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 import MarketPulseTicker from "@/components/dashboard/MarketPulseTicker";
 import AIDailyPick from "@/components/dashboard/AIDailyPick";
@@ -25,145 +21,165 @@ import InlineCalculator from "@/components/dashboard/InlineCalculator";
 import QuickCompareBar from "@/components/dashboard/QuickCompareBar";
 import TrendingProducts from "@/components/dashboard/TrendingProducts";
 import GreetingCard from "@/components/dashboard/GreetingCard";
+import DailyDigest from "@/components/dashboard/DailyDigest";
 
-function QuickActionCard({ action, index, visible }: { action: { label: string; description: string; href: string; color: string }; index: number; visible: boolean }) {
-  const colorMap: Record<string, { icon: typeof Search; color: string; bg: string; gradient: string }> = {
-    blue: { icon: Search, color: "text-blue-400", bg: "bg-blue-400/10", gradient: "from-blue-400/20 to-blue-500/5" },
-    emerald: { icon: Truck, color: "text-emerald-400", bg: "bg-emerald-400/10", gradient: "from-emerald-400/20 to-emerald-500/5" },
-    amber: { icon: Calculator, color: "text-amber-400", bg: "bg-amber-400/10", gradient: "from-amber-400/20 to-amber-500/5" },
-    purple: { icon: Zap, color: "text-purple-400", bg: "bg-purple-400/10", gradient: "from-purple-400/20 to-purple-500/5" },
-  };
-  const c = colorMap[action.color] || colorMap.blue;
-  const Icon = c.icon;
-
-  return (
-    <Link
-      href={action.href}
-      className={`group relative rounded-2xl p-5 transition-all duration-500 hover:scale-[1.02] ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
-      style={{ transitionDelay: `${index * 100}ms` }}
-    >
-      <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${c.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
-      <div className="absolute inset-[1px] rounded-2xl bg-surface/90 backdrop-blur-xl" />
-      <div className="relative z-10">
-        <div className={`inline-flex items-center justify-center w-11 h-11 rounded-xl ${c.bg} mb-3 group-hover:scale-110 transition-transform duration-300`}>
-          <Icon className={`h-5 w-5 ${c.color}`} />
-        </div>
-        <h3 className="font-display text-sm font-semibold text-foreground mb-1 flex items-center gap-1.5">
-          {action.label}
-          <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-        </h3>
-        <p className="text-xs text-muted-foreground leading-relaxed">{action.description}</p>
-      </div>
-    </Link>
-  );
-}
+const gettingStartedSteps = [
+  { id: "search", text: "Search for your first product", href: "/products", icon: Search },
+  { id: "calc", text: "Calculate your profit margin", href: "/calculator", icon: DollarSign },
+  { id: "supplier", text: "Find a reliable supplier", href: "/suppliers", icon: Truck },
+  { id: "competitor", text: "Check the competition", href: "/competitors", icon: BarChart3 },
+  { id: "store", text: "Connect your store", href: "/store", icon: Zap },
+];
 
 export default function DashboardHome() {
-  const [greeting] = useState(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  });
   const { data, markAlertRead, markAllAlertsRead, addToCompare, removeFromCompare, clearCompare } = useDashboardData();
+  const { user } = useAuth();
+  const [advancedMode, setAdvancedMode] = useState(false);
+  const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>({});
 
-  const completedTasks = data.tasks.filter((t) => t.done).length;
-  const totalTasks = data.tasks.length;
-  const progressPct = Math.round((completedTasks / totalTasks) * 100);
+  useEffect(() => {
+    if (user) {
+      const saved = localStorage.getItem(`dashboard_steps_${user.uid}`);
+      if (saved) {
+        try { setCompletedSteps(JSON.parse(saved)); } catch {}
+      }
+    }
+  }, [user]);
+
+  const toggleStep = (stepId: string) => {
+    const updated = { ...completedSteps, [stepId]: !completedSteps[stepId] };
+    setCompletedSteps(updated);
+    if (user) {
+      localStorage.setItem(`dashboard_steps_${user.uid}`, JSON.stringify(updated));
+    }
+  };
+
+  const completedCount = Object.values(completedSteps).filter(Boolean).length;
+  const progressPct = Math.round((completedCount / gettingStartedSteps.length) * 100);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 pb-24">
-      {/* Market Pulse Ticker */}
-      <MarketPulseTicker items={data.ticker} />
-
-      {/* Smart Greeting Card */}
-      <GreetingCard username="trendaryo206" />
-
-      {/* [2] AI Product of the Day */}
-      <AIDailyPick pick={data.dailyPick} />
-
-      {/* [3] Revenue Forecast + Stats + Daily Mission */}
-      <div className="space-y-6">
-        <RevenueForecast
-          actual={data.revenue.actual}
-          predicted={data.revenue.predicted}
-          stats={data.revenue.stats}
-        />
-        <DailyMission mission={data.mission} />
+    <div className="max-w-7xl mx-auto space-y-6 pb-24">
+      {/* Header with mode toggle */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-display text-xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Your dropshipping command center</p>
+        </div>
+        <button
+          onClick={() => setAdvancedMode(!advancedMode)}
+          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border border-border bg-surface hover:bg-surface-hover transition-all"
+        >
+          {advancedMode ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+          {advancedMode ? "Simple View" : "Advanced View"}
+        </button>
       </div>
 
-      {/* [4] Intelligence Hub */}
-      <IntelligenceHub
-        alerts={data.alerts}
-        onRead={markAlertRead}
-        onReadAll={markAllAlertsRead}
-        briefing={data.briefing}
-        pulse={data.pulse}
-        actionStats={data.actionStats}
-      />
+      {/* Greeting */}
+      <GreetingCard username={user?.displayName || user?.email?.split("@")[0] || "there"} />
 
-      {/* [5] Niche Radar Cards */}
-      <NicheRadarCards niches={data.niches} />
-
-      {/* [8] Marketplace Heatmap + [10] Inline Calculator + Supplier Status */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
-          <InlineCalculator />
-        </div>
-        <div className="lg:col-span-2">
-          <SupplierStatusCards suppliers={data.suppliers} />
-        </div>
-      </div>
-
-      {/* [8] Marketplace Heatmap */}
-      <MarketplaceHeatmap categories={data.heatmap} />
-
-      {/* Trending Products */}
-      <TrendingProducts products={data.trending} onAddCompare={addToCompare} />
-
-      {/* Getting Started */}
-      <div className="glass rounded-2xl p-6">
+      {/* Getting Started Checklist */}
+      <div className="glass rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-display text-sm font-semibold text-foreground">Getting Started</h3>
-          <span className="text-xs text-muted-foreground">{completedTasks}/{totalTasks} completed</span>
+          <div className="flex items-center gap-2">
+            <Target className="h-4 w-4 text-accent" />
+            <h3 className="font-display text-sm font-semibold text-foreground">Getting Started</h3>
+          </div>
+          <span className="text-xs text-muted-foreground">{completedCount}/{gettingStartedSteps.length} done</span>
         </div>
 
-        <div className="h-2 rounded-full bg-surface overflow-hidden mb-6">
+        <div className="h-1.5 rounded-full bg-surface overflow-hidden mb-4">
           <div
             className="h-full rounded-full bg-gradient-to-r from-accent to-emerald-400 transition-all duration-700"
             style={{ width: `${progressPct}%` }}
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {data.tasks.map((tip, i) => (
-            <Link
-              key={i}
-              href={tip.href}
-              className="flex items-center gap-3 p-3 rounded-xl bg-surface/50 hover:bg-surface-hover transition-all group"
+        <div className="space-y-2">
+          {gettingStartedSteps.map((step) => (
+            <button
+              key={step.id}
+              onClick={() => toggleStep(step.id)}
+              className="w-full flex items-center gap-3 p-3 rounded-xl bg-surface/50 hover:bg-surface-hover transition-all group text-left"
             >
-              <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${tip.done ? "bg-emerald-400/10 border border-emerald-400/20" : "border border-border"}`}>
-                {tip.done ? (
+              <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-all ${
+                completedSteps[step.id]
+                  ? "bg-emerald-400/10 border border-emerald-400/20"
+                  : "border border-border"
+              }`}>
+                {completedSteps[step.id] ? (
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
                 ) : (
-                  <Target className="h-3.5 w-3.5 text-muted-foreground group-hover:text-accent transition-colors" />
+                  <step.icon className="h-3.5 w-3.5 text-muted-foreground group-hover:text-accent transition-colors" />
                 )}
               </div>
-              <span className={`text-sm ${tip.done ? "text-muted-foreground line-through" : "text-muted-foreground group-hover:text-foreground"} transition-colors`}>
-                {tip.text}
+              <span className={`text-sm flex-1 text-left ${
+                completedSteps[step.id] ? "text-muted-foreground line-through" : "text-muted-foreground group-hover:text-foreground"
+              } transition-colors`}>
+                {step.text}
               </span>
-              <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/0 group-hover:text-muted-foreground transition-all ml-auto" />
-            </Link>
+              {!completedSteps[step.id] && (
+                <Link
+                  href={step.href}
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-[10px] text-accent hover:text-accent/80 font-medium flex items-center gap-1 shrink-0"
+                >
+                  Do it <ArrowUpRight className="h-3 w-3" />
+                </Link>
+              )}
+            </button>
           ))}
         </div>
       </div>
 
-      {/* [9] Quick Compare Bar */}
-      <QuickCompareBar
-        items={data.compareItems}
-        onRemove={removeFromCompare}
-        onClear={clearCompare}
-      />
+      {/* AI Product of the Day */}
+      <AIDailyPick pick={data.dailyPick} />
+
+      {/* Advanced Mode: Show all widgets */}
+      {advancedMode && (
+        <>
+          <MarketPulseTicker items={data.ticker} />
+
+          <RevenueForecast
+            actual={data.revenue.actual}
+            predicted={data.revenue.predicted}
+            stats={data.revenue.stats}
+          />
+
+          <DailyMission mission={data.mission} />
+
+          <IntelligenceHub
+            alerts={data.alerts}
+            onRead={markAlertRead}
+            onReadAll={markAllAlertsRead}
+            briefing={data.briefing}
+            pulse={data.pulse}
+            actionStats={data.actionStats}
+          />
+
+          <DailyDigest />
+
+          <NicheRadarCards niches={data.niches} />
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1">
+              <InlineCalculator />
+            </div>
+            <div className="lg:col-span-2">
+              <SupplierStatusCards suppliers={data.suppliers} />
+            </div>
+          </div>
+
+          <MarketplaceHeatmap categories={data.heatmap} />
+
+          <TrendingProducts products={data.trending} onAddCompare={addToCompare} />
+
+          <QuickCompareBar
+            items={data.compareItems}
+            onRemove={removeFromCompare}
+            onClear={clearCompare}
+          />
+        </>
+      )}
     </div>
   );
 }

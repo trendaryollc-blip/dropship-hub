@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   ArrowLeft, Shield, Star, MapPin, Clock, Truck, Package,
   CheckCircle2, AlertTriangle, TrendingUp, Award, Mail, Globe,
-  MessageSquare, CreditCard, RefreshCw,
+  MessageSquare,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { SupplierProfile } from "@/types/supplier";
@@ -261,9 +261,9 @@ function SupplierDetailContent({ id }: { id: string }) {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Response Rate</span>
-              <span className="text-xs font-bold text-foreground">{supplier.stats.communicationScore}%</span>
+              <span className="text-xs font-bold text-foreground">{Math.min(Math.round(supplier.stats.responseTimeHours < 4 ? 95 : supplier.stats.responseTimeHours < 8 ? 85 : 70), 100)}%</span>
             </div>
-            <ProgressBar value={supplier.stats.communicationScore} />
+            <ProgressBar value={supplier.stats.responseTimeHours < 4 ? 95 : supplier.stats.responseTimeHours < 8 ? 85 : 70} />
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">

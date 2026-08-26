@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { TrendingUp, TrendingDown, Minus, ExternalLink, X, Star, MapPin } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, ExternalLink, X, Star } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { PlatformData, CompetitorListing } from "@/lib/mock-competitors";
 

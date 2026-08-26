@@ -42,18 +42,6 @@ interface MarketData {
   insights: string[];
 }
 
-interface PlatformSearchResult {
-  id: string;
-  title: string;
-  price: number;
-  source: string;
-  seller: string;
-  sellerRating: number;
-  sellerProducts: number;
-  link: string;
-  shipping?: string;
-  daysAgo?: number;
-}
 
 const platformConfig: Record<string, { icon: string }> = {
   amazon: { icon: "📦" },
@@ -103,7 +91,7 @@ function searchPlatform(
       let trendPercent = 0;
       if (olderAvg > 0) {
         const diff = ((recentAvg - olderAvg) / olderAvg) * 100;
-        trendPercent = Math.abs(Math.round(diff));
+        trendPercent = Math.round(diff);
         if (diff > 2) trend = "up";
         else if (diff < -2) trend = "down";
       }
@@ -117,7 +105,7 @@ function searchPlatform(
 
       const sellers = new Set(results.map((r) => r.seller));
 
-      const listings: CompetitorListing[] = results.map((r) => ({
+      const listings: CompetitorListing[] = results.filter((r) => r.price > 0).map((r) => ({
         id: r.id,
         title: r.title,
         price: r.price,
@@ -254,7 +242,7 @@ function buildOpportunities(platforms: PlatformData[]): { type: "opportunity" | 
     const platformPrices = platform.listings.map((l) => l.price);
     if (platformPrices.length === 0) continue;
 
-    const platformAvg = platformPrices.reduce((a, b) => a + b, 0) / platformPrices.length;
+    const _platformAvg = platformPrices.reduce((a, b) => a + b, 0) / platformPrices.length;
     const cheapListings = platform.listings.filter((l) => l.price < globalAvg * 0.7);
 
     if (cheapListings.length > 0) {
@@ -309,7 +297,7 @@ function buildPricingOptions(platforms: PlatformData[]): { label: string; icon: 
   const sorted = [...allPrices].sort((a, b) => a - b);
   const min = sorted[0];
   const avg = sorted.reduce((a, b) => a + b, 0) / sorted.length;
-  const max = sorted[sorted.length - 1];
+  const _max = sorted[sorted.length - 1];
   const q1 = sorted[Math.floor(sorted.length * 0.25)];
   const q3 = sorted[Math.floor(sorted.length * 0.75)];
 

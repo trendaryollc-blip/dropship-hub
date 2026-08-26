@@ -61,3 +61,65 @@ export interface SupplierSearchResult {
   total: number;
   sources: string[];
 }
+
+// ── Supplier Performance Intelligence ──────────────────────────
+
+export interface SupplierPerformance {
+  supplierId: string;
+  supplierName: string;
+  reliabilityScore: number;
+  reliabilityTrend: number;
+  refundRate: number;
+  refundRateTrend: number;
+  avgShippingDays: number;
+  shippingTrend: number;
+  complaintRate: number;
+  complaintTrend: number;
+  stockReliability: number;
+  stockTrend: number;
+  communicationScore: number;
+  qualityScore: number;
+  totalOrders: number;
+  responseTimeHours: number;
+  dailySnapshots: SupplierMetricSnapshot[];
+  status: "excellent" | "good" | "warning" | "critical";
+}
+
+export interface SupplierMetricSnapshot {
+  date: string;
+  reliabilityScore: number;
+  refundRate: number;
+  shippingDays: number;
+  complaintRate: number;
+  stockReliability: number;
+  orders: number;
+}
+
+export interface SupplierAlert {
+  id: string;
+  supplierId: string;
+  supplierName: string;
+  type: "quality_degradation" | "shipping_delay" | "stock_low" | "refund_spike" | "communication_issue";
+  severity: "low" | "medium" | "high";
+  title: string;
+  description: string;
+  metric: string;
+  previousValue: number;
+  currentValue: number;
+  changePercent: number;
+  recommendation: string;
+  createdAt: string;
+}
+
+export interface SupplierComparison {
+  suppliers: {
+    name: string;
+    reliabilityScore: number;
+    refundRate: number;
+    avgShippingDays: number;
+    complaintRate: number;
+    stockReliability: number;
+    priceCompetitiveness: number;
+    totalOrders: number;
+  }[];
+}

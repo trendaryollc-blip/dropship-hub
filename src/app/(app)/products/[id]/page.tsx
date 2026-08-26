@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, Suspense, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, Suspense, useMemo } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft, ExternalLink, Star, ShoppingCart, Package,
-  TrendingUp, Shield, Truck, Clock, ChevronDown, ChevronUp,
-  ChevronLeft, ChevronRight, Images, Tag, Barcode, Layers,
+  Shield, Clock, ChevronLeft, ChevronRight, Images, Barcode, Layers,
 } from "lucide-react";
+import Image from "next/image";
 import { useInView } from "@/hooks/useInView";
 import PriceComparison from "@/components/products/PriceComparison";
 import ProfitCalculator from "@/components/products/ProfitCalculator";
@@ -84,7 +84,7 @@ function ImageGallery({ images, title }: { images: string[]; title: string }) {
     <>
       <div className="hero-image-card">
         <div className="aspect-[4/3] sm:aspect-square bg-surface relative cursor-zoom-in" onClick={() => setLightboxOpen(true)}>
-          <img src={images[activeIndex]} alt={`${title} - Image ${activeIndex + 1}`} className="w-full h-full object-contain p-6 hover:scale-110 transition-transform duration-500" />
+          <Image src={images[activeIndex]} alt={`${title} - Image ${activeIndex + 1}`} width={600} height={600} unoptimized className="w-full h-full object-contain p-6 hover:scale-110 transition-transform duration-500" />
           {images.length > 1 && (
             <>
               <button onClick={(e) => { e.stopPropagation(); goPrev(); }} className="absolute left-3 top-1/2 -translate-y-1/2 p-3 rounded-xl bg-black/50 text-white backdrop-blur-md hover:bg-black/70 transition-all min-w-[44px] min-h-[44px] flex items-center justify-center border border-white/10">
@@ -103,7 +103,7 @@ function ImageGallery({ images, title }: { images: string[]; title: string }) {
           <div className="flex gap-1.5 p-3 overflow-x-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }}>
             {images.map((img, i) => (
               <button key={i} onClick={() => setActiveIndex(i)} className={`w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden shrink-0 border-2 transition-all ${i === activeIndex ? "border-accent shadow-[0_0_12px_rgba(var(--glow-color),0.3)]" : "border-transparent opacity-50 hover:opacity-90"}`}>
-                <img src={img} alt="" className="w-full h-full object-cover" />
+                <Image src={img} alt="" width={56} height={56} unoptimized className="w-full h-full object-cover" />
               </button>
             ))}
           </div>
@@ -114,7 +114,7 @@ function ImageGallery({ images, title }: { images: string[]; title: string }) {
           <button onClick={(e) => { e.stopPropagation(); goPrev(); }} className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-colors min-w-[48px] min-h-[48px] flex items-center justify-center border border-white/10">
             <ChevronLeft className="h-6 w-6" />
           </button>
-          <img src={images[activeIndex]} alt={title} className="max-w-[90vw] max-h-[90vh] object-contain" onClick={(e) => e.stopPropagation()} />
+          <Image src={images[activeIndex]} alt={title} width={1200} height={900} unoptimized className="max-w-[90vw] max-h-[90vh] object-contain" onClick={(e) => e.stopPropagation()} />
           <button onClick={(e) => { e.stopPropagation(); goNext(); }} className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-colors min-w-[48px] min-h-[48px] flex items-center justify-center border border-white/10">
             <ChevronRight className="h-6 w-6" />
           </button>
@@ -130,25 +130,21 @@ function ImageGallery({ images, title }: { images: string[]; title: string }) {
 function ProductDetailContent() {
   const searchParams = useSearchParams();
   const { ref: heroRef, isInView: heroVisible } = useInView({ threshold: 0.1 });
-  const [showDetails, setShowDetails] = useState(true);
-  const [product, setProduct] = useState<ProductData | null>(null);
+  const [product] = useState<ProductData | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const stored = sessionStorage.getItem("selectedProduct");
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return null;
+  });
   const [fetchedImages, setFetchedImages] = useState<string[]>([]);
   const [loadingImages, setLoadingImages] = useState(false);
   const [enrichmentData, setEnrichmentData] = useState<Record<string, unknown> | null>(null);
   const [loadingEnrichment, setLoadingEnrichment] = useState(false);
   const [reviewData, setReviewData] = useState<Record<string, unknown> | null>(null);
-  const [loadingReviews, setLoadingReviews] = useState(false);
   const [marketIntelData, setMarketIntelData] = useState<Record<string, unknown> | null>(null);
-  const [loadingMarketIntel, setLoadingMarketIntel] = useState(false);
   const [listingData, setListingData] = useState<Record<string, unknown> | null>(null);
-  const [loadingListing, setLoadingListing] = useState(false);
-
-  useEffect(() => {
-    const stored = sessionStorage.getItem("selectedProduct");
-    if (stored) {
-      try { setProduct(JSON.parse(stored)); } catch {}
-    }
-  }, []);
 
   const title = product?.title || searchParams.get("t") || "Product";
   const price = product?.price != null ? String(product.price) : searchParams.get("p");
@@ -242,7 +238,6 @@ function ProductDetailContent() {
     if (!title || title === "Product") return;
 
     const fetchReviews = async () => {
-      setLoadingReviews(true);
       try {
         const res = await fetch("/api/products/reviews", {
           method: "POST",
@@ -254,7 +249,6 @@ function ProductDetailContent() {
           setReviewData(data);
         }
       } catch {}
-      setLoadingReviews(false);
     };
 
     fetchReviews();
@@ -264,7 +258,6 @@ function ProductDetailContent() {
     if (!title || title === "Product") return;
 
     const fetchMarketIntel = async () => {
-      setLoadingMarketIntel(true);
       try {
         const res = await fetch("/api/products/market-intel", {
           method: "POST",
@@ -276,7 +269,6 @@ function ProductDetailContent() {
           setMarketIntelData(data);
         }
       } catch {}
-      setLoadingMarketIntel(false);
     };
 
     fetchMarketIntel();
@@ -286,7 +278,7 @@ function ProductDetailContent() {
     if (!title || title === "Product") return;
 
     const fetchListing = async () => {
-      setLoadingListing(true);
+      
       try {
         const res = await fetch("/api/products/listing", {
           method: "POST",
@@ -298,7 +290,7 @@ function ProductDetailContent() {
           setListingData(data);
         }
       } catch {}
-      setLoadingListing(false);
+      
     };
 
     fetchListing();
@@ -405,7 +397,7 @@ function ProductDetailContent() {
       } : null,
       supplierMatches: [],
     };
-  }, [enrichmentData, reviewData, marketIntelData, listingData, title, source, priceNum, ratingNum, reviewsNum, link]);
+  }, [enrichmentData, reviewData, marketIntelData, listingData, source, priceNum, ratingNum, reviewsNum, link]);
 
   return (
     <div className="page-atmosphere max-w-5xl mx-auto space-y-6 md:space-y-8 pb-20 md:pb-28 relative z-10">

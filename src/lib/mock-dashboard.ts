@@ -174,7 +174,7 @@ export const tickerItems: TickerItem[] = [
 export const aiDailyPick: AIDailyPick = {
   title: "Pet GPS Tracker Smart Collar",
   category: "Pet Supplies",
-  image: "https://placehold.co/600x600/0f0f17/06b6d4?text=GPS+Collar",
+  image: "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=800&h=800&fit=crop&q=80",
   description: "Real-time tracking, geofencing alerts, activity monitoring. Waterproof IP67, 7-day battery. Works with iOS and Android app.",
   radarScores: { margin: 85, demand: 78, competition: 92, trend: 88, supplier: 75 },
   sourcePrice: 15.99,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Heart, BarChart3, ExternalLink, Calculator, Award, Share2, Bookmark } from "lucide-react";
+import { Heart, BarChart3, ExternalLink, Calculator, Award } from "lucide-react";
 
 export default function ProductActionBar({ platform, platformUrl, productTitle, category }: { platform: string; platformUrl?: string; productTitle: string; category?: string }) {
   const [saved, setSaved] = useState(false);

@@ -162,7 +162,7 @@ async function fetchAmazonReviews(asin: string): Promise<ReviewData | null> {
   }
 }
 
-async function scrapeGoogleShoppingReviews(url: string, title: string): Promise<ReviewData | null> {
+async function scrapeGoogleShoppingReviews(url: string, _title: string): Promise<ReviewData | null> {
   try {
     const res = await fetch(url, {
       headers: {

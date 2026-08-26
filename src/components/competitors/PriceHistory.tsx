@@ -12,6 +12,13 @@ interface PricePoint {
 
 export default function PriceHistory({ data }: { data: PricePoint[] }) {
   const { ref, isInView } = useInView({ threshold: 0.1 });
+  if (!data || data.length === 0) {
+    return (
+      <div ref={ref} className={`glass rounded-2xl p-6 border border-border transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+        <p className="text-sm text-muted-foreground text-center">No price history data available</p>
+      </div>
+    );
+  }
   const allPrices = data.flatMap((d) => [d.min, d.avg, d.max]);
   const minP = Math.min(...allPrices);
   const maxP = Math.max(...allPrices);

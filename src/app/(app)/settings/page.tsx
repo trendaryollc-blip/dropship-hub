@@ -18,11 +18,9 @@ import {
   Store,
   DollarSign,
   BarChart3,
-  Target,
   ArrowUpRight,
   LayoutDashboard,
   Search,
-  Settings,
   Sparkles,
   TrendingUp,
 } from "lucide-react";
@@ -285,7 +283,7 @@ export default function AISettingsPage() {
       {/* Providers Tab */}
       {activeTab === "providers" && (
         <div className="space-y-4 animate-slide-up">
-          {providers
+          {[...providers]
             .sort((a, b) => a.priority - b.priority)
             .map((provider) => (
               <div key={provider.id} className="glass rounded-2xl p-6 border border-border space-y-4 group hover:border-accent/10 transition-all">

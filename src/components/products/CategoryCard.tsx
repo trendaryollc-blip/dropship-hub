@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowUpRight, TrendingUp, Package } from "lucide-react";
+import Image from "next/image";
+import { ArrowUpRight, TrendingUp } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { ProductCategory } from "@/lib/mock-products";
 
@@ -18,9 +19,12 @@ export default function CategoryCard({ category, index }: { category: ProductCat
       className="group relative block rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02]"
     >
       <div className="relative h-32 overflow-hidden">
-        <img
+        <Image
           src={category.image}
           alt={category.name}
+          width={400}
+          height={128}
+          unoptimized
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/40 to-transparent" />

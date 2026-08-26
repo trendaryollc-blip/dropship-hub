@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, Suspense, useCallback } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { saveCalcHistory } from "@/lib/data";
 import { CheckCircle2, Save } from "lucide-react";
 import {
   DollarSign, Truck, Globe, Percent, TrendingUp,
-  Calculator, ArrowRight, Info, BarChart3, AlertTriangle,
-  Zap, Target, ChevronDown,
+  Calculator, Info, AlertTriangle,
 } from "lucide-react";
 import {
   calculateProfit, calculateShipping, calculateLandedCost,
