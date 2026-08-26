@@ -106,12 +106,15 @@ function normalizeResults(platform: string, data: unknown): SearchResult[] {
         }).filter((u) => u && u !== "null" && u !== "")
       : undefined;
 
+    const primaryImage = String(product.image || product.thumbnail || product.imageUrl || product.productImage || "") || null;
+    const allImages = imagesArray && imagesArray.length > 0 ? imagesArray : (primaryImage ? [primaryImage] : undefined);
+
     results.push({
       id: `${platform}-${i}`,
       title: String(product.title || product.productName || product.name || "Product"),
       price,
-      image: String(product.image || product.thumbnail || product.imageUrl || product.productImage || "") || null,
-      images: imagesArray && imagesArray.length > 0 ? imagesArray : undefined,
+      image: primaryImage,
+      images: allImages && allImages.length > 0 ? allImages : undefined,
       link: String(product.link || product.itemWebUrl || product.url || product.product_link || "#"),
       source: platform,
       rating: typeof product.rating === "number" ? product.rating : undefined,

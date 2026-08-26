@@ -368,11 +368,11 @@ export default function ProfitTrackerPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
             <div className="glass rounded-xl p-3 sm:p-4 text-center">
               <p className="text-[10px] sm:text-[11px] text-muted-foreground mb-1">Avg Order Value</p>
-              <p className="font-display text-lg sm:text-xl font-bold text-foreground">${summary.avgOrderValue.toFixed(2)}</p>
+              <p className="font-display text-lg sm:text-xl font-bold text-foreground">${(summary.avgOrderValue ?? 0).toFixed(2)}</p>
             </div>
             <div className="glass rounded-xl p-3 sm:p-4 text-center">
               <p className="text-[10px] sm:text-[11px] text-muted-foreground mb-1">Avg Order Profit</p>
-              <p className="font-display text-lg sm:text-xl font-bold text-emerald-400">${summary.avgOrderProfit.toFixed(2)}</p>
+              <p className="font-display text-lg sm:text-xl font-bold text-emerald-400">${(summary.avgOrderProfit ?? 0).toFixed(2)}</p>
             </div>
             <div className="glass rounded-xl p-3 sm:p-4 text-center">
               <p className="text-[10px] sm:text-[11px] text-muted-foreground mb-1">Refund Rate</p>
@@ -380,7 +380,7 @@ export default function ProfitTrackerPage() {
             </div>
             <div className="glass rounded-xl p-3 sm:p-4 text-center">
               <p className="text-[10px] sm:text-[11px] text-muted-foreground mb-1">Total Costs</p>
-              <p className="font-display text-lg sm:text-xl font-bold text-red-400">${summary.totalCosts.toFixed(2)}</p>
+              <p className="font-display text-lg sm:text-xl font-bold text-red-400">${(summary.totalCosts ?? 0).toFixed(2)}</p>
             </div>
           </div>
         </>

@@ -6,11 +6,7 @@ import {
   Brain, Send, Sparkles, TrendingUp, DollarSign,
   ShoppingCart, Truck, Target, BarChart3, Store,
   ArrowUpRight, Search, Calculator, Copy, Check,
-  Package, Eye, Activity, Layers,
 } from "lucide-react";
-import { useAuth } from "@/components/auth/AuthProvider";
-import SmartSuggestions from "@/components/ai/SmartSuggestions";
-import LiveMarketIntel from "@/components/ai/LiveMarketIntel";
 
 interface Message {
   id: string;
@@ -21,12 +17,14 @@ interface Message {
   actions?: { label: string; href: string; icon: React.ReactNode }[];
 }
 
-interface ContextItem {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-  color: string;
-}
+const welcomeCards = [
+  { label: "Find winning products", icon: ShoppingCart, prompt: "What are the top 5 trending dropshipping products right now with the best profit margins?", color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
+  { label: "Analyze a niche", icon: Target, prompt: "Analyze the competition level and opportunity for wireless earbuds in dropshipping", color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/20" },
+  { label: "Calculate margins", icon: DollarSign, prompt: "What profit margins should I target for different product categories in dropshipping?", color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+  { label: "Find reliable suppliers", icon: Truck, prompt: "How do I find and vet reliable suppliers for my dropshipping store?", color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
+  { label: "Ad strategy", icon: BarChart3, prompt: "What's the best Facebook Ads strategy for a new dropshipping store with a $500 budget?", color: "text-cyan-400", bg: "bg-cyan-500/10", border: "border-cyan-500/20" },
+  { label: "Store optimization tips", icon: Store, prompt: "Give me 5 tips to optimize my Shopify store for maximum conversions", color: "text-pink-400", bg: "bg-pink-500/10", border: "border-pink-500/20" },
+];
 
 const quickActions = [
   { label: "Find products", icon: ShoppingCart, prompt: "What are the top 5 trending dropshipping products right now with the best profit margins?", color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
@@ -36,26 +34,6 @@ const quickActions = [
   { label: "Ad strategy", icon: BarChart3, prompt: "What's the best Facebook Ads strategy for a new dropshipping store with a $500 budget?", color: "text-cyan-400", bg: "bg-cyan-500/10", border: "border-cyan-500/20" },
   { label: "Store tips", icon: Store, prompt: "Give me 5 tips to optimize my Shopify store for maximum conversions", color: "text-pink-400", bg: "bg-pink-500/10", border: "border-pink-500/20" },
 ];
-
-const welcomeMessage: Message = {
-  id: "welcome",
-  role: "assistant",
-  content: `Hey! I'm your **DropShip Hub AI Command Center** — your dropshipping co-pilot.
-
-I'm connected to your entire workflow and can help with:
-
-**Product Intelligence** — Find winning products, analyze niches, predict trends
-**Profit Optimization** — Calculate margins, compare supplier pricing
-**Market Strategy** — Competitor analysis, ad campaigns, store tips
-
-What would you like to explore?`,
-  timestamp: new Date(),
-  actions: [
-    { label: "Find Products", href: "/products", icon: <Search className="h-3.5 w-3.5" /> },
-    { label: "Calculate Profit", href: "/calculator", icon: <Calculator className="h-3.5 w-3.5" /> },
-    { label: "My Store", href: "/store", icon: <Store className="h-3.5 w-3.5" /> },
-  ],
-};
 
 const mockResponses: Record<string, { content: string; actions?: Message["actions"] }> = {
   trending: {
@@ -247,25 +225,19 @@ function formatMessage(content: string): string {
 }
 
 export default function AIPage() {
-  const { user } = useAuth();
-  const [messages, setMessages] = useState<Message[]>([welcomeMessage]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [activeProvider, setActiveProvider] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [hasStarted, setHasStarted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-
-  const contextItems: ContextItem[] = [
-    { label: "Products Viewed", value: "12 this week", icon: <Eye className="h-3.5 w-3.5" />, color: "text-blue-400" },
-    { label: "Calculations", value: "8 today", icon: <Calculator className="h-3.5 w-3.5" />, color: "text-emerald-400" },
-    { label: "Connected Stores", value: user ? "1 active" : "None yet", icon: <Store className="h-3.5 w-3.5" />, color: "text-purple-400" },
-    { label: "Tracked Products", value: "24 items", icon: <Package className="h-3.5 w-3.5" />, color: "text-amber-400" },
-  ];
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isTyping]);
 
   const copyMessage = (content: string, id: string) => {
     navigator.clipboard.writeText(content.replace(/\*\*/g, "").replace(/•/g, "-"));
@@ -276,6 +248,8 @@ export default function AIPage() {
   const handleSend = useCallback(async (text?: string) => {
     const content = text || input.trim();
     if (!content) return;
+
+    if (!hasStarted) setHasStarted(true);
 
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -291,7 +265,6 @@ export default function AIPage() {
 
     try {
       const apiMessages = [...messages, userMsg]
-        .filter((m) => m.id !== "welcome")
         .map((m) => ({ role: m.role, content: m.content }));
 
       const res = await fetch("/api/ai", {
@@ -327,7 +300,7 @@ export default function AIPage() {
     } finally {
       setIsTyping(false);
     }
-  }, [input, messages]);
+  }, [input, messages, hasStarted]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -337,145 +310,159 @@ export default function AIPage() {
   };
 
   return (
-    <div className="flex bg-gradient-to-b from-background to-background/95">
-      {/* Left Sidebar - Fixed */}
-      <aside className="hidden lg:flex flex-col w-[280px] shrink-0 border-r border-white/[0.06] bg-background/50 h-[calc(100vh-4rem)] sticky top-[4rem]">
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Context Panel */}
+    <div className="flex flex-col h-[calc(100vh-4rem)] -m-4 md:-m-6">
+      {/* Header */}
+      <div className="shrink-0 px-4 md:px-8 py-4 border-b border-white/[0.08] bg-background/80 backdrop-blur-sm">
+        <div className="max-w-3xl mx-auto flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/20">
+            <Brain className="h-5 w-5 text-accent" />
+          </div>
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Activity className="h-4 w-4 text-accent" />
-              <span className="text-[11px] font-semibold text-foreground uppercase tracking-wider">AI Context</span>
+            <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
+              AI Assistant
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Live
+              </span>
+            </h1>
+            <p className="text-[11px] text-muted-foreground">
+              Your dropshipping co-pilot
+              {activeProvider && <span className="ml-2 text-emerald-400 font-medium">• {activeProvider}</span>}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Scrollable content area */}
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
+        {/* Welcome state — no messages yet */}
+        {!hasStarted && (
+          <div className="flex flex-col items-center justify-center min-h-full px-4 py-12">
+            <div className="max-w-2xl w-full text-center mb-10">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/20 mx-auto mb-5">
+                <Sparkles className="h-8 w-8 text-accent" />
+              </div>
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">
+                What can I help you with?
+              </h2>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                Ask me anything about dropshipping — products, suppliers, margins, ads, or store optimization.
+              </p>
             </div>
-            <div className="space-y-2">
-              {contextItems.map((item, i) => (
-                <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                  <div className="flex items-center gap-2">
-                    <span className={item.color}>{item.icon}</span>
-                    <span className="text-[11px] text-muted-foreground">{item.label}</span>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-w-3xl w-full">
+              {welcomeCards.map((card) => (
+                <button
+                  key={card.label}
+                  onClick={() => handleSend(card.prompt)}
+                  className={`flex items-start gap-3 p-4 rounded-2xl border ${card.bg} ${card.border} text-left transition-all hover:scale-[1.02] active:scale-[0.98] group`}
+                >
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${card.bg} ${card.color} group-hover:scale-110 transition-transform`}>
+                    <card.icon className="h-5 w-5" />
                   </div>
-                  <span className="text-[11px] font-medium text-foreground">{item.value}</span>
-                </div>
+                  <div>
+                    <p className={`text-sm font-semibold ${card.color}`}>{card.label}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                      {card.prompt.length > 60 ? card.prompt.slice(0, 60) + "..." : card.prompt}
+                    </p>
+                  </div>
+                </button>
               ))}
             </div>
           </div>
+        )}
 
-          {/* Smart Suggestions */}
-          <SmartSuggestions />
-        </div>
-      </aside>
-
-      {/* Center - Scrollable Content */}
-      <main className="flex-1 min-w-0">
-        {/* Header */}
-        <div className="px-8 py-4 border-b border-white/[0.06] bg-background/60 backdrop-blur-sm sticky top-[4rem] z-10">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/20">
-              <Brain className="h-5 w-5 text-accent" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
-                AI Command Center
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Live
-                </span>
-              </h1>
-              <p className="text-[11px] text-muted-foreground">
-                Your dropshipping co-pilot
-                {activeProvider && <span className="ml-2 text-emerald-400 font-medium">• {activeProvider}</span>}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Messages */}
-        <div className="px-8 pt-6 pb-4 space-y-6 max-w-4xl mx-auto">
-          {messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[85%] ${msg.role === "user" ? "order-2" : ""}`}>
-                {msg.role === "assistant" && (
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-accent/10">
-                      <Sparkles className="h-3 w-3 text-accent" />
-                    </div>
-                    <span className="text-[11px] text-muted-foreground font-medium">
-                      AI {msg.provider ? `• ${msg.provider}` : ""}
-                    </span>
-                  </div>
-                )}
-
-                <div
-                  className={`p-5 rounded-2xl text-[14px] leading-relaxed ${
-                    msg.role === "user"
-                      ? "bg-accent text-white rounded-tr-sm"
-                      : "bg-white/[0.03] border border-white/[0.06] text-foreground rounded-tl-sm"
-                  }`}
-                >
-                  <div
-                    className="whitespace-pre-wrap"
-                    dangerouslySetInnerHTML={{ __html: formatMessage(msg.content) }}
-                  />
-                </div>
-
-                {msg.actions && msg.actions.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {msg.actions.map((action, i) => (
-                      <Link
-                        key={i}
-                        href={action.href}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition-colors border border-accent/20"
-                      >
-                        {action.icon}
-                        {action.label}
-                        <ArrowUpRight className="h-3 w-3" />
-                      </Link>
-                    ))}
-                  </div>
-                )}
-
-                <div className="flex items-center gap-2 mt-1.5 px-1">
-                  <span className="text-[9px] text-muted-foreground/50">
-                    {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </span>
+        {/* Chat messages */}
+        {hasStarted && (
+          <div className="px-4 md:px-8 pt-6 pb-4 space-y-6 max-w-3xl mx-auto">
+            {messages.map((msg) => (
+              <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[85%] md:max-w-[75%] ${msg.role === "user" ? "order-2" : ""}`}>
                   {msg.role === "assistant" && (
-                    <button
-                      onClick={() => copyMessage(msg.content, msg.id)}
-                      className="p-1 rounded hover:bg-white/5 transition-colors"
-                      title="Copy"
-                    >
-                      {copiedId === msg.id ? (
-                        <Check className="h-3 w-3 text-emerald-400" />
-                      ) : (
-                        <Copy className="h-3 w-3 text-muted-foreground/30 hover:text-foreground" />
-                      )}
-                    </button>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-accent/10">
+                        <Sparkles className="h-3 w-3 text-accent" />
+                      </div>
+                      <span className="text-[11px] text-muted-foreground font-medium">
+                        AI {msg.provider ? `• ${msg.provider}` : ""}
+                      </span>
+                    </div>
                   )}
-                </div>
-              </div>
-            </div>
-          ))}
 
-          {isTyping && (
-            <div className="flex justify-start">
-              <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl rounded-tl-sm p-4">
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-1">
-                    <div className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <div className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <div className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" style={{ animationDelay: "300ms" }} />
+                  <div
+                    className={`p-5 rounded-2xl text-[14px] leading-relaxed ${
+                      msg.role === "user"
+                        ? "bg-accent text-white rounded-tr-sm"
+                        : "bg-white/[0.04] border border-white/[0.08] text-foreground rounded-tl-sm"
+                    }`}
+                  >
+                    <div
+                      className="whitespace-pre-wrap"
+                      dangerouslySetInnerHTML={{ __html: formatMessage(msg.content) }}
+                    />
                   </div>
-                  <span className="text-[11px] text-muted-foreground">Analyzing...</span>
+
+                  {msg.actions && msg.actions.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {msg.actions.map((action, i) => (
+                        <Link
+                          key={i}
+                          href={action.href}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition-colors border border-accent/20"
+                        >
+                          {action.icon}
+                          {action.label}
+                          <ArrowUpRight className="h-3 w-3" />
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2 mt-1.5 px-1">
+                    <span className="text-[9px] text-muted-foreground/50">
+                      {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                    {msg.role === "assistant" && (
+                      <button
+                        onClick={() => copyMessage(msg.content, msg.id)}
+                        className="p-1 rounded hover:bg-white/5 transition-colors"
+                        title="Copy"
+                      >
+                        {copiedId === msg.id ? (
+                          <Check className="h-3 w-3 text-emerald-400" />
+                        ) : (
+                          <Copy className="h-3 w-3 text-muted-foreground/30 hover:text-foreground" />
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+            ))}
 
-        {/* Input Area */}
-        <div className="px-8 pt-4 pb-6 max-w-4xl mx-auto">
-          {/* Quick Actions */}
+            {isTyping && (
+              <div className="flex justify-start">
+                <div className="bg-white/[0.04] border border-white/[0.08] rounded-2xl rounded-tl-sm p-4">
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <div className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <div className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" style={{ animationDelay: "300ms" }} />
+                    </div>
+                    <span className="text-[11px] text-muted-foreground">Analyzing...</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+      </div>
+
+      {/* Sticky input area at bottom */}
+      <div className="shrink-0 border-t border-white/[0.08] bg-background/80 backdrop-blur-sm">
+        <div className="max-w-3xl mx-auto px-4 md:px-8 pt-3 pb-4">
+          {/* Quick actions — always visible */}
           <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-hide">
             {quickActions.map((action) => (
               <button
@@ -490,7 +477,7 @@ export default function AIPage() {
           </div>
 
           {/* Input */}
-          <div className="flex items-end gap-2 p-2 bg-white/[0.03] border border-white/[0.06] rounded-2xl">
+          <div className="flex items-end gap-2 p-2 bg-white/[0.04] border border-white/[0.08] rounded-2xl">
             <textarea
               ref={inputRef}
               value={input}
@@ -515,14 +502,7 @@ export default function AIPage() {
             </button>
           </div>
         </div>
-      </main>
-
-      {/* Right Sidebar - Fixed */}
-      <aside className="hidden xl:flex flex-col w-[300px] shrink-0 border-l border-white/[0.06] bg-background/50 h-[calc(100vh-4rem)] sticky top-[4rem]">
-        <div className="flex-1 overflow-y-auto p-6">
-          <LiveMarketIntel />
-        </div>
-      </aside>
+      </div>
     </div>
   );
 }

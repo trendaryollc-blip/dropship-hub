@@ -160,6 +160,7 @@ function ProductDetailContent() {
 
   const storedImages = product?.images || (image ? [image] : []);
   const images = fetchedImages.length > 0 ? fetchedImages : storedImages;
+  const displayImages = images.filter((img) => img && img.startsWith("http"));
 
   const hasPrice = price && price !== "" && price !== "null";
   const hasRating = rating && rating !== "" && rating !== "null";
@@ -170,7 +171,6 @@ function ProductDetailContent() {
 
   useEffect(() => {
     if (fetchedImages.length > 0 || !source) return;
-    if (source !== "amazon" && source !== "google_shopping") return;
 
     const extractAsin = (url: string): string => {
       const patterns = [
@@ -189,6 +189,7 @@ function ProductDetailContent() {
     };
 
     const extractedAsin = asin || extractAsin(link);
+    if (!link || link === "#") return;
 
     let cancelled = false;
 
@@ -204,7 +205,9 @@ function ProductDetailContent() {
         if (!cancelled && data.images && data.images.length > 0) {
           setFetchedImages(data.images);
         }
-      } catch {}
+      } catch (err) {
+        console.error("Failed to fetch product images:", err);
+      }
       if (!cancelled) setLoadingImages(false);
     };
 
@@ -411,17 +414,17 @@ function ProductDetailContent() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8">
           {/* Image column */}
           <div className="space-y-3">
-            <ImageGallery images={images} title={title} />
+            <ImageGallery images={displayImages} title={title} />
             {loadingImages && (
               <div className="flex items-center gap-2 text-xs text-accent">
                 <div className="w-3 h-3 border-2 border-accent border-t-transparent rounded-full animate-spin" />
                 <span>Fetching all product images...</span>
               </div>
             )}
-            {images.length > 1 && !loadingImages && (
+            {displayImages.length > 1 && !loadingImages && (
               <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                 <Images className="h-3 w-3" />
-                <span>{images.length} images available from {source.replace("_", " ")}</span>
+                <span>{displayImages.length} images available from {source.replace("_", " ")}</span>
               </div>
             )}
           </div>
