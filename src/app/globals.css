@@ -1431,3 +1431,18 @@ body {
   background: rgba(236,72,153,0.1);
   flex-shrink: 0;
 }
+
+/* Status bar horizontal scrollbar */
+.status-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+.status-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.status-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+  border-radius: 4px;
+}
+.status-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.25);
+}

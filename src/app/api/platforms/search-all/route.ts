@@ -1,29 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { searchAllPlatforms, platforms, type SearchResult } from "@/lib/platform-search";
-
-function generateMockSearchResults(query: string, count: number): SearchResult[] {
-  const platforms = [
-    { source: "amazon", name: "Amazon" },
-    { source: "ebay", name: "eBay" },
-    { source: "aliexpress", name: "AliExpress" },
-    { source: "walmart", name: "Walmart" },
-    { source: "etsy", name: "Etsy" },
-    { source: "temu", name: "Temu" },
-  ];
-  return Array.from({ length: count }, (_, i) => {
-    const p = platforms[i % platforms.length];
-    const price = +(5 + Math.random() * 95).toFixed(2);
-    return {
-      title: `${query} - ${p.name} Deal`,
-      price,
-      image: null,
-      link: "#",
-      source: p.source,
-      rating: +(3.5 + Math.random() * 1.5).toFixed(1),
-      reviews: Math.floor(10 + Math.random() * 2000),
-    };
-  });
-}
+import { searchAllPlatforms, platforms } from "@/lib/platform-search";
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,25 +23,17 @@ export async function POST(request: NextRequest) {
       data: r.data,
     }));
 
-    if (platformResults.length < 2) {
-      const mockResults: SearchResult[] = generateMockSearchResults(query, 6);
-      const mockByPlatform = new Map<string, SearchResult[]>();
-      for (const item of mockResults) {
-        if (!mockByPlatform.has(item.source)) mockByPlatform.set(item.source, []);
-        mockByPlatform.get(item.source)!.push(item);
-      }
-      for (const [source, items] of mockByPlatform) {
-        if (!platformResults.some((p) => p.platform === source)) {
-          const name = platforms.find((p) => p.id === source)?.name || source;
-          platformResults.push({
-            platform: source,
-            name,
-            resultCount: items.length,
-            data: { search_results: items },
-          });
-          totalProducts += items.length;
-        }
-      }
+    if (platformResults.length === 0) {
+      return NextResponse.json({
+        query,
+        platforms: [],
+        totalProducts: 0,
+        searchedPlatforms: selectedPlatforms
+          ? platforms.filter((p) => selectedPlatforms.includes(p.id)).length
+          : platforms.length,
+        successfulPlatforms: 0,
+        error: "No platforms returned results. Check your API keys in .env.local.",
+      });
     }
 
     return NextResponse.json({

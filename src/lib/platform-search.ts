@@ -1,7 +1,6 @@
 const RAINFOREST_API_KEY = process.env.RAINFOREST_API_KEY;
 const SERP_API_KEY = process.env.SERP_API_KEY;
-const CJ_EMAIL = process.env.CJ_EMAIL;
-const CJ_PASSWORD = process.env.CJ_PASSWORD;
+const CJ_API_KEY = process.env.CJ_API_KEY;
 const KEEPA_API_KEY = process.env.KEEPA_API_KEY;
 
 export interface SearchResult {
@@ -118,12 +117,16 @@ export async function searchGoogleShopping(query: string): Promise<{ search_resu
 // ── CJ Dropshipping ─────────────────────────────────────────────────────────
 
 async function getCJAccessToken(): Promise<string> {
-  if (!CJ_EMAIL || !CJ_PASSWORD) throw new Error("CJ credentials not configured");
+  if (!CJ_API_KEY) throw new Error("CJ_API_KEY not configured");
+
+  if (CJ_API_KEY.startsWith("MCP@")) {
+    return CJ_API_KEY;
+  }
 
   const res = await fetch("https://developers.cjdropshipping.com/api2.0/v1/authentication/getAccessToken", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: CJ_EMAIL, password: CJ_PASSWORD }),
+    body: JSON.stringify({ apiKey: CJ_API_KEY }),
     signal: AbortSignal.timeout(10000),
   });
   if (!res.ok) throw new Error(`CJ Auth ${res.status}`);
@@ -151,7 +154,7 @@ export async function searchCJProducts(query: string): Promise<{ search_results:
   if (!res.ok) throw new Error(`CJ Products ${res.status}`);
 
   const data = await res.json();
-  const items = (data.data || []).map((p: Record<string, unknown>) => {
+  const items = (data.data?.list || data.data || []).map((p: Record<string, unknown>) => {
     const primaryImage = String(p.productImage || "");
     const imageSet = Array.isArray(p.productImageSet)
       ? (p.productImageSet as unknown[]).map((img) => {
@@ -164,9 +167,10 @@ export async function searchCJProducts(query: string): Promise<{ search_results:
         }).filter((u) => u && u !== "null" && u !== "")
       : [];
     const allImages = [primaryImage, ...imageSet].filter((u) => u && u !== "null" && u !== "");
+    const price = typeof p.sellPrice === "number" ? p.sellPrice : typeof p.sellPrice === "string" ? parseFloat(p.sellPrice) : typeof p.productPrice === "number" ? p.productPrice : typeof p.productPrice === "string" ? parseFloat(p.productPrice) : null;
     return {
       title: String(p.productNameEn || p.productName || ""),
-      price: typeof p.sellPrice === "number" ? p.sellPrice : typeof p.productPrice === "number" ? p.productPrice : null,
+      price: isNaN(price as number) ? null : price,
       image: primaryImage || null,
       images: allImages.length > 0 ? allImages : undefined,
       link: `https://cjdropshipping.com/product-p-${p.pid || ""}`,
@@ -237,7 +241,16 @@ export async function searchAliExpress(query: string): Promise<{ search_results:
 
   const html = await res.text();
 
-  // Extract product data from AliExpress HTML
+  const productLinkPattern = /href="(\/item\/\d+\.html[^"]*)"/gi;
+  const productLinks: string[] = [];
+  let linkMatch;
+  while ((linkMatch = productLinkPattern.exec(html)) !== null) {
+    const fullUrl = `https://www.aliexpress.com${linkMatch[1]}`;
+    if (!productLinks.includes(fullUrl)) {
+      productLinks.push(fullUrl);
+    }
+  }
+
   const titleMatches = html.match(/class="[^"]*title[^"]*"[^>]*>([^<]{5,120})/gi) || [];
   const priceMatches = html.match(/\$[\d,]+\.?\d*/g) || [];
   const imgMatches = html.match(/src="(https?:\/\/[^"]*\.(jpg|png|webp)[^"]*)/gi) || [];
@@ -246,7 +259,7 @@ export async function searchAliExpress(query: string): Promise<{ search_results:
     title: t.replace(/<[^>]*>/g, "").replace(/class="[^"]*"/g, "").trim(),
     price: priceMatches[i] ? parseFloat(priceMatches[i].replace("$", "").replace(",", "")) : null,
     image: imgMatches[i] ? imgMatches[i].replace('src="', "").replace(/["'].*$/, "") : null,
-    link: targetUrl,
+    link: productLinks[i] || targetUrl,
     source: "aliexpress",
   }));
 

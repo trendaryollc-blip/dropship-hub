@@ -1,14 +1,18 @@
 import { SupplierProfile } from "@/types/supplier";
 
-const CJ_EMAIL = process.env.CJ_EMAIL;
-const CJ_PASSWORD = process.env.CJ_PASSWORD;
+const CJ_API_KEY = process.env.CJ_API_KEY;
 
 async function getCJAccessToken(): Promise<string> {
-  if (!CJ_EMAIL || !CJ_PASSWORD) throw new Error("CJ credentials not configured");
+  if (!CJ_API_KEY) throw new Error("CJ_API_KEY not configured");
+
+  if (CJ_API_KEY.startsWith("MCP@")) {
+    return CJ_API_KEY;
+  }
+
   const res = await fetch("https://developers.cjdropshipping.com/api2.0/v1/authentication/getAccessToken", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: CJ_EMAIL, password: CJ_PASSWORD }),
+    body: JSON.stringify({ apiKey: CJ_API_KEY }),
     signal: AbortSignal.timeout(10000),
   });
   if (!res.ok) throw new Error(`CJ Auth ${res.status}`);

@@ -69,15 +69,24 @@ function ProfitChart({ data }: { data: DailyProfit[] }) {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; date: string; value: number; profit: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  const maxVal = Math.max(...data.map((d) => d.revenue));
-  const minVal = Math.min(...data.map((d) => d.profit));
+  if (!data || data.length === 0) {
+    return (
+      <div ref={ref} className="glass rounded-2xl p-3 sm:p-5">
+        <h3 className="font-display text-sm sm:text-base font-semibold text-foreground">Profit Trend</h3>
+        <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-2">No profit data available yet.</p>
+      </div>
+    );
+  }
+
+  const maxVal = Math.max(...data.map((d) => d.revenue), 0);
+  const minVal = Math.min(...data.map((d) => d.profit), 0);
   const range = maxVal - minVal || 1;
   const padding = { top: 20, right: 15, bottom: 30, left: 40 };
   const w = 800;
   const h = 260;
   const chartW = w - padding.left - padding.right;
   const chartH = h - padding.top - padding.bottom;
-  const getX = (i: number) => padding.left + (i / (data.length - 1)) * chartW;
+  const getX = (i: number) => padding.left + (i / Math.max(data.length - 1, 1)) * chartW;
   const getY = (val: number) => padding.top + chartH - ((val - minVal) / range) * chartH;
 
   const revenuePath = data.map((d, i) => `${i === 0 ? "M" : "L"} ${getX(i)} ${getY(d.revenue)}`).join(" ");

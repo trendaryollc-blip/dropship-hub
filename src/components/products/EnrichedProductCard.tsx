@@ -51,7 +51,16 @@ export default function EnrichedProductCard({ product, index }: { product: Searc
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     sessionStorage.setItem("selectedProduct", JSON.stringify(product));
-    router.push(`/products/${product.id}`);
+    const params = new URLSearchParams({
+      t: product.title,
+      src: product.source,
+    });
+    if (product.price != null) params.set("p", String(product.price));
+    if (product.image) params.set("img", product.image);
+    if (product.link) params.set("link", product.link);
+    if (product.rating != null) params.set("r", String(product.rating));
+    if (product.reviews != null) params.set("rev", String(product.reviews));
+    router.push(`/products/${product.id}?${params.toString()}`);
   };
 
   const fetchStores = useCallback(async () => {

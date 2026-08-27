@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   Search, Loader2, Compass, Zap, ArrowRight,
   Flame, TrendingUp, Sparkles, ShoppingCart, Package,
@@ -37,12 +37,15 @@ interface PlatformResult {
 interface TrendingProduct {
   id: string;
   name: string;
+  fullName: string;
   category: string;
   price: number;
   sellPrice: number;
   profit: number;
   margin: number;
   platform: string;
+  platformId: string;
+  link: string;
   trend: number;
   sparkline: number[];
   confidence: number;
@@ -50,6 +53,8 @@ interface TrendingProduct {
   competitionLevel: "low" | "medium" | "high";
   image: string;
   tags: string[];
+  rating: number | null;
+  reviews: number | null;
 }
 
 interface NicheData {
@@ -185,6 +190,7 @@ function EmptyState() {
 
 function TrendingSection() {
   const { ref, isInView } = useInView({ threshold: 0.1 });
+  const router = useRouter();
   const [products, setProducts] = useState<TrendingProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -196,15 +202,40 @@ function TrendingSection() {
       .finally(() => setLoading(false));
   }, []);
 
+  const viewProduct = (product: TrendingProduct) => {
+    sessionStorage.setItem("selectedProduct", JSON.stringify({
+      id: product.id,
+      title: product.fullName,
+      price: product.price,
+      image: product.image,
+      link: product.link || "#",
+      source: product.platformId,
+      category: product.category,
+      tags: product.tags,
+      rating: product.rating,
+      reviews: product.reviews,
+    }));
+    const params = new URLSearchParams({
+      t: product.fullName,
+      p: String(product.price),
+      src: product.platformId,
+    });
+    if (product.image) params.set("img", product.image);
+    if (product.link) params.set("link", product.link);
+    if (product.rating != null) params.set("r", String(product.rating));
+    if (product.reviews != null) params.set("rev", String(product.reviews));
+    router.push(`/products/${product.id}?${params.toString()}`);
+  };
+
   const demandConfig: Record<string, { label: string; cls: string }> = {
-    low: { label: "Low demand", cls: "text-blue-400 bg-blue-400/10 border-blue-400/20" },
-    medium: { label: "Med demand", cls: "text-amber-400 bg-amber-400/10 border-amber-400/20" },
-    high: { label: "High demand", cls: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" },
+    low: { label: "Low", cls: "text-blue-400 bg-blue-400/10 border-blue-400/20" },
+    medium: { label: "Med", cls: "text-amber-400 bg-amber-400/10 border-amber-400/20" },
+    high: { label: "High", cls: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" },
   };
   const compConfig: Record<string, { label: string; cls: string }> = {
-    low: { label: "Low comp", cls: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" },
-    medium: { label: "Med comp", cls: "text-amber-400 bg-amber-400/10 border-amber-400/20" },
-    high: { label: "High comp", cls: "text-red-400 bg-red-400/10 border-red-400/20" },
+    low: { label: "Low", cls: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" },
+    medium: { label: "Med", cls: "text-amber-400 bg-amber-400/10 border-amber-400/20" },
+    high: { label: "High", cls: "text-red-400 bg-red-400/10 border-red-400/20" },
   };
   const rankGradients = [
     "from-yellow-400 to-amber-500", "from-slate-300 to-slate-400",
@@ -230,14 +261,16 @@ function TrendingSection() {
       </div>
 
       {loading && (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="glass rounded-2xl p-5 animate-pulse">
-              <div className="flex items-center gap-4">
-                <div className="w-9 h-9 rounded-xl bg-surface" />
-                <div className="w-11 h-11 rounded-xl bg-surface" />
-                <div className="flex-1 space-y-2"><div className="h-4 bg-surface rounded w-1/3" /><div className="h-3 bg-surface rounded w-1/4" /></div>
-                <div className="h-6 w-16 bg-surface rounded" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="glass rounded-2xl overflow-hidden animate-pulse">
+              <div className="aspect-[3/4] bg-surface" />
+              <div className="p-3 space-y-2">
+                <div className="h-3 bg-surface rounded w-3/4" />
+                <div className="h-2 bg-surface rounded w-1/2" />
+                <div className="flex gap-1"><div className="h-4 bg-surface rounded w-8" /><div className="h-4 bg-surface rounded w-8" /></div>
+                <div className="h-2 bg-surface rounded w-full" />
+                <div className="h-8 bg-surface rounded w-full" />
               </div>
             </div>
           ))}
@@ -253,46 +286,83 @@ function TrendingSection() {
       )}
 
       {!loading && products.length > 0 && (
-        <div className="space-y-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {products.map((product, i) => {
             const demand = demandConfig[product.demandLevel];
             const comp = compConfig[product.competitionLevel];
             const rankBg = rankGradients[Math.min(i, rankGradients.length - 1)];
             return (
               <div key={product.id} className={`transition-all duration-500 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transitionDelay: `${i * 80}ms` }}>
-                <Link href={`/products?q=${encodeURIComponent(product.name)}`} className="glass-card-animated rounded-2xl overflow-hidden block hover:bg-surface/30 transition-colors p-4 sm:p-5">
-                  <div className="flex items-center gap-3 sm:gap-4">
-                    <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${rankBg} flex items-center justify-center shrink-0 shadow-lg`}>
-                      <span className="text-xs font-black text-white">#{i + 1}</span>
-                    </div>
-                    <div className="w-11 h-11 rounded-xl bg-accent/10 flex items-center justify-center shrink-0 overflow-hidden">
+                <div className="glass-card-animated rounded-2xl overflow-hidden group hover:ring-1 hover:ring-accent/30 transition-all duration-300 flex flex-col h-full">
+                  <Link href={`/products?q=${encodeURIComponent(product.name)}`} className="block">
+                    <div className="relative aspect-[3/4] bg-surface overflow-hidden">
                       {product.image ? (
-                        <Image src={product.image} alt={product.name} width={44} height={44} unoptimized className="w-full h-full object-cover" />
+                        <Image
+                          src={product.image}
+                          alt={product.name}
+                          fill
+                          unoptimized
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
                       ) : (
-                        <Package className="h-5 w-5 text-accent" />
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Package className="h-10 w-10 text-muted-foreground/20" />
+                        </div>
                       )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate">{product.name}</p>
-                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                        <span className="text-[10px] text-muted-foreground">{product.platform}</span>
-                        {demand && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border ${demand.cls}`}>{demand.label}</span>}
-                        {comp && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border ${comp.cls}`}>{comp.label}</span>}
+                      <div className={`absolute top-2 left-2 w-7 h-7 rounded-lg bg-gradient-to-br ${rankBg} flex items-center justify-center shadow-lg`}>
+                        <span className="text-[10px] font-black text-white">#{i + 1}</span>
+                      </div>
+                      <div className="absolute top-2 right-2">
+                        <span className="text-[10px] font-bold text-white bg-black/60 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1">
+                          <TrendingUp className="h-2.5 w-2.5 text-emerald-400" />
+                          +{product.trend}%
+                        </span>
+                      </div>
+                      <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/80 to-transparent" />
+                      <div className="absolute bottom-2 left-2 right-2 flex items-end justify-between">
+                        <div className="flex items-center gap-1">
+                          {demand && <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium border ${demand.cls}`}>{demand.label}</span>}
+                          {comp && <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium border ${comp.cls}`}>{comp.label}</span>}
+                        </div>
+                        <span className="text-[9px] text-white/80 bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded-full">{product.platform}</span>
                       </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-bold text-emerald-400">${product.profit.toFixed(2)}</p>
-                      <p className="text-[10px] text-muted-foreground">margin {product.margin}%</p>
+                  </Link>
+
+                  <div className="p-3 flex flex-col flex-1">
+                    <Link href={`/products?q=${encodeURIComponent(product.name)}`} className="block">
+                      <p className="text-xs font-semibold text-foreground line-clamp-2 leading-tight mb-1.5 min-h-[2rem]">{product.name}</p>
+                    </Link>
+
+                    <div className="mt-auto space-y-2">
+                      <div className="flex items-baseline justify-between">
+                        <div>
+                          <p className="text-[10px] text-muted-foreground line-through">${product.sellPrice.toFixed(2)}</p>
+                          <p className="text-sm font-bold text-emerald-400">${product.profit.toFixed(2)} <span className="text-[10px] font-normal text-muted-foreground">profit</span></p>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground bg-surface/80 px-1.5 py-0.5 rounded-full">{product.margin}%</span>
+                      </div>
+
+                      <div className="h-px bg-border/50" />
+
+                      <div className="flex items-center gap-1.5">
+                        <Flame className="h-3 w-3 text-accent-warm shrink-0" />
+                        <div className="flex-1 h-1.5 rounded-full bg-surface overflow-hidden">
+                          <div className="h-full rounded-full bg-gradient-to-r from-accent to-emerald-400" style={{ width: `${product.confidence}%` }} />
+                        </div>
+                        <span className="text-[9px] text-muted-foreground shrink-0">{product.confidence}</span>
+                      </div>
+
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); viewProduct(product); }}
+                        className="flex items-center justify-center gap-1.5 w-full py-2 rounded-xl bg-accent/10 hover:bg-accent/20 text-accent text-xs font-semibold transition-colors"
+                      >
+                        <ShoppingCart className="h-3.5 w-3.5" />
+                        View Product
+                      </button>
                     </div>
-                    <div className="text-right shrink-0 hidden sm:block">
-                      <span className="text-xs font-bold text-emerald-400">+{product.trend}%</span>
-                      <p className="text-[10px] text-muted-foreground flex items-center justify-end gap-0.5">
-                        <TrendingUp className="h-2.5 w-2.5" /> trending
-                      </p>
-                    </div>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground/40 shrink-0" />
                   </div>
-                </Link>
+                </div>
               </div>
             );
           })}
@@ -356,8 +426,20 @@ function NichesSection() {
             return (
               <div key={niche.id} className={`transition-all duration-500 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transitionDelay: `${i * 60}ms` }}>
                 <Link href={`/products?q=${encodeURIComponent(niche.name)}`} className="group block rounded-xl border border-border overflow-hidden bg-surface/50 hover:border-accent/20 hover:bg-accent/5 transition-all duration-300 hover:scale-[1.02]">
-                  <div className="relative h-28 overflow-hidden bg-gradient-to-br from-surface to-muted/20 flex items-center justify-center">
-                    <span className="text-4xl opacity-20 group-hover:opacity-40 transition-opacity">{niche.icon}</span>
+                  <div className="relative h-28 overflow-hidden bg-surface">
+                    {niche.image ? (
+                      <Image
+                        src={niche.image}
+                        alt={niche.name}
+                        fill
+                        unoptimized
+                        className="object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-surface to-muted/20">
+                        <span className="text-4xl opacity-20">{niche.icon}</span>
+                      </div>
+                    )}
                     <div className={`absolute top-2 right-2 flex items-center gap-0.5 px-1.5 py-0.5 rounded-md backdrop-blur-sm ${trendBg}`}>
                       <span className={`text-[9px] font-bold ${trendColor}`}>{niche.growth > 0 ? "+" : ""}{niche.growth}%</span>
                     </div>
@@ -427,8 +509,21 @@ function CategoriesSection() {
           {categories.map((cat, i) => (
             <div key={cat.id} className={`transition-all duration-500 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transitionDelay: `${i * 60}ms` }}>
               <Link href={`/products?q=${encodeURIComponent(cat.query)}`} className="group relative block rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02]">
-                <div className="relative h-32 overflow-hidden bg-gradient-to-br from-surface to-muted/20 flex items-center justify-center">
-                  <span className="text-5xl opacity-20 group-hover:opacity-40 transition-opacity">{cat.icon}</span>
+                <div className="relative h-32 overflow-hidden bg-surface">
+                  {cat.image ? (
+                    <Image
+                      src={cat.image}
+                      alt={cat.name}
+                      fill
+                      unoptimized
+                      className="object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-surface to-muted/20">
+                      <span className="text-5xl opacity-20">{cat.icon}</span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                   {cat.trending && (
                     <span className="absolute top-2 right-2 flex items-center gap-0.5 text-[10px] font-bold text-accent-warm bg-accent-warm/10 px-2 py-0.5 rounded-full border border-accent-warm/20 backdrop-blur-sm">
                       <TrendingUp className="h-2.5 w-2.5" /> Hot

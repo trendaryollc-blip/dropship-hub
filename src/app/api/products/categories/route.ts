@@ -26,10 +26,16 @@ const CATEGORY_QUERIES = [
   { name: "Beauty & Care", icon: "💄", query: "beauty products" },
 ];
 
-function getCategoryImage(name: string): string {
-  const _slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "+").replace(/\+$/g, "");
-  return `https://placehold.co/400x250/0f172a/3b82f6?text=${encodeURIComponent(name)}`;
-}
+const CATEGORY_IMAGES: Record<string, string> = {
+  "Electronics": "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&h=250&fit=crop",
+  "Home & Kitchen": "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=250&fit=crop",
+  "Fashion": "https://images.unsplash.com/photo-1445205170230-053b83016050?w=400&h=250&fit=crop",
+  "Health & Wellness": "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=250&fit=crop",
+  "Pet Supplies": "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=400&h=250&fit=crop",
+  "Automotive": "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=400&h=250&fit=crop",
+  "Sports & Outdoors": "https://images.unsplash.com/photo-1461896836934-bd45ba8fcf9b?w=400&h=250&fit=crop",
+  "Beauty & Care": "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400&h=250&fit=crop",
+};
 
 export async function GET() {
   try {
@@ -47,39 +53,36 @@ export async function GET() {
       const r = results[i];
       const config = CATEGORY_QUERIES[i];
 
+      let productCount = 0;
+      let avgPrice = 10;
+      let productImage = "";
+
       if (r.status === "fulfilled") {
         const items = r.value.search_results.filter((p) => p.price !== null && p.price > 0);
-        const productCount = items.length;
-        const avgPrice = productCount > 0
-          ? items.reduce((s, p) => s + p.price!, 0) / productCount
-          : 10;
-        const avgMargin = avgPrice > 0
-          ? Math.min(80, Math.round(30 + Math.random() * 35))
-          : 30;
-        const trending = avgMargin > 40 || productCount > 10;
-
-        categories.push({
-          id: config.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-          name: config.name,
-          icon: config.icon,
-          image: getCategoryImage(config.name),
-          productCount: Math.max(productCount * 12, Math.round(500 + Math.random() * 2000)),
-          avgMargin,
-          trending,
-          query: config.query,
-        });
-      } else {
-        categories.push({
-          id: config.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-          name: config.name,
-          icon: config.icon,
-          image: getCategoryImage(config.name),
-          productCount: Math.round(500 + Math.random() * 2000),
-          avgMargin: Math.round(30 + Math.random() * 35),
-          trending: Math.random() > 0.5,
-          query: config.query,
-        });
+        productCount = items.length;
+        if (productCount > 0) {
+          avgPrice = items.reduce((s, p) => s + p.price!, 0) / productCount;
+        }
+        const firstWithImage = items.find((p) => p.image && p.image.startsWith("http"));
+        if (firstWithImage) {
+          productImage = firstWithImage.image!;
+        }
       }
+
+      const avgMargin = avgPrice > 0
+        ? Math.min(80, Math.round(30 + Math.random() * 35))
+        : 30;
+
+      categories.push({
+        id: config.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+        name: config.name,
+        icon: config.icon,
+        image: productImage || CATEGORY_IMAGES[config.name] || "",
+        productCount: Math.max(productCount * 12, Math.round(500 + Math.random() * 2000)),
+        avgMargin,
+        trending: avgMargin > 40 || productCount > 10,
+        query: config.query,
+      });
     }
 
     cachedCategories = { categories, timestamp: Date.now() };

@@ -2,15 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { searchCJProducts } from "@/lib/platform-search";
 
 const CJ_API_KEY = process.env.CJ_API_KEY;
-const CJ_EMAIL = process.env.CJ_EMAIL;
-const CJ_PASSWORD = process.env.CJ_PASSWORD;
 
 async function getCJAccessToken() {
-  if (!CJ_EMAIL || !CJ_PASSWORD) throw new Error("CJ credentials not configured");
+  if (!CJ_API_KEY) throw new Error("CJ_API_KEY not configured");
+  if (CJ_API_KEY.startsWith("MCP@")) return CJ_API_KEY;
   const res = await fetch("https://developers.cjdropshipping.com/api2.0/v1/authentication/getAccessToken", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: CJ_EMAIL, password: CJ_PASSWORD }),
+    body: JSON.stringify({ apiKey: CJ_API_KEY }),
   });
   if (!res.ok) throw new Error(`CJ Auth ${res.status}`);
   const data = await res.json();
@@ -61,6 +60,6 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   return NextResponse.json({
     platform: "CJ Dropshipping",
-    configured: !!(CJ_API_KEY && CJ_EMAIL && CJ_PASSWORD),
+    configured: !!CJ_API_KEY,
   });
 }

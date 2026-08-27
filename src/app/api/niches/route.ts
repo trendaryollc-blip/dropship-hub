@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
-const CJ_EMAIL = process.env.CJ_EMAIL;
-const CJ_PASSWORD = process.env.CJ_PASSWORD;
+const CJ_API_KEY = process.env.CJ_API_KEY;
 
 interface NicheData {
   id: string;
@@ -44,10 +43,10 @@ interface CJCategory {
 interface CJProduct {
   pid: string;
   productNameEn: string;
-  sellPrice: number;
-  productPrice: number;
+  sellPrice: number | string;
+  productPrice: number | string;
   productImage?: string;
-  productWeight?: number;
+  productWeight?: number | string;
   categoryName?: string;
 }
 
@@ -64,10 +63,12 @@ let cachedNiches: { niches: NicheData[]; timestamp: number } | null = null;
 const CACHE_TTL = 30 * 60 * 1000;
 
 async function getCJAccessToken(): Promise<string> {
+  if (!CJ_API_KEY) throw new Error("CJ_API_KEY not configured");
+  if (CJ_API_KEY.startsWith("MCP@")) return CJ_API_KEY;
   const res = await fetch("https://developers.cjdropshipping.com/api2.0/v1/authentication/getAccessToken", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: CJ_EMAIL, password: CJ_PASSWORD }),
+    body: JSON.stringify({ apiKey: CJ_API_KEY }),
     signal: AbortSignal.timeout(10000),
   });
   const data = await res.json();
@@ -85,12 +86,14 @@ async function getCJCategories(token: string): Promise<CJCategory[]> {
 }
 
 async function searchCJProducts(token: string, categoryName: string, page = 1, pageSize = 20): Promise<CJProductResponse> {
-  const res = await fetch("https://developers.cjdropshipping.com/api2.0/v1/product/list", {
-    method: "POST",
-    headers: { "CJ-Access-Token": token, "Content-Type": "application/json" },
-    body: JSON.stringify({ productNameEn: categoryName, pageNum: page, pageSize }),
-    signal: AbortSignal.timeout(15000),
-  });
+  const res = await fetch(
+    `https://developers.cjdropshipping.com/api2.0/v1/product/list?productNameEn=${encodeURIComponent(categoryName)}&pageNum=${page}&pageSize=${pageSize}`,
+    {
+      method: "GET",
+      headers: { "CJ-Access-Token": token, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(15000),
+    }
+  );
   return res.json();
 }
 
@@ -108,6 +111,19 @@ function getCategoryIcon(name: string): string {
   if (lower.includes("jewel") || lower.includes("accessori") || lower.includes("bag") || lower.includes("watch")) return "\ud83d\udc8e";
   return "\ud83d\udce6";
 }
+
+const NICHE_IMAGES: Record<string, string> = {
+  "Electronics": "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&h=250&fit=crop",
+  "Fashion": "https://images.unsplash.com/photo-1445205170230-053b83016050?w=400&h=250&fit=crop",
+  "Home & Garden": "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=250&fit=crop",
+  "Beauty": "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400&h=250&fit=crop",
+  "Toys": "https://images.unsplash.com/photo-1558060370-d644479cb6f7?w=400&h=250&fit=crop",
+  "Pets": "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=400&h=250&fit=crop",
+  "Sports": "https://images.unsplash.com/photo-1461896836934-bd45ba8fcf9b?w=400&h=250&fit=crop",
+  "Automotive": "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=400&h=250&fit=crop",
+  "Health": "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=250&fit=crop",
+  "Jewelry": "https://images.unsplash.com/photo-1515562141589-67f0d569b47e?w=400&h=250&fit=crop",
+};
 
 function computeGrade(score: number): "A+" | "A" | "B+" | "B" | "C+" | "C" {
   if (score >= 90) return "A+";
@@ -142,27 +158,38 @@ function generateSparkline(productCount: number, margin: number): number[] {
   return Array.from({ length: 7 }, (_, i) => Math.round(base + Math.sin(i) * 10 + Math.random() * 5));
 }
 
+function getNicheImage(categoryName: string, products: CJProduct[]): string {
+  const firstWithImage = products.find((p) => p.productImage && p.productImage.startsWith("http"));
+  if (firstWithImage) return firstWithImage.productImage!;
+
+  const lower = categoryName.toLowerCase();
+  for (const [key, url] of Object.entries(NICHE_IMAGES)) {
+    if (lower.includes(key.toLowerCase())) return url;
+  }
+  return "";
+}
+
 function buildNicheFromCategory(
   cat: CJCategory,
   products: CJProduct[],
   index: number,
   allCategoryNames: string[]
 ): NicheData {
-  const validProducts = products.filter((p) => p.sellPrice > 0 && p.productPrice > 0);
+  const validProducts = products.filter((p) => Number(p.sellPrice) > 0 && Number(p.productPrice) > 0);
   const productCount = validProducts.length || 1;
 
-  const prices = validProducts.map((p) => p.sellPrice);
-  const costs = validProducts.map((p) => p.productPrice);
+  const prices = validProducts.map((p) => Number(p.sellPrice));
+  const costs = validProducts.map((p) => Number(p.productPrice));
   const avgSellPrice = prices.length ? prices.reduce((a, b) => a + b, 0) / prices.length : 10;
   const avgCost = costs.length ? costs.reduce((a, b) => a + b, 0) / costs.length : 5;
   const avgMargin = avgCost > 0 ? Math.round(((avgSellPrice - avgCost) / avgSellPrice) * 100) : 45;
 
   const topByValue = validProducts.length
-    ? [...validProducts].sort((a, b) => b.sellPrice - a.sellPrice)[0]
+    ? [...validProducts].sort((a, b) => Number(b.sellPrice) - Number(a.sellPrice))[0]
     : null;
   const topProduct = topByValue ? topByValue.productNameEn.slice(0, 50) : `${cat.categoryName} Bundle Set`;
-  const topProductPrice = topByValue ? topByValue.sellPrice : avgSellPrice * 1.5;
-  const topProductCost = topByValue ? topByValue.productPrice : avgCost;
+  const topProductPrice = topByValue ? Number(topByValue.sellPrice) : avgSellPrice * 1.5;
+  const topProductCost = topByValue ? Number(topByValue.productPrice) : avgCost;
   const topProductMargin = topProductPrice > 0 ? Math.round(((topProductPrice - topProductCost) / topProductPrice) * 100) : 50;
 
   const demandScore = Math.min(95, Math.round(40 + (productCount / 10) * 3 + Math.random() * 10));
@@ -220,7 +247,7 @@ function buildNicheFromCategory(
     id: `cj-niche-${cat.cid || index}`,
     name,
     icon: getCategoryIcon(cat.categoryName),
-    image: `https://placehold.co/400x250/0f172a/3b82f6?text=${encodeURIComponent(cat.categoryName)}`,
+    image: getNicheImage(cat.categoryName, products),
     category: cat.categoryName,
     heat,
     productCount,
@@ -275,9 +302,9 @@ export async function GET() {
       return NextResponse.json({ niches: cachedNiches.niches, cached: true });
     }
 
-    if (!CJ_EMAIL || !CJ_PASSWORD) {
+    if (!CJ_API_KEY) {
       const fallbackNiches = getFallbackNiches();
-      return NextResponse.json({ niches: fallbackNiches, source: "fallback", reason: "CJ credentials not configured" });
+      return NextResponse.json({ niches: fallbackNiches, source: "fallback", reason: "CJ API key not configured" });
     }
 
     const token = await getCJAccessToken();

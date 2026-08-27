@@ -99,7 +99,7 @@ export function useDashboardData() {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const res = await fetch("/api/dashboard");
+        const res = await fetch(`/api/dashboard?t=${Date.now()}`);
         if (res.ok) {
           const apiData = await res.json();
           setData((prev) => ({
