@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Package, Heart, Plus, Star, Images, Check, Send, Loader2, Store, X, ExternalLink } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { SupplierPicker } from "@/components/fulfillment/SupplierPicker";
 
 const platformIcons: Record<string, string> = {
   amazon: "\ud83d\udce6", ebay: "\ud83c\udff7\ufe0f", aliexpress: "\ud83c\udde8\ud83c\uddf3",
@@ -189,6 +190,11 @@ export default function EnrichedProductCard({ product, index }: { product: Searc
           </button>
         </div>
       </a>
+
+      {/* Supplier Assignment */}
+      <div className="px-4 pb-3 -mt-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+        <SupplierPicker productId={product.id} productName={product.title} />
+      </div>
 
       {/* Push to Store Modal */}
       {showPushModal && (

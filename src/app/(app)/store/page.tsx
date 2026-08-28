@@ -312,13 +312,15 @@ export default function StorePage() {
       const payload: Record<string, string> = {
         uid: user.uid,
         platform: selectedPlatform.id,
-        name: selectedPlatform.name,
-        url: formData.url || "",
+        name: formData.name || selectedPlatform.name,
       };
-      if (selectedPlatform.id === "trendaryo") {
-        payload.backendUrl = formData.backendUrl || "";
-        payload.apiKey = formData.apiKey || "";
+      for (const field of selectedPlatform.fields) {
+        if (formData[field.key]) {
+          payload[field.key] = formData[field.key];
+        }
       }
+      const storeUrl = formData.url || formData.storeDomain || formData.storeUrl || "";
+      if (storeUrl) payload.url = storeUrl;
       const res = await fetch("/api/store/connections", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
