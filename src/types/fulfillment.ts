@@ -1,6 +1,9 @@
 export interface FulfillmentOrder {
   id: string;
   trendaryoOrderId: string;
+  storeOrderId?: string;
+  storePlatform?: string;
+  storeName?: string;
   orderNumber: string;
   items: FulfillmentOrderItem[];
   customerName: string;
@@ -61,6 +64,26 @@ export interface FulfillmentSettings {
   defaultSuppliers: Record<string, string>;
   autoSwitchOnDegradation: boolean;
   degradationThreshold: number;
+  storeConnections: StoreConnection[];
+  supplierPreferences: SupplierPreference[];
+}
+
+export interface StoreConnection {
+  id: string;
+  platform: string;
+  name: string;
+  url: string;
+  status: "connected" | "disconnected";
+  lastSyncedAt?: string;
+}
+
+export interface SupplierPreference {
+  supplierId: string;
+  supplierName: string;
+  priority: number;
+  enabled: boolean;
+  minReliability: number;
+  maxShippingDays: number;
 }
 
 export interface PlatformConfig {
@@ -97,4 +120,13 @@ export const DEFAULT_FULFILLMENT_SETTINGS: FulfillmentSettings = {
   defaultSuppliers: {},
   autoSwitchOnDegradation: true,
   degradationThreshold: 70,
+  storeConnections: [],
+  supplierPreferences: [
+    { supplierId: "cj", supplierName: "CJ Dropshipping", priority: 1, enabled: true, minReliability: 80, maxShippingDays: 15 },
+    { supplierId: "aliexpress", supplierName: "AliExpress", priority: 2, enabled: true, minReliability: 70, maxShippingDays: 20 },
+    { supplierId: "alibaba", supplierName: "Alibaba", priority: 3, enabled: true, minReliability: 75, maxShippingDays: 25 },
+    { supplierId: "amazon", supplierName: "Amazon", priority: 4, enabled: true, minReliability: 85, maxShippingDays: 7 },
+    { supplierId: "temu", supplierName: "Temu", priority: 5, enabled: true, minReliability: 70, maxShippingDays: 18 },
+    { supplierId: "manual", supplierName: "Manual", priority: 6, enabled: true, minReliability: 100, maxShippingDays: 30 },
+  ],
 };

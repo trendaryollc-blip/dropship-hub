@@ -31,7 +31,7 @@ function getSourceColor(source: string): string {
   return config?.color || "#6b7280";
 }
 
-function OrderCard({ order, onAction }: { order: FulfillmentOrder; onAction: (orderId: string, action: string, data?: Record<string, unknown>) => void }) {
+function OrderCard({ order, onAction, storeName }: { order: FulfillmentOrder; onAction: (orderId: string, action: string, data?: Record<string, unknown>) => void; storeName?: string }) {
   const { ref, isInView } = useInView({ threshold: 0.1 });
   const [copied, setCopied] = useState(false);
   const [trackingInput, setTrackingInput] = useState("");
@@ -65,6 +65,7 @@ function OrderCard({ order, onAction }: { order: FulfillmentOrder; onAction: (or
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {new Date(order.createdAt).toLocaleDateString()} · {order.customerName}
+            {storeName && <span className="ml-2 text-accent">← {storeName}</span>}
           </p>
         </div>
         <div className="text-right">
@@ -85,6 +86,11 @@ function OrderCard({ order, onAction }: { order: FulfillmentOrder; onAction: (or
               <p className="text-[10px] text-muted-foreground">
                 ${item.price.toFixed(2)} x {item.quantity} · Cost: ${item.unitCost.toFixed(2)}
               </p>
+              {item.supplierName && item.supplierName !== "No supplier assigned" && (
+                <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-accent/10 text-accent">
+                  → {item.supplierName}
+                </span>
+              )}
             </div>
             <div className="text-right">
               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium" style={{ color: getSourceColor(source), background: `${getSourceColor(source)}15` }}>
@@ -209,6 +215,18 @@ function OrderCard({ order, onAction }: { order: FulfillmentOrder; onAction: (or
               className="flex items-center gap-1.5 px-3 py-2 bg-purple-500/20 text-purple-400 rounded-lg text-xs font-medium hover:bg-purple-500/30 transition-all disabled:opacity-50"
             >
               <Send className="h-3 w-3" /> Save Tracking
+            </button>
+            <button
+              onClick={async () => {
+                if (!trackingInput) return;
+                onAction(order.id, "syncTracking", { trackingNumber: trackingInput, carrier: carrierInput || "Other" });
+                setTrackingInput("");
+                setCarrierInput("");
+              }}
+              disabled={!trackingInput}
+              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-500/20 text-emerald-400 rounded-lg text-xs font-medium hover:bg-emerald-500/30 transition-all disabled:opacity-50"
+            >
+              <CheckCircle2 className="h-3 w-3" /> Sync to Store
             </button>
           </div>
         )}
@@ -390,6 +408,8 @@ export default function FulfillmentPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [storeFilter, setStoreFilter] = useState("all");
 
   const fetchOrders = useCallback(async () => {
     if (!user) return;
@@ -419,11 +439,19 @@ export default function FulfillmentPage() {
     if (!user) return;
     setActionLoading(orderId);
     try {
-      await fetch("/api/fulfillment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uid: user.uid, orderId, action, ...data }),
-      });
+      if (action === "syncTracking") {
+        await fetch("/api/fulfillment/sync-tracking", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ uid: user.uid, fulfillmentOrderId: orderId, trackingNumber: data?.trackingNumber, carrier: data?.carrier }),
+        });
+      } else {
+        await fetch("/api/fulfillment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ uid: user.uid, orderId, action, ...data }),
+        });
+      }
       await fetchOrders();
     } catch {}
     setActionLoading(null);
@@ -447,7 +475,8 @@ export default function FulfillmentPage() {
       o.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       o.items.some((i) => i.name.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesSource = sourceFilter === "all" || o.items.some((i) => i.source === sourceFilter);
-    return matchesSearch && matchesSource;
+    const matchesStore = storeFilter === "all" || o.storePlatform === storeFilter;
+    return matchesSearch && matchesSource && matchesStore;
   });
 
   const tabOrders = filteredOrders.filter((o) => {
@@ -556,6 +585,37 @@ export default function FulfillmentPage() {
               <option key={s} value={s}>{getSourceIcon(s)} {s}</option>
             ))}
           </select>
+          <select
+            value={storeFilter}
+            onChange={(e) => setStoreFilter(e.target.value)}
+            className="px-3 py-2 bg-surface border border-white/10 rounded-lg text-xs text-foreground focus:outline-none focus:border-accent"
+          >
+            <option value="all">All Stores</option>
+            <option value="trendaryo">Trendaryo</option>
+            <option value="shopify">Shopify</option>
+            <option value="woocommerce">WooCommerce</option>
+            <option value="etsy">Etsy</option>
+          </select>
+          <button
+            onClick={async () => {
+              if (!user) return;
+              setSyncing(true);
+              try {
+                await fetch("/api/fulfillment/poll", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ uid: user.uid }),
+                });
+                await fetchOrders();
+              } catch {}
+              setSyncing(false);
+            }}
+            disabled={syncing}
+            className="flex items-center gap-1.5 px-3 py-2 bg-accent/20 text-accent rounded-lg text-xs font-medium hover:bg-accent/30 transition-all disabled:opacity-50"
+          >
+            {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+            Sync Orders
+          </button>
         </div>
       )}
 
@@ -576,7 +636,7 @@ export default function FulfillmentPage() {
         <div className="space-y-3">
           {tabOrders.map((order) => (
             <div key={order.id} className={actionLoading === order.id ? "opacity-50 pointer-events-none" : ""}>
-              <OrderCard order={order} onAction={handleAction} />
+              <OrderCard order={order} onAction={handleAction} storeName={order.storeName} />
             </div>
           ))}
         </div>
