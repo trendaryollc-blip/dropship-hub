@@ -65,13 +65,18 @@ export default function DashboardHome() {
           <h1 className="font-display text-xl font-bold text-foreground">Dashboard</h1>
           <p className="text-sm text-muted-foreground">Your dropshipping command center</p>
         </div>
-        <button
-          onClick={() => setAdvancedMode(!advancedMode)}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border border-border bg-surface hover:bg-surface-hover transition-all"
-        >
-          {advancedMode ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-          {advancedMode ? "Simple View" : "Advanced View"}
-        </button>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground hidden sm:inline">
+            {advancedMode ? "Switch to a simplified dashboard" : "View detailed analytics and insights"}
+          </span>
+          <button
+            onClick={() => setAdvancedMode(!advancedMode)}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border border-border bg-surface hover:bg-surface-hover transition-all"
+          >
+            {advancedMode ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            {advancedMode ? "Simple View" : "Advanced View"}
+          </button>
+        </div>
       </div>
 
       {/* Greeting */}

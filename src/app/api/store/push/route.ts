@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
+import jwt from "jsonwebtoken";
 
 interface PushProductPayload {
   uid: string;
@@ -78,6 +79,70 @@ async function pushToCustomStore(storeUrl: string, apiKey: string, product: Push
   return { success: resp.ok, platformProductId: data.id || data.product_id, error: data.error || data.message };
 }
 
+async function pushToTrendaryo(backendUrl: string, apiKey: string, product: PushProductPayload) {
+  const jwtSecret = process.env.TRENDARYO_JWT_SECRET || "";
+  const adminUid = process.env.TRENDARYO_ADMIN_UID || "";
+
+  let authToken = "";
+  if (jwtSecret && adminUid) {
+    authToken = jwt.sign({ userId: adminUid, role: "admin", type: "access" }, jwtSecret, { expiresIn: "1h" });
+  }
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (authToken) {
+    headers["Authorization"] = `Bearer ${authToken}`;
+  } else if (apiKey) {
+    headers["x-api-key"] = apiKey;
+  }
+
+  let imageUrl = product.productImage || "";
+  let images: string[] = [];
+
+  if (imageUrl) {
+    try {
+      const uploadRes = await fetch(`${backendUrl}/api/upload/from-url`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": apiKey },
+        body: JSON.stringify({
+          url: imageUrl,
+          folder: "trendaryo/products",
+          resourceType: "image",
+        }),
+        signal: AbortSignal.timeout(20000),
+      });
+      const uploadData = await uploadRes.json();
+      if (uploadData.success && uploadData.data?.url) {
+        imageUrl = uploadData.data.url;
+        images = [uploadData.data.url];
+      }
+    } catch {}
+  }
+
+  const resp = await fetch(`${backendUrl}/api/products`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      name: product.productTitle,
+      description: product.productDescription,
+      price: product.productPrice,
+      originalPrice: product.productPrice,
+      image: imageUrl,
+      images: images.length > 0 ? images : imageUrl ? [imageUrl] : [],
+      category: "DropShip Hub",
+      stock: 100,
+    }),
+    signal: AbortSignal.timeout(15000),
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok || !data.success) {
+    const errorMsg = typeof data.error === "string" ? data.error : data.error?.message || data.message || `HTTP ${resp.status}`;
+    return { success: false, platformProductId: undefined, error: errorMsg };
+  }
+  return { success: true, platformProductId: data.data?.id, error: undefined };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body: PushProductPayload & { uid: string } = await req.json();
@@ -102,6 +167,9 @@ export async function POST(req: NextRequest) {
         break;
       case "custom":
         result = await pushToCustomStore(store.url, store.apiKey, body);
+        break;
+      case "trendaryo":
+        result = await pushToTrendaryo(store.backendUrl, store.apiKey, body);
         break;
       default:
         return NextResponse.json({ error: `Platform "${store.platform}" push not supported yet` }, { status: 400 });

@@ -90,7 +90,10 @@ function normalizeResults(platform: string, data: unknown): SearchResult[] {
     : (sourceData?.search_results as unknown[]) ?? (sourceData?.data as unknown[]) ?? (sourceData?.products as unknown[]) ?? [];
   if (!Array.isArray(items)) return results;
   items.forEach((item, i) => {
+    if (!item || typeof item !== "object") return;
     const product = item as Record<string, unknown>;
+    if (product.code && product.message && !product.title && !product.name) return;
+    if ("code" in product && "message" in product && Object.keys(product).length <= 3) return;
     const price =
       typeof product.price === "number"
         ? product.price
@@ -590,6 +593,25 @@ function ProductsContent() {
     if (searchParams.get("q")) {
       const q = searchParams.get("q")!;
       setQuery(q);
+
+      const cacheKey = `search_cache_${q}`;
+      try {
+        const cached = JSON.parse(sessionStorage.getItem(cacheKey) || "null");
+        if (cached && cached.query === q && cached.results?.length > 0) {
+          const cleanResults = cached.results.filter((r: Record<string, unknown>) => {
+            if (!r || typeof r !== "object") return false;
+            if (r.code && r.message && !r.title && !r.name) return false;
+            if ("code" in r && "message" in r && Object.keys(r).length <= 3) return false;
+            return true;
+          });
+          setResults(cleanResults);
+          setPlatformResults(cached.platformResults || []);
+          setSearched(true);
+          setLoading(false);
+          return;
+        }
+      } catch {}
+
       setLoading(true);
       setError(null);
       setResults([]);
@@ -618,6 +640,9 @@ function ProductsContent() {
           });
           setPlatformResults(platforms);
           setResults(allResults);
+          try {
+            sessionStorage.setItem(cacheKey, JSON.stringify({ query: q, results: allResults, platformResults: platforms }));
+          } catch {}
         })
         .catch(() => setError("Network error - please try again"))
         .finally(() => setLoading(false));
@@ -666,6 +691,9 @@ function ProductsContent() {
       });
       setPlatformResults(platforms);
       setResults(allResults);
+      try {
+        sessionStorage.setItem(`search_cache_${q}`, JSON.stringify({ query: q, results: allResults, platformResults: platforms }));
+      } catch {}
     } catch {
       setError("Network error - please try again");
     } finally {

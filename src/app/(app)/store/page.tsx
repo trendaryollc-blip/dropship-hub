@@ -27,9 +27,13 @@ interface ConnectedStore {
   platform: string;
   name: string;
   url: string;
+  backendUrl?: string;
+  apiKey?: string;
   status: "connected" | "disconnected" | "error";
   connectedAt: string;
   lastSyncAt?: string;
+  productCount?: number;
+  orderCount?: number;
 }
 
 interface PushedProduct {
@@ -114,6 +118,14 @@ const BigCommerceIcon = () => (
   </svg>
 );
 
+const TrendaryoIcon = () => (
+  <svg viewBox="0 0 38 38" fill="none" className="w-full h-full">
+    <rect width="38" height="38" rx="8" fill="#E11D48"/>
+    <path d="M10 26V12l9 14V12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M24 12h4l-4 14h4" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 const CustomStoreIcon = () => (
   <svg viewBox="0 0 38 38" fill="none" className="w-full h-full">
     <rect width="38" height="38" rx="8" fill="#F59E0B"/>
@@ -124,6 +136,20 @@ const CustomStoreIcon = () => (
 );
 
 const PLATFORMS: Platform[] = [
+  {
+    id: "trendaryo",
+    name: "Trendaryo",
+    icon: <TrendaryoIcon />,
+    color: "#e11d48",
+    bg: "#fff1f2",
+    description: "Your store — full two-way sync",
+    authType: "api_key",
+    fields: [
+      { key: "url", label: "Store URL", placeholder: "https://trendaryo.com", type: "url", required: true },
+      { key: "backendUrl", label: "Backend API URL", placeholder: "https://trendaryo-llc-backend.vercel.app", type: "url", required: true },
+      { key: "apiKey", label: "API Key", placeholder: "trend_xxxxxxxxxxxxx", type: "password", required: true, helpText: "Create via POST /api/keys with your admin account" },
+    ],
+  },
   {
     id: "shopify",
     name: "Shopify",
@@ -242,6 +268,8 @@ export default function StorePage() {
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [connecting, setConnecting] = useState(false);
   const [pushing, setPushing] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState<string | null>(null);
+  const [trendaryoData, setTrendaryoData] = useState<{ products: number; orders: number } | null>(null);
   const [activeTab, setActiveTab] = useState<"stores" | "products">("stores");
   const [error, setError] = useState("");
 
@@ -285,8 +313,12 @@ export default function StorePage() {
         uid: user.uid,
         platform: selectedPlatform.id,
         name: selectedPlatform.name,
-        ...formData,
+        url: formData.url || "",
       };
+      if (selectedPlatform.id === "trendaryo") {
+        payload.backendUrl = formData.backendUrl || "";
+        payload.apiKey = formData.apiKey || "";
+      }
       const res = await fetch("/api/store/connections", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -335,6 +367,25 @@ export default function StorePage() {
       }
     } catch { /* ignore */ }
     setPushing(null);
+  };
+
+  const handleSyncTrendaryo = async (store: ConnectedStore) => {
+    if (!user || store.platform !== "trendaryo") return;
+    setSyncing(store.id);
+    try {
+      const res = await fetch("/api/store/trendaryo", {
+        method: "GET",
+      });
+      const data = await res.json();
+      if (data.data?.products) {
+        setTrendaryoData({
+          products: data.data.pagination?.total || data.data.products.length,
+          orders: 0,
+        });
+      }
+      await fetchConnections();
+    } catch { /* ignore */ }
+    setSyncing(null);
   };
 
   if (loading) {
@@ -414,6 +465,7 @@ export default function StorePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {connections.map((store) => {
                   const platform = PLATFORMS.find((p) => p.id === store.platform);
+                  const isTrendaryo = store.platform === "trendaryo";
                   return (
                     <div key={store.id} className="bg-white/5 border border-white/10 rounded-xl p-5 hover:border-white/20 transition-all">
                       <div className="flex items-start justify-between">
@@ -438,12 +490,37 @@ export default function StorePage() {
                           </span>
                         </div>
                       </div>
+
+                      {/* Trendaryo stats */}
+                      {isTrendaryo && (
+                        <div className="flex gap-4 mt-3 p-3 bg-white/5 rounded-lg">
+                          <div className="text-center">
+                            <p className="text-lg font-bold text-white">{store.productCount ?? trendaryoData?.products ?? "—"}</p>
+                            <p className="text-xs text-gray-400">Products</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-lg font-bold text-white">{store.orderCount ?? trendaryoData?.orders ?? "—"}</p>
+                            <p className="text-xs text-gray-400">Orders</p>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex items-center gap-2 mt-4">
                         <span className="text-xs text-gray-500">
                           Connected {new Date(store.connectedAt).toLocaleDateString()}
                           {store.lastSyncAt && ` · Last sync ${new Date(store.lastSyncAt).toLocaleDateString()}`}
                         </span>
                         <div className="ml-auto flex gap-2">
+                          {isTrendaryo && (
+                            <button
+                              onClick={() => handleSyncTrendaryo(store)}
+                              disabled={syncing === store.id}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/20 text-rose-400 rounded-lg text-xs font-medium hover:bg-rose-500/30 transition-all disabled:opacity-50"
+                            >
+                              {syncing === store.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                              Sync
+                            </button>
+                          )}
                           <button
                             onClick={() => handlePushProduct(store, null)}
                             disabled={pushing === store.id}
@@ -482,8 +559,36 @@ export default function StorePage() {
               {connections.length === 0 ? "Connect Your First Store" : "Connect Another Store"}
             </h2>
             <p className="text-gray-400 text-sm mb-6">Pick your platform — we&apos;ll guide you through the simple steps</p>
+
+            {/* Trendaryo - Featured */}
+            {!connections.some((c) => c.platform === "trendaryo") && (
+              <div className="mb-6">
+                <button
+                  onClick={() => openConnect(PLATFORMS.find((p) => p.id === "trendaryo")!)}
+                  className="w-full group bg-gradient-to-r from-rose-500/10 to-pink-500/10 border border-rose-500/30 rounded-xl p-6 hover:border-rose-500/50 transition-all duration-200 text-left"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-xl flex items-center justify-center overflow-hidden" style={{ background: "#fff1f2" }}>
+                      <TrendaryoIcon />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-white font-bold text-lg">Trendaryo</h3>
+                        <span className="px-2 py-0.5 bg-rose-500/20 text-rose-400 text-xs font-medium rounded-full">Your Store</span>
+                      </div>
+                      <p className="text-gray-400 text-sm mt-1">Full two-way sync — push products, pull orders & inventory</p>
+                    </div>
+                    <div className="flex items-center gap-1 text-rose-400 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                      Connect <ArrowRight className="w-4 h-4" />
+                    </div>
+                  </div>
+                </button>
+              </div>
+            )}
+
+            {/* Other platforms */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {PLATFORMS.map((platform) => (
+              {PLATFORMS.filter((p) => p.id !== "trendaryo").map((platform) => (
                 <button
                   key={platform.id}
                   onClick={() => openConnect(platform)}
@@ -552,9 +657,9 @@ export default function StorePage() {
       {/* Connect Modal */}
       {showConnectModal && selectedPlatform && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowConnectModal(false)}>
-          <div className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-md mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-md max-h-[90vh] mx-4 shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-white/10">
+            <div className="flex items-center justify-between p-6 border-b border-white/10 flex-shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden" style={{ background: selectedPlatform.bg }}>
                   {selectedPlatform.icon}
@@ -569,8 +674,8 @@ export default function StorePage() {
               </button>
             </div>
 
-            {/* Body */}
-            <div className="p-6 space-y-4">
+            {/* Body - Scrollable */}
+            <div className="p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
               {error && (
                 <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
                   <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -623,6 +728,19 @@ export default function StorePage() {
                 </div>
               )}
 
+              {/* Trendaryo specific info */}
+              {selectedPlatform.id === "trendaryo" && (
+                <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-3">
+                  <div className="flex items-start gap-2">
+                    <Zap className="w-4 h-4 text-rose-400 mt-0.5 flex-shrink-0" />
+                    <div className="text-xs text-rose-300">
+                      <p className="font-medium mb-1">Trendaryo Integration</p>
+                      <p>Full two-way sync: push products from DropShip Hub to your store, pull orders and inventory data into your dashboard. Products are stored in Firestore and images in Cloudinary.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Info Box */}
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3">
                 <div className="flex items-start gap-2">
@@ -637,7 +755,7 @@ export default function StorePage() {
             </div>
 
             {/* Footer */}
-            <div className="flex gap-3 p-6 border-t border-white/10">
+            <div className="flex gap-3 p-6 border-t border-white/10 flex-shrink-0">
               <button
                 onClick={() => setShowConnectModal(false)}
                 className="flex-1 py-3 bg-white/5 text-gray-300 rounded-xl font-medium hover:bg-white/10 transition-all"

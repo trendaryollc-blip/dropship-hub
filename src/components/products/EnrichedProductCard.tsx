@@ -94,7 +94,7 @@ export default function EnrichedProductCard({ product, index }: { product: Searc
       if (data.success) {
         setPushResult({ success: true, message: `Pushed to ${store.name}!` });
       } else {
-        setPushResult({ success: false, message: data.error || "Push failed" });
+        setPushResult({ success: false, message: typeof data.error === "string" ? data.error : data.error?.message || "Push failed" });
       }
     } catch {
       setPushResult({ success: false, message: "Network error" });
