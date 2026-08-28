@@ -13,6 +13,7 @@ import {
   Brain,
   Settings,
   ChevronLeft,
+  Package,
   ChevronRight,
   Zap,
   X,
@@ -54,6 +55,12 @@ const navItems = [
     label: "My Store",
     href: "/store",
     icon: Store,
+    section: "tools",
+  },
+  {
+    label: "Fulfillment",
+    href: "/fulfillment",
+    icon: Package,
     section: "tools",
   },
   {
