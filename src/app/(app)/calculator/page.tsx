@@ -1,45 +1,47 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { saveCalcHistory } from "@/lib/data";
-import { CheckCircle2, Save } from "lucide-react";
+import { saveCalcHistory, getCalcHistory, type CalcHistoryEntry } from "@/lib/data";
+import { CheckCircle2, Save, Clock, Trash2 } from "lucide-react";
 import {
-  DollarSign, Truck, Globe, Percent, TrendingUp,
-  Calculator, Info, AlertTriangle,
+  DollarSign, Truck, Globe, Percent,
+  Calculator, Info, AlertTriangle, ShoppingBag,
 } from "lucide-react";
 import {
   calculateProfit, calculateShipping, calculateLandedCost,
-  calculateMargin, calculateAdROI,
-  ProfitCalc, ShippingCalc, LandedCostCalc, MarginCalc, AdROICalc,
+  calculateMargin,
+  ProfitCalc, ShippingCalc, LandedCostCalc, MarginCalc,
 } from "@/lib/calculations";
 
-type Tab = "profit" | "shipping" | "landed" | "margin" | "adroi";
+type Tab = "profit" | "shipping" | "landed" | "margin";
 
-const tabs: { id: Tab; label: string; icon: typeof DollarSign; unique?: boolean }[] = [
-  { id: "profit", label: "Profit", icon: DollarSign },
-  { id: "shipping", label: "Shipping", icon: Truck },
-  { id: "landed", label: "Landed Cost", icon: Globe, unique: true },
-  { id: "margin", label: "Margin", icon: Percent },
-  { id: "adroi", label: "Ad ROI", icon: TrendingUp, unique: true },
+const tabs: { id: Tab; label: string; icon: typeof DollarSign; description: string }[] = [
+  { id: "profit", label: "Profit", icon: DollarSign, description: "Quick profit calculation for domestic selling" },
+  { id: "shipping", label: "Shipping", icon: Truck, description: "Estimate shipping costs by package size and destination" },
+  { id: "landed", label: "Landed Cost", icon: Globe, description: "Full cost including tariffs, customs, and insurance for imported products" },
+  { id: "margin", label: "Margin", icon: Percent, description: "Find the right price for your desired profit margin" },
 ];
 
 function CalculatorContent() {
   const searchParams = useSearchParams();
-  const initialCost = parseFloat(searchParams.get("cost") || "8");
-  const initialPrice = parseFloat(searchParams.get("price") || "34.99");
+  const productTitle = searchParams.get("title");
+  const initialCost = parseFloat(searchParams.get("cost") || searchParams.get("sell") || "8");
+  const initialPrice = parseFloat(searchParams.get("price") || searchParams.get("sell") || "34.99");
   const { user } = useAuth();
   const [saved, setSaved] = useState(false);
+  const [history, setHistory] = useState<CalcHistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const [activeTab, setActiveTab] = useState<Tab>("profit");
 
   // Profit state
   const [productCost, setProductCost] = useState(initialCost);
   const [sellingPrice, setSellingPrice] = useState(initialPrice);
-  const [shippingCost, setShippingCost] = useState(5);
-  const [platformFee, setPlatformFee] = useState(15);
-  const [adSpend, setAdSpend] = useState(3);
+  const [shippingCost, setShippingCost] = useState(parseFloat(searchParams.get("ship") || "5"));
+  const [platformFee, setPlatformFee] = useState(parseFloat(searchParams.get("fee") || "15"));
+  const [adSpend, setAdSpend] = useState(parseFloat(searchParams.get("ads") || "3"));
   const [units, setUnits] = useState(1);
 
   // Shipping state
@@ -64,20 +66,25 @@ function CalculatorContent() {
   const [marginCost, setMarginCost] = useState(initialCost);
   const [desiredMargin, setDesiredMargin] = useState(40);
 
-  // Ad ROI state
-  const [roiCost, setRoiCost] = useState(initialCost);
-  const [roiPrice, setRoiPrice] = useState(initialPrice);
-  const [roiShipping, setRoiShipping] = useState(5);
-  const [roiFee, setRoiFee] = useState(15);
-  const [ctr, setCtr] = useState(2);
-  const [cvr, setCvr] = useState(2.5);
-  const [dailyBudget, setDailyBudget] = useState(50);
-
   const profitResult: ProfitCalc = calculateProfit(productCost, sellingPrice, shippingCost, platformFee, adSpend, units);
   const shippingResult: ShippingCalc = calculateShipping(weight, length, width, height, originCountry, destCountry);
   const landedResult: LandedCostCalc = calculateLandedCost(lcCost, lcShipping, tariff, customsDuty, insurance, lcPlatformFee, otherFees, lcQty);
   const marginResult: MarginCalc = calculateMargin(marginCost, desiredMargin, [sellingPrice]);
-  const adROIResult: AdROICalc = calculateAdROI(roiCost, roiPrice, roiShipping, roiFee, ctr, cvr, dailyBudget);
+
+  const fetchHistory = async () => {
+    if (!user) return;
+    setHistoryLoading(true);
+    try {
+      const entries = await getCalcHistory(user.uid, activeTab);
+      setHistory(entries.slice(0, 5));
+    } catch {}
+    setHistoryLoading(false);
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, activeTab]);
 
   const handleSave = async () => {
     if (!user) return;
@@ -86,13 +93,13 @@ function CalculatorContent() {
       shipping: { inputs: { weight, length, width, height }, result: { estimatedCost: shippingResult.estimatedCost, costPerUnit: shippingResult.costPerUnit } },
       landed: { inputs: { lcCost, lcShipping, tariff, customsDuty, insurance }, result: { landedCost: landedResult.landedCost, totalDuties: landedResult.totalDuties, suggestedRetail: landedResult.suggestedRetail } },
       margin: { inputs: { marginCost, desiredMargin }, result: { recommendedPrice: marginResult.recommendedPrice, marginAtPrice: marginResult.marginAtPrice } },
-      adroi: { inputs: { roiCost, roiPrice, dailyBudget, ctr, cvr }, result: { monthlyProfit: adROIResult.monthlyProfit, monthlyRevenue: adROIResult.monthlyRevenue, estimatedCAC: adROIResult.estimatedCAC } },
     };
     const entry = entries[activeTab];
     if (entry) {
       await saveCalcHistory(user.uid, { type: activeTab, inputs: entry.inputs, result: entry.result });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+      fetchHistory();
     }
   };
 
@@ -107,6 +114,17 @@ function CalculatorContent() {
           <Calculator className="h-7 w-7 text-accent" /> Calculator Suite
         </h1>
         <p className="text-muted-foreground">Real-time calculations for profit, shipping, landed costs, margins, and ad ROI.</p>
+        {productTitle && (
+          <div className="mt-4 flex items-center gap-2.5 rounded-xl bg-accent/8 border border-accent/15 px-4 py-3">
+            <div className="icon-container-blue shrink-0">
+              <ShoppingBag className="h-4 w-4 text-accent" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Calculating for</p>
+              <p className="text-sm font-semibold text-foreground truncate">{productTitle}</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Tab bar */}
@@ -124,11 +142,6 @@ function CalculatorContent() {
             >
               <tab.icon className="h-4 w-4" />
               {tab.label}
-              {tab.unique && (
-                <span className="px-1.5 py-0.5 rounded-md bg-accent-warm/20 text-accent-warm text-[9px] font-bold uppercase">
-                  Unique
-                </span>
-              )}
             </button>
           ))}
         </div>
@@ -142,6 +155,78 @@ function CalculatorContent() {
           </button>
         )}
       </div>
+
+      {/* Saved Calculations History */}
+      {user && history.length > 0 && (
+        <div className="mb-6 glass rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Recent Saves</h3>
+          </div>
+          <div className="space-y-2">
+            {history.map((entry) => (
+              <div
+                key={entry.id}
+                className="flex items-center justify-between p-3 rounded-xl bg-surface/50 border border-border hover:border-accent/20 transition-all cursor-pointer"
+                onClick={() => {
+                  // Load saved values back into the calculator
+                  if (activeTab === "profit" && entry.inputs.productCost != null) {
+                    setProductCost(entry.inputs.productCost);
+                    setSellingPrice(entry.inputs.sellingPrice);
+                    setShippingCost(entry.inputs.shippingCost);
+                    setPlatformFee(entry.inputs.platformFee);
+                    setAdSpend(entry.inputs.adSpend);
+                    setUnits(entry.inputs.units);
+                  } else if (activeTab === "shipping" && entry.inputs.weight != null) {
+                    setWeight(entry.inputs.weight);
+                    setLength(entry.inputs.length);
+                    setWidth(entry.inputs.width);
+                    setHeight(entry.inputs.height);
+                  } else if (activeTab === "landed" && entry.inputs.lcCost != null) {
+                    setLcCost(entry.inputs.lcCost);
+                    setLcShipping(entry.inputs.lcShipping);
+                    setTariff(entry.inputs.tariff);
+                    setCustomsDuty(entry.inputs.customsDuty);
+                    setInsurance(entry.inputs.insurance);
+                  } else if (activeTab === "margin" && entry.inputs.marginCost != null) {
+                    setMarginCost(entry.inputs.marginCost);
+                    setDesiredMargin(entry.inputs.desiredMargin);
+                  }
+                }}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {Object.entries(entry.inputs).slice(0, 3).map(([key, val]) => (
+                      <span key={key} className="text-[10px] px-2 py-0.5 rounded-full bg-surface border border-border text-muted-foreground font-mono">
+                        {key}: ${typeof val === "number" ? val.toFixed(2) : val}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {entry.savedAt?.toDate ? new Date(entry.savedAt.toDate()).toLocaleString() : "Just now"}
+                  </p>
+                </div>
+                <div className="text-right shrink-0 ml-3">
+                  {entry.result.netProfit != null && (
+                    <p className={`text-xs font-bold ${entry.result.netProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                      ${entry.result.netProfit.toFixed(2)}
+                    </p>
+                  )}
+                  {entry.result.recommendedPrice != null && (
+                    <p className="text-xs font-bold text-accent">${entry.result.recommendedPrice}</p>
+                  )}
+                  {entry.result.landedCost != null && (
+                    <p className="text-xs font-bold text-accent">${entry.result.landedCost}</p>
+                  )}
+                  {entry.result.estimatedCost != null && (
+                    <p className="text-xs font-bold text-accent">${entry.result.estimatedCost.toFixed(2)}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* PROFIT CALCULATOR */}
       {activeTab === "profit" && (
@@ -304,10 +389,7 @@ function CalculatorContent() {
       {activeTab === "landed" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-slide-up">
           <div className={cardClass}>
-            <div className="flex items-center gap-2 mb-6">
-              <h3 className="font-display text-lg font-semibold text-foreground">True Cost Input</h3>
-              <span className="px-2 py-0.5 rounded-md bg-accent-warm/20 text-accent-warm text-[10px] font-bold uppercase">Unique</span>
-            </div>
+            <h3 className="font-display text-lg font-semibold text-foreground mb-6">True Cost Input</h3>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -443,107 +525,6 @@ function CalculatorContent() {
         </div>
       )}
 
-      {/* AD ROI CALCULATOR */}
-      {activeTab === "adroi" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-slide-up">
-          <div className={cardClass}>
-            <div className="flex items-center gap-2 mb-6">
-              <h3 className="font-display text-lg font-semibold text-foreground">Ad Spend Input</h3>
-              <span className="px-2 py-0.5 rounded-md bg-accent-warm/20 text-accent-warm text-[10px] font-bold uppercase">Unique</span>
-            </div>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={labelClass}>Product Cost ($)</label>
-                  <input type="number" step="0.01" value={roiCost} onChange={(e) => setRoiCost(+e.target.value)} className={inputClass} />
-                </div>
-                <div>
-                  <label className={labelClass}>Selling Price ($)</label>
-                  <input type="number" step="0.01" value={roiPrice} onChange={(e) => setRoiPrice(+e.target.value)} className={inputClass} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={labelClass}>Shipping ($)</label>
-                  <input type="number" step="0.01" value={roiShipping} onChange={(e) => setRoiShipping(+e.target.value)} className={inputClass} />
-                </div>
-                <div>
-                  <label className={labelClass}>Platform Fee (%)</label>
-                  <input type="number" step="0.1" value={roiFee} onChange={(e) => setRoiFee(+e.target.value)} className={inputClass} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={labelClass}>CTR (%)</label>
-                  <input type="number" step="0.1" value={ctr} onChange={(e) => setCtr(+e.target.value)} className={inputClass} />
-                </div>
-                <div>
-                  <label className={labelClass}>Conversion Rate (%)</label>
-                  <input type="number" step="0.1" value={cvr} onChange={(e) => setCvr(+e.target.value)} className={inputClass} />
-                </div>
-              </div>
-              <div>
-                <label className={labelClass}>Daily Ad Budget ($)</label>
-                <input type="number" step="1" value={dailyBudget} onChange={(e) => setDailyBudget(+e.target.value)} className={inputClass} />
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className={cardClass}>
-              <h3 className="font-display text-lg font-semibold text-foreground mb-4">ROI Projection</h3>
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="p-4 rounded-xl bg-emerald-400/5 border border-emerald-400/20 text-center">
-                  <p className="text-xs text-emerald-400 uppercase tracking-wider mb-1">Break-Even ROAS</p>
-                  <p className="font-display text-3xl font-bold text-emerald-400">{adROIResult.breakEvenROAS}x</p>
-                </div>
-                <div className="p-4 rounded-xl bg-accent/5 border border-accent/20 text-center">
-                  <p className="text-xs text-accent uppercase tracking-wider mb-1">Est. CAC</p>
-                  <p className="font-display text-3xl font-bold text-accent">${adROIResult.estimatedCAC}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="p-3 rounded-xl bg-surface border border-border text-center">
-                  <p className="text-xs text-muted-foreground mb-1">Monthly Revenue</p>
-                  <p className="font-display text-xl font-bold text-foreground">${adROIResult.monthlyRevenue.toLocaleString()}</p>
-                </div>
-                <div className="p-3 rounded-xl bg-surface border border-border text-center">
-                  <p className="text-xs text-muted-foreground mb-1">Monthly Profit</p>
-                  <p className={`font-display text-xl font-bold ${adROIResult.monthlyProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                    ${adROIResult.monthlyProfit.toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className={cardClass}>
-              <h3 className="font-display text-sm font-semibold text-foreground mb-3">Budget Scenarios</h3>
-              <div className="space-y-2">
-                {adROIResult.scenarios.map((s) => (
-                  <div key={s.name} className="flex items-center gap-4 p-3 rounded-xl bg-surface/50 border border-border">
-                    <div className="w-20">
-                      <p className="text-xs font-medium text-foreground">{s.name}</p>
-                      <p className="text-[10px] text-muted-foreground">${s.spend}/day</p>
-                    </div>
-                    <div className="flex-1 text-right">
-                      <p className="text-sm font-medium text-foreground">${s.revenue}/day rev</p>
-                    </div>
-                    <div className="w-20 text-right">
-                      <p className={`text-sm font-bold ${s.profit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                        ${s.profit.toFixed(0)}/day
-                      </p>
-                    </div>
-                    <div className="w-14 text-right">
-                      <p className="text-sm font-medium text-foreground">{s.roas}x</p>
-                      <p className="text-[10px] text-muted-foreground">ROAS</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -6,6 +6,9 @@ import {
   BarChart3, Package, RotateCcw, ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
+import { db } from "@/lib/firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 interface HealthItem {
   label: string;
@@ -82,7 +85,7 @@ const recommendations = [
   { priority: "low", text: "Set up AI providers for automated insights", href: "/settings", icon: Zap },
 ];
 
-function loadState(): Record<string, boolean[]> {
+function loadStateLocal(): Record<string, boolean[]> {
   if (typeof window === "undefined") return {};
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -91,14 +94,32 @@ function loadState(): Record<string, boolean[]> {
   return {};
 }
 
-function saveState(state: Record<string, boolean[]>) {
+function saveStateLocal(state: Record<string, boolean[]>) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {}
 }
 
+async function loadStateFirestore(uid: string): Promise<Record<string, boolean[]> | null> {
+  try {
+    const snap = await getDoc(doc(db, "users", uid, "settings", "health"));
+    return snap.exists() ? (snap.data().state as Record<string, boolean[]>) : null;
+  } catch (err) {
+    console.error("Failed to load health state from Firestore:", err);
+    return null;
+  }
+}
+
+async function saveStateFirestore(uid: string, state: Record<string, boolean[]>) {
+  try {
+    await setDoc(doc(db, "users", uid, "settings", "health"), { state });
+  } catch (err) {
+    console.error("Failed to save health state to Firestore:", err);
+  }
+}
+
 function mergeWithSaved(cats: HealthCategory[]): HealthCategory[] {
-  const saved = loadState();
+  const saved = loadStateLocal();
   if (Object.keys(saved).length === 0) return cats;
   return cats.map((cat) => {
     const savedItems = saved[cat.id];
@@ -110,14 +131,37 @@ function mergeWithSaved(cats: HealthCategory[]): HealthCategory[] {
 }
 
 export default function HealthPage() {
+  const { user } = useAuth();
   const [categories, setCategories] = useState<HealthCategory[]>(defaultCategories);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe localStorage hydration
-    setCategories(mergeWithSaved(defaultCategories));
-    setMounted(true);
-  }, []);
+    async function hydrate() {
+      let merged = mergeWithSaved(defaultCategories);
+      if (user) {
+        const firestoreState = await loadStateFirestore(user.uid);
+        if (firestoreState && Object.keys(firestoreState).length > 0) {
+          const restored = defaultCategories.map((cat) => {
+            const savedItems = firestoreState[cat.id];
+            if (savedItems && savedItems.length === cat.items.length) {
+              return { ...cat, items: cat.items.map((item, i) => ({ ...item, done: savedItems[i] })) };
+            }
+            return cat;
+          });
+          merged = restored;
+          saveStateLocal(firestoreState);
+        } else {
+          const localState = loadStateLocal();
+          if (Object.keys(localState).length > 0) {
+            saveStateFirestore(user.uid, localState);
+          }
+        }
+      }
+      setCategories(merged);
+      setMounted(true);
+    }
+    hydrate();
+  }, [user]);
 
   const toggleItem = useCallback((catId: string, itemIndex: number) => {
     setCategories((prev) => {
@@ -132,10 +176,13 @@ export default function HealthPage() {
       next.forEach((cat) => {
         stateToSave[cat.id] = cat.items.map((item) => item.done);
       });
-      saveState(stateToSave);
+      saveStateLocal(stateToSave);
+      if (user) {
+        saveStateFirestore(user.uid, stateToSave);
+      }
       return next;
     });
-  }, []);
+  }, [user]);
 
   const resetAll = useCallback(() => {
     setCategories((prev) =>
@@ -145,7 +192,10 @@ export default function HealthPage() {
       }))
     );
     localStorage.removeItem(STORAGE_KEY);
-  }, []);
+    if (user) {
+      saveStateFirestore(user.uid, {});
+    }
+  }, [user]);
 
   const catScores = categories.map((cat) => {
     const doneCount = cat.items.filter((i) => i.done).length;

@@ -11,7 +11,7 @@ const presets = [
   { name: "eBay Resell", icon: "🏷️", platformFee: 13, shipping: 4, adSpend: 2 },
 ];
 
-export default function ProfitCalculator({ sourcePrice, sellPrice }: { sourcePrice: number; sellPrice: number }) {
+export default function ProfitCalculator({ sourcePrice, sellPrice, productTitle }: { sourcePrice: number; sellPrice: number; productTitle?: string }) {
   const { ref, isInView } = useInView({ threshold: 0.1 });
   const [cost, setCost] = useState(sourcePrice);
   const [selling, setSelling] = useState(sellPrice);
@@ -106,7 +106,7 @@ export default function ProfitCalculator({ sourcePrice, sellPrice }: { sourcePri
             </div>
 
             <Link
-              href={`/calculator?cost=${cost}&sell=${selling}&fee=${platformFee}&ship=${shipping}&ads=${adSpend}`}
+              href={`/calculator?cost=${cost}&sell=${selling}&fee=${platformFee}&ship=${shipping}&ads=${adSpend}${productTitle ? `&title=${encodeURIComponent(productTitle)}` : ""}`}
               className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-accent/8 border border-accent/15 text-accent text-xs font-semibold hover:bg-accent/15 transition-all"
             >
               <Calculator className="h-3.5 w-3.5" /> Open Full Calculator <ArrowRight className="h-3 w-3" />

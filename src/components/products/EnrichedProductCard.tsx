@@ -7,6 +7,7 @@ import { Package, Heart, Plus, Star, Images, Check, Send, Loader2, Store, X, Ext
 import { useInView } from "@/hooks/useInView";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { SupplierPicker } from "@/components/fulfillment/SupplierPicker";
+import { useSavedProducts, type SavedProduct } from "@/components/saved/SavedProductsProvider";
 
 const platformIcons: Record<string, string> = {
   amazon: "\ud83d\udce6", ebay: "\ud83c\udff7\ufe0f", aliexpress: "\ud83c\udde8\ud83c\uddf3",
@@ -40,7 +41,8 @@ export default function EnrichedProductCard({ product, index }: { product: Searc
   const { ref, isInView } = useInView({ threshold: 0.15 });
   const router = useRouter();
   const { user } = useAuth();
-  const [saved, setSaved] = useState(false);
+  const { isSaved, toggleSave } = useSavedProducts();
+  const saved = isSaved(product.id || product.title);
   const [compared, setCompared] = useState(false);
   const [showPushModal, setShowPushModal] = useState(false);
   const [stores, setStores] = useState<ConnectedStore[]>([]);
@@ -51,7 +53,10 @@ export default function EnrichedProductCard({ product, index }: { product: Searc
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    sessionStorage.setItem("selectedProduct", JSON.stringify(product));
+    sessionStorage.setItem("selectedProduct", JSON.stringify({
+      ...product,
+      id: product.id,
+    }));
     const params = new URLSearchParams({
       t: product.title,
       src: product.source,
@@ -147,7 +152,23 @@ export default function EnrichedProductCard({ product, index }: { product: Searc
           )}
           <div className="absolute top-2 right-2 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
             <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSaved(!saved); }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const savedProduct: SavedProduct = {
+                  id: product.id || product.title,
+                  title: product.title,
+                  price: product.price ?? null,
+                  image: product.image ?? null,
+                  images: product.images,
+                  link: product.link || "",
+                  source: product.source,
+                  rating: product.rating,
+                  reviews: product.reviews,
+                  savedAt: Date.now(),
+                };
+                toggleSave(savedProduct);
+              }}
               className={`p-2.5 rounded-lg backdrop-blur-sm transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center ${saved ? "bg-accent text-white" : "bg-black/60 text-white hover:bg-accent/80"}`}
               title={saved ? "Remove from favorites" : "Save to favorites"}
             >
@@ -183,7 +204,7 @@ export default function EnrichedProductCard({ product, index }: { product: Searc
           {/* Push to Store button */}
           <button
             onClick={openPushModal}
-            className="w-full mt-2 flex items-center justify-center gap-2 py-2 px-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-xl text-xs font-medium transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+            className="w-full mt-2 flex items-center justify-center gap-2 py-2 px-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-xl text-xs font-medium transition-all opacity-100 sm:opacity-70 sm:group-hover:opacity-100"
           >
             <Store className="h-3.5 w-3.5" />
             Push to Store

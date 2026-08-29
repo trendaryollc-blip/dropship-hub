@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { fetchOrdersFromStore } from "@/lib/fulfillment/store-adapters";
 
+function sanitizeProductId(id: string): string {
+  return id.replace(/\//g, "__SLASH__");
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -38,7 +42,7 @@ export async function POST(req: NextRequest) {
         if (existingDoc.empty) {
           const itemsWithSupplier = await Promise.all(
             order.items.map(async (item) => {
-              const supplierDoc = await db.collection("users").doc(uid).collection("productSuppliers").doc(item.productId).get();
+              const supplierDoc = await db.collection("users").doc(uid).collection("productSuppliers").doc(sanitizeProductId(item.productId)).get();
               const supplier = supplierDoc.data();
               return {
                 ...item,

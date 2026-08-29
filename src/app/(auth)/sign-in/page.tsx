@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { Zap, Mail, Lock, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Zap, Mail, Lock, ArrowRight, Eye, EyeOff, Loader2, AlertTriangle } from "lucide-react";
 
-export default function SignInPage() {
+function SignInContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -14,6 +14,9 @@ export default function SignInPage() {
   const [loading, setLoading] = useState(false);
   const { signInWithEmail, signInWithGoogle } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const expired = searchParams.get("expired") === "1";
+  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +24,7 @@ export default function SignInPage() {
     setLoading(true);
     try {
       await signInWithEmail(email, password);
-      router.push("/dashboard");
+      router.push(callbackUrl);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to sign in";
       setError(msg);
@@ -35,7 +38,7 @@ export default function SignInPage() {
     setLoading(true);
     try {
       await signInWithGoogle();
-      router.push("/dashboard");
+      router.push(callbackUrl);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to sign in with Google";
       setError(msg);
@@ -65,6 +68,14 @@ export default function SignInPage() {
           Sign in to access your dropshipping dashboard.
         </p>
       </div>
+
+      {/* Session expired warning */}
+      {expired && (
+        <div className="mb-6 px-4 py-3 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
+          <p className="text-sm text-amber-400">Your session has expired. Please sign in again.</p>
+        </div>
+      )}
 
       {/* Google Sign In */}
       <button
@@ -167,5 +178,17 @@ export default function SignInPage() {
         </Link>
       </p>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <div className="glass rounded-3xl p-8 md:p-10 text-center">
+        <Loader2 className="h-6 w-6 text-accent animate-spin mx-auto" />
+      </div>
+    }>
+      <SignInContent />
+    </Suspense>
   );
 }

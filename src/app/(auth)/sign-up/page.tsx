@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Zap, Mail, Lock, User, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 
-export default function SignUpPage() {
+function SignUpContent() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -15,6 +15,8 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false);
   const { signUpWithEmail, signInWithGoogle } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
   const handleEmailSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,7 +24,7 @@ export default function SignUpPage() {
     setLoading(true);
     try {
       await signUpWithEmail(email, password);
-      router.push("/dashboard");
+      router.push(callbackUrl);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to create account";
       setError(msg);
@@ -36,7 +38,7 @@ export default function SignUpPage() {
     setLoading(true);
     try {
       await signInWithGoogle();
-      router.push("/dashboard");
+      router.push(callbackUrl);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to sign up with Google";
       setError(msg);
@@ -178,5 +180,17 @@ export default function SignUpPage() {
         By signing up, you agree to our Terms of Service and Privacy Policy.
       </p>
     </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={
+      <div className="glass rounded-3xl p-8 md:p-10 text-center">
+        <Loader2 className="h-6 w-6 text-accent animate-spin mx-auto" />
+      </div>
+    }>
+      <SignUpContent />
+    </Suspense>
   );
 }

@@ -1,10 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   Zap, ArrowRight, ArrowLeft, CheckCircle2,
   Search, DollarSign, Store, Target, Rocket,
 } from "lucide-react";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { db } from "@/lib/firebase";
+import { doc, setDoc } from "firebase/firestore";
 
 interface OnboardingWizardProps {
   onComplete: () => void;
@@ -40,6 +44,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
   const [selectedNiche, setSelectedNiche] = useState<string | null>(null);
   const [selectedBudget, setSelectedBudget] = useState<string | null>(null);
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
+  const { user } = useAuth();
 
   const canNext = () => {
     if (step === 0) return selectedNiche !== null;
@@ -48,9 +53,16 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
     return false;
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     const profile = { niche: selectedNiche, budget: selectedBudget, store: selectedStore };
     localStorage.setItem("userProfile", JSON.stringify(profile));
+    if (user) {
+      try {
+        await setDoc(doc(db, "users", user.uid), { profile }, { merge: true });
+      } catch (err) {
+        console.error("Failed to save profile to Firestore:", err);
+      }
+    }
     onComplete();
   };
 
@@ -195,17 +207,33 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
               Your dashboard is personalized. Here&apos;s what you can do first:
             </p>
             <div className="space-y-3 text-left max-w-sm mx-auto mb-8">
-              {[
-                { icon: Search, text: "Search for winning products", color: "text-blue-400" },
-                { icon: DollarSign, text: "Calculate your profit margins", color: "text-emerald-400" },
-                { icon: Target, text: "Find reliable suppliers", color: "text-amber-400" },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-surface/50 border border-border">
-                  <item.icon className={`h-4 w-4 ${item.color} shrink-0`} />
-                  <span className="text-sm text-foreground">{item.text}</span>
-                  <CheckCircle2 className="h-4 w-4 text-muted-foreground/30 ml-auto" />
-                </div>
-              ))}
+              <Link
+                href="/products"
+                onClick={handleFinish}
+                className="flex items-center gap-3 p-3 rounded-xl bg-surface/50 border border-border hover:border-accent/20 hover:bg-surface-hover transition-all group"
+              >
+                <Search className="h-4 w-4 text-blue-400 shrink-0" />
+                <span className="text-sm text-foreground group-hover:text-accent transition-colors">Search for winning products</span>
+                <ArrowRight className="h-4 w-4 text-muted-foreground ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+              </Link>
+              <Link
+                href="/calculator"
+                onClick={handleFinish}
+                className="flex items-center gap-3 p-3 rounded-xl bg-surface/50 border border-border hover:border-accent/20 hover:bg-surface-hover transition-all group"
+              >
+                <DollarSign className="h-4 w-4 text-emerald-400 shrink-0" />
+                <span className="text-sm text-foreground group-hover:text-accent transition-colors">Calculate your profit margins</span>
+                <ArrowRight className="h-4 w-4 text-muted-foreground ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+              </Link>
+              <Link
+                href="/suppliers"
+                onClick={handleFinish}
+                className="flex items-center gap-3 p-3 rounded-xl bg-surface/50 border border-border hover:border-accent/20 hover:bg-surface-hover transition-all group"
+              >
+                <Target className="h-4 w-4 text-amber-400 shrink-0" />
+                <span className="text-sm text-foreground group-hover:text-accent transition-colors">Find reliable suppliers</span>
+                <ArrowRight className="h-4 w-4 text-muted-foreground ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+              </Link>
             </div>
           </div>
         )}

@@ -9,6 +9,7 @@ interface PlatformPrice {
   reviews: number;
   inStock: boolean;
   url: string;
+  isMock?: boolean;
 }
 
 interface EnrichmentResult {
@@ -58,6 +59,7 @@ function generateMockPrices(basePrice: number): PlatformPrice[] {
     reviews: p.reviews,
     inStock: true,
     url: "#",
+    isMock: true,
   }));
 }
 
@@ -155,7 +157,8 @@ export async function POST(request: NextRequest) {
       priceSpread: +priceSpread.toFixed(2),
       supplierMatches,
       sourcesUsed,
-    } satisfies EnrichmentResult);
+      hasMockData: validPrices.some((p) => p.isMock),
+    });
   } catch (error) {
     return NextResponse.json(
       { error: "Enrichment failed", details: error instanceof Error ? error.message : "Unknown error" },

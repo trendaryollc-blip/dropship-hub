@@ -1,629 +1,969 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
-  Globe, CheckCircle2, Search,
-  Loader2, X, Package, ShoppingCart, Zap, Key,
-  TrendingUp, DollarSign, BarChart3,
+  Globe, Plus, Trash2, Key, Shield, Zap, CheckCircle2, XCircle,
+  Loader2, X, Eye, EyeOff, RotateCcw, GripVertical, AlertTriangle,
+  Settings, RefreshCw, ChevronDown, ChevronUp, TestTube,
 } from "lucide-react";
+import { useAuth } from "@/components/auth/AuthProvider";
 
-interface Platform {
+interface ApiKeyEntry {
   id: string;
-  name: string;
-  description: string;
-  category: "marketplace" | "supplier" | "search" | "analytics";
-  icon: string;
-  dataSource: string;
-  envKey: string;
-  configured: boolean;
-  active: boolean;
-  features: string[];
-  freeTier: string;
-  apiType: "third-party" | "affiliate" | "scraper";
-  searchEndpoint: string;
+  key: string;
+  label: string;
+  priority: number;
+  requestsUsed: number;
+  requestsLimit: number;
+  resetDate: string;
+  lastError: string | null;
+  lastTested: { seconds: number; nanoseconds: number } | null;
+  lastStatus: "healthy" | "error" | "untested";
 }
 
-const allPlatforms: Platform[] = [
-  // Marketplaces
-  {
-    id: "amazon",
-    name: "Amazon",
-    description: "World's largest marketplace via Rainforest API",
-    category: "marketplace",
-    icon: "📦",
-    dataSource: "Rainforest API",
-    envKey: "RAINFOREST_API_KEY",
-    configured: false,
-    active: true,
-    features: ["Product search", "Price history", "Reviews", "BSR ranking"],
-    freeTier: "100 req/mo (Rainforest)",
-    apiType: "third-party",
-    searchEndpoint: "/api/platforms/amazon",
-  },
-  {
-    id: "ebay",
-    name: "eBay",
-    description: "Auction & fixed-price marketplace via Browse API",
-    category: "marketplace",
-    icon: "🏷️",
-    dataSource: "eBay Browse API",
-    envKey: "EBAY_APP_ID",
-    configured: false,
-    active: true,
-    features: ["Product search", "Completed listings", "Price comparison"],
-    freeTier: "5,000 calls/day",
-    apiType: "affiliate",
-    searchEndpoint: "/api/platforms/ebay",
-  },
-  {
-    id: "aliexpress",
-    name: "AliExpress",
-    description: "Chinese wholesale marketplace via Rainforest + Scraper",
-    category: "marketplace",
-    icon: "🇨🇳",
-    dataSource: "Rainforest + ScraperAPI",
-    envKey: "RAINFOREST_API_KEY",
-    configured: false,
-    active: true,
-    features: ["Product search", "Supplier ratings", "Bulk pricing"],
-    freeTier: "Multiple sources",
-    apiType: "third-party",
-    searchEndpoint: "/api/platforms/aliexpress",
-  },
-  {
-    id: "walmart",
-    name: "Walmart",
-    description: "Major US retailer via SerpAPI + Scraper",
-    category: "marketplace",
-    icon: "🏪",
-    dataSource: "SerpAPI + ScraperAPI",
-    envKey: "SERP_API_KEY",
-    configured: false,
-    active: true,
-    features: ["Product search", "Price tracking", "Availability"],
-    freeTier: "100 req/mo (SerpAPI)",
-    apiType: "third-party",
-    searchEndpoint: "/api/platforms/walmart",
-  },
-  {
-    id: "temu",
-    name: "Temu",
-    description: "Ultra-low-price Chinese marketplace via Scraper",
-    category: "marketplace",
-    icon: "🔥",
-    dataSource: "ScraperAPI",
-    envKey: "SCRAPER_API_KEY",
-    configured: false,
-    active: true,
-    features: ["Product search", "Price comparison", "Deals"],
-    freeTier: "5,000 req/mo",
-    apiType: "scraper",
-    searchEndpoint: "/api/platforms/temu",
-  },
-  {
-    id: "shein",
-    name: "SHEIN",
-    description: "Fast fashion marketplace via Scraper",
-    category: "marketplace",
-    icon: "👗",
-    dataSource: "ScraperAPI",
-    envKey: "SCRAPER_API_KEY",
-    configured: false,
-    active: true,
-    features: ["Product search", "Trending items", "Price tracking"],
-    freeTier: "5,000 req/mo",
-    apiType: "scraper",
-    searchEndpoint: "/api/platforms/shein",
-  },
-  {
-    id: "etsy",
-    name: "Etsy",
-    description: "Handmade & vintage marketplace via Scraper",
-    category: "marketplace",
-    icon: "🎨",
-    dataSource: "ScraperAPI",
-    envKey: "SCRAPER_API_KEY",
-    configured: false,
-    active: true,
-    features: ["Product search", "Shop analytics", "Trending items"],
-    freeTier: "5,000 req/mo",
-    apiType: "scraper",
-    searchEndpoint: "/api/platforms/etsy",
-  },
-  // Suppliers
-  {
-    id: "cj",
-    name: "CJ Dropshipping",
-    description: "Direct dropship supplier with API",
-    category: "supplier",
-    icon: "🚚",
-    dataSource: "CJ Official API",
-    envKey: "CJ_API_KEY",
-    configured: false,
-    active: true,
-    features: ["Product catalog", "Order management", "Categories"],
-    freeTier: "Free to use",
-    apiType: "third-party",
-    searchEndpoint: "/api/platforms/cj",
-  },
-  {
-    id: "alibaba",
-    name: "Alibaba",
-    description: "B2B wholesale marketplace via Scraper",
-    category: "supplier",
-    icon: "🏭",
-    dataSource: "ScraperAPI + ZenRows",
-    envKey: "SCRAPER_API_KEY",
-    configured: false,
-    active: true,
-    features: ["Supplier search", "MOQ info", "Bulk pricing"],
-    freeTier: "Multiple scrapers",
-    apiType: "scraper",
-    searchEndpoint: "/api/platforms/alibaba",
-  },
-  {
-    id: "banggood",
-    name: "Banggood",
-    description: "Chinese wholesale via Scraper",
-    category: "supplier",
-    icon: "⚡",
-    dataSource: "ScraperAPI",
-    envKey: "SCRAPER_API_KEY",
-    configured: false,
-    active: true,
-    features: ["Product search", "Wholesale prices", "Deals"],
-    freeTier: "5,000 req/mo",
-    apiType: "scraper",
-    searchEndpoint: "/api/platforms/banggood",
-  },
-  {
-    id: "dhgate",
-    name: "DHgate",
-    description: "Chinese wholesale marketplace via Scraper",
-    category: "supplier",
-    icon: "🔗",
-    dataSource: "ScraperAPI",
-    envKey: "SCRAPER_API_KEY",
-    configured: false,
-    active: true,
-    features: ["Product search", "Supplier ratings", "Bulk deals"],
-    freeTier: "5,000 req/mo",
-    apiType: "scraper",
-    searchEndpoint: "/api/platforms/dhgate",
-  },
-  // Search & Analytics
-  {
-    id: "google_shopping",
-    name: "Google Shopping",
-    description: "Product search engine via SerpAPI",
-    category: "search",
-    icon: "🔍",
-    dataSource: "SerpAPI",
-    envKey: "SERP_API_KEY",
-    configured: false,
-    active: true,
-    features: ["Multi-platform search", "Price comparison", "Shopping ads data"],
-    freeTier: "100 req/mo",
-    apiType: "third-party",
-    searchEndpoint: "/api/platforms/google-shopping",
-  },
-  {
-    id: "keepa",
-    name: "Keepa",
-    description: "Amazon price history & analytics",
-    category: "analytics",
-    icon: "📊",
-    dataSource: "Keepa API",
-    envKey: "KEEPA_API_KEY",
-    configured: false,
-    active: true,
-    features: ["Price history", "Sales rank tracking", "Deal alerts"],
-    freeTier: "1 req/sec",
-    apiType: "third-party",
-    searchEndpoint: "/api/platforms/keepa",
-  },
-  {
-    id: "pricecharting",
-    name: "PriceCharting",
-    description: "Electronics & gaming price data",
-    category: "analytics",
-    icon: "🎮",
-    dataSource: "PriceCharting API",
-    envKey: "PRICECHARTING_API_KEY",
-    configured: false,
-    active: true,
-    features: ["Price data", "Market value", "Historical prices"],
-    freeTier: "Free tier available",
-    apiType: "third-party",
-    searchEndpoint: "/api/platforms/pricecharting",
-  },
-];
+interface PlatformData {
+  id: string;
+  name: string;
+  method: string;
+  enabled: boolean;
+  keys: ApiKeyEntry[];
+  lastHealth: "healthy" | "error" | "untested";
+  lastSearched: { seconds: number; nanoseconds: number } | null;
+  lastError: string | null;
+  cooldownUntil: { seconds: number; nanoseconds: number } | null;
+}
 
-const categories = [
-  { id: "all", label: "All Platforms", icon: Globe },
-  { id: "marketplace", label: "Marketplaces", icon: ShoppingCart },
-  { id: "supplier", label: "Suppliers", icon: Package },
-  { id: "search", label: "Search Engines", icon: Search },
-  { id: "analytics", label: "Analytics", icon: BarChart3 },
+const METHOD_OPTIONS = [
+  { value: "official_api", label: "Official API", description: "Platform's own API (e.g., CJ Dropshipping)" },
+  { value: "rainforest", label: "Rainforest API", description: "Amazon data via Rainforest API" },
+  { value: "serpapi", label: "SerpAPI", description: "Google Shopping via SerpAPI" },
+  { value: "serper", label: "Serper.dev", description: "Google Shopping via Serper.dev (fast & cheap)" },
+  { value: "rapidapi_walmart", label: "Walmart RapidAPI", description: "Walmart data via RapidAPI" },
+  { value: "scraperapi", label: "ScraperAPI", description: "Web scraping via ScraperAPI" },
+  { value: "custom_scraper", label: "Custom Scraper", description: "Custom scraping solution" },
 ];
 
 export default function PlatformsPage() {
-  const [platforms, setPlatforms] = useState<Platform[]>(allPlatforms);
-  const [activeCategory, setActiveCategory] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showConnectModal, setShowConnectModal] = useState<Platform | null>(null);
-  const [connecting, setConnecting] = useState(false);
-  const [searching, setSearching] = useState<string | null>(null);
-  const [searchResults, setSearchResults] = useState<Record<string, unknown>[]>([]);
-  const [searchPlatform, setSearchPlatform] = useState<string | null>(null);
+  const { user } = useAuth();
+  const [platforms, setPlatforms] = useState<PlatformData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
+  const [testing, setTesting] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<{ id: string; success: boolean; message: string } | null>(null);
 
-  const filtered = platforms.filter((p) => {
-    const matchesCategory = activeCategory === "all" || p.category === activeCategory;
-    const matchesSearch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  // Add platform form state
+  const [newName, setNewName] = useState("");
+  const [newMethod, setNewMethod] = useState("official_api");
+  const [newKey, setNewKey] = useState("");
+  const [newKeyLabel, setNewKeyLabel] = useState("Primary");
+  const [newRequestsLimit, setNewRequestsLimit] = useState("100");
+  const [newResetDate, setNewResetDate] = useState("");
+  const [adding, setAdding] = useState(false);
 
-  const configuredCount = platforms.filter((p) => p.configured).length;
-  const activeCount = platforms.filter((p) => p.active).length;
-  const apiCount = new Set(platforms.map((p) => p.dataSource)).size;
+  // Add key form state
+  const [showAddKeyFor, setShowAddKeyFor] = useState<string | null>(null);
+  const [addKeyVal, setAddKeyVal] = useState("");
+  const [addKeyLabel, setAddKeyLabel] = useState("");
+  const [addKeyLimit, setAddKeyLimit] = useState("100");
+  const [addKeyReset, setAddKeyReset] = useState("");
+  const [addingKey, setAddingKey] = useState(false);
 
-  const handleConnect = async (platform: Platform) => {
-    setConnecting(true);
-    // Simulate connection check
-    await new Promise((r) => setTimeout(r, 1500));
-    setPlatforms((prev) =>
-      prev.map((p) => (p.id === platform.id ? { ...p, configured: true } : p))
-    );
-    setConnecting(false);
-    setShowConnectModal(null);
+  // Edit key state
+  const [editingKey, setEditingKey] = useState<{ platformId: string; keyId: string } | null>(null);
+  const [editKeyVal, setEditKeyVal] = useState("");
+  const [editKeyLabel, setEditKeyLabel] = useState("");
+  const [editKeyLimit, setEditKeyLimit] = useState("");
+  const [editKeyReset, setEditKeyReset] = useState("");
+
+  // Seed state
+  const [seeding, setSeeding] = useState(false);
+  const [seedResult, setSeedResult] = useState<string | null>(null);
+
+  // Visibility state for API keys
+  const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
+
+  const toggleKeyVisibility = (keyId: string) => {
+    setVisibleKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(keyId)) next.delete(keyId);
+      else next.add(keyId);
+      return next;
+    });
   };
 
-  const handleDisconnect = (platformId: string) => {
-    setPlatforms((prev) =>
-      prev.map((p) => (p.id === platformId ? { ...p, configured: false } : p))
-    );
-  };
-
-  const handleToggleActive = (platformId: string) => {
-    setPlatforms((prev) =>
-      prev.map((p) => (p.id === platformId ? { ...p, active: !p.active } : p))
-    );
-  };
-
-  const handleSearch = async (platform: Platform) => {
-    if (!searchQuery.trim()) return;
-    setSearching(platform.id);
-    setSearchResults([]);
-    setSearchPlatform(null);
-
+  const fetchPlatforms = useCallback(async () => {
+    if (!user) return;
     try {
-      const res = await fetch(platform.searchEndpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: searchQuery.trim() }),
+      const token = await user.getIdToken();
+      const res = await fetch("/api/platforms/admin", {
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      if (res.ok && data.data) {
-        const results = Array.isArray(data.data)
-          ? data.data
-          : data.data.search_results ?? data.data.data ?? data.data.products ?? [data.data];
-        setSearchResults(results.slice(0, 10));
-        setSearchPlatform(platform.name);
-      }
+      if (res.ok) setPlatforms(data.platforms || []);
     } catch {
       // silent
     } finally {
-      setSearching(null);
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchPlatforms();
+  }, [fetchPlatforms]);
+
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    if (!user) return {};
+    const token = await user.getIdToken();
+    return { Authorization: `Bearer ${token}` };
+  };
+
+  // ── Seed Platforms ─────────────────────────────────────────────────────
+
+  const handleSeed = async () => {
+    if (!user) return;
+    setSeeding(true);
+    setSeedResult(null);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/platforms/admin/seed?reset=true", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSeedResult(data.message);
+        await fetchPlatforms();
+      } else {
+        setSeedResult(data.error || "Seed failed");
+      }
+    } finally {
+      setSeeding(false);
     }
   };
+
+  // ── Clear Cooldowns ────────────────────────────────────────────────────
+
+  const [clearingCooldowns, setClearingCooldowns] = useState(false);
+
+  const handleClearCooldowns = async () => {
+    if (!user) return;
+    setClearingCooldowns(true);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/platforms/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify({ action: "clear_cooldowns" }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSeedResult(data.message || "Cooldowns cleared");
+        await fetchPlatforms();
+      }
+    } finally {
+      setClearingCooldowns(false);
+    }
+  };
+
+  // ── Add Platform ───────────────────────────────────────────────────────
+
+  const handleAddPlatform = async () => {
+    if (!newName.trim() || !user) return;
+    setAdding(true);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/platforms/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify({
+          name: newName.trim(),
+          method: newMethod,
+          apiKey: newKey.trim() || undefined,
+          keyLabel: newKeyLabel.trim() || "Primary",
+          requestsLimit: parseInt(newRequestsLimit) || 100,
+          resetDate: newResetDate || undefined,
+        }),
+      });
+      if (res.ok) {
+        setShowAddModal(false);
+        setNewName("");
+        setNewMethod("official_api");
+        setNewKey("");
+        setNewKeyLabel("Primary");
+        setNewRequestsLimit("100");
+        setNewResetDate("");
+        await fetchPlatforms();
+      }
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  // ── Toggle Enabled ─────────────────────────────────────────────────────
+
+  const handleToggleEnabled = async (id: string, current: boolean) => {
+    if (!user) return;
+    const headers = await getAuthHeaders();
+    await fetch("/api/platforms/admin", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...headers },
+      body: JSON.stringify({ id, enabled: !current }),
+    });
+    setPlatforms((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, enabled: !current } : p))
+    );
+  };
+
+  // ── Delete Platform ────────────────────────────────────────────────────
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this platform? This cannot be undone.")) return;
+    if (!user) return;
+    const headers = await getAuthHeaders();
+    await fetch(`/api/platforms/admin?id=${id}`, {
+      method: "DELETE",
+      headers,
+    });
+    setPlatforms((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  // ── Test Connection ────────────────────────────────────────────────────
+
+  const handleTest = async (platform: PlatformData, key: ApiKeyEntry) => {
+    setTesting(`${platform.id}_${key.id}`);
+    setTestResult(null);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/platforms/admin/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify({
+          platformId: platform.id,
+          keyId: key.id,
+          key: key.key,
+          method: platform.method,
+        }),
+      });
+      const data = await res.json();
+      setTestResult({ id: `${platform.id}_${key.id}`, success: data.success, message: data.message });
+      // Refresh to get updated health status
+      await fetchPlatforms();
+    } finally {
+      setTesting(null);
+    }
+  };
+
+  // ── Add Key ────────────────────────────────────────────────────────────
+
+  const handleAddKey = async (platformId: string) => {
+    if (!addKeyVal.trim() || !user) return;
+    setAddingKey(true);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/platforms/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify({
+          action: "add_key",
+          platformId,
+          key: addKeyVal.trim(),
+          label: addKeyLabel.trim() || "Fallback",
+          requestsLimit: parseInt(addKeyLimit) || 100,
+          resetDate: addKeyReset || undefined,
+        }),
+      });
+      if (res.ok) {
+        setShowAddKeyFor(null);
+        setAddKeyVal("");
+        setAddKeyLabel("");
+        setAddKeyLimit("100");
+        setAddKeyReset("");
+        await fetchPlatforms();
+      }
+    } finally {
+      setAddingKey(false);
+    }
+  };
+
+  // ── Remove Key ─────────────────────────────────────────────────────────
+
+  const handleRemoveKey = async (platformId: string, keyId: string) => {
+    if (!confirm("Remove this API key?")) return;
+    if (!user) return;
+    const headers = await getAuthHeaders();
+    await fetch("/api/platforms/admin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...headers },
+      body: JSON.stringify({ action: "remove_key", platformId, keyId }),
+    });
+    await fetchPlatforms();
+  };
+
+  // ── Edit Key ───────────────────────────────────────────────────────────
+
+  const startEditKey = (platformId: string, key: ApiKeyEntry) => {
+    setEditingKey({ platformId, keyId: key.id });
+    setEditKeyVal(key.key);
+    setEditKeyLabel(key.label);
+    setEditKeyLimit(String(key.requestsLimit));
+    setEditKeyReset(key.resetDate);
+  };
+
+  const handleSaveEditKey = async () => {
+    if (!editingKey || !user) return;
+    const headers = await getAuthHeaders();
+    await fetch("/api/platforms/admin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...headers },
+      body: JSON.stringify({
+        action: "update_key",
+        platformId: editingKey.platformId,
+        keyId: editingKey.keyId,
+        updates: {
+          key: editKeyVal.trim(),
+          label: editKeyLabel.trim(),
+          requestsLimit: parseInt(editKeyLimit) || 100,
+          resetDate: editKeyReset,
+        },
+      }),
+    });
+    setEditingKey(null);
+    await fetchPlatforms();
+  };
+
+  // ── Reset Usage ────────────────────────────────────────────────────────
+
+  const handleResetUsage = async (platformId: string, keyId: string) => {
+    if (!user) return;
+    const headers = await getAuthHeaders();
+    await fetch("/api/platforms/admin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...headers },
+      body: JSON.stringify({ action: "reset_usage", platformId, keyId }),
+    });
+    await fetchPlatforms();
+  };
+
+  // ── Stats ──────────────────────────────────────────────────────────────
+
+  const totalPlatforms = platforms.length;
+  const enabledCount = platforms.filter((p) => p.enabled).length;
+  const healthyCount = platforms.filter((p) => p.lastHealth === "healthy").length;
+  const errorCount = platforms.filter((p) => p.lastHealth === "error").length;
+  const totalKeys = platforms.reduce((sum, p) => sum + p.keys.length, 0);
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto flex items-center justify-center min-h-[60vh]">
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Loading platforms...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
-          <Globe className="h-7 w-7 text-accent" /> Platform Connectors
-        </h1>
-        <p className="text-muted-foreground">
-          Connect to {platforms.length}+ platforms using third-party data APIs. No direct API keys needed.
-        </p>
+        <div className="flex items-start justify-between">
+        <div>
+          <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
+            <Settings className="h-7 w-7 text-accent" /> Platform Management
+          </h1>
+          <p className="text-muted-foreground">
+            Manage API keys, add new platforms, and monitor platform health. Changes take effect immediately.
+          </p>
+          {seedResult && (
+            <p className="text-xs text-accent mt-2">{seedResult}</p>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleSeed}
+            disabled={seeding}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-muted-foreground hover:text-foreground hover:border-accent/30 transition-all disabled:opacity-50"
+          >
+            {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            Import from .env
+          </button>
+          {errorCount > 0 && (
+            <button
+              onClick={handleClearCooldowns}
+              disabled={clearingCooldowns}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-400/10 border border-amber-400/20 text-sm text-amber-400 hover:bg-amber-400/20 transition-all disabled:opacity-50"
+            >
+              {clearingCooldowns ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              Clear Errors
+            </button>
+          )}
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent-hover transition-all shadow-[0_0_15px_rgba(var(--glow-color),0.2)]"
+          >
+            <Plus className="h-4 w-4" /> Add Platform
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <div className="glass rounded-xl p-4 border border-border">
-          <div className="flex items-center gap-2 mb-2">
-            <Globe className="h-4 w-4 text-accent" />
-            <span className="text-xs text-muted-foreground">Total Platforms</span>
+          <div className="flex items-center gap-2 mb-1">
+            <Globe className="h-3.5 w-3.5 text-accent" />
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Total</span>
           </div>
-          <p className="text-2xl font-bold text-foreground">{platforms.length}</p>
+          <p className="text-2xl font-bold text-foreground">{totalPlatforms}</p>
         </div>
         <div className="glass rounded-xl p-4 border border-border">
-          <div className="flex items-center gap-2 mb-2">
-            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-            <span className="text-xs text-muted-foreground">Configured</span>
+          <div className="flex items-center gap-2 mb-1">
+            <Zap className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Enabled</span>
           </div>
-          <p className="text-2xl font-bold text-emerald-400">{configuredCount}</p>
+          <p className="text-2xl font-bold text-emerald-400">{enabledCount}</p>
         </div>
         <div className="glass rounded-xl p-4 border border-border">
-          <div className="flex items-center gap-2 mb-2">
-            <Zap className="h-4 w-4 text-amber-400" />
-            <span className="text-xs text-muted-foreground">Active</span>
+          <div className="flex items-center gap-2 mb-1">
+            <CheckCircle2 className="h-3.5 w-3.5 text-blue-400" />
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Healthy</span>
           </div>
-          <p className="text-2xl font-bold text-amber-400">{activeCount}</p>
+          <p className="text-2xl font-bold text-blue-400">{healthyCount}</p>
         </div>
         <div className="glass rounded-xl p-4 border border-border">
-          <div className="flex items-center gap-2 mb-2">
-            <Key className="h-4 w-4 text-purple-400" />
-            <span className="text-xs text-muted-foreground">APIs Used</span>
+          <div className="flex items-center gap-2 mb-1">
+            <AlertTriangle className="h-3.5 w-3.5 text-red-400" />
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Errors</span>
           </div>
-            <p className="text-2xl font-bold text-purple-400">{apiCount}</p>
+          <p className="text-2xl font-bold text-red-400">{errorCount}</p>
+        </div>
+        <div className="glass rounded-xl p-4 border border-border">
+          <div className="flex items-center gap-2 mb-1">
+            <Key className="h-3.5 w-3.5 text-purple-400" />
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">API Keys</span>
+          </div>
+          <p className="text-2xl font-bold text-purple-400">{totalKeys}</p>
         </div>
       </div>
 
-      {/* Search bar */}
-      <div className="glass rounded-xl p-4 border border-border">
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search platforms or search products across all platforms..."
-              className="w-full pl-11 pr-4 py-3 rounded-xl bg-surface border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 transition-all text-sm"
-            />
-            {searchQuery && (
-              <button onClick={() => { setSearchQuery(""); setSearchResults([]); setSearchPlatform(null); }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Category filters */}
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        {categories.map((cat) => (
+      {/* Platform List */}
+      {platforms.length === 0 ? (
+        <div className="glass rounded-2xl p-12 border border-border text-center">
+          <Globe className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="font-display text-lg font-semibold text-foreground mb-2">No Platforms Configured</h3>
+          <p className="text-sm text-muted-foreground mb-6">
+            Add your first platform to start searching across multiple sources.
+          </p>
           <button
-            key={cat.id}
-            onClick={() => setActiveCategory(cat.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
-              activeCategory === cat.id
-                ? "bg-accent text-white shadow-[0_0_15px_rgba(var(--glow-color),0.3)]"
-                : "bg-surface border border-border text-muted-foreground hover:text-foreground"
-            }`}
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent-hover transition-all"
           >
-            <cat.icon className="h-4 w-4" />
-            {cat.label}
+            <Plus className="h-4 w-4" /> Add Your First Platform
           </button>
-        ))}
-      </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {platforms.map((platform) => (
+            <div
+              key={platform.id}
+              className={`glass rounded-2xl border overflow-hidden transition-all ${
+                platform.enabled
+                  ? "border-border hover:border-accent/30"
+                  : "border-border/50 opacity-60"
+              }`}
+            >
+              {/* Platform Header */}
+              <div className="p-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    {/* Health indicator */}
+                    <div
+                      className={`w-3 h-3 rounded-full ${
+                        platform.lastHealth === "healthy"
+                          ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]"
+                          : platform.lastHealth === "error"
+                            ? "bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.5)]"
+                            : "bg-muted-foreground/40"
+                      }`}
+                    />
+                    <div>
+                      <div className="flex items-center gap-3">
+                        <h3 className="font-display font-semibold text-foreground text-lg">{platform.name}</h3>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-surface border border-border text-muted-foreground uppercase">
+                          {METHOD_OPTIONS.find((m) => m.value === platform.method)?.label || platform.method}
+                        </span>
+                        {platform.keys.length > 0 && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-400/10 text-purple-400 border border-purple-400/20">
+                            {platform.keys.length} key{platform.keys.length !== 1 ? "s" : ""}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        ID: {platform.id}
+                        {platform.lastSearched && (
+                          <> · Last searched: {new Date(platform.lastSearched.seconds * 1000).toLocaleString()}</>
+                        )}
+                      </p>
+                    </div>
+                  </div>
 
-      {/* Search Results */}
-      {searchResults.length > 0 && searchPlatform && (
-        <div className="glass rounded-2xl p-6 border border-border">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-display text-lg font-semibold text-foreground">
-              Results from {searchPlatform}
-            </h3>
-            <button onClick={() => { setSearchResults([]); setSearchPlatform(null); }}
-              className="text-muted-foreground hover:text-foreground">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {searchResults.map((item: Record<string, unknown>, i: number) => (
-              <div key={i} className="p-4 rounded-xl bg-surface/50 border border-border">
-                <h4 className="text-sm font-medium text-foreground line-clamp-2 mb-2">
-                  {String(item.title || item.productName || "Product")}
-                </h4>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  {item.price != null && (
-                    <span className="text-accent font-bold">${Number(item.price)}</span>
-                  )}
-                  {item.sellPrice != null && item.price == null && (
-                    <span className="text-accent font-bold">${Number(item.sellPrice)}</span>
-                  )}
-                  {item.rating != null && <span>★ {Number(item.rating)}</span>}
-                  {item.reviews != null && <span>({Number(item.reviews)})</span>}
+                  <div className="flex items-center gap-3">
+                    {/* Enable/Disable toggle */}
+                    <button
+                      onClick={() => handleToggleEnabled(platform.id, platform.enabled)}
+                      className={`relative w-12 h-6 rounded-full transition-colors ${
+                        platform.enabled ? "bg-emerald-500" : "bg-muted-foreground/30"
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                          platform.enabled ? "left-7" : "left-1"
+                        }`}
+                      />
+                    </button>
+
+                    {/* Expand */}
+                    <button
+                      onClick={() => setExpandedPlatform(expandedPlatform === platform.id ? null : platform.id)}
+                      className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition-colors"
+                    >
+                      {expandedPlatform === platform.id ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </button>
+
+                    {/* Delete */}
+                    <button
+                      onClick={() => handleDelete(platform.id)}
+                      className="p-2 rounded-lg text-red-400/60 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
+
+                {/* Error message */}
+                {platform.lastError && (
+                  <div className="mt-3 p-3 rounded-xl bg-red-400/5 border border-red-400/20">
+                    <p className="text-xs text-red-400 flex items-center gap-2">
+                      <AlertTriangle className="h-3 w-3" />
+                      {platform.lastError}
+                    </p>
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
+
+              {/* Expanded: Keys Management */}
+              {expandedPlatform === platform.id && (
+                <div className="border-t border-border p-5 space-y-4 bg-surface/30">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <Key className="h-4 w-4 text-accent" /> API Keys
+                    </h4>
+                    <button
+                      onClick={() => setShowAddKeyFor(showAddKeyFor === platform.id ? null : platform.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 border border-accent/20 text-accent text-xs font-medium hover:bg-accent/20 transition-all"
+                    >
+                      <Plus className="h-3 w-3" /> Add Key
+                    </button>
+                  </div>
+
+                  {/* Keys list */}
+                  {platform.keys.length === 0 ? (
+                    <div className="p-4 rounded-xl bg-surface/50 border border-border text-center">
+                      <Key className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-xs text-muted-foreground">No API keys configured</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {platform.keys
+                        .sort((a, b) => a.priority - b.priority)
+                        .map((key) => (
+                          <div key={key.id} className="p-4 rounded-xl bg-surface/50 border border-border">
+                            {editingKey?.platformId === platform.id && editingKey?.keyId === key.id ? (
+                              /* Edit mode */
+                              <div className="space-y-3">
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Key Value</label>
+                                    <input
+                                      type="text"
+                                      value={editKeyVal}
+                                      onChange={(e) => setEditKeyVal(e.target.value)}
+                                      className="w-full mt-1 px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm font-mono focus:outline-none focus:border-accent/50"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Label</label>
+                                    <input
+                                      type="text"
+                                      value={editKeyLabel}
+                                      onChange={(e) => setEditKeyLabel(e.target.value)}
+                                      className="w-full mt-1 px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm focus:outline-none focus:border-accent/50"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Request Limit</label>
+                                    <input
+                                      type="number"
+                                      value={editKeyLimit}
+                                      onChange={(e) => setEditKeyLimit(e.target.value)}
+                                      className="w-full mt-1 px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm focus:outline-none focus:border-accent/50"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Reset Date</label>
+                                    <input
+                                      type="date"
+                                      value={editKeyReset}
+                                      onChange={(e) => setEditKeyReset(e.target.value)}
+                                      className="w-full mt-1 px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm focus:outline-none focus:border-accent/50"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={handleSaveEditKey}
+                                    className="px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-medium hover:bg-accent-hover transition-all"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingKey(null)}
+                                    className="px-3 py-1.5 rounded-lg bg-surface border border-border text-xs text-muted-foreground hover:text-foreground transition-all"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              /* Display mode */
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                  <div className="flex items-center gap-1.5">
+                                    <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40" />
+                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-accent/10 text-accent border border-accent/20">
+                                      #{key.priority}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium text-foreground">{key.label}</span>
+                                      <span
+                                        className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                          key.lastStatus === "healthy"
+                                            ? "bg-emerald-400/10 text-emerald-400"
+                                            : key.lastStatus === "error"
+                                              ? "bg-red-400/10 text-red-400"
+                                              : "bg-muted-foreground/10 text-muted-foreground"
+                                        }`}
+                                      >
+                                        {key.lastStatus.toUpperCase()}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-3 mt-1">
+                                      <span className="text-xs font-mono text-muted-foreground">
+                                        {visibleKeys.has(key.id)
+                                          ? key.key
+                                          : `${key.key.slice(0, 8)}${"•".repeat(12)}${key.key.slice(-4)}`}
+                                      </span>
+                                      <button
+                                        onClick={() => toggleKeyVisibility(key.id)}
+                                        className="text-muted-foreground hover:text-foreground"
+                                      >
+                                        {visibleKeys.has(key.id) ? (
+                                          <EyeOff className="h-3 w-3" />
+                                        ) : (
+                                          <Eye className="h-3 w-3" />
+                                        )}
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-4">
+                                  {/* Usage bar */}
+                                  <div className="text-right min-w-[100px]">
+                                    <div className="flex items-center gap-1.5 justify-end mb-1">
+                                      <span className="text-xs text-muted-foreground">
+                                        {key.requestsUsed}/{key.requestsLimit}
+                                      </span>
+                                    </div>
+                                    <div className="w-full h-1.5 rounded-full bg-surface overflow-hidden">
+                                      <div
+                                        className={`h-full rounded-full transition-all ${
+                                          key.requestsUsed / key.requestsLimit > 0.8
+                                            ? "bg-red-400"
+                                            : key.requestsUsed / key.requestsLimit > 0.5
+                                              ? "bg-amber-400"
+                                              : "bg-emerald-400"
+                                        }`}
+                                        style={{
+                                          width: `${Math.min(100, (key.requestsUsed / key.requestsLimit) * 100)}%`,
+                                        }}
+                                      />
+                                    </div>
+                                    {key.resetDate && (
+                                      <p className="text-[9px] text-muted-foreground mt-0.5">
+                                        Resets: {key.resetDate}
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {/* Actions */}
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      onClick={() => handleTest(platform, key)}
+                                      disabled={testing === `${platform.id}_${key.id}`}
+                                      className="p-1.5 rounded-lg text-blue-400/60 hover:text-blue-400 hover:bg-blue-400/10 transition-colors disabled:opacity-50"
+                                      title="Test connection"
+                                    >
+                                      {testing === `${platform.id}_${key.id}` ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                      ) : (
+                                        <TestTube className="h-3.5 w-3.5" />
+                                      )}
+                                    </button>
+                                    <button
+                                      onClick={() => handleResetUsage(platform.id, key.id)}
+                                      className="p-1.5 rounded-lg text-amber-400/60 hover:text-amber-400 hover:bg-amber-400/10 transition-colors"
+                                      title="Reset usage counter"
+                                    >
+                                      <RotateCcw className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => startEditKey(platform.id, key)}
+                                      className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition-colors"
+                                      title="Edit key"
+                                    >
+                                      <Settings className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleRemoveKey(platform.id, key.id)}
+                                      className="p-1.5 rounded-lg text-red-400/40 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                                      title="Remove key"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Test result */}
+                            {testResult && testResult.id === `${platform.id}_${key.id}` && (
+                              <div
+                                className={`mt-3 p-3 rounded-lg text-xs flex items-center gap-2 ${
+                                  testResult.success
+                                    ? "bg-emerald-400/5 border border-emerald-400/20 text-emerald-400"
+                                    : "bg-red-400/5 border border-red-400/20 text-red-400"
+                                }`}
+                              >
+                                {testResult.success ? (
+                                  <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
+                                ) : (
+                                  <XCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                                )}
+                                {testResult.message}
+                              </div>
+                            )}
+
+                            {/* Last error */}
+                            {key.lastError && !testResult && (
+                              <div className="mt-3 p-3 rounded-lg bg-red-400/5 border border-red-400/20 text-xs text-red-400 flex items-center gap-2">
+                                <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+                                {key.lastError}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  )}
+
+                  {/* Add Key Form */}
+                  {showAddKeyFor === platform.id && (
+                    <div className="p-4 rounded-xl bg-accent/5 border border-accent/20 space-y-3">
+                      <h5 className="text-xs font-semibold text-accent uppercase tracking-wider">Add New API Key</h5>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">API Key</label>
+                          <input
+                            type="text"
+                            value={addKeyVal}
+                            onChange={(e) => setAddKeyVal(e.target.value)}
+                            placeholder="Enter API key"
+                            className="w-full mt-1 px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm font-mono focus:outline-none focus:border-accent/50"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Label</label>
+                          <input
+                            type="text"
+                            value={addKeyLabel}
+                            onChange={(e) => setAddKeyLabel(e.target.value)}
+                            placeholder="e.g., Account 2, Backup"
+                            className="w-full mt-1 px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm focus:outline-none focus:border-accent/50"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Request Limit</label>
+                          <input
+                            type="number"
+                            value={addKeyLimit}
+                            onChange={(e) => setAddKeyLimit(e.target.value)}
+                            className="w-full mt-1 px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm focus:outline-none focus:border-accent/50"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Resets On</label>
+                          <input
+                            type="date"
+                            value={addKeyReset}
+                            onChange={(e) => setAddKeyReset(e.target.value)}
+                            className="w-full mt-1 px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm focus:outline-none focus:border-accent/50"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleAddKey(platform.id)}
+                          disabled={addingKey || !addKeyVal.trim()}
+                          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white text-xs font-medium hover:bg-accent-hover transition-all disabled:opacity-50"
+                        >
+                          {addingKey ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                          Add Key
+                        </button>
+                        <button
+                          onClick={() => setShowAddKeyFor(null)}
+                          className="px-4 py-2 rounded-lg bg-surface border border-border text-xs text-muted-foreground hover:text-foreground transition-all"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Platform grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map((platform) => (
-          <div
-            key={platform.id}
-            className="glass rounded-2xl border border-border overflow-hidden hover:border-accent/30 transition-all"
-          >
-            <div className="p-6 space-y-4">
-              {/* Header */}
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl">{platform.icon}</span>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-display font-semibold text-foreground">{platform.name}</h3>
-                      {platform.configured ? (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-400/10 text-emerald-400 border border-emerald-400/20">
-                          Connected
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/10 text-amber-400 border border-amber-400/20">
-                          Not connected
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">{platform.description}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Data source badge */}
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-1 rounded-lg text-[10px] font-bold bg-surface border border-border text-muted-foreground uppercase">
-                  {platform.apiType}
-                </span>
-                <span className="text-[10px] text-muted-foreground">
-                  via {platform.dataSource}
-                </span>
-              </div>
-
-              {/* Features */}
-              <div className="flex flex-wrap gap-1.5">
-                {platform.features.map((f) => (
-                  <span key={f} className="px-2 py-0.5 rounded text-[10px] bg-surface border border-border text-muted-foreground">
-                    {f}
-                  </span>
-                ))}
-              </div>
-
-              {/* Free tier */}
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <DollarSign className="h-3 w-3" />
-                <span>{platform.freeTier}</span>
-              </div>
-
-              {/* Actions */}
-              <div className="flex flex-wrap gap-2">
-                {platform.configured ? (
-                  <>
-                    <button
-                      onClick={() => handleSearch(platform)}
-                      disabled={!searchQuery.trim() || searching === platform.id}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-accent/10 border border-accent/20 text-accent text-xs font-medium hover:bg-accent/20 transition-all disabled:opacity-50"
-                    >
-                      {searching === platform.id ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Search className="h-3 w-3" />
-                      )}
-                      Search
-                    </button>
-                    <button
-                      onClick={() => handleToggleActive(platform.id)}
-                      className={`px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                        platform.active
-                          ? "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20"
-                          : "bg-surface border border-border text-muted-foreground"
-                      }`}
-                    >
-                      {platform.active ? "Active" : "Off"}
-                    </button>
-                    <button
-                      onClick={() => handleDisconnect(platform.id)}
-                      className="px-3 py-2 rounded-xl bg-red-400/10 border border-red-400/20 text-xs text-red-400 hover:bg-red-400/20 transition-colors"
-                    >
-                      Disconnect
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={() => setShowConnectModal(platform)}
-                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-accent/10 border border-accent/20 text-accent text-xs font-medium hover:bg-accent/20 transition-all"
-                  >
-                    <Zap className="h-3 w-3" /> Connect
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* How it works */}
-      <div className="glass rounded-2xl p-6 border border-border">
-        <h3 className="font-display text-lg font-semibold text-foreground mb-4">How Platform Connectors Work</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 rounded-xl bg-surface/50 border border-border">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="p-2 rounded-lg bg-accent/10">
-                <Key className="h-4 w-4 text-accent" />
-              </div>
-              <h4 className="text-sm font-semibold text-foreground">1. Third-Party APIs</h4>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              We use services like Rainforest, SerpAPI, and ScraperAPI that already have access to platform data. No direct API keys needed.
-            </p>
-          </div>
-          <div className="p-4 rounded-xl bg-surface/50 border border-border">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="p-2 rounded-lg bg-emerald-400/10">
-                <Globe className="h-4 w-4 text-emerald-400" />
-              </div>
-              <h4 className="text-sm font-semibold text-foreground">2. Unified Search</h4>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Search across all platforms with one query. Results are normalized and displayed in a consistent format.
-            </p>
-          </div>
-          <div className="p-4 rounded-xl bg-surface/50 border border-border">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="p-2 rounded-lg bg-amber-400/10">
-                <TrendingUp className="h-4 w-4 text-amber-400" />
-              </div>
-              <h4 className="text-sm font-semibold text-foreground">3. Price Comparison</h4>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Compare prices across platforms instantly. Find the best sourcing option for your products.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Connect Modal */}
-      {showConnectModal && (
+      {/* Add Platform Modal */}
+      {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="glass rounded-2xl border border-border w-full max-w-md p-6 space-y-5 animate-slide-up">
+          <div className="glass rounded-2xl border border-border w-full max-w-lg p-6 space-y-5 animate-slide-up">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl">{showConnectModal.icon}</span>
-                <div>
-                  <h2 className="font-display text-lg font-semibold text-foreground">Connect {showConnectModal.name}</h2>
-                  <p className="text-xs text-muted-foreground">{showConnectModal.dataSource}</p>
-                </div>
-              </div>
-              <button onClick={() => setShowConnectModal(null)}
-                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition-colors">
+              <h2 className="font-display text-lg font-semibold text-foreground flex items-center gap-2">
+                <Plus className="h-5 w-5 text-accent" /> Add New Platform
+              </h2>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition-colors"
+              >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="p-4 rounded-xl bg-surface/50 border border-border">
-              <p className="text-sm text-foreground mb-2">This platform uses:</p>
-              <p className="text-sm text-accent font-medium">{showConnectModal.dataSource}</p>
-              <p className="text-xs text-muted-foreground mt-2">
-                {showConnectModal.apiType === "third-party" && "Data is fetched via a third-party API service. No direct platform account needed."}
-                {showConnectModal.apiType === "affiliate" && "This uses an affiliate/partner API with limited access."}
-                {showConnectModal.apiType === "scraper" && "Data is scraped from the platform using web scraping services."}
-              </p>
+            <div className="space-y-4">
+              {/* Platform Name */}
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Platform Name *</label>
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="e.g., DHgate, CJ Dropshipping, Amazon"
+                  className="w-full mt-1.5 px-4 py-3 rounded-xl bg-surface border border-border text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-accent/50 transition-all text-sm"
+                />
+              </div>
+
+              {/* Method */}
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">API Method *</label>
+                <select
+                  value={newMethod}
+                  onChange={(e) => setNewMethod(e.target.value)}
+                  className="w-full mt-1.5 px-4 py-3 rounded-xl bg-surface border border-border text-foreground focus:outline-none focus:border-accent/50 transition-all text-sm appearance-none cursor-pointer"
+                >
+                  {METHOD_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label} — {opt.description}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* API Key */}
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">API Key</label>
+                <input
+                  type="password"
+                  value={newKey}
+                  onChange={(e) => setNewKey(e.target.value)}
+                  placeholder="Enter API key (optional — can add later)"
+                  className="w-full mt-1.5 px-4 py-3 rounded-xl bg-surface border border-border text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-accent/50 transition-all text-sm font-mono"
+                />
+              </div>
+
+              {/* Key Label */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Key Label</label>
+                  <input
+                    type="text"
+                    value={newKeyLabel}
+                    onChange={(e) => setNewKeyLabel(e.target.value)}
+                    placeholder="Primary"
+                    className="w-full mt-1.5 px-4 py-3 rounded-xl bg-surface border border-border text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-accent/50 transition-all text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Request Limit</label>
+                  <input
+                    type="number"
+                    value={newRequestsLimit}
+                    onChange={(e) => setNewRequestsLimit(e.target.value)}
+                    className="w-full mt-1.5 px-4 py-3 rounded-xl bg-surface border border-border text-foreground focus:outline-none focus:border-accent/50 transition-all text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Reset Date */}
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rate Limit Resets On</label>
+                <input
+                  type="date"
+                  value={newResetDate}
+                  onChange={(e) => setNewResetDate(e.target.value)}
+                  className="w-full mt-1.5 px-4 py-3 rounded-xl bg-surface border border-border text-foreground focus:outline-none focus:border-accent/50 transition-all text-sm"
+                />
+              </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-surface/50 border border-border">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Environment Key</p>
-              <code className="text-xs text-accent font-mono">{showConnectModal.envKey}</code>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={handleAddPlatform}
+                disabled={adding || !newName.trim()}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent-hover transition-all disabled:opacity-50"
+              >
+                {adding ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4" /> Add Platform
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="px-6 py-3 rounded-xl bg-surface border border-border text-sm text-muted-foreground hover:text-foreground transition-all"
+              >
+                Cancel
+              </button>
             </div>
-
-            <button
-              onClick={() => handleConnect(showConnectModal)}
-              disabled={connecting}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent-hover transition-all disabled:opacity-50"
-            >
-              {connecting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <>
-                  <Zap className="h-4 w-4" />
-                  Connect {showConnectModal.name}
-                </>
-              )}
-            </button>
           </div>
         </div>
       )}

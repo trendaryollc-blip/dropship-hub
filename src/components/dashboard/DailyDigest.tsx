@@ -150,7 +150,16 @@ export default function DailyDigest() {
 
   useEffect(() => {
     if (!digest && !loading) {
-      generateDigest();
+      // Only generate once per day by checking localStorage
+      const today = new Date().toISOString().slice(0, 10);
+      const lastGenerated = localStorage.getItem("digest_last_generated");
+      if (lastGenerated === today) {
+        // Already generated today, don't regenerate
+        return;
+      }
+      generateDigest().then(() => {
+        localStorage.setItem("digest_last_generated", today);
+      });
     }
   }, [digest, loading, generateDigest]);
 

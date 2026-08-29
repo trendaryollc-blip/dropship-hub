@@ -7,7 +7,6 @@ import {
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { useAuth } from "@/components/auth/AuthProvider";
-import DemoBadge from "@/components/ui/DemoBadge";
 import type { ProductLifecycle, LifecycleAlert, LifecycleStage, LifecycleStageInfo } from "@/types/product";
 
 const stageInfo: Record<LifecycleStage, LifecycleStageInfo> = {
@@ -219,7 +218,6 @@ export default function ProductLifecyclePage() {
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground">Product Lifecycle</h1>
-            <DemoBadge />
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">Track products from discovery to sunset. AI-powered stage transitions and recommendations.</p>
         </div>

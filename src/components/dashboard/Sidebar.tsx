@@ -18,6 +18,17 @@ import {
   Zap,
   X,
   MoreHorizontal,
+  BarChart3,
+  TrendingUp,
+  DollarSign,
+  Activity,
+  Route,
+  HeartPulse,
+  MessageSquare,
+  Target,
+  Globe,
+  FileText,
+  Heart,
 } from "lucide-react";
 
 const navItems = [
@@ -31,6 +42,12 @@ const navItems = [
     label: "Find Products",
     href: "/products",
     icon: Search,
+    section: "core",
+  },
+  {
+    label: "Saved",
+    href: "/saved",
+    icon: Heart,
     section: "core",
   },
   {
@@ -52,6 +69,12 @@ const navItems = [
     section: "core",
   },
   {
+    label: "Health Score",
+    href: "/health",
+    icon: HeartPulse,
+    section: "core",
+  },
+  {
     label: "My Store",
     href: "/store",
     icon: Store,
@@ -69,26 +92,51 @@ const navItems = [
     icon: Brain,
     section: "tools",
   },
+  {
+    label: "Customer Service",
+    href: "/customer-service",
+    icon: MessageSquare,
+    section: "tools",
+  },
+  {
+    label: "Revenue",
+    href: "/revenue",
+    icon: BarChart3,
+    section: "analytics",
+  },
+  {
+    label: "Profit Tracker",
+    href: "/profit-tracker",
+    icon: DollarSign,
+    section: "analytics",
+  },
+  {
+    label: "Ad ROI",
+    href: "/ad-roi",
+    icon: TrendingUp,
+    section: "analytics",
+  },
+  {
+    label: "Supplier Intel",
+    href: "/supplier-performance",
+    icon: Truck,
+    section: "analytics",
+  },
 ];
 
 const moreItems = [
   { label: "Niches", href: "/products/niches", icon: Search },
-  { label: "Revenue", href: "/revenue", icon: Store },
-  { label: "Ad ROI", href: "/ad-roi", icon: Calculator },
-  { label: "Profit Tracker", href: "/profit-tracker", icon: Store },
-  { label: "Supplier Intel", href: "/supplier-performance", icon: Truck },
-  { label: "Lifecycle", href: "/product-lifecycle", icon: Zap },
-  { label: "Health Score", href: "/health", icon: Zap },
-  { label: "Order Router", href: "/order-router", icon: Store },
-  { label: "Missions", href: "/missions", icon: Store },
-  { label: "Platforms", href: "/platforms", icon: Store },
-  { label: "Daily Digest", href: "/digest", icon: Store },
-  { label: "Support", href: "/customer-service", icon: Store },
+  { label: "Lifecycle", href: "/product-lifecycle", icon: Activity },
+  { label: "Order Router", href: "/order-router", icon: Route },
+  { label: "Missions", href: "/missions", icon: Target },
+  { label: "Platforms", href: "/platforms", icon: Globe },
+  { label: "Daily Digest", href: "/digest", icon: FileText },
 ];
 
 const sections = [
   { id: "core", label: "Essentials" },
   { id: "tools", label: "Tools" },
+  { id: "analytics", label: "Analytics" },
 ];
 
 interface SidebarProps {
@@ -191,6 +239,16 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           </p>
         )}
         {navItems.filter((i) => i.section === "tools").map((item) => (
+          <NavItem key={item.href} item={item} />
+        ))}
+
+        {/* Analytics */}
+        {!(collapsed && !isOpen) && (
+          <p className="px-3 mb-2 mt-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+            Analytics
+          </p>
+        )}
+        {navItems.filter((i) => i.section === "analytics").map((item) => (
           <NavItem key={item.href} item={item} />
         ))}
 

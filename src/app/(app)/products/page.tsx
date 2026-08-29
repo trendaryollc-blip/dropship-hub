@@ -1,19 +1,21 @@
 "use client";
 
-import { useState, useMemo, useEffect, Suspense } from "react";
+import { useState, useMemo, useEffect, Suspense, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Search, Loader2, Compass, Zap, ArrowRight,
-  Flame, TrendingUp, Sparkles, ShoppingCart, Package,
+  Flame, TrendingUp, Sparkles, ShoppingCart, Package, Heart,
 } from "lucide-react";
 import Image from "next/image";
 import { useInView } from "@/hooks/useInView";
 import SearchHeader from "@/components/products/SearchHeader";
+import FilterPanel, { Filters } from "@/components/products/FilterPanel";
 import ViewToggle from "@/components/ui/ViewToggle";
 import EnrichedProductCard from "@/components/products/EnrichedProductCard";
 import ListItemCard from "@/components/products/ListItemCard";
 import ResultsHeader from "@/components/products/ResultsHeader";
+import { useSavedProducts } from "@/components/saved/SavedProductsProvider";
 
 interface SearchResult {
   id: string;
@@ -23,6 +25,7 @@ interface SearchResult {
   images?: string[];
   link: string;
   source: string;
+  brand?: string;
   rating?: number;
   reviews?: number;
 }
@@ -32,6 +35,12 @@ interface PlatformResult {
   name: string;
   resultCount: number;
   data: unknown;
+}
+
+interface PlatformError {
+  platform: string;
+  name: string;
+  error: string;
 }
 
 interface TrendingProduct {
@@ -114,17 +123,22 @@ function normalizeResults(platform: string, data: unknown): SearchResult[] {
         }).filter((u) => u && u !== "null" && u !== "")
       : undefined;
 
-    const primaryImage = String(product.image || product.thumbnail || product.imageUrl || product.productImage || "") || null;
+    const primaryImage = (() => {
+      const raw = product.image || product.thumbnail || product.imageUrl || product.productImage || "";
+      const s = String(raw);
+      return s && s !== "null" && s !== "undefined" ? s : null;
+    })();
     const allImages = imagesArray && imagesArray.length > 0 ? imagesArray : (primaryImage ? [primaryImage] : undefined);
 
     results.push({
-      id: `${platform}-${i}`,
+      id: `${platform}-${encodeURIComponent(String(product.link || product.itemWebUrl || product.url || product.product_link || "")).slice(0, 80)}-${i}`,
       title: String(product.title || product.productName || product.name || "Product"),
       price,
       image: primaryImage,
       images: allImages && allImages.length > 0 ? allImages : undefined,
       link: String(product.link || product.itemWebUrl || product.url || product.product_link || "#"),
       source: platform,
+      brand: typeof product.brand === "string" && product.brand ? String(product.brand) : undefined,
       rating: typeof product.rating === "number" ? product.rating : undefined,
       reviews: typeof product.reviews === "number" ? product.reviews : typeof product.total_ratings === "number" ? product.total_ratings : undefined,
     });
@@ -211,6 +225,7 @@ function TrendingSection() {
       title: product.fullName,
       price: product.price,
       image: product.image,
+      images: product.image ? [product.image] : [],
       link: product.link || "#",
       source: product.platformId,
       category: product.category,
@@ -297,7 +312,7 @@ function TrendingSection() {
             return (
               <div key={product.id} className={`transition-all duration-500 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transitionDelay: `${i * 80}ms` }}>
                 <div className="glass-card-animated rounded-2xl overflow-hidden group hover:ring-1 hover:ring-accent/30 transition-all duration-300 flex flex-col h-full">
-                  <Link href={`/products?q=${encodeURIComponent(product.name)}`} className="block">
+                  <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); viewProduct(product); }} className="block w-full text-left">
                     <div className="relative aspect-[3/4] bg-surface overflow-hidden">
                       {product.image ? (
                         <Image
@@ -330,12 +345,12 @@ function TrendingSection() {
                         <span className="text-[9px] text-white/80 bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded-full">{product.platform}</span>
                       </div>
                     </div>
-                  </Link>
+                  </button>
 
                   <div className="p-3 flex flex-col flex-1">
-                    <Link href={`/products?q=${encodeURIComponent(product.name)}`} className="block">
+                    <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); viewProduct(product); }} className="block w-full text-left">
                       <p className="text-xs font-semibold text-foreground line-clamp-2 leading-tight mb-1.5 min-h-[2rem]">{product.name}</p>
-                    </Link>
+                    </button>
 
                     <div className="mt-auto space-y-2">
                       <div className="flex items-baseline justify-between">
@@ -560,19 +575,30 @@ export default function ProductsPage() {
   );
 }
 
+// Module-level cache — survives component remounts (e.g., back navigation)
+let _lastQuery = "";
+let _lastResults: SearchResult[] = [];
+let _lastPlatformResults: PlatformResult[] = [];
+let _lastPlatformErrors: PlatformError[] = [];
+
 function ProductsContent() {
   const searchParams = useSearchParams();
-  const [query, setQuery] = useState(searchParams.get("q") || "");
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [platformResults, setPlatformResults] = useState<PlatformResult[]>([]);
+  const urlQuery = searchParams.get("q") || "";
+  const [query, setQuery] = useState(urlQuery);
+  const [results, setResults] = useState<SearchResult[]>(() => _lastResults);
+  const [platformResults, setPlatformResults] = useState<PlatformResult[]>(() => _lastPlatformResults);
+  const [platformErrors, setPlatformErrors] = useState<PlatformError[]>(() => _lastPlatformErrors);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searched, setSearched] = useState(false);
+  const [searched, setSearched] = useState(() => _lastResults.length > 0 || _lastQuery !== "");
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<"relevance" | "price-asc" | "price-desc" | "rating" | "reviews">("relevance");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showFilters, setShowFilters] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [filters, setFilters] = useState<Filters>({ brands: [], priceMin: "", priceMax: "", minRating: 0 });
+  const { savedProducts } = useSavedProducts();
+  const searchAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     try {
@@ -588,84 +614,50 @@ function ProductsContent() {
     localStorage.setItem("recentSearches", JSON.stringify(updated));
   };
 
-  /* eslint-disable react-hooks/set-state-in-effect */
-  useEffect(() => {
-    if (searchParams.get("q")) {
-      const q = searchParams.get("q")!;
-      setQuery(q);
-
-      const cacheKey = `search_cache_${q}`;
-      try {
-        const cached = JSON.parse(sessionStorage.getItem(cacheKey) || "null");
-        if (cached && cached.query === q && cached.results?.length > 0) {
-          const cleanResults = cached.results.filter((r: Record<string, unknown>) => {
-            if (!r || typeof r !== "object") return false;
-            if (r.code && r.message && !r.title && !r.name) return false;
-            if ("code" in r && "message" in r && Object.keys(r).length <= 3) return false;
-            return true;
-          });
-          setResults(cleanResults);
-          setPlatformResults(cached.platformResults || []);
-          setSearched(true);
-          setLoading(false);
-          return;
-        }
-      } catch {}
-
-      setLoading(true);
-      setError(null);
-      setResults([]);
-      setPlatformResults([]);
-      setSearched(true);
-      saveRecentSearch(q);
-
-      fetch("/api/platforms/search-all", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query: q,
-          platforms: selectedPlatforms.length > 0 ? selectedPlatforms : undefined,
-        }),
-      })
-        .then((r) => r.json())
-        .then((data) => {
-          if (data.error) {
-            setError(data.error);
-            return;
-          }
-          const allResults: SearchResult[] = [];
-          const platforms: PlatformResult[] = data.platforms || [];
-          platforms.forEach((p: PlatformResult) => {
-            allResults.push(...normalizeResults(p.platform, p.data));
-          });
-          setPlatformResults(platforms);
-          setResults(allResults);
-          try {
-            sessionStorage.setItem(cacheKey, JSON.stringify({ query: q, results: allResults, platformResults: platforms }));
-          } catch {}
-        })
-        .catch(() => setError("Network error - please try again"))
-        .finally(() => setLoading(false));
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  /* eslint-enable react-hooks/set-state-in-effect */
-
-  const allPlatforms = ["amazon", "ebay", "aliexpress", "cj", "google_shopping", "walmart", "etsy", "temu", "shein", "banggood", "dhgate", "alibaba"];
-
-  const togglePlatform = (p: string) => {
-    setSelectedPlatforms((prev) =>
-      prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
-    );
-  };
-
-  const handleSearch = async (searchQuery?: string) => {
+  // Single search function — the ONLY place API calls are made.
+  // No useEffect auto-trigger: eliminates stale closures, race conditions, and cache key mismatches.
+  const handleSearch = useCallback(async (searchQuery?: string, platformsOverride?: string[]) => {
     const q = (searchQuery || query).trim();
     if (!q) return;
+
+    // Abort any in-flight search
+    searchAbortRef.current?.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+
+    const platforms = platformsOverride ?? selectedPlatforms;
+    const platformKey = [...platforms].sort().join(",") || "all";
+    const cacheKey = `search_${platformKey}_${q}`;
+
+    // Check sessionStorage cache first
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(cacheKey) || "null");
+      if (cached && cached.query === q && cached.results?.length > 0) {
+        const cleanResults = cached.results.filter((r: Record<string, unknown>) => {
+          if (!r || typeof r !== "object") return false;
+          if (r.code && r.message && !r.title && !r.name) return false;
+          if ("code" in r && "message" in r && Object.keys(r).length <= 3) return false;
+          return true;
+        });
+        setResults(cleanResults);
+        setPlatformResults(cached.platformResults || []);
+        setSearched(true);
+        setLoading(false);
+        setQuery(q);
+        // Update module-level cache
+        _lastQuery = q;
+        _lastResults = cleanResults;
+        _lastPlatformResults = cached.platformResults || [];
+        _lastPlatformErrors = [];
+        return;
+      }
+    } catch {}
+
     setLoading(true);
     setError(null);
     setResults([]);
     setPlatformResults([]);
+    setPlatformErrors([]);
     setSearched(true);
     setQuery(q);
     saveRecentSearch(q);
@@ -676,8 +668,9 @@ function ProductsContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query: q,
-          platforms: selectedPlatforms.length > 0 ? selectedPlatforms : undefined,
+          platforms: platforms.length > 0 ? platforms : undefined,
         }),
+        signal: controller.signal,
       });
       const data = await res.json();
       if (!res.ok) {
@@ -685,20 +678,83 @@ function ProductsContent() {
         return;
       }
       const allResults: SearchResult[] = [];
-      const platforms: PlatformResult[] = data.platforms || [];
-      platforms.forEach((p: PlatformResult) => {
+      const platformData: PlatformResult[] = data.platforms || [];
+      platformData.forEach((p: PlatformResult) => {
         allResults.push(...normalizeResults(p.platform, p.data));
       });
-      setPlatformResults(platforms);
+      const errs = data.platformErrors || [];
+      setPlatformResults(platformData);
+      setPlatformErrors(errs);
       setResults(allResults);
+      // Save to module-level cache for back-button persistence
+      _lastQuery = q;
+      _lastResults = allResults;
+      _lastPlatformResults = platformData;
+      _lastPlatformErrors = errs;
       try {
-        sessionStorage.setItem(`search_cache_${q}`, JSON.stringify({ query: q, results: allResults, platformResults: platforms }));
+        sessionStorage.setItem(cacheKey, JSON.stringify({ query: q, results: allResults, platformResults: platformData }));
       } catch {}
-    } catch {
+
+      // Background: fetch missing images from product URLs
+      const missingImages = allResults.filter((r) => !r.image && r.link && r.link !== "#");
+      if (missingImages.length > 0) {
+        const urlsToFetch = missingImages.map((r) => r.link);
+        fetch("/api/platforms/batch-images", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ urls: urlsToFetch }),
+        })
+          .then((r) => r.json())
+          .then((imgData) => {
+            if (!imgData.images) return;
+            setResults((prev) => {
+              const updated = prev.map((item) => {
+                if (item.image) return item;
+                const idx = missingImages.findIndex((m) => m.link === item.link);
+                if (idx >= 0 && imgData.images[idx]) {
+                  return { ...item, image: imgData.images[idx] };
+                }
+                return item;
+              });
+              _lastResults = updated;
+              try {
+                sessionStorage.setItem(cacheKey, JSON.stringify({ query: q, results: updated, platformResults: platformData }));
+              } catch {}
+              return updated;
+            });
+          })
+          .catch(() => {});
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       setError("Network error - please try again");
     } finally {
       setLoading(false);
     }
+  }, [query, selectedPlatforms]);
+
+  // On mount: if URL has ?q=, trigger a search using current platform selection
+  // If we already have cached results for this query, skip re-fetching
+  const initialSearchDone = useRef(false);
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (!q || initialSearchDone.current) return;
+    initialSearchDone.current = true;
+    // If we already have results for this query (from module-level cache), skip fetch
+    if (_lastQuery === q && _lastResults.length > 0) {
+      setSearched(true);
+      return;
+    }
+    handleSearch(q);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const allPlatforms = ["amazon", "ebay", "aliexpress", "cj", "google_shopping", "walmart", "etsy", "temu", "shein", "banggood", "dhgate", "alibaba"];
+
+  const togglePlatform = (p: string) => {
+    setSelectedPlatforms((prev) =>
+      prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
+    );
   };
 
   const sortedResults = useMemo(() => {
@@ -717,6 +773,24 @@ function ProductsContent() {
     }
   }, [results, sortBy]);
 
+  const availableBrands = useMemo(() => {
+    const brandSet = new Set<string>();
+    results.forEach((r) => {
+      if (r.brand) brandSet.add(r.brand);
+    });
+    return Array.from(brandSet);
+  }, [results]);
+
+  const filteredResults = useMemo(() => {
+    return sortedResults.filter((r) => {
+      if (filters.brands.length > 0 && (!r.brand || !filters.brands.includes(r.brand))) return false;
+      if (filters.priceMin && (r.price == null || r.price < Number(filters.priceMin))) return false;
+      if (filters.priceMax && (r.price == null || r.price > Number(filters.priceMax))) return false;
+      if (filters.minRating > 0 && (r.rating == null || r.rating < filters.minRating)) return false;
+      return true;
+    });
+  }, [sortedResults, filters]);
+
   return (
     <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 pb-16 md:pb-24">
       <SearchHeader
@@ -733,44 +807,103 @@ function ProductsContent() {
         onRecentClick={(q) => handleSearch(q)}
       />
 
+      {savedProducts.length > 0 && (
+        <Link
+          href="/saved"
+          className="flex items-center gap-2.5 p-3 rounded-2xl bg-accent/8 border border-accent/15 hover:bg-accent/15 transition-all"
+        >
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/15">
+            <Heart className="h-4 w-4 text-accent fill-current" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-foreground">
+              {savedProducts.length} saved product{savedProducts.length === 1 ? "" : "s"}
+            </p>
+            <p className="text-[10px] text-muted-foreground">Tap to view the products you saved for later</p>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+        </Link>
+      )}
+
       {error && (
         <div className="glass rounded-2xl p-4 border border-red-400/20 bg-red-400/5">
           <p className="text-sm text-red-400">{error}</p>
         </div>
       )}
 
+      {showFilters && searched && results.length > 0 && (
+        <FilterPanel
+          filters={filters}
+          setFilters={setFilters}
+          availableBrands={availableBrands}
+          resultCount={results.length}
+          filteredCount={filteredResults.length}
+        />
+      )}
+
       {loading && (
         <div className="glass rounded-2xl p-6 md:p-8 lg:p-16 text-center">
           <Loader2 className="h-12 w-12 text-accent mx-auto mb-4 animate-spin" />
           <h3 className="font-display text-lg font-semibold text-foreground mb-2">Searching...</h3>
-          <p className="text-sm text-muted-foreground">Fetching products from multiple platforms</p>
+          <p className="text-sm text-muted-foreground">
+            Querying {selectedPlatforms.length > 0 ? selectedPlatforms.length : "all"} platform{selectedPlatforms.length !== 1 ? "s" : ""} in parallel
+          </p>
         </div>
       )}
 
       {!loading && searched && results.length > 0 && (
         <>
           <ResultsHeader
-            resultCount={results.length}
+            resultCount={filteredResults.length}
             platformCount={platformResults.length}
             sortBy={sortBy}
             setSortBy={setSortBy}
             viewMode={viewMode}
             setViewMode={setViewMode}
           />
+          {platformErrors.length > 0 && (
+            <div className="glass rounded-2xl p-3 border border-amber-400/20 bg-amber-400/5">
+              <p className="text-xs font-medium text-amber-400 mb-1.5">
+                {platformErrors.length} platform{platformErrors.length !== 1 ? "s" : ""} returned no results:
+              </p>
+              <div className="space-y-1">
+                {platformErrors.map((pe) => (
+                  <div key={pe.platform} className="flex items-center gap-2 text-[10px] text-amber-400/80">
+                    <span className="font-medium">{pe.name}</span>
+                    {pe.error && <span className="text-amber-400/50">— {pe.error}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {viewMode === "grid" ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {sortedResults.map((product, i) => (
+              {filteredResults.map((product, i) => (
                 <EnrichedProductCard key={product.id} product={product} index={i} />
               ))}
             </div>
           ) : (
             <div className="space-y-2">
-              {sortedResults.map((product, i) => (
+              {filteredResults.map((product, i) => (
                 <ListItemCard key={product.id} product={product} index={i} />
               ))}
             </div>
           )}
         </>
+      )}
+
+      {!loading && searched && results.length > 0 && filteredResults.length === 0 && (
+        <div className="glass rounded-2xl p-8 text-center">
+          <Search className="h-10 w-10 text-muted-foreground/30 mx-auto mb-4" />
+          <h3 className="font-display text-lg font-semibold text-foreground mb-2">No products match your filters</h3>
+          <p className="text-sm text-muted-foreground mb-4">Try adjusting or clearing some filters</p>
+          <button
+            onClick={() => setFilters({ brands: [], priceMin: "", priceMax: "", minRating: 0 })}
+            className="text-xs px-4 py-2 rounded-lg bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 transition-colors"
+          >
+            Clear all filters
+          </button>
+        </div>
       )}
 
       {!loading && searched && results.length === 0 && !error && (

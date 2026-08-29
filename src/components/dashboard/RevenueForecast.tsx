@@ -104,6 +104,22 @@ function RevenueChart({ actual, predicted }: { actual: { date: string; value: nu
   const svgRef = useRef<SVGSVGElement>(null);
 
   const allPoints = [...actual, ...predicted];
+
+  if (allPoints.length === 0) {
+    return (
+      <div ref={ref} className="glass rounded-2xl p-5 transition-all duration-700">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="font-display text-sm font-semibold text-foreground">Revenue Forecast</h3>
+            <p className="text-[11px] text-muted-foreground">Last 30 days + 14-day projection</p>
+          </div>
+        </div>
+        <div className="h-[200px] flex items-center justify-center text-muted-foreground text-sm">
+          No revenue data yet. Connect your store to see your forecast.
+        </div>
+      </div>
+    );
+  }
   const maxVal = Math.max(...allPoints.map((p) => p.value));
   const minVal = Math.min(...allPoints.map((p) => p.value));
   const range = maxVal - minVal || 1;

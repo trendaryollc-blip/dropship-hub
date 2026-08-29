@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft, ExternalLink, Star, ShoppingCart, Package,
   Shield, Clock, ChevronLeft, ChevronRight, Images, Barcode, Layers,
+  Search, Truck, DollarSign, BarChart3,
 } from "lucide-react";
 import Image from "next/image";
 import { useInView } from "@/hooks/useInView";
@@ -132,10 +133,25 @@ function ProductDetailContent() {
   const { ref: heroRef, isInView: heroVisible } = useInView({ threshold: 0.1 });
   const [product] = useState<ProductData | null>(() => {
     if (typeof window === "undefined") return null;
+    // Try sessionStorage first (set by app navigation)
     try {
       const stored = sessionStorage.getItem("selectedProduct");
       if (stored) return JSON.parse(stored);
     } catch {}
+    // Fall back to URL params (works for shared/bookmarked links)
+    const t = searchParams.get("t");
+    if (t) {
+      return {
+        id: "",
+        title: t,
+        price: searchParams.get("p") ? parseFloat(searchParams.get("p")!) : null,
+        image: searchParams.get("img"),
+        link: searchParams.get("link") || "#",
+        source: searchParams.get("src") || "amazon",
+        rating: searchParams.get("r") ? parseFloat(searchParams.get("r")!) : undefined,
+        reviews: searchParams.get("rev") ? parseInt(searchParams.get("rev")!) : undefined,
+      };
+    }
     return null;
   });
   const [fetchedImages, setFetchedImages] = useState<string[]>([]);
@@ -154,12 +170,34 @@ function ProductDetailContent() {
   const rating = product?.rating != null ? String(product.rating) : searchParams.get("r");
   const reviews = product?.reviews != null ? String(product.reviews) : searchParams.get("rev");
   const category = product?.category || "General";
-  const tags = product?.tags || title.toLowerCase().split(" ").slice(0, 4);
+  const tags = product?.tags || [...new Set(title.toLowerCase().split(" ").slice(0, 6).filter((t) => t.length > 1))];
   const productId = product?.productId || `SKU-${title.slice(0, 8).replace(/\s+/g, "").toUpperCase()}`;
   const asin = product?.asin || "";
 
+  const hasNoData = !product && !searchParams.get("t");
+
+  if (hasNoData) {
+    return (
+      <div className="max-w-4xl mx-auto py-8 px-4">
+        <Link href="/products" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+          <ArrowLeft className="h-4 w-4" /> Back to Search
+        </Link>
+        <div className="glass rounded-2xl p-8 text-center">
+          <Package className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+          <h3 className="font-display text-lg font-semibold text-foreground mb-2">Product not found</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            This product data is no longer available. Please search again.
+          </p>
+          <Link href="/products" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-all">
+            <Search className="h-4 w-4" /> Search Products
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const storedImages = product?.images || (image ? [image] : []);
-  const images = fetchedImages.length > 0 ? fetchedImages : storedImages;
+  const images = fetchedImages.length > storedImages.length ? fetchedImages : storedImages;
   const displayImages = images.filter((img) => img && img.startsWith("http"));
 
   const hasPrice = price && price !== "" && price !== "null";
@@ -170,7 +208,8 @@ function ProductDetailContent() {
   const reviewsNum = hasReviews ? parseInt(reviews) : null;
 
   useEffect(() => {
-    if (fetchedImages.length > 0 || !source) return;
+    // Only fetch from API if we have 0 or 1 stored images — never overwrite a good multi-image array
+    if (fetchedImages.length > 0 || storedImages.length > 1 || !source) return;
 
     const extractAsin = (url: string): string => {
       const patterns = [
@@ -202,7 +241,7 @@ function ProductDetailContent() {
           body: JSON.stringify({ asin: extractedAsin, url: link, source }),
         });
         const data = await res.json();
-        if (!cancelled && data.images && data.images.length > 0) {
+        if (!cancelled && data.images && data.images.length > storedImages.length) {
           setFetchedImages(data.images);
         }
       } catch (err) {
@@ -213,7 +252,7 @@ function ProductDetailContent() {
 
     fetchImages();
     return () => { cancelled = true; };
-  }, [asin, link, source, fetchedImages.length]);
+  }, [asin, link, source, fetchedImages.length, storedImages.length]);
 
   useEffect(() => {
     if (!title || title === "Product") return;
@@ -499,7 +538,41 @@ function ProductDetailContent() {
       </div>
 
       {/* Action Bar */}
-      <ProductActionBar platform={source} platformUrl={link} productTitle={title} category={category} />
+      <ProductActionBar platform={source} platformUrl={link} productTitle={title} category={category} id={product?.id} price={priceNum} image={image} images={displayImages} rating={ratingNum} reviews={reviewsNum} />
+
+      {/* Next Steps */}
+      <div className="glass rounded-2xl p-4 border border-border">
+        <h3 className="font-display text-xs font-semibold text-muted-foreground mb-3">Next Steps</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <Link href={`/suppliers?product=${encodeURIComponent(title)}`} className="flex items-center gap-2 p-3 rounded-xl bg-surface/50 border border-border hover:border-accent/20 hover:bg-surface-hover transition-all group">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-400/10 shrink-0">
+              <Truck className="h-3.5 w-3.5 text-amber-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-foreground group-hover:text-accent transition-colors truncate">Find Suppliers</p>
+              <p className="text-[10px] text-muted-foreground">Source this product</p>
+            </div>
+          </Link>
+          <Link href={`/calculator?cost=${priceNum || 8}&price=${priceNum ? priceNum * 2.2 : 34.99}&title=${encodeURIComponent(title)}`} className="flex items-center gap-2 p-3 rounded-xl bg-surface/50 border border-border hover:border-accent/20 hover:bg-surface-hover transition-all group">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-400/10 shrink-0">
+              <DollarSign className="h-3.5 w-3.5 text-emerald-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-foreground group-hover:text-accent transition-colors truncate">Calculate Profit</p>
+              <p className="text-[10px] text-muted-foreground">Estimate margins</p>
+            </div>
+          </Link>
+          <Link href={`/competitors?q=${encodeURIComponent(title)}`} className="flex items-center gap-2 p-3 rounded-xl bg-surface/50 border border-border hover:border-accent/20 hover:bg-surface-hover transition-all group">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-400/10 shrink-0">
+              <BarChart3 className="h-3.5 w-3.5 text-purple-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-foreground group-hover:text-accent transition-colors truncate">Check Competitors</p>
+              <p className="text-[10px] text-muted-foreground">Analyze the market</p>
+            </div>
+          </Link>
+        </div>
+      </div>
 
       {/* === SECTION 2: PRICE COMPARISON === */}
       <section id="price-comparison" className="section-group">
@@ -512,13 +585,13 @@ function ProductDetailContent() {
             </div>
           </div>
         )}
-        <PriceComparison platforms={enriched.platforms} listedPrice={priceNum || 0} />
+        <PriceComparison platforms={enriched.platforms} listedPrice={priceNum || 0} productTitle={title} />
       </section>
 
       {/* === SECTION 3: PROFIT CALCULATOR === */}
       <section id="calculator" className="section-group">
         <p className="section-label mb-2">Financials</p>
-        <ProfitCalculator sourcePrice={enriched.cheapest?.price || priceNum || 29.99} sellPrice={priceNum ? priceNum * 2.2 : 59.99} />
+        <ProfitCalculator sourcePrice={enriched.cheapest?.price || priceNum || 29.99} sellPrice={priceNum ? priceNum * 2.2 : 59.99} productTitle={title} />
       </section>
 
       {/* === SECTION 4: MARKET INTELLIGENCE === */}

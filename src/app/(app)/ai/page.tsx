@@ -92,6 +92,7 @@ export default function AIPage() {
   const [contextLoading, setContextLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [aiConfigured, setAiConfigured] = useState<boolean | null>(null);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [scanning, setScanning] = useState(false);
   const [showReport, setShowReport] = useState(false);
@@ -123,6 +124,20 @@ export default function AIPage() {
       setContextLoading(false);
     }
   }, [user?.uid]);
+
+  // Check if AI is configured
+  useEffect(() => {
+    fetch("/api/ai")
+      .then((res) => res.json())
+      .then((data) => {
+        const providers = data.providers || {};
+        const hasConfigured = Object.values(providers).some(
+          (p: unknown) => (p as { configured?: boolean })?.configured === true
+        );
+        setAiConfigured(hasConfigured);
+      })
+      .catch(() => setAiConfigured(false));
+  }, []);
 
   useEffect(() => {
     fetchContext();
@@ -462,10 +477,13 @@ export default function AIPage() {
         }
       }
     } catch {
+      const errorMsg = aiConfigured === false
+        ? "No AI provider is configured. Go to Settings > AI Providers to add your API key (Groq, Gemini, OpenAI, or Mistral)."
+        : "I couldn't connect to the AI service. Please try again in a moment.";
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "I couldn't connect to the AI service. Please try again in a moment.",
+        content: errorMsg,
         provider: "Error",
         timestamp: new Date(),
       };

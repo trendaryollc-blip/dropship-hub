@@ -71,5 +71,11 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
+
+    // Platform configurations (API keys, health status)
+    // Any authenticated user can read/write — this is a personal tool
+    match /platforms/{platformId} {
+      allow read, write: if request.auth != null;
+    }
   }
 }

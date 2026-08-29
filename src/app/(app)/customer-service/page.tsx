@@ -9,7 +9,6 @@ import {
 import { useInView } from "@/hooks/useInView";
 import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
 import { useAuth } from "@/components/auth/AuthProvider";
-import DemoBadge from "@/components/ui/DemoBadge";
 import type { Conversation, CSMessage, CSTemplate, Escalation, CSStats } from "@/types/customer-service";
 
 // ─── Sub-components ──────────────────────────────────────────────
@@ -161,7 +160,7 @@ function TemplateManager({ templates }: { templates: CSTemplate[] }) {
               <button onClick={() => handleCopy(t.body, t.id)} className="p-1 rounded hover:bg-surface-hover transition-colors">
                 {copiedId === t.id ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
               </button>
-              <button onClick={() => {}} className="p-1 rounded hover:bg-surface-hover transition-colors"><Trash2 className="h-3 w-3 text-muted-foreground" /></button>
+              <button onClick={() => alert("Delete functionality coming soon")} className="p-1 rounded hover:bg-surface-hover transition-colors"><Trash2 className="h-3 w-3 text-muted-foreground" /></button>
             </div>
           </div>
         </div>
@@ -207,7 +206,7 @@ export default function CustomerServicePage() {
         if (tData.templates) setTemplates(tData.templates);
         if (eData.escalations) setEscalations(eData.escalations);
     } catch (err) {
-      console.error("Failed to send message:", err);
+      console.error("Failed to load data:", err);
     }
       setLoading(false);
     };
@@ -246,7 +245,7 @@ export default function CustomerServicePage() {
           }]);
         }
       }
-    } catch {}
+    } catch (err) { console.error("Failed to send message:", err); }
   };
 
   return (
@@ -256,7 +255,6 @@ export default function CustomerServicePage() {
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground">Customer Service</h1>
-            <DemoBadge />
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">AI-powered support with smart escalation. Handles common questions, knows when to shut up.</p>
         </div>
@@ -347,7 +345,7 @@ export default function CustomerServicePage() {
             <div className="max-w-3xl mx-auto">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-display text-sm sm:text-base font-semibold text-foreground">Response Templates</h3>
-                <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accent text-white text-[10px] sm:text-[11px] font-semibold hover:bg-accent/80 transition-all">
+                <button onClick={() => alert("Template creation coming soon")} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accent text-white text-[10px] sm:text-[11px] font-semibold hover:bg-accent/80 transition-all">
                   <Plus className="h-3 w-3" /> New Template
                 </button>
               </div>

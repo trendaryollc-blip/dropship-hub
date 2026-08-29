@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Search, Globe, Loader2, Crosshair, BookmarkPlus } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { type MarketData } from "@/lib/mock-competitors";
@@ -112,7 +113,23 @@ const savedSearches = [
 ];
 
 export default function CompetitorsPage() {
-  const [query, setQuery] = useState("");
+  return (
+    <Suspense fallback={
+      <div className="max-w-7xl mx-auto flex items-center justify-center py-20">
+        <div className="flex h-8 w-8 items-center justify-center">
+          <Loader2 className="h-8 w-8 text-accent animate-spin" />
+        </div>
+      </div>
+    }>
+      <CompetitorsContent />
+    </Suspense>
+  );
+}
+
+function CompetitorsContent() {
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get("q") || "";
+  const [query, setQuery] = useState(initialQuery);
   const [loading, setLoading] = useState(false);
   const [marketData, setMarketData] = useState<MarketData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -141,6 +158,13 @@ export default function CompetitorsPage() {
     }
     setLoading(false);
   }, [query]);
+
+  useEffect(() => {
+    if (initialQuery && initialQuery.trim()) {
+      const timer = setTimeout(() => handleSearch(initialQuery), 0);
+      return () => clearTimeout(timer);
+    }
+  }, [handleSearch, initialQuery]);
 
   return (
     <div className="max-w-7xl mx-auto">

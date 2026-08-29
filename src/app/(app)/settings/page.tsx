@@ -222,10 +222,10 @@ export default function AISettingsPage() {
           <div className="p-2 rounded-xl bg-accent">
             <Brain className="w-6 h-6 text-white" />
           </div>
-          AI Settings
+          Settings
         </h1>
         <p className="text-muted-foreground">
-          Configure 12 AI providers with automatic fallback chain. Get API keys from each provider, then set them in your <code className="px-1.5 py-0.5 rounded bg-surface text-xs text-foreground font-mono">.env.local</code> file.
+          Configure your AI providers, platform integrations, and account settings.
         </p>
       </div>
 
@@ -417,7 +417,7 @@ export default function AISettingsPage() {
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-1">Platform Integrations</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  These connectors power the product search and supplier intelligence features. Configure the API keys in your <code className="px-1.5 py-0.5 rounded bg-surface text-[11px] text-foreground font-mono">.env.local</code> file, then click through to use each platform.
+                  These connectors power the product search and supplier intelligence features. Advanced configuration — API keys are set in environment variables.
                 </p>
               </div>
             </div>
@@ -432,8 +432,15 @@ export default function AISettingsPage() {
                       <platform.icon className="w-5 h-5 text-accent" />
                     </div>
                     <h3 className="font-display font-semibold text-foreground">{platform.name}</h3>
-                    <span className="px-2 py-0.5 rounded-full text-xs bg-emerald-400/10 text-emerald-400 border border-emerald-400/20 flex items-center gap-1">
-                      <CheckCircle2 className="h-3 w-3" /> Connected
+                    <span className={`px-2 py-0.5 rounded-full text-xs flex items-center gap-1 ${
+                      platform.configured
+                        ? "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20"
+                        : "bg-amber-400/10 text-amber-400 border border-amber-400/20"
+                    }`}>
+                      {platform.configured
+                        ? <><CheckCircle2 className="h-3 w-3" /> Connected</>
+                        : <><AlertTriangle className="h-3 w-3" /> Not Configured</>
+                      }
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground">{platform.description}</p>
@@ -448,13 +455,6 @@ export default function AISettingsPage() {
                 {platform.features.map((feature) => (
                   <span key={feature} className="px-2 py-1 rounded-lg text-xs bg-surface text-muted-foreground border border-border">{feature}</span>
                 ))}
-              </div>
-
-              <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t border-border/50">
-                <Key className="w-3 h-3" />
-                <span className="font-mono text-[11px]">{platform.envKey}</span>
-                <span className="text-emerald-400">•</span>
-                <span>Endpoint: <span className="font-mono text-[11px]">{platform.apiEndpoint}</span></span>
               </div>
             </div>
           ))}

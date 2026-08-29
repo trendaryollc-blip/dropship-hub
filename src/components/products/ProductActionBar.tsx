@@ -1,17 +1,48 @@
 "use client";
 
-import { useState } from "react";
 import { Heart, BarChart3, ExternalLink, Calculator, Award } from "lucide-react";
+import { useSavedProducts, type SavedProduct } from "@/components/saved/SavedProductsProvider";
 
-export default function ProductActionBar({ platform, platformUrl, productTitle, category }: { platform: string; platformUrl?: string; productTitle: string; category?: string }) {
-  const [saved, setSaved] = useState(false);
+interface ProductActionBarProps {
+  platform: string;
+  platformUrl?: string;
+  productTitle: string;
+  category?: string;
+  id?: string;
+  price?: number | null;
+  image?: string | null;
+  images?: string[];
+  rating?: number | null;
+  reviews?: number | null;
+}
+
+export default function ProductActionBar({ platform, platformUrl, productTitle, category, id, price, image, images, rating, reviews }: ProductActionBarProps) {
+  const { isSaved, toggleSave } = useSavedProducts();
+  const savedProductId = id || productTitle;
+  const saved = isSaved(savedProductId);
+
+  const toggleFavorite = () => {
+    const savedProduct: SavedProduct = {
+      id: savedProductId,
+      title: productTitle,
+      price: price ?? null,
+      image: image ?? null,
+      images: images,
+      link: platformUrl || "",
+      source: platform,
+      rating: rating ?? undefined,
+      reviews: reviews ?? undefined,
+      savedAt: Date.now(),
+    };
+    toggleSave(savedProduct);
+  };
 
   return (
     <>
       {/* Desktop: frosted toolbar */}
       <div className="hidden md:block action-bar">
         <div className="flex items-center gap-1">
-          <button onClick={() => setSaved(!saved)} className={`action-btn ${saved ? "action-btn-danger" : ""}`}>
+          <button onClick={toggleFavorite} className={`action-btn ${saved ? "action-btn-danger" : ""}`}>
             <Heart className={`h-4 w-4 ${saved ? "fill-current" : ""}`} />
             <span className="hidden lg:inline">{saved ? "Saved" : "Save"}</span>
           </button>
@@ -38,7 +69,7 @@ export default function ProductActionBar({ platform, platformUrl, productTitle, 
       {/* Mobile: sticky bottom bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 safe-area-bottom">
         <div className="glass border-t border-border px-3 py-2 flex items-center gap-1.5">
-          <button onClick={() => setSaved(!saved)} className={`flex-1 flex flex-col items-center gap-0.5 py-2 rounded-xl transition-all ${saved ? "bg-red-400/10 text-red-400" : "text-muted-foreground active:bg-surface"}`}>
+          <button onClick={toggleFavorite} className={`flex-1 flex flex-col items-center gap-0.5 py-2 rounded-xl transition-all ${saved ? "bg-red-400/10 text-red-400" : "text-muted-foreground active:bg-surface"}`}>
             <Heart className={`h-4 w-4 ${saved ? "fill-current" : ""}`} />
             <span className="text-[9px]">{saved ? "Saved" : "Save"}</span>
           </button>

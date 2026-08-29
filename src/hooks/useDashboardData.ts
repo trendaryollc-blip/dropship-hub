@@ -1,19 +1,6 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import {
-  tickerItems as fallbackTicker,
-  aiDailyPick as fallbackPick,
-  revenueData as fallbackRevenue,
-  smartAlerts as fallbackAlerts,
-  nicheCards as fallbackNiches,
-  supplierStatuses as fallbackSuppliers,
-  dailyMission as fallbackMission,
-  heatmapCategories as fallbackHeatmap,
-  trendingProducts as fallbackTrending,
-  gettingStartedTasks as fallbackTasks,
-  quickActions as fallbackActions,
-} from "@/lib/mock-dashboard";
 import type { TickerItem, AIDailyPick, SmartAlert, NicheCard, SupplierStatus, DailyMission, HeatmapCategory, TrendingProduct } from "@/lib/mock-dashboard";
 
 interface AIBriefing {
@@ -45,54 +32,55 @@ interface QuickActionStat {
   statLabel: string;
 }
 
+interface RevenueData {
+  actual: { date: string; value: number }[];
+  predicted: { date: string; value: number }[];
+  stats: { revenue: number; growth: number; orders: number; avgOrder: number };
+}
+
 export interface DashboardData {
   ticker: TickerItem[];
-  dailyPick: AIDailyPick;
-  revenue: typeof fallbackRevenue;
+  dailyPick: AIDailyPick | null;
+  revenue: RevenueData;
   alerts: SmartAlert[];
   niches: NicheCard[];
   suppliers: SupplierStatus[];
-  mission: DailyMission;
+  mission: DailyMission | null;
   heatmap: HeatmapCategory[];
   trending: TrendingProduct[];
-  tasks: typeof fallbackTasks;
-  actions: typeof fallbackActions;
+  tasks: { id: string; text: string; done: boolean }[];
+  actions: { label: string; href: string; icon: string; color: string }[];
   compareItems: { name: string; price: number; margin: number; image: string }[];
   briefing: AIBriefing;
   pulse: MarketPulseCard[];
   actionStats: QuickActionStat[];
 }
 
-const fallbackBriefing: AIBriefing = {
-  insights: ["Scanning CJ Dropshipping for products..."],
-  sentiment: 50,
-  sentimentLabel: "Neutral",
-  opportunities: 0,
-  risks: 0,
-  trends: 0,
-  lastScan: "loading...",
-};
-
-const fallbackPulse: MarketPulseCard[] = [];
-const fallbackActionStats: QuickActionStat[] = [];
-
 export function useDashboardData() {
   const [data, setData] = useState<DashboardData>({
-    ticker: fallbackTicker,
-    dailyPick: fallbackPick,
-    revenue: fallbackRevenue,
-    alerts: fallbackAlerts,
-    niches: fallbackNiches,
-    suppliers: fallbackSuppliers,
-    mission: fallbackMission,
-    heatmap: fallbackHeatmap,
-    trending: fallbackTrending,
-    tasks: fallbackTasks,
-    actions: fallbackActions,
+    ticker: [],
+    dailyPick: null,
+    revenue: { actual: [], predicted: [], stats: { revenue: 0, growth: 0, orders: 0, avgOrder: 0 } },
+    alerts: [],
+    niches: [],
+    suppliers: [],
+    mission: null,
+    heatmap: [],
+    trending: [],
+    tasks: [],
+    actions: [],
     compareItems: [],
-    briefing: fallbackBriefing,
-    pulse: fallbackPulse,
-    actionStats: fallbackActionStats,
+    briefing: {
+      insights: [],
+      sentiment: 50,
+      sentimentLabel: "Neutral",
+      opportunities: 0,
+      risks: 0,
+      trends: 0,
+      lastScan: "",
+    },
+    pulse: [],
+    actionStats: [],
   });
   const [loading, setLoading] = useState(true);
 
@@ -114,7 +102,6 @@ export function useDashboardData() {
             alerts: apiData.alerts?.length ? apiData.alerts : prev.alerts,
             niches: apiData.nicheCards?.length ? apiData.nicheCards : prev.niches,
             suppliers: apiData.supplierStatuses?.length ? apiData.supplierStatuses : prev.suppliers,
-            mission: prev.mission,
             heatmap: apiData.heatmap?.length ? apiData.heatmap : prev.heatmap,
             trending: apiData.trending?.length ? apiData.trending : prev.trending,
             briefing: apiData.briefing || prev.briefing,

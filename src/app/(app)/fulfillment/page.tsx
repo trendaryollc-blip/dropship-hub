@@ -488,6 +488,7 @@ export default function FulfillmentPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [dismissedOnboarding, setDismissedOnboarding] = useState(false);
   const [connectedStores, setConnectedStores] = useState<Array<{ id: string; platform: string; name: string }>>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchOrders = useCallback(async () => {
     if (!user) return;
@@ -495,7 +496,7 @@ export default function FulfillmentPage() {
       const res = await fetch(`/api/fulfillment?uid=${user.uid}`);
       const data = await res.json();
       setOrders(data.orders || []);
-    } catch {}
+    } catch (err) { console.error("Failed to fetch orders:", err); setError("Failed to load data. Please try again."); }
   }, [user]);
 
   const fetchSettings = useCallback(async () => {
@@ -504,18 +505,21 @@ export default function FulfillmentPage() {
       const res = await fetch(`/api/fulfillment/settings?uid=${user.uid}`);
       const data = await res.json();
       if (data.settings) setSettings(data.settings);
-    } catch {}
+    } catch (err) { console.error("Failed to fetch settings:", err); setError("Failed to load data. Please try again."); }
   }, [user]);
 
   const fetchConnectedStores = useCallback(async () => {
     if (!user) return;
     try {
-      const res = await fetch(`/api/store/trendaryo?uid=${user.uid}`);
+      const res = await fetch(`/api/store/connections?uid=${user.uid}`);
       const data = await res.json();
-      const stores: Array<{ id: string; platform: string; name: string }> = [];
-      if (data.connected) stores.push({ id: "trendaryo", platform: "trendaryo", name: "Trendaryo" });
+      const stores: Array<{ id: string; platform: string; name: string }> = (data.connections || []).map((c: { id: string; platform: string; name: string }) => ({
+        id: c.id,
+        platform: c.platform,
+        name: c.name,
+      }));
       setConnectedStores(stores);
-    } catch {}
+    } catch (err) { console.error("Failed to fetch connected stores:", err); setError("Failed to load data. Please try again."); }
   }, [user]);
 
   useEffect(() => {
@@ -542,7 +546,7 @@ export default function FulfillmentPage() {
         });
       }
       await fetchOrders();
-    } catch {}
+    } catch (err) { console.error("Failed to perform action:", err); setError("Failed to load data. Please try again."); }
     setActionLoading(null);
   };
 
@@ -556,7 +560,7 @@ export default function FulfillmentPage() {
       });
       setSettings(newSettings);
       setShowSettings(false);
-    } catch {}
+    } catch (err) { console.error("Failed to save settings:", err); setError("Failed to load data. Please try again."); }
   };
 
   const filteredOrders = orders.filter((o) => {
@@ -605,6 +609,7 @@ export default function FulfillmentPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-24">
+      {error && (<div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-red-400 text-sm flex items-center gap-2"><AlertCircle className="h-4 w-4 shrink-0" />{error}<button onClick={() => { setError(null); fetchOrders(); fetchSettings(); fetchConnectedStores(); }} className="ml-auto text-xs underline">Retry</button></div>)}
       {/* Onboarding Banner */}
       {!dismissedOnboarding && !hasOrders && (
         <OnboardingBanner onDismiss={() => setDismissedOnboarding(true)} />
@@ -710,7 +715,7 @@ export default function FulfillmentPage() {
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))
             ) : (
-              <option value="trendaryo">Trendaryo</option>
+              <option value="all" disabled>No stores connected</option>
             )}
           </select>
           <div className="relative group">
@@ -725,7 +730,7 @@ export default function FulfillmentPage() {
                     body: JSON.stringify({ uid: user.uid }),
                   });
                   await fetchOrders();
-                } catch {}
+                } catch (err) { console.error("Failed to sync orders:", err); setError("Failed to load data. Please try again."); }
                 setSyncing(false);
               }}
               disabled={syncing}
@@ -776,7 +781,7 @@ export default function FulfillmentPage() {
                         body: JSON.stringify({ uid: user.uid }),
                       });
                       await fetchOrders();
-                    } catch {}
+                    } catch (err) { console.error("Failed to sync orders:", err); setError("Failed to load data. Please try again."); }
                     setSyncing(false);
                   }}
                   className="flex items-center gap-2 px-4 py-2.5 bg-surface border border-white/10 text-foreground rounded-xl text-xs font-medium hover:bg-surface/80 transition-all"

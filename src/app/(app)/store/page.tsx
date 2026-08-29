@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
   Store,
@@ -523,14 +524,13 @@ export default function StorePage() {
                               Sync
                             </button>
                           )}
-                          <button
-                            onClick={() => handlePushProduct(store, null)}
-                            disabled={pushing === store.id}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-500/30 transition-all disabled:opacity-50"
+                          <Link
+                            href="/products"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-500/30 transition-all"
                           >
-                            {pushing === store.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                            Push Product
-                          </button>
+                            <Send className="w-3 h-3" />
+                            Find Products to Push
+                          </Link>
                           <a
                             href={store.url}
                             target="_blank"
@@ -585,6 +585,10 @@ export default function StorePage() {
                     </div>
                   </div>
                 </button>
+                <p className="text-[11px] text-gray-500 mt-2 px-1">
+                  Trendaryo is our integrated ecommerce platform for managing your dropshipping store. Connect it for full product sync, order management, and inventory tracking. Need an account?{" "}
+                  <a href="https://trendaryo.com" target="_blank" rel="noopener noreferrer" className="text-rose-400 hover:underline">Learn more</a>
+                </p>
               </div>
             )}
 

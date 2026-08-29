@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import {
   DollarSign,
@@ -18,8 +18,8 @@ import {
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
+import { useAuth } from "@/components/auth/AuthProvider";
 import DemoBadge from "@/components/ui/DemoBadge";
-import { revenueData } from "@/lib/mock-dashboard";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -50,41 +50,10 @@ interface MonthlyComparison {
   orders: number;
 }
 
-// ─── Mock Data ───────────────────────────────────────────────────────────────
-
-const categoryData: CategoryBreakdown[] = [
-  { name: "Electronics", revenue: 1650, orders: 8, margin: 72, trend: 24, color: "#3b82f6" },
-  { name: "Fashion", revenue: 980, orders: 5, margin: 68, trend: 18, color: "#a855f7" },
-  { name: "Home & Garden", revenue: 720, orders: 4, margin: 65, trend: -5, color: "#22c55e" },
-  { name: "Beauty", revenue: 540, orders: 3, margin: 78, trend: 32, color: "#f59e0b" },
-  { name: "Toys & Games", revenue: 360, orders: 3, margin: 61, trend: 8, color: "#ef4444" },
-];
-
-const topProducts: TopProduct[] = [
-  { name: "Smart LED Strip Lights", image: "💡", revenue: 580, orders: 3, margin: 74, platform: "Amazon" },
-  { name: "Posture Corrector Belt", image: "🧘", revenue: 420, orders: 2, margin: 82, platform: "Shopify" },
-  { name: "Portable Mini Projector", image: "📽️", revenue: 390, orders: 2, margin: 65, platform: "Amazon" },
-  { name: "Wireless Earbuds Pro", image: "🎧", revenue: 340, orders: 2, margin: 71, platform: "eBay" },
-  { name: "Car Phone Mount", image: "🚗", revenue: 280, orders: 2, margin: 78, platform: "Amazon" },
-];
-
-const monthlyComparison: MonthlyComparison[] = [
-  { month: "May", revenue: 2800, profit: 1820, orders: 15 },
-  { month: "Jun", revenue: 3200, profit: 2080, orders: 18 },
-  { month: "Jul", revenue: 3600, profit: 2340, orders: 20 },
-  { month: "Aug", revenue: 4250, profit: 2847, orders: 23 },
-];
-
-const platformRevenue = [
-  { name: "Amazon", revenue: 2100, share: 49, color: "#f59e0b" },
-  { name: "Shopify", revenue: 1250, share: 29, color: "#22c55e" },
-  { name: "eBay", revenue: 550, share: 13, color: "#3b82f6" },
-  { name: "Etsy", revenue: 350, share: 9, color: "#a855f7" },
-];
-
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 function MiniSparkline({ points, color }: { points: number[]; color: string }) {
+  if (points.length === 0) return <div className="w-20 h-7 shrink-0" />;
   const max = Math.max(...points);
   const min = Math.min(...points);
   const range = max - min || 1;
@@ -170,6 +139,7 @@ function RevenueChart({ actual, predicted }: { actual: { date: string; value: nu
   const svgRef = useRef<SVGSVGElement>(null);
 
   const allPoints = [...actual, ...predicted];
+  if (allPoints.length === 0) return null;
   const maxVal = Math.max(...allPoints.map((p) => p.value));
   const minVal = Math.min(...allPoints.map((p) => p.value));
   const range = maxVal - minVal || 1;
@@ -347,7 +317,7 @@ function MonthlyBar({ data, maxRevenue, delay }: { data: MonthlyComparison; maxR
   );
 }
 
-function PlatformDonut() {
+function PlatformDonut({ platformRevenue, totalRevenue }: { platformRevenue: { name: string; revenue: number; share: number; color: string }[]; totalRevenue: number }) {
   const { ref, isInView } = useInView({ threshold: 0.3 });
   const size = 140;
   const strokeWidth = 18;
@@ -381,7 +351,7 @@ function PlatformDonut() {
           ))}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="font-display text-lg font-bold text-foreground">$4.2K</span>
+          <span className="font-display text-lg font-bold text-foreground">${totalRevenue >= 1000 ? `${(totalRevenue / 1000).toFixed(1)}K` : totalRevenue.toLocaleString()}</span>
           <span className="text-[9px] text-muted-foreground">Total</span>
         </div>
       </div>
@@ -429,18 +399,137 @@ function InsightCard({ icon: Icon, title, description, type, delay }: { icon: ty
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function RevenuePage() {
+  const { user } = useAuth();
   const [timeframe, setTimeframe] = useState<Timeframe>("30d");
+  const [loading, setLoading] = useState(true);
+  const [revenueData, setRevenueData] = useState<{ actual: { date: string; value: number }[]; predicted: { date: string; value: number }[] }>({ actual: [], predicted: [] });
+  const [categoryData, setCategoryData] = useState<CategoryBreakdown[]>([]);
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+  const [monthlyComparison, setMonthlyComparison] = useState<MonthlyComparison[]>([]);
+  const [platformRevenue, setPlatformRevenue] = useState<{ name: string; revenue: number; share: number; color: string }[]>([]);
+  const [kpiData, setKpiData] = useState<Record<Timeframe, { revenue: number; profit: number; orders: number; margin: number; revenueChange: string; profitChange: string; ordersChange: string; marginChange: string; revenueSparkline: number[]; profitSparkline: number[]; ordersSparkline: number[]; marginSparkline: number[] }>>({
+    "7d": { revenue: 0, profit: 0, orders: 0, margin: 0, revenueChange: "0%", profitChange: "0%", ordersChange: "0%", marginChange: "0%", revenueSparkline: [], profitSparkline: [], ordersSparkline: [], marginSparkline: [] },
+    "30d": { revenue: 0, profit: 0, orders: 0, margin: 0, revenueChange: "0%", profitChange: "0%", ordersChange: "0%", marginChange: "0%", revenueSparkline: [], profitSparkline: [], ordersSparkline: [], marginSparkline: [] },
+    "90d": { revenue: 0, profit: 0, orders: 0, margin: 0, revenueChange: "0%", profitChange: "0%", ordersChange: "0%", marginChange: "0%", revenueSparkline: [], profitSparkline: [], ordersSparkline: [], marginSparkline: [] },
+  });
 
-  const kpiData: Record<Timeframe, { revenue: number; profit: number; orders: number; margin: number; revenueChange: string; profitChange: string; ordersChange: string; marginChange: string; revenueSparkline: number[]; profitSparkline: number[]; ordersSparkline: number[]; marginSparkline: number[] }> = {
-    "7d": { revenue: 1050, profit: 712, orders: 6, margin: 68, revenueChange: "+12%", profitChange: "+5%", ordersChange: "+20%", marginChange: "+2.1%", revenueSparkline: [800, 850, 900, 920, 950, 1000, 1050], profitSparkline: [550, 570, 600, 620, 640, 680, 712], ordersSparkline: [3, 4, 4, 5, 5, 6, 6], marginSparkline: [64, 65, 66, 67, 67, 68, 68] },
-    "30d": { revenue: 4250, profit: 2847, orders: 23, margin: 71, revenueChange: "+18%", profitChange: "+8%", ordersChange: "+24%", marginChange: "+3.2%", revenueSparkline: [3200, 3400, 3600, 3800, 3900, 4100, 4250], profitSparkline: [2400, 2500, 2550, 2600, 2700, 2780, 2847], ordersSparkline: [12, 14, 16, 18, 19, 21, 23], marginSparkline: [65, 66, 68, 69, 70, 70, 71] },
-    "90d": { revenue: 12800, profit: 8540, orders: 68, margin: 67, revenueChange: "+25%", profitChange: "+15%", ordersChange: "+32%", marginChange: "+4.5%", revenueSparkline: [8500, 9200, 10000, 10500, 11200, 12000, 12800], profitSparkline: [5600, 6000, 6500, 6800, 7200, 7900, 8540], ordersSparkline: [35, 40, 45, 50, 55, 62, 68], marginSparkline: [62, 63, 64, 65, 66, 66, 67] },
-  };
+  useEffect(() => {
+    const fetchRevenueData = async () => {
+      if (!user?.uid) {
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      try {
+        // Fetch data for each timeframe
+        const fetchTimeframe = async (tf: Timeframe) => {
+          const res = await fetch(`/api/profit?uid=${user!.uid}&timeframe=${tf}`);
+          if (!res.ok) return null;
+          return res.json();
+        };
+
+        const [data7d, data30d, data90d] = await Promise.all([
+          fetchTimeframe("7d"),
+          fetchTimeframe("30d"),
+          fetchTimeframe("90d"),
+        ]);
+
+        const buildKpiForTimeframe = (data: Awaited<ReturnType<typeof fetchTimeframe>>): typeof kpiData["7d"] => {
+          if (!data?.summary) return { revenue: 0, profit: 0, orders: 0, margin: 0, revenueChange: "0%", profitChange: "0%", ordersChange: "0%", marginChange: "0%", revenueSparkline: [], profitSparkline: [], ordersSparkline: [], marginSparkline: [] };
+          const summary = data.summary;
+          const daily: Array<{ date: string; revenue: number; profit: number; orders: number }> = data.dailyBreakdown ?? [];
+          return {
+            revenue: Math.round(summary.totalRevenue),
+            profit: Math.round(summary.totalProfit),
+            orders: summary.totalOrders,
+            margin: summary.avgMargin,
+            revenueChange: "—",
+            profitChange: "—",
+            ordersChange: "—",
+            marginChange: "—",
+            revenueSparkline: daily.slice(-7).map((d: { revenue: number }) => d.revenue),
+            profitSparkline: daily.slice(-7).map((d: { profit: number }) => d.profit),
+            ordersSparkline: daily.slice(-7).map((d: { orders: number }) => d.orders),
+            marginSparkline: daily.slice(-7).map((d: { revenue: number; profit: number }) => d.revenue > 0 ? +((d.profit / d.revenue) * 100).toFixed(1) : 0),
+          };
+        };
+
+        setKpiData({
+          "7d": buildKpiForTimeframe(data7d),
+          "30d": buildKpiForTimeframe(data30d),
+          "90d": buildKpiForTimeframe(data90d),
+        });
+
+        // Use 30d data as the primary dataset for charts/tables
+        const primary = data30d;
+        if (primary?.dailyBreakdown?.length) {
+          const daily = primary.dailyBreakdown as Array<{ date: string; revenue: number }>;
+          setRevenueData({
+            actual: daily.map((d) => ({ date: d.date.slice(5), value: Math.round(d.revenue) })),
+            predicted: [],
+          });
+        }
+
+        if (primary?.topProducts?.length) {
+          // Build top products from the API's topProducts
+          const apiTopProducts = primary.topProducts as Array<{ productTitle: string; productImage: string; totalRevenue: number; totalOrders: number; profitMargin: number; trend: number }>;
+          setTopProducts(apiTopProducts.slice(0, 5).map((p) => ({
+            name: p.productTitle,
+            image: p.productImage || "📦",
+            revenue: Math.round(p.totalRevenue),
+            orders: p.totalOrders,
+            margin: p.profitMargin,
+            platform: "—",
+          })));
+          // Category data is not available from profit API, leave empty
+          setCategoryData([]);
+        }
+
+        if (primary?.campaignProfits?.length) {
+          const campaigns = primary.campaignProfits as Array<{ campaignName: string; revenue: number }>;
+          const totalRev = campaigns.reduce((s, c) => s + c.revenue, 0);
+          const platformColors = ["#f59e0b", "#22c55e", "#3b82f6", "#a855f7", "#ef4444"];
+          setPlatformRevenue(campaigns.filter((c) => c.revenue > 0).map((c, i) => ({
+            name: c.campaignName,
+            revenue: Math.round(c.revenue),
+            share: totalRev > 0 ? Math.round((c.revenue / totalRev) * 100) : 0,
+            color: platformColors[i % platformColors.length],
+          })));
+        }
+
+        // Build monthly comparison from daily data
+        const allDaily30 = primary?.dailyBreakdown as Array<{ date: string; revenue: number; profit: number; orders: number }> | undefined;
+        if (allDaily30?.length) {
+          const monthMap = new Map<string, { month: string; revenue: number; profit: number; orders: number }>();
+          const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          for (const d of allDaily30) {
+            const dt = new Date(d.date);
+            const key = `${dt.getFullYear()}-${dt.getMonth()}`;
+            const label = monthNames[dt.getMonth()];
+            const existing = monthMap.get(key) || { month: label, revenue: 0, profit: 0, orders: 0 };
+            existing.revenue += d.revenue;
+            existing.profit += d.profit;
+            existing.orders += d.orders;
+            monthMap.set(key, existing);
+          }
+          setMonthlyComparison(Array.from(monthMap.values()));
+        }
+      } catch {
+        // Silently fail — data stays at defaults
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRevenueData();
+  }, [user?.uid]);
 
   const kpi = kpiData[timeframe];
   const { actual, predicted } = revenueData;
-  const maxCategoryRevenue = Math.max(...categoryData.map((c) => c.revenue));
-  const maxMonthlyRevenue = Math.max(...monthlyComparison.map((m) => m.revenue));
+  const maxCategoryRevenue = categoryData.length > 0 ? Math.max(...categoryData.map((c) => c.revenue)) : 0;
+  const maxMonthlyRevenue = monthlyComparison.length > 0 ? Math.max(...monthlyComparison.map((m) => m.revenue)) : 0;
+  const hasData = revenueData.actual.length > 0 || revenueData.predicted.length > 0;
+  const hasAnyData = hasData || categoryData.length > 0 || topProducts.length > 0 || monthlyComparison.length > 0 || platformRevenue.length > 0 || kpi.revenue > 0;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 px-3 sm:px-4 lg:px-6 pb-24">
@@ -454,7 +543,7 @@ export default function RevenuePage() {
             <DemoBadge />
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">
-            Track your revenue, analyze trends, and forecast growth across all platforms.
+            Revenue trends, forecasts, and growth analytics across all platforms. For per-order cost breakdown, see Profit Tracker.
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
@@ -476,6 +565,20 @@ export default function RevenuePage() {
         </div>
       </div>
 
+      {!loading && !hasAnyData && (
+        <div className="glass rounded-2xl p-8 sm:p-12 text-center">
+          <div className="flex justify-center mb-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10">
+              <DollarSign className="h-7 w-7 text-accent" />
+            </div>
+          </div>
+          <h3 className="font-display text-lg font-semibold text-foreground mb-2">No revenue data yet</h3>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto">
+            Connect your store and start selling to see your revenue analytics. Your data will appear here automatically once you have orders.
+          </p>
+        </div>
+      )}
+
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
         <KPICard label="Revenue This Month" value={kpi.revenue} prefix="$" change={kpi.revenueChange} up icon={DollarSign} color="text-emerald-400" sparkline={kpi.revenueSparkline} delay={0} />
@@ -485,7 +588,14 @@ export default function RevenuePage() {
       </div>
 
       {/* Main Revenue Chart */}
-      <RevenueChart actual={actual} predicted={predicted} />
+      {hasData ? (
+        <RevenueChart actual={actual} predicted={predicted} />
+      ) : (
+        <div className="glass rounded-2xl p-6 sm:p-8 text-center">
+          <BarChart3 className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">Revenue trend will appear once you have sales data.</p>
+        </div>
+      )}
 
       {/* Category Breakdown + Platform Split */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6">
@@ -500,11 +610,17 @@ export default function RevenuePage() {
               View All <ChevronRight className="h-3 w-3" />
             </Link>
           </div>
-          <div className="space-y-3 sm:space-y-4">
-            {categoryData.map((cat, i) => (
-              <CategoryBar key={cat.name} category={cat} maxRevenue={maxCategoryRevenue} delay={i * 100} />
-            ))}
-          </div>
+          {categoryData.length > 0 ? (
+            <div className="space-y-3 sm:space-y-4">
+              {categoryData.map((cat, i) => (
+                <CategoryBar key={cat.name} category={cat} maxRevenue={maxCategoryRevenue} delay={i * 100} />
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center">
+              <p className="text-sm text-muted-foreground">No category data available yet.</p>
+            </div>
+          )}
         </div>
 
         {/* Platform Revenue Split */}
@@ -513,7 +629,13 @@ export default function RevenuePage() {
             <h3 className="font-display text-sm sm:text-base font-semibold text-foreground">Revenue by Platform</h3>
             <p className="text-[10px] sm:text-[11px] text-muted-foreground">Where your sales are coming from</p>
           </div>
-          <PlatformDonut />
+          {platformRevenue.length > 0 ? (
+            <PlatformDonut platformRevenue={platformRevenue} totalRevenue={kpi.revenue} />
+          ) : (
+            <div className="py-8 text-center">
+              <p className="text-sm text-muted-foreground">No platform data available yet.</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -537,11 +659,17 @@ export default function RevenuePage() {
               </span>
             </div>
           </div>
-          <div className="flex items-end justify-around h-28 sm:h-40">
-            {monthlyComparison.map((m, i) => (
-              <MonthlyBar key={m.month} data={m} maxRevenue={maxMonthlyRevenue} delay={i * 100} />
-            ))}
-          </div>
+          {monthlyComparison.length > 0 ? (
+            <div className="flex items-end justify-around h-28 sm:h-40">
+              {monthlyComparison.map((m, i) => (
+                <MonthlyBar key={m.month} data={m} maxRevenue={maxMonthlyRevenue} delay={i * 100} />
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center">
+              <p className="text-sm text-muted-foreground">No monthly data available yet.</p>
+            </div>
+          )}
         </div>
 
         {/* Top Performing Products */}
@@ -555,25 +683,31 @@ export default function RevenuePage() {
               View All <ChevronRight className="h-3 w-3" />
             </Link>
           </div>
-          <div className="space-y-2 sm:space-y-3">
-            {topProducts.map((product, i) => (
-              <div key={product.name} className="flex items-center gap-2 sm:gap-3 p-2 sm:p-2.5 rounded-xl hover:bg-surface-hover transition-colors group">
-                <span className="text-[10px] sm:text-[11px] font-bold text-muted-foreground w-3 sm:w-4">{i + 1}</span>
-                <span className="text-base sm:text-xl">{product.image}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm font-medium text-foreground truncate group-hover:text-accent transition-colors">{product.name}</p>
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <span className="text-[9px] sm:text-[10px] text-muted-foreground">{product.platform}</span>
-                    <span className="text-[9px] sm:text-[10px] text-emerald-400 font-semibold">{product.margin}% margin</span>
+          {topProducts.length > 0 ? (
+            <div className="space-y-2 sm:space-y-3">
+              {topProducts.map((product, i) => (
+                <div key={product.name} className="flex items-center gap-2 sm:gap-3 p-2 sm:p-2.5 rounded-xl hover:bg-surface-hover transition-colors group">
+                  <span className="text-[10px] sm:text-[11px] font-bold text-muted-foreground w-3 sm:w-4">{i + 1}</span>
+                  <span className="text-base sm:text-xl">{product.image}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs sm:text-sm font-medium text-foreground truncate group-hover:text-accent transition-colors">{product.name}</p>
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <span className="text-[9px] sm:text-[10px] text-muted-foreground">{product.platform}</span>
+                      <span className="text-[9px] sm:text-[10px] text-emerald-400 font-semibold">{product.margin}% margin</span>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-xs sm:text-sm font-bold text-foreground">${product.revenue}</p>
+                    <p className="text-[9px] sm:text-[10px] text-muted-foreground">{product.orders} orders</p>
                   </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="text-xs sm:text-sm font-bold text-foreground">${product.revenue}</p>
-                  <p className="text-[9px] sm:text-[10px] text-muted-foreground">{product.orders} orders</p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center">
+              <p className="text-sm text-muted-foreground">No product data available yet.</p>
+            </div>
+          )}
         </div>
       </div>
 

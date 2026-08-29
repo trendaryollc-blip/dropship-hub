@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
 
+function sanitizeProductId(id: string): string {
+  return id.replace(/\//g, "__SLASH__");
+}
+
 export async function GET(req: NextRequest) {
   try {
     const uid = req.nextUrl.searchParams.get("uid");
@@ -10,7 +14,8 @@ export async function GET(req: NextRequest) {
     const db = await getAdminDB();
 
     if (productId) {
-      const doc = await db.collection("users").doc(uid).collection("productSuppliers").doc(productId).get();
+      const docId = sanitizeProductId(productId);
+      const doc = await db.collection("users").doc(uid).collection("productSuppliers").doc(docId).get();
       return NextResponse.json({ assignment: doc.exists ? doc.data() : null });
     }
 
@@ -31,7 +36,8 @@ export async function POST(req: NextRequest) {
     }
 
     const db = await getAdminDB();
-    await db.collection("users").doc(uid).collection("productSuppliers").doc(productId).set({
+    const docId = sanitizeProductId(productId);
+    await db.collection("users").doc(uid).collection("productSuppliers").doc(docId).set({
       productId,
       supplierId,
       supplierName,
@@ -54,7 +60,8 @@ export async function DELETE(req: NextRequest) {
     if (!uid || !productId) return NextResponse.json({ error: "uid and productId required" }, { status: 400 });
 
     const db = await getAdminDB();
-    await db.collection("users").doc(uid).collection("productSuppliers").doc(productId).delete();
+    const docId = sanitizeProductId(productId);
+    await db.collection("users").doc(uid).collection("productSuppliers").doc(docId).delete();
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: "Failed to delete supplier assignment", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });

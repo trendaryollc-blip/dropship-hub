@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   ArrowUpRight, Target, CheckCircle2, Search, DollarSign,
-  Truck, Brain, Zap, BarChart3, Eye, EyeOff,
+  Truck, Zap, BarChart3, Eye, EyeOff,
 } from "lucide-react";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -25,17 +25,42 @@ import DailyDigest from "@/components/dashboard/DailyDigest";
 
 const gettingStartedSteps = [
   { id: "search", text: "Search for your first product", href: "/products", icon: Search },
+  { id: "competitor", text: "Check the competition", href: "/competitors", icon: BarChart3 },
   { id: "calc", text: "Calculate your profit margin", href: "/calculator", icon: DollarSign },
   { id: "supplier", text: "Find a reliable supplier", href: "/suppliers", icon: Truck },
-  { id: "competitor", text: "Check the competition", href: "/competitors", icon: BarChart3 },
   { id: "store", text: "Connect your store", href: "/store", icon: Zap },
 ];
+
+interface UserProfile {
+  niche?: string;
+  budget?: string;
+  store?: string;
+}
+
+const nicheLabels: Record<string, string> = {
+  pets: "Pet Supplies",
+  home: "Home & Kitchen",
+  tech: "Electronics & Tech",
+  fitness: "Fitness & Health",
+  fashion: "Fashion & Accessories",
+  beauty: "Beauty & Skincare",
+  automotive: "Automotive",
+  outdoors: "Outdoor & Travel",
+};
+
+const budgetLabels: Record<string, string> = {
+  starter: "Starter ($0-500/mo)",
+  growing: "Growing ($500-2K/mo)",
+  scaling: "Scaling ($2K-10K/mo)",
+  pro: "Pro ($10K+/mo)",
+};
 
 export default function DashboardHome() {
   const { data, markAlertRead, markAllAlertsRead, addToCompare, removeFromCompare, clearCompare } = useDashboardData();
   const { user } = useAuth();
   const [advancedMode, setAdvancedMode] = useState(false);
   const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>({});
+  const [profile, setProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -43,6 +68,13 @@ export default function DashboardHome() {
       if (saved) {
         try { setCompletedSteps(JSON.parse(saved)); } catch {}
       }
+      // Read onboarding profile for personalization
+      try {
+        const stored = localStorage.getItem("userProfile");
+        if (stored) {
+          setProfile(JSON.parse(stored));
+        }
+      } catch {}
     }
   }, [user]);
 
@@ -81,6 +113,27 @@ export default function DashboardHome() {
 
       {/* Greeting */}
       <GreetingCard username={user?.displayName || user?.email?.split("@")[0] || "there"} />
+
+      {/* Personalized profile badge */}
+      {profile && (profile.niche || profile.budget) && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {profile.niche && nicheLabels[profile.niche] && (
+            <span className="text-xs px-3 py-1.5 rounded-full bg-accent/10 text-accent border border-accent/20">
+              {nicheLabels[profile.niche]}
+            </span>
+          )}
+          {profile.budget && budgetLabels[profile.budget] && (
+            <span className="text-xs px-3 py-1.5 rounded-full bg-emerald-400/10 text-emerald-400 border border-emerald-400/20">
+              {budgetLabels[profile.budget]}
+            </span>
+          )}
+          {profile.store && profile.store !== "none" && (
+            <span className="text-xs px-3 py-1.5 rounded-full bg-purple-400/10 text-purple-400 border border-purple-400/20">
+              {profile.store.charAt(0).toUpperCase() + profile.store.slice(1)}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Getting Started Checklist */}
       <div className="glass rounded-2xl p-5">
@@ -137,7 +190,7 @@ export default function DashboardHome() {
       </div>
 
       {/* AI Product of the Day */}
-      <AIDailyPick pick={data.dailyPick} />
+      {data.dailyPick && <AIDailyPick pick={data.dailyPick} />}
 
       {/* Advanced Mode: Show all widgets */}
       {advancedMode && (
@@ -147,10 +200,10 @@ export default function DashboardHome() {
           <RevenueForecast
             actual={data.revenue.actual}
             predicted={data.revenue.predicted}
-            stats={data.revenue.stats}
+            stats={[]}
           />
 
-          <DailyMission mission={data.mission} />
+          {data.mission && <DailyMission mission={data.mission} />}
 
           <IntelligenceHub
             alerts={data.alerts}

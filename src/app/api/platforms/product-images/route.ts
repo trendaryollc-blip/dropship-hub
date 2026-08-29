@@ -331,14 +331,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // JS-rendered sites: use ScraperAPI first (renders JavaScript)
-    if (["google_shopping", "cj", "aliexpress", "ebay", "keepa"].includes(source) && url) {
+    // ALL other platforms: try ScraperAPI (renders JS), then direct fetch
+    if (url) {
       const scraperImages = await scrapeViaScraperAPI(url);
       if (scraperImages.length > 0) {
         return NextResponse.json({ images: scraperImages });
       }
 
-      // Fallback to direct fetch (works for non-JS pages)
       const directImages = await scrapeDirect(url);
       if (directImages.length > 0) {
         return NextResponse.json({ images: directImages });

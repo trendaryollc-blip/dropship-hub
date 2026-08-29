@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
+// TODO: Add auth verification using verifyAuth from @/lib/auth to secure these endpoints
 
 export async function GET(request: NextRequest) {
   try {

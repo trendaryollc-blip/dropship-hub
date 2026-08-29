@@ -269,7 +269,7 @@ export default function ProfitTrackerPage() {
         setCostBreakdown(data.costBreakdown || []);
         setCampaignProfits(data.campaignProfits || []);
       }
-    } catch {}
+    } catch (err) { console.error("Failed to fetch profit data:", err); }
     setLoading(false);
   };
 
@@ -281,13 +281,29 @@ export default function ProfitTrackerPage() {
   const sparkOrders = dailyBreakdown.map((d) => d.orders);
   const sparkMargin = dailyBreakdown.map((d) => d.revenue > 0 ? (d.profit / d.revenue) * 100 : 0);
 
+  // Calculate real trends from daily data
+  const calcTrend = (data: number[]): { change: string; up: boolean } => {
+    if (data.length < 2) return { change: "0%", up: true };
+    const half = Math.floor(data.length / 2);
+    const firstHalf = data.slice(0, half).reduce((a, b) => a + b, 0) / half;
+    const secondHalf = data.slice(half).reduce((a, b) => a + b, 0) / (data.length - half);
+    if (firstHalf === 0) return { change: "+0%", up: true };
+    const pct = ((secondHalf - firstHalf) / firstHalf) * 100;
+    return { change: `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`, up: pct >= 0 };
+  };
+
+  const revenueTrend = calcTrend(sparkRevenue);
+  const profitTrend = calcTrend(sparkProfit);
+  const ordersTrend = calcTrend(sparkOrders);
+  const marginTrend = calcTrend(sparkMargin);
+
   return (
     <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 px-3 sm:px-4 lg:px-6 pb-24">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-1">Profit Tracker</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">Real-time profit tracking with full cost breakdown per order, product, and campaign.</p>
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">Per-order cost breakdown, profit margins, and campaign-level profitability. For revenue forecasting, see Revenue Forecast.</p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="flex items-center bg-surface rounded-xl border border-border p-0.5">
@@ -320,10 +336,10 @@ export default function ProfitTrackerPage() {
         <>
           {/* KPI Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-            <KPICard label="Total Revenue" value={summary.totalRevenue} prefix="$" change="+18%" up icon={DollarSign} color="text-emerald-400" sparkline={sparkRevenue.length ? sparkRevenue : [0]} delay={0} />
-            <KPICard label="Net Profit" value={summary.totalProfit} prefix="$" change="+12%" up icon={TrendingUp} color="text-purple-400" sparkline={sparkProfit.length ? sparkProfit : [0]} delay={100} />
-            <KPICard label="Total Orders" value={summary.totalOrders} change="+24%" up icon={ShoppingCart} color="text-amber-400" sparkline={sparkOrders.length ? sparkOrders : [0]} delay={200} />
-            <KPICard label="Avg Margin" value={summary.profitMargin} suffix="%" change="+2.1%" up icon={Target} color="text-blue-400" sparkline={sparkMargin.length ? sparkMargin : [0]} delay={300} />
+            <KPICard label="Total Revenue" value={summary.totalRevenue} prefix="$" change={revenueTrend.change} up={revenueTrend.up} icon={DollarSign} color="text-emerald-400" sparkline={sparkRevenue.length ? sparkRevenue : [0]} delay={0} />
+            <KPICard label="Net Profit" value={summary.totalProfit} prefix="$" change={profitTrend.change} up={profitTrend.up} icon={TrendingUp} color="text-purple-400" sparkline={sparkProfit.length ? sparkProfit : [0]} delay={100} />
+            <KPICard label="Total Orders" value={summary.totalOrders} change={ordersTrend.change} up={ordersTrend.up} icon={ShoppingCart} color="text-amber-400" sparkline={sparkOrders.length ? sparkOrders : [0]} delay={200} />
+            <KPICard label="Avg Margin" value={summary.profitMargin} suffix="%" change={marginTrend.change} up={marginTrend.up} icon={Target} color="text-blue-400" sparkline={sparkMargin.length ? sparkMargin : [0]} delay={300} />
           </div>
 
           {/* Profit Trend Chart */}

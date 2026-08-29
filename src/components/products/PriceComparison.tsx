@@ -31,7 +31,7 @@ function MiniSparkline({ points, id }: { points: number[]; id: string }) {
   );
 }
 
-export default function PriceComparison({ platforms, listedPrice }: { platforms: PlatformPrice[]; listedPrice: number }) {
+export default function PriceComparison({ platforms, listedPrice, productTitle }: { platforms: PlatformPrice[]; listedPrice: number; productTitle?: string }) {
   const { ref, isInView } = useInView({ threshold: 0.1 });
   const validPlatforms = platforms.filter((p) => p.price > 0);
   const sorted = [...validPlatforms].sort((a, b) => a.price - b.price);
@@ -54,7 +54,7 @@ export default function PriceComparison({ platforms, listedPrice }: { platforms:
                   : "Search across platforms to compare prices and find the best deal."}
               </p>
             </div>
-            <a href="/calculator" className="shrink-0 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition-colors border border-accent/15">
+            <a href={`/calculator?price=${listedPrice}${productTitle ? `&title=${encodeURIComponent(productTitle)}` : ""}`} className="shrink-0 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition-colors border border-accent/15">
               Use Calculator
             </a>
           </div>

@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { User } from "firebase/auth";
 import { AuthProvider, useAuth } from "@/components/auth/AuthProvider";
+import { SavedProductsProvider } from "@/components/saved/SavedProductsProvider";
 import Sidebar from "@/components/dashboard/Sidebar";
 import Topbar from "@/components/dashboard/Topbar";
 import OnboardingWizard from "@/components/onboarding/OnboardingWizard";
@@ -10,12 +12,29 @@ import OnboardingWizard from "@/components/onboarding/OnboardingWizard";
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const prevUserRef = useRef<User | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push("/sign-in");
+      if (prevUserRef.current !== null) {
+        router.push(`/sign-in?expired=1&callbackUrl=${encodeURIComponent(pathname)}`);
+      } else {
+        router.push(`/sign-in?callbackUrl=${encodeURIComponent(pathname)}`);
+      }
     }
-  }, [user, loading, router]);
+    prevUserRef.current = user;
+  }, [user, loading, router, pathname]);
+
+  useEffect(() => {
+    if (!loading) return;
+    const timer = setTimeout(() => {
+      if (loading) {
+        router.push("/sign-in");
+      }
+    }, 10_000);
+    return () => clearTimeout(timer);
+  }, [loading, router]);
 
   if (loading) {
     return (
@@ -63,7 +82,9 @@ function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="md:pl-[240px] transition-all duration-300">
         <Topbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-        <main className="p-4 md:p-6">{children}</main>
+        <main className="p-4 md:p-6">
+          {children}
+        </main>
       </div>
     </div>
   );
@@ -76,7 +97,9 @@ export default function AppLayout({
 }) {
   return (
     <AuthProvider>
-      <AuthGuard>{children}</AuthGuard>
+      <SavedProductsProvider>
+        <AuthGuard>{children}</AuthGuard>
+      </SavedProductsProvider>
     </AuthProvider>
   );
 }

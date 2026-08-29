@@ -5,7 +5,6 @@ import {
   Route, Clock, DollarSign, TrendingUp,
   ArrowRight, MapPin, Truck, Settings,
 } from "lucide-react";
-import DemoBadge from "@/components/ui/DemoBadge";
 import { useInView } from "@/hooks/useInView";
 import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -238,6 +237,7 @@ export default function OrderRouterPage() {
   const [analytics, setAnalytics] = useState<RoutingAnalytics | null>(null);
   const [history, setHistory] = useState<RoutingHistory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"queue" | "analytics" | "history" | "settings">("queue");
 
   useEffect(() => {
@@ -260,7 +260,7 @@ export default function OrderRouterPage() {
         if (pData.preferences) setPreferences(pData.preferences);
         if (aData.analytics) setAnalytics(aData.analytics);
         if (hData.history) setHistory(hData.history);
-      } catch {}
+      } catch (err) { console.error("Failed to fetch routing data:", err); setError("Failed to load data. Please try again."); }
       setLoading(false);
     };
     fetchData();
@@ -270,12 +270,12 @@ export default function OrderRouterPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 px-3 sm:px-4 lg:px-6 pb-24">
+      {error && (<div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-red-400 text-sm flex items-center gap-2"><Route className="h-4 w-4 shrink-0" />{error}<button onClick={() => { setError(null); window.location.reload(); }} className="ml-auto text-xs underline">Retry</button></div>)}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground">Order Router</h1>
-            <DemoBadge />
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">Smart multi-channel order routing. AI selects the optimal supplier based on location, stock, speed, and cost.</p>
         </div>
@@ -311,17 +311,25 @@ export default function OrderRouterPage() {
                 <KPICard label="Avg Cost" value={analytics.avgCost} prefix="$" icon={DollarSign} color="text-purple-400" sparkline={[12, 11, 10.5, 10, 9.8, 9.5, 9.2]} delay={200} />
                 <KPICard label="Cost Savings" value={analytics.costSavings} prefix="$" icon={TrendingUp} color="text-amber-400" sparkline={[20, 25, 30, 35, 40, 45, 48]} delay={300} />
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-                <div className="lg:col-span-2 space-y-3">
-                  {decisions.slice(0, 6).map((d, i) => (
-                    <DecisionCard key={d.id} decision={d} delay={i * 80} />
-                  ))}
+              {decisions.length === 0 ? (
+                <div className="text-center py-16 glass rounded-2xl">
+                  <Route className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+                  <h3 className="font-display text-lg font-semibold text-foreground mb-2">No routing decisions yet</h3>
+                  <p className="text-sm text-muted-foreground max-w-sm mx-auto">Orders will appear here once they are routed to suppliers.</p>
                 </div>
-                <div className="space-y-4">
-                  {preferences && <PreferencesPanel preferences={preferences} />}
-                  <AnalyticsPanel analytics={analytics} />
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                  <div className="lg:col-span-2 space-y-3">
+                    {decisions.slice(0, 6).map((d, i) => (
+                      <DecisionCard key={d.id} decision={d} delay={i * 80} />
+                    ))}
+                  </div>
+                  <div className="space-y-4">
+                    {preferences && <PreferencesPanel preferences={preferences} />}
+                    <AnalyticsPanel analytics={analytics} />
+                  </div>
                 </div>
-              </div>
+              )}
             </>
           )}
 
