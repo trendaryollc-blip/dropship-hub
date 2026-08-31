@@ -6,19 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "typecheck": "tsc --noEmit --pretty -p tsconfig.json",
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
     "prepare": "husky"
-  },
-  "lint-staged": {
-    "*.{ts,tsx}": [
-      "eslint --fix",
-      "tsc --noEmit --pretty"
-    ],
-    "*.{js,jsx}": [
-      "eslint --fix"
-    ]
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
