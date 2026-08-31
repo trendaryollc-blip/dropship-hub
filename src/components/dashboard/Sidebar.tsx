@@ -173,6 +173,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   useEffect(() => {
     if (!user) return;
     let active = true;
+
+    const ownerEmails = ["trendaryo206@gmail.com"];
+    if (user.email && ownerEmails.includes(user.email.toLowerCase())) {
+      if (active) setIsOwner(true);
+      return;
+    }
+
     user.getIdToken()
       .then((token) =>
         safeFetch<{ isOwner?: boolean }>("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } })
@@ -180,7 +187,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       .then((data) => {
         if (active && typeof data.isOwner === "boolean") setIsOwner(data.isOwner);
       })
-      .catch((e) => { if (process.env.NODE_ENV === "development") console.warn("[Sidebar] silently caught", e); });
+      .catch(() => {});
     return () => {
       active = false;
     };
