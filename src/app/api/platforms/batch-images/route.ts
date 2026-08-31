@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth";
 
 async function fetchOgImage(url: string): Promise<string | null> {
   try {
@@ -47,7 +48,7 @@ async function fetchOgImage(url: string): Promise<string | null> {
   }
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const { urls } = await request.json();
     if (!Array.isArray(urls) || urls.length === 0) {
@@ -67,4 +68,4 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ images: [] }, { status: 500 });
   }
-}
+});

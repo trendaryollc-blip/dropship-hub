@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { DocumentData } from "firebase-admin/firestore";
+import { withAuth } from "@/lib/auth";
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type") || "overview";
-    const uid = searchParams.get("uid");
-
-    if (!uid) {
-      return NextResponse.json({ error: "uid is required" }, { status: 400 });
-    }
 
     const db = await getAdminDB();
 
@@ -81,16 +77,12 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const body = await request.json();
-    const { uid, message, conversationId } = body;
-
-    if (!uid) {
-      return NextResponse.json({ error: "uid is required" }, { status: 400 });
-    }
+    const { message, conversationId } = body;
 
     const db = await getAdminDB();
 
@@ -164,4 +156,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

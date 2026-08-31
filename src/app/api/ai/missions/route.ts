@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 import { DocumentData } from "firebase-admin/firestore";
+import { safeNum, safeStr } from "@/lib/utils-helpers";
 
 interface AIMission {
   id: string;
@@ -11,14 +14,6 @@ interface AIMission {
   done: boolean;
   date: string;
   source: string;
-}
-
-function safeNum(val: unknown, fallback = 0): number {
-  return typeof val === "number" ? val : fallback;
-}
-
-function safeStr(val: unknown, fallback = ""): string {
-  return typeof val === "string" ? val : fallback;
 }
 
 function generateMissionsFromData(
@@ -178,15 +173,8 @@ function generateMissionsFromData(
   return generated.slice(0, 5); // Max 5 AI missions per day
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
-    const body = await request.json();
-    const { uid } = body;
-
-    if (!uid) {
-      return NextResponse.json({ error: "uid is required" }, { status: 400 });
-    }
-
     const db = await getAdminDB();
     const userRef = db.collection("users").doc(uid);
 
@@ -257,18 +245,11 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, LIMITS.AI_CHAT);
 
 // GET: Fetch today's AI missions
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
-    const { searchParams } = new URL(request.url);
-    const uid = searchParams.get("uid");
-
-    if (!uid) {
-      return NextResponse.json({ error: "uid is required" }, { status: 400 });
-    }
-
     const db = await getAdminDB();
     const today = new Date().toISOString().split("T")[0];
     const snap = await db
@@ -283,11 +264,53 @@ export async function GET(request: NextRequest) {
     const aiMissions = missions.filter((m) => m.aiGenerated === true);
     const completed = aiMissions.filter((m) => m.done).length;
 
+    // Fetch full gamification stats
+    const allMissionsSnap = await db
+      .collection("users")
+      .doc(uid)
+      .collection("missions")
+      .orderBy("createdAt", "desc")
+      .limit(200)
+      .get();
+
+    const allMissions = allMissionsSnap.docs.map((d) => d.data() as DocumentData);
+
+    // Calculate total XP from completed missions
+    const xpPerCategory: Record<string, number> = { revenue: 75, products: 60, suppliers: 50, "customer-service": 80, alerts: 40, store: 50, setup: 100, research: 30 };
+    let totalXP = 0;
+    for (const m of allMissions) {
+      if (m.done === true) {
+        totalXP += xpPerCategory[m.category as string] || 25;
+      }
+    }
+
+    // Calculate streak (consecutive days with at least 1 completed mission)
+    const daySet = new Set<string>();
+    for (const m of allMissions) {
+      if (m.done === true && m.date) daySet.add(m.date as string);
+    }
+    let streak = 0;
+    const d = new Date();
+    while (true) {
+      const dateStr = d.toISOString().split("T")[0];
+      if (daySet.has(dateStr)) {
+        streak++;
+        d.setDate(d.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+
+    const level = Math.floor(totalXP / 500) + 1;
+    const currentXP = totalXP % 500;
+    const nextLevelXP = 500;
+
     return NextResponse.json({
       missions: aiMissions,
       total: aiMissions.length,
       completed,
       completionRate: aiMissions.length > 0 ? Math.round((completed / aiMissions.length) * 100) : 0,
+      stats: { totalXP, level, currentXP, nextLevelXP, streak },
     });
   } catch (error) {
     return NextResponse.json(
@@ -295,4 +318,41 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, LIMITS.AI_CHAT);
+
+// PATCH: Mark a mission as complete
+export const PATCH = withAuth(async (request: NextRequest, uid: string) => {
+  try {
+    const body = await request.json();
+    const { missionId } = body;
+
+    if (!missionId) {
+      return NextResponse.json({ error: "missionId is required" }, { status: 400 });
+    }
+
+    const db = await getAdminDB();
+    const docRef = db.collection("users").doc(uid).collection("missions").doc(missionId);
+    const snap = await docRef.get();
+
+    if (!snap.exists) {
+      return NextResponse.json({ error: "Mission not found" }, { status: 404 });
+    }
+
+    const mission = snap.data() as DocumentData;
+    if (mission.done) {
+      return NextResponse.json({ success: true, message: "Already completed" });
+    }
+
+    await docRef.update({ done: true, completedAt: new Date().toISOString() });
+
+    const xpPerCategory: Record<string, number> = { revenue: 75, products: 60, suppliers: 50, "customer-service": 80, alerts: 40, store: 50, setup: 100, research: 30 };
+    const xpAwarded = xpPerCategory[mission.category as string] || 25;
+
+    return NextResponse.json({ success: true, xpAwarded, category: mission.category });
+  } catch (error) {
+    return NextResponse.json(
+      { error: "Failed to complete mission", details: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 }
+    );
+  }
+}, LIMITS.AI_CHAT);

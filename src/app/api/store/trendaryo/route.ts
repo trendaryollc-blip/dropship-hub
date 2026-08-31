@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 
 const BACKEND_URL = process.env.TRENDARYO_API_URL || "https://trendaryo-llc-backend.vercel.app";
 const API_KEY = process.env.TRENDARYO_API_KEY || "";
@@ -32,7 +34,7 @@ async function proxyRequest(
   return { status: res.status, data };
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request: NextRequest) => {
   try {
     const action = request.nextUrl.searchParams.get("action");
     const authToken = request.nextUrl.searchParams.get("authToken") || undefined;
@@ -91,9 +93,9 @@ export async function GET(request: NextRequest) {
       { status: 500 },
     );
   }
-}
+}, LIMITS.DEFAULT);
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest) => {
   try {
     const body = await request.json();
     const { action, authToken, ...payload } = body;
@@ -141,4 +143,4 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
-}
+}, LIMITS.DEFAULT);

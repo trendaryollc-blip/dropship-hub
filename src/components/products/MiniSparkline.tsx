@@ -1,6 +1,7 @@
 "use client";
 
 export default function MiniSparkline({ points, color = "#3b82f6", id }: { points: number[]; color?: string; id: string }) {
+  if (!points || points.length < 2) return null;
   const max = Math.max(...points);
   const min = Math.min(...points);
   const range = max - min || 1;

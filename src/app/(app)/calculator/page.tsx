@@ -77,7 +77,7 @@ function CalculatorContent() {
     try {
       const entries = await getCalcHistory(user.uid, activeTab);
       setHistory(entries.slice(0, 5));
-    } catch {}
+    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[CalculatorPage] silently caught", e); }
     setHistoryLoading(false);
   };
 

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
-    const uid = req.nextUrl.searchParams.get("uid");
     const status = req.nextUrl.searchParams.get("status");
-    if (!uid) return NextResponse.json({ error: "uid required" }, { status: 400 });
 
     const db = await getAdminDB();
     let query: FirebaseFirestore.Query<FirebaseFirestore.DocumentData> = db
@@ -22,13 +22,13 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch orders", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
   }
-}
+}, LIMITS.FULFILLMENT);
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
     const body = await req.json();
-    const { uid, orderId, action, ...updates } = body;
-    if (!uid || !orderId) return NextResponse.json({ error: "uid and orderId required" }, { status: 400 });
+    const { orderId, action, ...updates } = body;
+    if (!orderId) return NextResponse.json({ error: "orderId required" }, { status: 400 });
 
     const db = await getAdminDB();
     const ref = db.collection("users").doc(uid).collection("fulfillmentOrders").doc(orderId);
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       const doc = await ref.get();
       if (!doc.exists) return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
-      const order = doc.data()!;
+      const order = doc.data() ?? {};
       const platformOrders = (order.platformOrders || []).map((po: Record<string, unknown>) => {
         if (po.platform === platform) {
           return {
@@ -90,4 +90,4 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     return NextResponse.json({ error: "Failed to update order", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
   }
-}
+}, LIMITS.FULFILLMENT);

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, isOwner } from "@/lib/auth";
 import { getAllPlatforms } from "@/lib/platform-config";
 
 export async function POST(request: NextRequest) {
   const uid = await verifyAuth(request);
   if (!uid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await isOwner(uid))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { platformId } = await request.json();
   const platforms = await getAllPlatforms();

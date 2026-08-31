@@ -8,6 +8,7 @@ import { useInView } from "@/hooks/useInView";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { SupplierPicker } from "@/components/fulfillment/SupplierPicker";
 import { useSavedProducts, type SavedProduct } from "@/components/saved/SavedProductsProvider";
+import { safeFetch } from "@/lib/safe-fetch";
 
 const platformIcons: Record<string, string> = {
   amazon: "\ud83d\udce6", ebay: "\ud83c\udff7\ufe0f", aliexpress: "\ud83c\udde8\ud83c\uddf3",
@@ -72,8 +73,7 @@ export default function EnrichedProductCard({ product, index }: { product: Searc
   const fetchStores = useCallback(async () => {
     if (!user) return;
     try {
-      const res = await fetch(`/api/store/connections?uid=${user.uid}`);
-      const data = await res.json();
+      const data = await safeFetch<{ connections?: ConnectedStore[] }>(`/api/store/connections?uid=${user.uid}`);
       setStores(data.connections || []);
     } catch { /* ignore */ }
   }, [user]);
@@ -83,7 +83,7 @@ export default function EnrichedProductCard({ product, index }: { product: Searc
     setPushingStore(store.id);
     setPushResult(null);
     try {
-      const res = await fetch("/api/store/push", {
+      const data = await safeFetch<{ success?: boolean; error?: string | { message: string } }>("/api/store/push", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -96,7 +96,6 @@ export default function EnrichedProductCard({ product, index }: { product: Searc
           productDescription: `${product.title} - Found on ${product.source}`,
         }),
       });
-      const data = await res.json();
       if (data.success) {
         setPushResult({ success: true, message: `Pushed to ${store.name}!` });
       } else {
@@ -219,7 +218,7 @@ export default function EnrichedProductCard({ product, index }: { product: Searc
 
       {/* Push to Store Modal */}
       {showPushModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowPushModal(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowPushModal(false)} role="dialog" aria-modal="true" aria-label="Push to Store">
           <div className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-sm mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-5 border-b border-white/10">
               <div>

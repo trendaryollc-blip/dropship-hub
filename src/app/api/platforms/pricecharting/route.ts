@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth";
 
 const PRICECHARTING_API_KEY = process.env.PRICECHARTING_API_KEY;
 
@@ -24,7 +25,7 @@ async function getProductPrice(productId: string) {
   return res.json();
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const { query, productId } = await request.json();
 
@@ -44,8 +45,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "PriceCharting search failed" }, { status: 500 });
   }
-}
+});
 
-export async function GET() {
+export const GET = withAuth(async (request: NextRequest, uid: string) => {
   return NextResponse.json({ platform: "PriceCharting", configured: !!PRICECHARTING_API_KEY });
-}
+});

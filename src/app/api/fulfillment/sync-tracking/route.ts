@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { pushTrackingToStore } from "@/lib/fulfillment/store-adapters";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
     const body = await req.json();
-    const { uid, fulfillmentOrderId, trackingNumber, carrier } = body;
-    if (!uid || !fulfillmentOrderId || !trackingNumber) {
-      return NextResponse.json({ error: "uid, fulfillmentOrderId, and trackingNumber required" }, { status: 400 });
+    const { fulfillmentOrderId, trackingNumber, carrier } = body;
+    if (!fulfillmentOrderId || !trackingNumber) {
+      return NextResponse.json({ error: "fulfillmentOrderId and trackingNumber required" }, { status: 400 });
     }
 
     const db = await getAdminDB();
     const orderDoc = await db.collection("users").doc(uid).collection("fulfillmentOrders").doc(fulfillmentOrderId).get();
     if (!orderDoc.exists) return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
-    const order = orderDoc.data()!;
+    const order = orderDoc.data() ?? {};
     const storePlatform = order.storePlatform;
     const storeOrderId = order.storeOrderId;
 
@@ -63,4 +65,4 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     return NextResponse.json({ error: "Failed to sync tracking", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
   }
-}
+}, LIMITS.FULFILLMENT);

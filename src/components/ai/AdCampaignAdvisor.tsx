@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Megaphone, TrendingUp, TrendingDown, AlertTriangle, Zap, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { safeFetch } from "@/lib/safe-fetch";
 
 interface CampaignAnalysis {
   name: string;
@@ -37,14 +38,13 @@ export default function AdCampaignAdvisor({ uid }: { uid: string }) {
   const analyze = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/ai/ads", {
+      const json = await safeFetch<AdAdvisorResult>("/api/ai/ads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uid }),
       });
-      const json = await res.json();
       setData(json);
-    } catch {}
+    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[AdCampaignAdvisor] silently caught", e); }
     setLoading(false);
   };
 

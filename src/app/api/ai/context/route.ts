@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 import { DocumentData } from "firebase-admin/firestore";
+import { safeNum, safeStr } from "@/lib/utils-helpers";
 
 export interface BusinessContext {
   revenue: {
@@ -92,14 +95,6 @@ export interface BusinessContext {
   dataFreshness: "real-time" | "recent" | "stale";
 }
 
-function safeNum(val: unknown, fallback = 0): number {
-  return typeof val === "number" ? val : fallback;
-}
-
-function safeStr(val: unknown, fallback = ""): string {
-  return typeof val === "string" ? val : fallback;
-}
-
 type HealthInput = Omit<BusinessContext, "lastUpdated" | "dataFreshness" | "healthScore">;
 
 function computeHealthScore(ctx: HealthInput): BusinessContext["healthScore"] {
@@ -165,15 +160,8 @@ function computeHealthScore(ctx: HealthInput): BusinessContext["healthScore"] {
   };
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
-    const { searchParams } = new URL(request.url);
-    const uid = searchParams.get("uid");
-
-    if (!uid) {
-      return NextResponse.json({ error: "uid is required" }, { status: 400 });
-    }
-
     const db = await getAdminDB();
     const userRef = db.collection("users").doc(uid);
 
@@ -535,4 +523,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, LIMITS.AI_CHAT);

@@ -51,6 +51,13 @@ export function calculateProfit(
   adSpendPerUnit: number,
   units: number = 1
 ): ProfitCalc {
+  if (!sellingPrice || sellingPrice <= 0) {
+    return {
+      totalCost: 0, netProfit: 0, profitMargin: 0, roi: 0,
+      breakEvenUnits: 0, revenue: 0,
+      costBreakdown: [],
+    };
+  }
   const revenue = sellingPrice * units;
   const platformFee = (sellingPrice * platformFeePercent / 100) * units;
   const totalShipping = shippingCost * units;
@@ -79,8 +86,13 @@ export function calculateShipping(
   originCountry: string,
   destinationCountry: string
 ): ShippingCalc {
-  const volumetricWeight = (length * width * height) / 5000;
-  const chargeableWeight = Math.max(weight, volumetricWeight);
+  const safeWeight = Math.max(0, weight) || 0;
+  const safeLength = Math.max(0, length) || 0;
+  const safeWidth = Math.max(0, width) || 0;
+  const safeHeight = Math.max(0, height) || 0;
+
+  const volumetricWeight = (safeLength * safeWidth * safeHeight) / 5000;
+  const chargeableWeight = Math.max(safeWeight, volumetricWeight);
 
   const baseRate = originCountry === destinationCountry ? 3.5 : 8.0;
   const carriers = [
@@ -106,11 +118,20 @@ export function calculateLandedCost(
   otherFees: number,
   quantity: number = 1
 ): LandedCostCalc {
-  const totalProductCost = productCost * quantity;
-  const totalShipping = shippingCost * quantity;
-  const tariffAmount = (totalProductCost * tariffPercent) / 100;
-  const totalDuties = tariffAmount + customsDuty;
-  const totalFees = ((totalProductCost * platformFeePercent) / 100) + insuranceCost + otherFees;
+  if (!quantity || quantity <= 0) quantity = 1;
+  const safeProductCost = Math.max(0, productCost) || 0;
+  const safeShippingCost = Math.max(0, shippingCost) || 0;
+  const safeTariffPercent = Math.max(0, tariffPercent) || 0;
+  const safeCustomsDuty = Math.max(0, customsDuty) || 0;
+  const safeInsuranceCost = Math.max(0, insuranceCost) || 0;
+  const safePlatformFeePercent = Math.max(0, platformFeePercent) || 0;
+  const safeOtherFees = Math.max(0, otherFees) || 0;
+
+  const totalProductCost = safeProductCost * quantity;
+  const totalShipping = safeShippingCost * quantity;
+  const tariffAmount = (totalProductCost * safeTariffPercent) / 100;
+  const totalDuties = tariffAmount + safeCustomsDuty;
+  const totalFees = ((totalProductCost * safePlatformFeePercent) / 100) + safeInsuranceCost + safeOtherFees;
   const landedCost = totalProductCost + totalShipping + totalDuties + totalFees;
   const landedCostPerUnit = landedCost / quantity;
 
@@ -121,9 +142,9 @@ export function calculateLandedCost(
     { name: "Product Cost", value: +totalProductCost.toFixed(2), color: "#3b82f6" },
     { name: "Shipping", value: +totalShipping.toFixed(2), color: "#f97316" },
     { name: "Tariffs & Duties", value: +totalDuties.toFixed(2), color: "#ef4444" },
-    { name: "Platform Fees", value: +((totalProductCost * platformFeePercent) / 100).toFixed(2), color: "#a855f7" },
-    { name: "Insurance", value: +insuranceCost.toFixed(2), color: "#eab308" },
-    { name: "Other Fees", value: +otherFees.toFixed(2), color: "#6b7280" },
+    { name: "Platform Fees", value: +((totalProductCost * safePlatformFeePercent) / 100).toFixed(2), color: "#a855f7" },
+    { name: "Insurance", value: +safeInsuranceCost.toFixed(2), color: "#eab308" },
+    { name: "Other Fees", value: +safeOtherFees.toFixed(2), color: "#6b7280" },
   ];
 
   return { landedCost: +landedCost.toFixed(2), totalDuties: +totalDuties.toFixed(2), totalShipping, totalFees: +totalFees.toFixed(2), breakdown, suggestedRetail, profitAtSuggested };
@@ -164,12 +185,21 @@ export function calculateAdROI(
   estimatedCVR: number,
   dailyBudget: number
 ): AdROICalc {
+  if (!dailyBudget || dailyBudget <= 0) {
+    return {
+      estimatedCAC: 0, breakEvenROAS: 0, projectedProfit: 0,
+      requiredSales: 0, dailyBudget: 0, monthlyRevenue: 0,
+      monthlyProfit: 0, scenarios: [],
+    };
+  }
+  const safeCTR = Math.max(0, estimatedCTR) || 0;
+  const safeCVR = Math.max(0, estimatedCVR) || 0;
   const revenuePerUnit = sellingPrice;
   const costPerUnit = productCost + shippingCost + (sellingPrice * platformFeePercent / 100);
   const profitPerUnit = revenuePerUnit - costPerUnit;
 
-  const clicksPerDay = dailyBudget > 0 && estimatedCTR > 0 ? (dailyBudget / (estimatedCTR / 100)) / 100 : 0;
-  const salesPerDay = clicksPerDay * (estimatedCVR / 100);
+  const clicksPerDay = dailyBudget > 0 && safeCTR > 0 ? (dailyBudget / (safeCTR / 100)) / 100 : 0;
+  const salesPerDay = clicksPerDay * (safeCVR / 100);
   const revenuePerDay = salesPerDay * sellingPrice;
   const profitPerDay = (salesPerDay * profitPerUnit) - dailyBudget;
 
@@ -185,8 +215,8 @@ export function calculateAdROI(
     { name: "Expected", spend: dailyBudget, revenue: 0, profit: 0, roas: 0 },
     { name: "Aggressive", spend: dailyBudget * 2, revenue: 0, profit: 0, roas: 0 },
   ].map((s) => {
-    const clicks = s.spend > 0 && estimatedCTR > 0 ? (s.spend / (estimatedCTR / 100)) / 100 : 0;
-    const sales = clicks * (estimatedCVR / 100);
+    const clicks = s.spend > 0 && safeCTR > 0 ? (s.spend / (safeCTR / 100)) / 100 : 0;
+    const sales = clicks * (safeCVR / 100);
     const rev = sales * sellingPrice;
     const prof = (sales * profitPerUnit) - s.spend;
     return { ...s, revenue: +rev.toFixed(2), profit: +prof.toFixed(2), roas: s.spend > 0 ? +(rev / s.spend).toFixed(2) : 0 };
@@ -223,6 +253,9 @@ export function calculateOrderProfit(
   adSpend: number = 0,
   otherCosts: number = 0
 ): OrderProfitResult {
+  if (!revenue || revenue <= 0) {
+    return { netProfit: 0, profitMargin: 0, totalCosts: 0, breakdown: [] };
+  }
   const platformFee = +(revenue * platformFeePercent / 100).toFixed(2);
   const paymentProcessing = +(revenue * paymentProcessingPercent / 100).toFixed(2);
   const totalCosts = +(cogs + shippingCost + platformFee + paymentProcessing + refunds + adSpend + otherCosts).toFixed(2);
@@ -255,6 +288,12 @@ export interface AggregatedProfitResult {
 export function calculateAggregatedProfit(
   orders: { revenue: number; cogs: number; shippingCost: number; platformFee: number; paymentProcessing: number; refunds: number; adSpend: number; otherCosts: number; netProfit: number }[]
 ): AggregatedProfitResult {
+  if (!orders || orders.length === 0) {
+    return {
+      totalRevenue: 0, totalCosts: 0, totalProfit: 0, profitMargin: 0,
+      totalOrders: 0, avgOrderProfit: 0, avgOrderValue: 0,
+    };
+  }
   const totalRevenue = orders.reduce((sum, o) => sum + o.revenue, 0);
   const totalCosts = orders.reduce((sum, o) => sum + o.cogs + o.shippingCost + o.platformFee + o.paymentProcessing + o.refunds + o.adSpend + o.otherCosts, 0);
   const totalProfit = orders.reduce((sum, o) => sum + o.netProfit, 0);

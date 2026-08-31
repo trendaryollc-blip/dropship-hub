@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   TrendingUp, Flame, Zap, ArrowUpRight, RefreshCw,
   Globe, BarChart3, ShoppingCart,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useAPI } from "@/hooks/useAPI";
 
 interface TrendingProduct {
   id: string;
@@ -42,30 +43,14 @@ const defaultAlerts: MarketAlert[] = [
 
 export default function LiveMarketIntel() {
   const { user } = useAuth();
-  const [trending, setTrending] = useState<TrendingProduct[]>(defaultTrending);
-  const [alerts, setAlerts] = useState<MarketAlert[]>(defaultAlerts);
-  const [loading, setLoading] = useState(false);
+  const uid = user?.uid || "";
+  const { data, isLoading: loading, mutate } = useAPI<{ trending?: TrendingProduct[]; alerts?: MarketAlert[] }>(
+    uid ? `/api/ai/market-intel?uid=${uid}` : null,
+    { refreshInterval: 600000 }
+  );
+  const trending = data?.trending?.length ? data.trending : defaultTrending;
+  const alerts = data?.alerts?.length ? data.alerts : defaultAlerts;
   const [activeTab, setActiveTab] = useState<"trending" | "alerts">("trending");
-
-  const fetchData = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/ai/market-intel?uid=${user.uid}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.trending?.length) setTrending(data.trending);
-        if (data.alerts?.length) setAlerts(data.alerts);
-      }
-    } catch { /* use defaults */ }
-    setLoading(false);
-  }, [user]);
-
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 600000);
-    return () => clearInterval(interval);
-  }, [fetchData]);
 
   return (
     <div className="bg-white/[0.02] rounded-2xl border border-white/[0.06] overflow-hidden h-fit">
@@ -78,7 +63,7 @@ export default function LiveMarketIntel() {
           <span className="text-sm font-semibold text-foreground">Market Intel</span>
         </div>
         <button
-          onClick={fetchData}
+          onClick={() => mutate()}
           className="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
         >
           <RefreshCw className={`h-3.5 w-3.5 text-muted-foreground ${loading ? "animate-spin" : ""}`} />

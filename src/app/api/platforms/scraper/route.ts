@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth";
+import { validateBody, ScraperSchema } from "@/lib/validation";
 
 const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY;
 const ZENROWS_API_KEY = process.env.ZENROWS_API_KEY;
@@ -35,12 +37,12 @@ const platformConfigs: Record<string, { name: string; searchUrl: (q: string) => 
 };
 
 async function scrapeWithScraperAPI(url: string) {
-  const params = new URLSearchParams({
-    api_key: SCRAPER_API_KEY!,
-    url,
-    render: "true",
+  const res = await fetch("https://api.scraperapi.com", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ api_key: SCRAPER_API_KEY, url, render: true }),
+    signal: AbortSignal.timeout(30000),
   });
-  const res = await fetch(`https://api.scraperapi.com?${params}`);
   if (!res.ok) throw new Error(`ScraperAPI ${res.status}`);
   return res.text();
 }
@@ -99,15 +101,15 @@ async function scrapePlatform(platformId: string, query: string) {
   return { products, source: platformId, query, total: products.length };
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
-    const { query, platform } = await request.json();
+    const parseResult = validateBody(ScraperSchema, await request.json());
+    if (!parseResult.success) return parseResult.response;
+    const { query, platform } = parseResult.data;
 
-    if (!platform || !platformConfigs[platform]) {
+    if (!platformConfigs[platform]) {
       return NextResponse.json({ error: "Invalid platform" }, { status: 400 });
     }
-
-    if (!query) return NextResponse.json({ error: "Query is required" }, { status: 400 });
 
     if (!SCRAPER_API_KEY && !ZENROWS_API_KEY) {
       return NextResponse.json({ error: "No scraper API configured" }, { status: 503 });
@@ -118,12 +120,12 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Scrape failed" }, { status: 500 });
   }
-}
+});
 
-export async function GET() {
+export const GET = withAuth(async (request: NextRequest, uid: string) => {
   return NextResponse.json({
     platform: "Scraper-Based Platforms",
     configured: !!(SCRAPER_API_KEY || ZENROWS_API_KEY),
     supported: Object.keys(platformConfigs),
   });
-}
+});

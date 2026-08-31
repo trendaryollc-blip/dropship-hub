@@ -2,80 +2,21 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // User profiles
-    match /users/{userId} {
+    // User profiles and all subcollections
+    match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
-
-      // User settings
-      match /settings/{docId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-
-      // Favorites
-      match /favorites/{favId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-
-      // Calculator history
-      match /calcHistory/{docId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-
-      // Chat history
-      match /chatHistory/{docId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-
-      // Product notes
-      match /notes/{productId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-
-      // Revenue tracking
-      match /revenue/{docId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-
-      // Smart alerts
-      match /alerts/{docId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-
-      // Daily missions
-      match /missions/{docId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-
-      // Watchlist
-      match /watchlist/{docId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-
-      // Search history
-      match /searchHistory/{docId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-
-      // Competitor searches
-      match /competitorSearches/{docId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-
-      // Product enrichment cache
-      match /enrichmentCache/{docId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-
-      // Daily intelligence digests
-      match /digests/{docId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
     }
 
     // Platform configurations (API keys, health status)
-    // Any authenticated user can read/write — this is a personal tool
+    // Read: any authenticated user. Write: only admin (owner).
     match /platforms/{platformId} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.token.admin == true;
+    }
+
+    // Reject all other access
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

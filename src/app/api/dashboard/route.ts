@@ -1,12 +1,31 @@
 import { NextResponse } from "next/server";
 import { searchCJProducts } from "@/lib/platform-search";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
+
+interface CacheEntry<T> { data: T; expires: number; }
+const dashboardCache = new Map<string, CacheEntry<unknown>>();
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+function getCached<T>(key: string): T | null {
+  const entry = dashboardCache.get(key);
+  if (!entry || Date.now() > entry.expires) {
+    dashboardCache.delete(key);
+    return null;
+  }
+  return entry.data as T;
+}
+
+function setCache<T>(key: string, data: T): void {
+  dashboardCache.set(key, { data, expires: Date.now() + CACHE_TTL_MS });
+}
 
 interface TickerItem {
   name: string;
   platform: string;
   price: number;
-  change: number;
-  sparkline: number[];
+  change: null;
+  sparkline: null;
 }
 
 interface AIDailyPick {
@@ -14,70 +33,57 @@ interface AIDailyPick {
   category: string;
   image: string;
   description: string;
-  radarScores: { margin: number; demand: number; competition: number; trend: number; supplier: number };
+  radarScores: null;
   sourcePrice: number;
-  sellPrice: number;
-  margin: number;
+  sellPrice: null;
+  profit: null;
+  margin: null;
   risk: "low" | "medium" | "high";
   reason: string;
   platform: string;
-  ordersPerMonth: number;
-  saturation: number;
-  overallScore: number;
-  earningsPreview: { profitPerOrder: number; ordersPerMonth: number; monthlyRevenue: number };
+  ordersPerMonth: null;
+  saturation: null;
+  overallScore: null;
+  earningsPreview: { profitPerOrder: number; ordersPerMonth: null; monthlyRevenue: number };
   reasonPoints: string[];
   expiresAt: string;
-  yesterdayPick?: { title: string; result: string; up: boolean };
+  yesterdayPick: null;
 }
 
 interface RevenueStat {
   label: string;
   value: number;
-  change: string;
-  up: boolean;
+  change: null;
+  up: null;
   icon: string;
   color: string;
   prefix?: string;
-  sparkline: number[];
-}
-
-interface SmartAlert {
-  id: string;
-  type: "opportunity" | "risk" | "info" | "warning";
-  title: string;
-  description: string;
-  action: string;
-  actionHref: string;
-  timestamp: string;
-  read: boolean;
-  confidence: number;
-  aiAnalysis: string;
-  sparkline: number[];
+  sparkline: null;
 }
 
 interface NicheCard {
   name: string;
   category: string;
-  scores: { demand: number; profit: number; competition: number; trend: number; seasonality: number };
+  scores: { demand: number; profit: number; competition: number; trend: null; seasonality: null };
   overallScore: number;
   grade: "A+" | "A" | "B+" | "B" | "C+" | "C";
   productCount: number;
   avgMargin: number;
-  growth: number;
-  aiInsight: string;
-  demandSparkline: number[];
+  growth: null;
+  aiInsight: null;
+  demandSparkline: null;
   topProduct: string;
 }
 
 interface SupplierStatus {
   name: string;
-  trustBadge: "gold" | "silver" | "bronze";
-  responseTime: string;
-  responseLevel: "fast" | "moderate" | "slow";
-  completionRate: number;
-  status: "online" | "busy" | "offline";
-  rating: number;
-  location: string;
+  productCount: number;
+  trustBadge: null;
+  responseTime: null;
+  responseLevel: null;
+  completionRate: null;
+  status: null;
+  rating: null;
 }
 
 interface DailyMission {
@@ -91,30 +97,31 @@ interface HeatmapCategory {
   category: string;
   heat: number;
   productCount: number;
-  avgMargin: number;
-  trend: "up" | "down" | "stable";
-  weeklyData: number[];
+  avgMargin: null;
+  trend: null;
+  weeklyData: null;
   topProduct: string;
-  topProductMargin: number;
-  aiInsight: string;
-  velocity: number;
+  topProductMargin: null;
+  aiInsight: null;
+  velocity: null;
 }
 
 interface TrendingProduct {
   name: string;
   platform: string;
   price: number;
-  sellPrice: number;
-  profit: number;
-  margin: number;
-  trend: number;
-  sparkline: number[];
-  confidence: number;
+  sellPrice: null;
+  profit: null;
+  margin: null;
+  trend: null;
+  sparkline: null;
+  confidence: null;
   whyTrending: string;
-  demandLevel: "low" | "medium" | "high";
-  competitionLevel: "low" | "medium" | "high";
-  supplierReliability: number;
-  monthlyVolume: number;
+  demandScore: null;
+  demandLevel: null;
+  competitionLevel: null;
+  supplierReliability: null;
+  monthlyVolume: null;
   shippingDays: string;
   sourceUrl: string;
   competitors: { name: string; price: number }[];
@@ -123,22 +130,12 @@ interface TrendingProduct {
 
 interface AIBriefing {
   insights: string[];
-  sentiment: number;
+  sentiment: null;
   sentimentLabel: string;
   opportunities: number;
   risks: number;
   trends: number;
   lastScan: string;
-}
-
-interface MarketPulseCard {
-  label: string;
-  value: string;
-  change: string;
-  up: boolean;
-  sparkline: number[];
-  icon: string;
-  color: string;
 }
 
 interface QuickActionStat {
@@ -150,35 +147,33 @@ interface QuickActionStat {
   statLabel: string;
 }
 
-function makeSparkline(len = 7): number[] {
-  return Array.from({ length: len }, () => Math.round(Math.random() * 40 + 80));
-}
-
-function pickRisk(price: number): "low" | "medium" | "high" {
-  if (price < 5) return "low";
-  if (price < 20) return "medium";
-  return "high";
-}
-
-export async function GET() {
+export const GET = withAuth(async (request: Request) => {
   try {
     const categories = ["electronics", "fashion", "home gadgets", "beauty", "toys"];
 
-    const categoryData: Record<string, { search_results: { title: string; price: number | null; image: string | null; link: string; source: string; rating?: number; reviews?: number }[] }> = {};
+    const cacheKey = "dashboard:trending";
+    let categoryData = getCached<Record<string, { search_results: { title: string; price: number | null; image: string | null; link: string; source: string; rating?: number; reviews?: number }[] }>>(cacheKey);
 
-    for (const cat of categories) {
-      try {
-        const result = await searchCJProducts(cat);
-        if (result.search_results.length > 0) {
-          categoryData[cat] = result;
+    if (!categoryData) {
+      categoryData = {};
+
+      const results = await Promise.allSettled(
+        categories.map(async (cat) => {
+          const result = await searchCJProducts(cat);
+          return { cat, result };
+        })
+      );
+
+      for (const r of results) {
+        if (r.status === "fulfilled" && r.value.result.search_results.length > 0) {
+          categoryData![r.value.cat] = r.value.result;
         }
-        await new Promise((r) => setTimeout(r, 500));
-      } catch {
-        // skip this category
       }
+
+      setCache(cacheKey, categoryData);
     }
 
-    let allProducts = Object.entries(categoryData).flatMap(([cat, data]) =>
+    const allProducts = Object.entries(categoryData).flatMap(([cat, data]) =>
       data.search_results
         .filter((p) => p.price !== null && p.price > 0)
         .map((p) => ({ ...p, category: cat }))
@@ -195,7 +190,7 @@ export async function GET() {
         dailyMissions: [],
         heatmap: [],
         trending: [],
-        briefing: { insights: ["CJ Dropshipping API is temporarily unavailable. Please try again in a moment."], sentiment: 50, sentimentLabel: "Neutral", opportunities: 0, risks: 0, trends: 0, lastScan: "retrying..." },
+        briefing: { insights: ["CJ Dropshipping API is temporarily unavailable. Please try again in a moment."], sentiment: null, sentimentLabel: "Neutral", opportunities: 0, risks: 0, trends: 0, lastScan: "retrying..." },
         pulse: [],
         actionStats: [],
       });
@@ -204,45 +199,38 @@ export async function GET() {
     const ticker: TickerItem[] = allProducts.slice(0, 5).map((p) => ({
       name: p.title.length > 40 ? p.title.slice(0, 37) + "..." : p.title,
       platform: "CJ Dropshipping",
-      price: Number(p.price!.toFixed(2)),
-      change: Number((Math.random() * 20 - 8).toFixed(1)),
-      sparkline: makeSparkline(),
+      price: Number((p.price ?? 0).toFixed(2)),
+      change: null,
+      sparkline: null,
     }));
 
     const bestProduct = allProducts.reduce((best, p) => {
       const score = (p.rating ?? 4) * 10 + (p.reviews ?? 100) / 10;
       const bestScore = (best.rating ?? 4) * 10 + (best.reviews ?? 100) / 10;
       return score > bestScore ? p : best;
-    }, allProducts[0]);
+    });
 
-    const sourcePrice = bestProduct.price!;
-    const sellPrice = Number((sourcePrice * 2.5 + 4.99).toFixed(2));
-    const margin = Number((((sellPrice - sourcePrice) / sellPrice) * 100).toFixed(1));
+    const sourcePrice = bestProduct.price ?? 0;
 
     const aiDailyPick: AIDailyPick = {
       title: bestProduct.title,
       category: bestProduct.category,
       image: bestProduct.image || "",
       description: `High-potential product in ${bestProduct.category} with strong demand signals on CJ Dropshipping.`,
-      radarScores: {
-        margin: Math.min(95, Math.round(50 + margin)),
-        demand: Math.round(60 + Math.random() * 30),
-        competition: Math.round(30 + Math.random() * 40),
-        trend: Math.round(65 + Math.random() * 25),
-        supplier: Math.round(70 + Math.random() * 20),
-      },
+      radarScores: null,
       sourcePrice,
-      sellPrice,
-      margin,
-      risk: pickRisk(sourcePrice),
+      sellPrice: null,
+      profit: null,
+      margin: null,
+      risk: "low",
       reason: `Competitive source price in ${bestProduct.category} with healthy margin potential.`,
       platform: "CJ Dropshipping",
-      ordersPerMonth: Math.round(200 + Math.random() * 800),
-      saturation: Math.round(30 + Math.random() * 40),
-      overallScore: Math.round(60 + Math.random() * 30),
+      ordersPerMonth: null,
+      saturation: null,
+      overallScore: null,
       earningsPreview: {
-        profitPerOrder: Number((sellPrice - sourcePrice).toFixed(2)),
-        ordersPerMonth: Math.round(300 + Math.random() * 500),
+        profitPerOrder: 0,
+        ordersPerMonth: null,
         monthlyRevenue: 0,
       },
       reasonPoints: [
@@ -252,153 +240,75 @@ export async function GET() {
         "Favorable margin-to-competition ratio",
       ],
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      yesterdayPick: {
-        title: "Wireless Bluetooth Earbuds",
-        result: "Sold 47 units",
-        up: true,
-      },
+      yesterdayPick: null,
     };
-    aiDailyPick.earningsPreview.monthlyRevenue = Number(
-      (aiDailyPick.earningsPreview.profitPerOrder * aiDailyPick.earningsPreview.ordersPerMonth).toFixed(2)
-    );
 
     const totalProducts = allProducts.length;
-    const avgPrice = Number((allProducts.reduce((s, p) => s + p.price!, 0) / totalProducts).toFixed(2));
+    const avgPrice = Number((allProducts.reduce((s, p) => s + (p.price ?? 0), 0) / totalProducts).toFixed(2));
 
     const revenueStats: RevenueStat[] = [
       {
         label: "Total Products Scanned",
         value: totalProducts,
-        change: "+12%",
-        up: true,
+        change: null,
+        up: null,
         icon: "Package",
         color: "#6366f1",
-        sparkline: makeSparkline(),
+        sparkline: null,
       },
       {
         label: "Average Source Price",
         value: avgPrice,
-        change: "-3.2%",
-        up: false,
+        change: null,
+        up: null,
         icon: "DollarSign",
         color: "#10b981",
         prefix: "$",
-        sparkline: makeSparkline(),
-      },
-      {
-        label: "Estimated Monthly Revenue",
-        value: Number((aiDailyPick.earningsPreview.monthlyRevenue).toFixed(2)),
-        change: "+18%",
-        up: true,
-        icon: "TrendingUp",
-        color: "#f59e0b",
-        prefix: "$",
-        sparkline: makeSparkline(),
+        sparkline: null,
       },
       {
         label: "Active Categories",
         value: Object.keys(categoryData).length,
-        change: "0%",
-        up: true,
+        change: null,
+        up: null,
         icon: "LayoutGrid",
         color: "#8b5cf6",
-        sparkline: makeSparkline(),
+        sparkline: null,
       },
     ];
-
-    const smartAlerts: SmartAlert[] = [
-      {
-        id: "alert-1",
-        type: "opportunity",
-        title: "Price Drop Detected",
-        description: `${ticker[0]?.name ?? "Top product"} saw a source price reduction on CJ. Consider stocking up.`,
-        action: "View Product",
-        actionHref: "/products",
-        timestamp: new Date().toISOString(),
-        read: false,
-        confidence: 87,
-        aiAnalysis: "Historical price data suggests this is a recurring weekly dip. Good time to order inventory.",
-        sparkline: makeSparkline(),
-      },
-      {
-        id: "alert-2",
-        type: "info",
-        title: "New Category Trending",
-        description: `"${categories[2]}" products are surging on CJ Dropshipping with ${categoryData[categories[2]]?.search_results.length ?? 0} new listings.`,
-        action: "Explore Category",
-        actionHref: "/niches",
-        timestamp: new Date(Date.now() - 3600000).toISOString(),
-        read: false,
-        confidence: 92,
-        aiAnalysis: "Seasonal demand pattern detected. This category typically peaks in the next 2-3 weeks.",
-        sparkline: makeSparkline(),
-      },
-      {
-        id: "alert-3",
-        type: "warning",
-        title: "Supplier Response Time Increasing",
-        description: "CJ Dropshipping average response time has increased by 15% today.",
-        action: "Check Suppliers",
-        actionHref: "/suppliers",
-        timestamp: new Date(Date.now() - 7200000).toISOString(),
-        read: true,
-        confidence: 74,
-        aiAnalysis: "This is within normal fluctuation range. No immediate action required but monitor over next 24 hours.",
-        sparkline: makeSparkline(),
-      },
-    ];
-
-    if (allProducts.length > 3) {
-      const cheapProduct = allProducts.reduce((min, p) => (p.price! < min.price! ? p : min), allProducts[0]);
-      smartAlerts.push({
-        id: "alert-4",
-        type: "opportunity",
-        title: "Ultra-Low Cost Product Found",
-        description: `"${cheapProduct.title.slice(0, 50)}..." available at $${cheapProduct.price} source price.`,
-        action: "Analyze Margins",
-        actionHref: "/analysis",
-        timestamp: new Date(Date.now() - 1800000).toISOString(),
-        read: false,
-        confidence: 81,
-        aiAnalysis: `Source price of $${cheapProduct.price} leaves room for ${Math.round(((cheapProduct.price! * 2.5 + 4.99 - cheapProduct.price!) / (cheapProduct.price! * 2.5 + 4.99)) * 100)}% margin at recommended sell price.`,
-        sparkline: makeSparkline(),
-      });
-    }
 
     const nicheCards: NicheCard[] = Object.entries(categoryData).slice(0, 5).map(([cat, data]) => {
       const products = data.search_results.filter((p) => p.price !== null && p.price > 0);
-      const avgMargin = products.length > 0 ? Math.round(30 + Math.random() * 40) : 0;
-      const demand = Math.round(50 + Math.random() * 45);
-      const profit = Math.min(95, Math.round(avgMargin + Math.random() * 15));
-      const competition = Math.round(30 + Math.random() * 50);
-      const trend = Math.round(45 + Math.random() * 45);
-      const seasonality = Math.round(20 + Math.random() * 60);
-      const overallScore = Math.round((demand + profit + trend) / 3);
+      const avgMargin = products.length > 0 ? Math.round(30 + products.length * 2) : 0;
+      const demand = Math.min(95, products.length * 10);
+      const profit = Math.min(95, avgMargin);
+      const competition = Math.max(10, 100 - products.length * 5);
+      const overallScore = Math.round((demand + profit) / 2);
       const grade: NicheCard["grade"] = overallScore >= 85 ? "A+" : overallScore >= 75 ? "A" : overallScore >= 65 ? "B+" : overallScore >= 55 ? "B" : overallScore >= 45 ? "C+" : "C";
       return {
         name: cat.charAt(0).toUpperCase() + cat.slice(1),
         category: cat,
-        scores: { demand, profit, competition, trend, seasonality },
+        scores: { demand, profit, competition, trend: null, seasonality: null },
         overallScore,
         grade,
         productCount: data.search_results.length,
         avgMargin,
-        growth: Math.round(-5 + Math.random() * 30),
-        aiInsight: `${cat.charAt(0).toUpperCase() + cat.slice(1)} niche has ${demand > 70 ? "strong" : "moderate"} demand with ${competition > 60 ? "high" : "manageable"} competition. Average margin of ${avgMargin}% makes this ${overallScore >= 70 ? "a promising" : "a viable"} opportunity.`,
-        demandSparkline: Array.from({ length: 7 }, () => Math.round(demand * (0.7 + Math.random() * 0.6))),
+        growth: null,
+        aiInsight: null,
+        demandSparkline: null,
         topProduct: products[0]?.title?.slice(0, 50) || "N/A",
       };
     });
 
     const supplierStatus: SupplierStatus = {
       name: "CJ Dropshipping",
-      trustBadge: Object.keys(categoryData).length >= 4 ? "gold" : Object.keys(categoryData).length >= 2 ? "silver" : "bronze",
-      responseTime: `${Math.round(800 + Math.random() * 1200)}ms`,
-      responseLevel: Math.random() > 0.5 ? "fast" : "moderate",
-      completionRate: Number((90 + Math.random() * 9).toFixed(1)),
-      status: Object.keys(categoryData).length >= 3 ? "online" : "busy",
-      rating: Number((4 + Math.random()).toFixed(1)),
-      location: "China / Global",
+      productCount: totalProducts,
+      trustBadge: null,
+      responseTime: null,
+      responseLevel: null,
+      completionRate: null,
+      status: null,
+      rating: null,
     };
 
     const dailyMissions: DailyMission[] = [
@@ -411,48 +321,28 @@ export async function GET() {
       const products = data.search_results.filter((p) => p.price !== null && p.price > 0);
       const heat = Math.min(100, Math.round((data.search_results.length / 20) * 100));
       const topProduct = products.length > 0 ? products[0].title.slice(0, 30) : "N/A";
-      const topMargin = products.length > 0 ? Math.round(Math.random() * 50 + 30) : 0;
-      const weeklyData = Array.from({ length: 7 }, () => Math.round(heat * (0.7 + Math.random() * 0.6)));
-      const trend: "up" | "down" | "stable" = heat >= 65 ? "up" : heat >= 40 ? "stable" : "down";
       return {
         category: cat,
         productCount: data.search_results.length,
-        avgMargin: Number((Math.random() * 40 + 20).toFixed(1)),
-        trend,
-        weeklyData,
+        avgMargin: null,
+        trend: null,
+        weeklyData: null,
         topProduct,
-        topProductMargin: topMargin,
-        aiInsight: heat >= 65 ? `${cat} is trending up` : heat >= 40 ? `${cat} is stable` : `${cat} is cooling down`,
-        velocity: heat,
+        topProductMargin: null,
+        aiInsight: null,
+        velocity: null,
         heat,
       };
     });
 
     const trendingProducts: TrendingProduct[] = allProducts.slice(0, 6).map((p) => {
-      const sourcePrice = p.price!;
-      const sellPrice = Number((sourcePrice * 2.5 + 4.99).toFixed(2));
-      const profit = Number((sellPrice - sourcePrice).toFixed(2));
-      const margin = Number((((sellPrice - sourcePrice) / sellPrice) * 100).toFixed(0));
-
-      const demandScore = Math.min(100, Math.round(40 + (p.reviews ?? 50) / 10 + Math.random() * 20));
-      const demandLevel: "low" | "medium" | "high" = demandScore >= 70 ? "high" : demandScore >= 50 ? "medium" : "low";
-      const competitionLevel: "low" | "medium" | "high" = sourcePrice < 5 ? "high" : sourcePrice < 15 ? "medium" : "low";
-
-      const confidence = Math.min(98, Math.round(55 + (p.rating ?? 4) * 5 + Math.min((p.reviews ?? 0) / 100, 20) + Math.random() * 10));
-      const trendPct = Number((Math.random() * 45 + 5).toFixed(0));
-      const sparkline = Array.from({ length: 7 }, (_, i) => Math.round(20 + (i * trendPct / 7) + Math.random() * 10));
+      const sourcePrice = p.price ?? 0;
 
       const categoryProducts = allProducts.filter((ap) => ap.category === p.category && ap.title !== p.title);
       const competitors = categoryProducts.slice(0, 3).map((cp) => ({
         name: cp.title.length > 35 ? cp.title.slice(0, 32) + "..." : cp.title,
-        price: Number(((cp.price! * 2.5 + 4.99)).toFixed(2)),
+        price: Number((cp.price ?? 0).toFixed(2)),
       }));
-      if (competitors.length < 3) {
-        competitors.push(
-          { name: `${p.category} generic option A`, price: Number((sellPrice * 0.85).toFixed(2)) },
-          { name: `${p.category} generic option B`, price: Number((sellPrice * 1.2).toFixed(2)) },
-        );
-      }
 
       const titleWords = p.title.split(" ").slice(0, 5).join(" ");
 
@@ -460,36 +350,38 @@ export async function GET() {
         name: p.title.length > 60 ? p.title.slice(0, 57) + "..." : p.title,
         platform: "CJ Dropshipping",
         price: sourcePrice,
-        sellPrice,
-        profit,
-        margin: Number(margin),
-        trend: Number(trendPct),
-        sparkline,
-        confidence,
-        whyTrending: `${p.category} product with $${sourcePrice} source price and ${margin}% margin potential. ${(p.reviews ?? 0) > 50 ? "High review count signals strong demand." : "Growing category with room for new sellers."}`,
-        demandLevel,
-        competitionLevel,
-        supplierReliability: Math.round(88 + Math.random() * 10),
-        monthlyVolume: Math.round(500 + Math.random() * 5000),
+        sellPrice: null,
+        profit: null,
+        margin: null,
+        trend: null,
+        sparkline: null,
+        confidence: null,
+        whyTrending: `${p.category} product with $${sourcePrice} source price. ${(p.reviews ?? 0) > 50 ? "High review count signals strong demand." : "Growing category with room for new sellers."}`,
+        demandScore: null,
+        demandLevel: null,
+        competitionLevel: null,
+        supplierReliability: null,
+        monthlyVolume: null,
         shippingDays: "7-15",
         sourceUrl: p.link || "#",
         competitors,
         listingSuggestion: {
           title: `${titleWords} — Premium Quality, Fast Shipping`,
-          description: `High-quality ${p.category} product. Competitive pricing at $${sellPrice} retail. Free returns, fast processing via CJ Dropshipping.`,
+          description: `High-quality ${p.category} product. Competitive pricing. Free returns, fast processing via CJ Dropshipping.`,
         },
       };
     });
 
-    const priceDrops = allProducts.filter((p) => p.price! < 5).length;
+    const priceDrops = allProducts.filter((p) => (p.price ?? 0) < 5).length;
     const highMarginProducts = allProducts.filter((p) => {
-      const sp = p.price! * 2.5 + 4.99;
-      return ((sp - p.price!) / sp) * 100 > 60;
+      const price = p.price ?? 0;
+      const sp = price * 2.5 + 4.99;
+      return ((sp - price) / sp) * 100 > 60;
     }).length;
 
     const insights: string[] = [];
     if (bestProduct) {
-      insights.push(`${bestProduct.title.slice(0, 50)} is the top-rated product in ${bestProduct.category} with ${margin}% margin potential`);
+      insights.push(`${bestProduct.title.slice(0, 50)} is the top-rated product in ${bestProduct.category}`);
     }
     if (priceDrops > 0) {
       insights.push(`${priceDrops} products under $5 detected — low-cost, high-margin opportunities available`);
@@ -506,65 +398,20 @@ export async function GET() {
     const riskCount = allProducts.filter((p) => p.price! > 30).length > 0 ? 1 : 0;
     const trendCount = Object.keys(categoryData).length;
 
-    const sentimentScore = Math.min(95, Math.round(50 + margin / 3 + Object.keys(categoryData).length * 3));
-    const sentimentLabel = sentimentScore >= 70 ? "Bullish" : sentimentScore >= 40 ? "Neutral" : "Bearish";
-
     const aiBriefing: AIBriefing = {
       insights,
-      sentiment: sentimentScore,
-      sentimentLabel,
+      sentiment: null,
+      sentimentLabel: "Neutral",
       opportunities: oppCount,
       risks: riskCount,
       trends: trendCount,
       lastScan: "just now",
     };
 
-    const cheapCount = allProducts.filter((p) => p.price! < 5).length;
-    const trendingCount = allProducts.filter((p) => (p.reviews ?? 0) > 50).length;
-
-    const marketPulse: MarketPulseCard[] = [
-      {
-        label: "Trending Products",
-        value: `${trendingCount}`,
-        change: `+${Math.min(trendingCount, 6)} this week`,
-        up: true,
-        sparkline: makeSparkline(),
-        icon: "flame",
-        color: "text-orange-400",
-      },
-      {
-        label: "Supplier Activity",
-        value: `${Object.keys(categoryData).length}/${categories.length}`,
-        change: Object.keys(categoryData).length >= 3 ? "All online" : "Partial",
-        up: true,
-        sparkline: makeSparkline(),
-        icon: "truck",
-        color: "text-emerald-400",
-      },
-      {
-        label: "Price Changes",
-        value: `${cheapCount + Math.round(Math.random() * 5)}`,
-        change: `${cheapCount} down, ${Math.round(Math.random() * 3)} up`,
-        up: false,
-        sparkline: makeSparkline(),
-        icon: "trending",
-        color: "text-amber-400",
-      },
-      {
-        label: "Niche Momentum",
-        value: Object.keys(categoryData)[0]?.charAt(0).toUpperCase() + Object.keys(categoryData)[0]?.slice(1) || "N/A",
-        change: `+${Math.round(15 + Math.random() * 20)}% demand`,
-        up: true,
-        sparkline: makeSparkline(),
-        icon: "target",
-        color: "text-blue-400",
-      },
-    ];
-
     const quickActions: QuickActionStat[] = [
       { label: "Search Products", description: "Discover new items to sell", href: "/products", color: "blue", stat: `${totalProducts}`, statLabel: "scanned this week" },
       { label: "Find Suppliers", description: "Compare supplier options", href: "/suppliers", color: "emerald", stat: `${Object.keys(categoryData).length}/${categories.length}`, statLabel: "suppliers online" },
-      { label: "Calculate Profit", description: "Estimate your margins", href: "/calculator", color: "amber", stat: `${Math.round(5 + Math.random() * 20)}`, statLabel: "calcs today" },
+      { label: "Calculate Profit", description: "Estimate your margins", href: "/calculator", color: "amber", stat: `${totalProducts}`, statLabel: "products analyzed" },
       { label: "AI Assistant", description: "Get smart recommendations", href: "/ai", color: "purple", stat: `${oppCount}`, statLabel: "new suggestions" },
     ];
 
@@ -572,14 +419,14 @@ export async function GET() {
       ticker,
       aiDailyPick,
       revenueStats,
-      alerts: smartAlerts,
+      alerts: [],
       nicheCards,
       supplierStatuses: [supplierStatus],
       dailyMissions,
       heatmap,
       trending: trendingProducts,
       briefing: aiBriefing,
-      pulse: marketPulse,
+      pulse: null,
       actionStats: quickActions,
     });
   } catch {
@@ -593,9 +440,9 @@ export async function GET() {
       dailyMissions: [],
       heatmap: [],
       trending: [],
-      briefing: { insights: ["System recovering — please try again"], sentiment: 50, sentimentLabel: "Neutral", opportunities: 0, risks: 0, trends: 0, lastScan: "retrying..." },
-      pulse: [],
+      briefing: { insights: ["System recovering — please try again"], sentiment: null, sentimentLabel: "Neutral", opportunities: 0, risks: 0, trends: 0, lastScan: "retrying..." },
+      pulse: null,
       actionStats: [],
     });
   }
-}
+}, LIMITS.DEFAULT);

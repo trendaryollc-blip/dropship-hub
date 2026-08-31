@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { searchCJProducts } from "@/lib/platform-search";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 
 interface Category {
   id: string;
@@ -37,7 +39,7 @@ const CATEGORY_IMAGES: Record<string, string> = {
   "Beauty & Care": "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400&h=250&fit=crop",
 };
 
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     if (cachedCategories && Date.now() - cachedCategories.timestamp < CACHE_TTL) {
       return NextResponse.json({ categories: cachedCategories.categories, cached: true });
@@ -70,7 +72,7 @@ export async function GET() {
       }
 
       const avgMargin = avgPrice > 0
-        ? Math.min(80, Math.round(30 + Math.random() * 35))
+        ? Math.min(80, Math.round(Math.max(20, 60 - avgPrice * 0.5)))
         : 30;
 
       categories.push({
@@ -78,9 +80,9 @@ export async function GET() {
         name: config.name,
         icon: config.icon,
         image: productImage || CATEGORY_IMAGES[config.name] || "",
-        productCount: Math.max(productCount * 12, Math.round(500 + Math.random() * 2000)),
+        productCount: productCount,
         avgMargin,
-        trending: avgMargin > 40 || productCount > 10,
+        trending: productCount > 10,
         query: config.query,
       });
     }
@@ -89,7 +91,7 @@ export async function GET() {
     return NextResponse.json({ categories, count: categories.length });
   } catch (error) {
     return NextResponse.json(
-      { categories: [], error: error instanceof Error ? error.message : "Unknown error" },
+      { categories: [], error: error instanceof Error ? error.message : "Unknown error"       },
     );
   }
-}
+}, LIMITS.DEFAULT);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Activity, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2,
   Zap, ArrowRight, Search, Rocket, Sunset,
@@ -8,6 +8,7 @@ import {
 import { useInView } from "@/hooks/useInView";
 import { useAuth } from "@/components/auth/AuthProvider";
 import type { ProductLifecycle, LifecycleAlert, LifecycleStage, LifecycleStageInfo } from "@/types/product";
+import { useAPI } from "@/hooks/useAPI";
 
 const stageInfo: Record<LifecycleStage, LifecycleStageInfo> = {
   discovery: { stage: "discovery", label: "Discovery", color: "text-blue-400", bgColor: "bg-blue-400/10 border-blue-400/20", description: "Initial research and data collection", typicalDuration: "1-2 weeks" },
@@ -178,35 +179,16 @@ function AlertRow({ alert, delay }: { alert: LifecycleAlert & { productTitle: st
 
 export default function ProductLifecyclePage() {
   const { user } = useAuth();
-  const [products, setProducts] = useState<ProductLifecycle[]>([]);
-  const [alerts, setAlerts] = useState<(LifecycleAlert & { productTitle: string; productImage: string })[]>([]);
-  const [stages, setStages] = useState<{ stage: LifecycleStage; count: number; products: string[] }[]>([]);
-  const [loading, setLoading] = useState(true);
+  const uid = user?.uid || "";
+  const { data: pData } = useAPI<{ products?: ProductLifecycle[] }>(uid ? `/api/products/lifecycle?type=overview&uid=${uid}` : null);
+  const { data: aData } = useAPI<{ alerts?: (LifecycleAlert & { productTitle: string; productImage: string })[] }>(uid ? `/api/products/lifecycle?type=alerts&uid=${uid}` : null);
+  const { data: sData } = useAPI<{ stages?: { stage: LifecycleStage; count: number; products: string[] }[] }>(uid ? `/api/products/lifecycle?type=stages&uid=${uid}` : null);
+  const products = pData?.products || [];
+  const alerts = aData?.alerts || [];
+  const stages = sData?.stages || [];
+  const loading = !user || (!pData && !sData);
   const [activeTab, setActiveTab] = useState<"pipeline" | "products" | "alerts">("pipeline");
   const [filterStage, setFilterStage] = useState<LifecycleStage | "all">("all");
-
-  useEffect(() => {
-    if (!user) return;
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const uid = user.uid;
-        const [pRes, aRes, sRes] = await Promise.all([
-          fetch(`/api/products/lifecycle?type=overview&uid=${uid}`),
-          fetch(`/api/products/lifecycle?type=alerts&uid=${uid}`),
-          fetch(`/api/products/lifecycle?type=stages&uid=${uid}`),
-        ]);
-        const pData = await pRes.json();
-        const aData = await aRes.json();
-        const sData = await sRes.json();
-        if (pData.products) setProducts(pData.products);
-        if (aData.alerts) setAlerts(aData.alerts);
-        if (sData.stages) setStages(sData.stages);
-      } catch {}
-      setLoading(false);
-    };
-    fetchData();
-  }, [user]);
 
   const filtered = filterStage === "all" ? products : products.filter((p) => p.currentStage === filterStage);
   const criticalAlerts = alerts.filter((a) => a.severity === "critical").length;

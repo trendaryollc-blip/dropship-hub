@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, isOwner } from "@/lib/auth";
 import {
   getAllPlatforms,
   createPlatform,
@@ -8,6 +8,7 @@ import {
   addPlatformKey,
   removePlatformKey,
   updatePlatformKey,
+  reorderPlatformKeys,
   resetKeyUsage,
   type PlatformInput,
 } from "@/lib/platform-config";
@@ -16,6 +17,7 @@ import {
 export async function GET(request: NextRequest) {
   const uid = await verifyAuth(request);
   if (!uid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await isOwner(uid))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
     const platforms = await getAllPlatforms();
@@ -32,6 +34,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const uid = await verifyAuth(request);
   if (!uid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await isOwner(uid))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
     const body = await request.json();
@@ -71,6 +74,15 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "platformId and keyId are required" }, { status: 400 });
       }
       await resetKeyUsage(platformId, keyId);
+      return NextResponse.json({ success: true });
+    }
+
+    if (action === "reorder_keys") {
+      const { platformId, keyIds } = body;
+      if (!platformId || !Array.isArray(keyIds)) {
+        return NextResponse.json({ error: "platformId and keyIds array are required" }, { status: 400 });
+      }
+      await reorderPlatformKeys(platformId, keyIds);
       return NextResponse.json({ success: true });
     }
 
@@ -118,6 +130,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   const uid = await verifyAuth(request);
   if (!uid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await isOwner(uid))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
     const body = await request.json();
@@ -141,6 +154,7 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const uid = await verifyAuth(request);
   if (!uid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await isOwner(uid))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
     const { searchParams } = new URL(request.url);

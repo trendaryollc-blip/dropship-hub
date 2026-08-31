@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, isOwner } from "@/lib/auth";
 import { createPlatform, getAllPlatforms, deletePlatform, type PlatformInput } from "@/lib/platform-config";
+import { logger } from "@/lib/logger";
 
 const SEED_PLATFORMS: PlatformInput[] = [
   {
@@ -117,6 +118,7 @@ const SEED_PLATFORMS: PlatformInput[] = [
 export async function POST(request: NextRequest) {
   const uid = await verifyAuth(request);
   if (!uid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await isOwner(uid))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
     const { searchParams } = new URL(request.url);
@@ -154,7 +156,7 @@ export async function POST(request: NextRequest) {
         await createPlatform(input);
         created.push(input.name);
       } catch (error) {
-        console.error(`Failed to seed ${input.name}:`, error);
+        logger.error(`Failed to seed ${input.name}`, { error: error instanceof Error ? error.message : String(error) });
       }
     }
 

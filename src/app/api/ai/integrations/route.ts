@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 import { DocumentData } from "firebase-admin/firestore";
+import { safeNum, safeStr } from "@/lib/utils-helpers";
 
 interface IntegrationStatus {
   id: string;
@@ -25,14 +28,6 @@ interface IntegrationsResult {
   generatedAt: string;
 }
 
-function safeStr(val: unknown, fallback = ""): string {
-  return typeof val === "string" ? val : fallback;
-}
-
-function safeNum(val: unknown, fallback = 0): number {
-  return typeof val === "number" ? val : fallback;
-}
-
 function checkProviderStatus(envKeys: string[]): { configured: number; total: number; names: string[] } {
   const providers = [
     { name: "Groq", key: "GROQ_API_KEY" },
@@ -53,15 +48,8 @@ function checkProviderStatus(envKeys: string[]): { configured: number; total: nu
   };
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
-    const body = await request.json();
-    const { uid } = body;
-
-    if (!uid) {
-      return NextResponse.json({ error: "uid is required" }, { status: 400 });
-    }
-
     const db = await getAdminDB();
     const userRef = db.collection("users").doc(uid);
 
@@ -183,4 +171,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, LIMITS.AI_CHAT);

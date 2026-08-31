@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import {
   TrendingUp, TrendingDown, AlertTriangle, CheckCircle2,
   Clock, Package, Star, ArrowRight,
@@ -8,6 +8,7 @@ import {
 import { useInView } from "@/hooks/useInView";
 import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useAPI } from "@/hooks/useAPI";
 import type { SupplierPerformance, SupplierAlert } from "@/types/supplier";
 
 function SupplierScoreCard({ supplier, delay }: { supplier: SupplierPerformance; delay: number }) {
@@ -248,36 +249,15 @@ function PerformanceChart({ supplier }: { supplier: SupplierPerformance }) {
 
 export default function SupplierPerformancePage() {
   const { user } = useAuth();
-  const [suppliers, setSuppliers] = useState<SupplierPerformance[]>([]);
-  const [alerts, setAlerts] = useState<SupplierAlert[]>([]);
-  const [comparison, setComparison] = useState<{ name: string; reliabilityScore: number; refundRate: number; avgShippingDays: number; complaintRate: number; stockReliability: number; priceCompetitiveness: number; totalOrders: number }[]>([]);
-  const [loading, setLoading] = useState(true);
+  const uid = user?.uid || "";
+  const { data: sData } = useAPI<{ suppliers?: SupplierPerformance[] }>(uid ? `/api/suppliers/performance?type=overview&uid=${uid}` : null);
+  const { data: aData } = useAPI<{ alerts?: SupplierAlert[] }>(uid ? `/api/suppliers/performance?type=alerts&uid=${uid}` : null);
+  const { data: cData } = useAPI<{ comparison?: { name: string; reliabilityScore: number; refundRate: number; avgShippingDays: number; complaintRate: number; stockReliability: number; priceCompetitiveness: number; totalOrders: number }[] }>(uid ? `/api/suppliers/performance?type=comparison&uid=${uid}` : null);
+  const suppliers = sData?.suppliers || [];
+  const alerts = aData?.alerts || [];
+  const comparison = cData?.comparison || [];
+  const loading = !user || (!sData && !cData);
   const [activeTab, setActiveTab] = useState<"overview" | "alerts" | "comparison">("overview");
-
-  useEffect(() => {
-    if (!user) return;
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const uid = user.uid;
-        const [sRes, aRes, cRes] = await Promise.all([
-          fetch(`/api/suppliers/performance?type=overview&uid=${uid}`),
-          fetch(`/api/suppliers/performance?type=alerts&uid=${uid}`),
-          fetch(`/api/suppliers/performance?type=comparison&uid=${uid}`),
-        ]);
-        const sData = await sRes.json();
-        const aData = await aRes.json();
-        const cData = await cRes.json();
-        if (sData.suppliers) setSuppliers(sData.suppliers);
-        if (aData.alerts) setAlerts(aData.alerts);
-        if (cData.comparison) setComparison(cData.comparison);
-      } catch (err) {
-        console.error("Failed to load supplier performance data:", err);
-      }
-      setLoading(false);
-    };
-    fetchData();
-  }, [user]);
 
   const criticalAlerts = alerts.filter((a) => a.severity === "high").length;
 

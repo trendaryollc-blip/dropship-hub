@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth";
 
 const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY;
 const ZENROWS_API_KEY = process.env.ZENROWS_API_KEY;
@@ -42,7 +43,7 @@ function extractProducts(html: string, source: string) {
   }));
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const { query, platform } = await request.json();
     if (!query) return NextResponse.json({ error: "Query is required" }, { status: 400 });
@@ -58,8 +59,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Search failed" }, { status: 500 });
   }
-}
+});
 
-export async function GET() {
+export const GET = withAuth(async (request: NextRequest, uid: string) => {
   return NextResponse.json({ platform: "Scraper Platforms", configured: !!(SCRAPER_API_KEY || ZENROWS_API_KEY), supported: Object.keys(platformUrls) });
-}
+});

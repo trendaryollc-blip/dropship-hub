@@ -23,6 +23,8 @@ import {
   Trash2, Scan, PanelRightClose, PanelRightOpen,
   FileText, Zap, Plus,
 } from "lucide-react";
+import { safeFetch } from "@/lib/safe-fetch";
+import type { ProductRecommendation, RevenueForecast, BusinessReport, CompetitorChange, CompetitorSummary } from "@/types/ai";
 
 interface ScanResult {
   hasChanges: boolean;
@@ -42,8 +44,17 @@ interface Message {
   actions?: { label: string; href: string }[];
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function formatMessage(content: string): string {
-  return content
+  return escapeHtml(content)
     .replace(/\*\*(.*?)\*\*/g, '<strong class="text-foreground font-semibold">$1</strong>')
     .replace(/•/g, '<span class="text-accent mr-1">•</span>')
     .replace(/✅/g, '<span class="text-emerald-400">✅</span>')
@@ -51,6 +62,11 @@ function formatMessage(content: string): string {
     .replace(/❌/g, '<span class="text-red-400">❌</span>')
     .replace(/⚠️/g, '<span class="text-amber-400">⚠️</span>')
     .replace(/`([^`]+)`/g, '<code class="px-1.5 py-0.5 rounded bg-white/5 text-accent text-[12px] font-mono">$1</code>');
+}
+
+let messageIdCounter = 0;
+function uniqueId(): string {
+  return `${Date.now()}-${++messageIdCounter}`;
 }
 
 function detectActions(content: string): Message["actions"] {
@@ -96,14 +112,14 @@ export default function AIPage() {
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [scanning, setScanning] = useState(false);
   const [showReport, setShowReport] = useState(false);
-  const [report, setReport] = useState(null);
+  const [report, setReport] = useState<BusinessReport | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [notifications, setNotifications] = useState<{ id: string; title: string; severity: string; read: boolean }[]>([]);
-  const [recommendations, setRecommendations] = useState<any[]>([]);
-  const [forecast, setForecast] = useState<any>(null);
+  const [recommendations, setRecommendations] = useState<ProductRecommendation[]>([]);
+  const [forecast, setForecast] = useState<RevenueForecast | null>(null);
   const [forecastLoading, setForecastLoading] = useState(false);
-  const [competitorChanges, setCompetitorChanges] = useState<any[]>([]);
-  const [competitorSummary, setCompetitorSummary] = useState({ totalChanges: 0, critical: 0, warnings: 0, opportunities: 0 });
+  const [competitorChanges, setCompetitorChanges] = useState<CompetitorChange[]>([]);
+  const [competitorSummary, setCompetitorSummary] = useState<CompetitorSummary>({ totalChanges: 0, critical: 0, warnings: 0, opportunities: 0 });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -113,11 +129,8 @@ export default function AIPage() {
     if (!user?.uid) return;
     try {
       setContextLoading(true);
-      const res = await fetch(`/api/ai/context?uid=${user.uid}`);
-      if (res.ok) {
-        const data = await res.json();
-        setContext(data);
-      }
+      const data = await safeFetch<BusinessContext>(`/api/ai/context?uid=${user.uid}`);
+      setContext(data);
     } catch {
       // Context fetch failed — continue without it
     } finally {
@@ -127,12 +140,11 @@ export default function AIPage() {
 
   // Check if AI is configured
   useEffect(() => {
-    fetch("/api/ai")
-      .then((res) => res.json())
+    safeFetch<{ providers: Record<string, { configured?: boolean }> }>("/api/ai")
       .then((data) => {
         const providers = data.providers || {};
         const hasConfigured = Object.values(providers).some(
-          (p: unknown) => (p as { configured?: boolean })?.configured === true
+          (p) => p?.configured === true
         );
         setAiConfigured(hasConfigured);
       })
@@ -168,15 +180,12 @@ export default function AIPage() {
     const runScan = async () => {
       try {
         setScanning(true);
-        const res = await fetch("/api/ai/scan", {
+        const data = await safeFetch<ScanResult>("/api/ai/scan", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ uid: user.uid }),
         });
-        if (res.ok) {
-          const data = await res.json();
-          setScanResult(data);
-        }
+        setScanResult(data);
       } catch { /* ignore */ } finally {
         setScanning(false);
       }
@@ -187,7 +196,7 @@ export default function AIPage() {
   const clearHistory = async () => {
     if (!user?.uid) return;
     try {
-      await fetch(`/api/ai/history?uid=${user.uid}`, { method: "DELETE" });
+      await safeFetch<unknown>(`/api/ai/history?uid=${user.uid}`, { method: "DELETE" });
       setMessages([]);
       setHasStarted(false);
     } catch { /* ignore */ }
@@ -198,11 +207,8 @@ export default function AIPage() {
     if (!user?.uid) return;
     const fetchNotifications = async () => {
       try {
-        const res = await fetch(`/api/ai/notifications?uid=${user.uid}`);
-        if (res.ok) {
-          const data = await res.json();
-          setNotifications(data.notifications || []);
-        }
+        const data = await safeFetch<{ notifications: { id: string; title: string; severity: string; read: boolean }[] }>(`/api/ai/notifications?uid=${user.uid}`);
+        setNotifications(data.notifications || []);
       } catch { /* ignore */ }
     };
     fetchNotifications();
@@ -215,18 +221,16 @@ export default function AIPage() {
     if (!user?.uid || !hasStarted) return;
     const fetchIntelligence = async () => {
       try {
-        const [recRes, compRes] = await Promise.allSettled([
-          fetch("/api/ai/recommendations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid: user.uid }) }),
-          fetch("/api/ai/competitors", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid: user.uid }) }),
+        const [recData, compData] = await Promise.allSettled([
+          safeFetch<{ recommendations: ProductRecommendation[] }>("/api/ai/recommendations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid: user.uid }) }),
+          safeFetch<{ changes: CompetitorChange[]; summary: CompetitorSummary }>("/api/ai/competitors", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid: user.uid }) }),
         ]);
-        if (recRes.status === "fulfilled" && recRes.value.ok) {
-          const data = await recRes.value.json();
-          setRecommendations(data.recommendations || []);
+        if (recData.status === "fulfilled") {
+          setRecommendations(recData.value.recommendations || []);
         }
-        if (compRes.status === "fulfilled" && compRes.value.ok) {
-          const data = await compRes.value.json();
-          setCompetitorChanges(data.changes || []);
-          setCompetitorSummary(data.summary || { totalChanges: 0, critical: 0, warnings: 0, opportunities: 0 });
+        if (compData.status === "fulfilled") {
+          setCompetitorChanges(compData.value.changes || []);
+          setCompetitorSummary(compData.value.summary || { totalChanges: 0, critical: 0, warnings: 0, opportunities: 0 });
         }
       } catch { /* ignore */ }
     };
@@ -237,15 +241,12 @@ export default function AIPage() {
     if (!user?.uid) return;
     setForecastLoading(true);
     try {
-      const res = await fetch("/api/ai/forecast", {
+      const data = await safeFetch<RevenueForecast>("/api/ai/forecast", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uid: user.uid, days: 14 }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setForecast(data);
-      }
+      setForecast(data);
     } catch { /* ignore */ } finally {
       setForecastLoading(false);
     }
@@ -255,15 +256,12 @@ export default function AIPage() {
     if (!user?.uid) return;
     setReportLoading(true);
     try {
-      const res = await fetch("/api/ai/report", {
+      const data = await safeFetch<BusinessReport>("/api/ai/report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uid: user.uid, period }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setReport(data);
-      }
+      setReport(data);
     } catch { /* ignore */ } finally {
       setReportLoading(false);
     }
@@ -295,7 +293,7 @@ export default function AIPage() {
     if (!hasStarted) setHasStarted(true);
 
     const userMsg: Message = {
-      id: Date.now().toString(),
+      id: uniqueId(),
       role: "user",
       content,
       timestamp: new Date(),
@@ -308,11 +306,11 @@ export default function AIPage() {
 
     // Save user message to Firebase
     if (user?.uid) {
-      fetch("/api/ai/history", {
+      safeFetch<unknown>("/api/ai/history", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uid: user.uid, role: "user", content }),
-      }).catch(() => {});
+      }).catch((e) => { if (process.env.NODE_ENV === "development") console.warn("[AI] silently caught", e); });
     }
 
     try {
@@ -331,20 +329,19 @@ export default function AIPage() {
 
       if (!res.ok || !res.body) {
         // Non-streaming fallback — try again without stream
-        const retryRes = await fetch("/api/ai", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messages: apiMessages,
-            context: context || undefined,
-            stream: false,
-          }),
-        });
-        if (retryRes.ok) {
-          const retryData = await retryRes.json();
+        try {
+          const retryData = await safeFetch<{ response?: string; provider?: string }>("/api/ai", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              messages: apiMessages,
+              context: context || undefined,
+              stream: false,
+            }),
+          });
           if (retryData.response) {
             const aiMsg: Message = {
-              id: (Date.now() + 1).toString(),
+              id: uniqueId(),
               role: "assistant",
               content: retryData.response,
               provider: retryData.provider || "AI",
@@ -353,15 +350,15 @@ export default function AIPage() {
             };
             setMessages((prev) => [...prev, aiMsg]);
             if (user?.uid) {
-              fetch("/api/ai/history", {
+              safeFetch<unknown>("/api/ai/history", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ uid: user.uid, role: "assistant", content: retryData.response, provider: retryData.provider }),
-              }).catch(() => {});
+              }).catch((e) => { if (process.env.NODE_ENV === "development") console.warn("[AI] silently caught", e); });
             }
             return;
           }
-        }
+        } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[AI] silently caught", e); }
         throw new Error("Failed to get response");
       }
 
@@ -370,7 +367,7 @@ export default function AIPage() {
       const decoder = new TextDecoder();
       let fullResponse = "";
       let providerName = "";
-      const msgId = (Date.now() + 1).toString();
+      const msgId = uniqueId();
 
       // Add empty assistant message that we'll update as tokens stream in
       setMessages((prev) => [...prev, {
@@ -432,22 +429,21 @@ export default function AIPage() {
 
       // If stream failed, retry with non-streaming fallback
       if (!fullResponse && providerName === "Error") {
-        const retryRes = await fetch("/api/ai", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messages: apiMessages,
-            context: context || undefined,
-            stream: false,
-          }),
-        });
-        if (retryRes.ok) {
-          const retryData = await retryRes.json();
+        try {
+          const retryData = await safeFetch<{ response?: string; provider?: string }>("/api/ai", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              messages: apiMessages,
+              context: context || undefined,
+              stream: false,
+            }),
+          });
           if (retryData.response) {
             fullResponse = retryData.response;
             providerName = retryData.provider || "AI";
           }
-        }
+        } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[AI] silently caught", e); }
       }
 
       // Finalize: add actions to the streamed message
@@ -469,11 +465,11 @@ export default function AIPage() {
 
         // Save assistant message to Firebase
         if (user?.uid) {
-          fetch("/api/ai/history", {
+          safeFetch<unknown>("/api/ai/history", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ uid: user.uid, role: "assistant", content: fullResponse, provider: providerName }),
-          }).catch(() => {});
+          }).catch((e) => { if (process.env.NODE_ENV === "development") console.warn("[AI] silently caught", e); });
         }
       }
     } catch {
@@ -481,7 +477,7 @@ export default function AIPage() {
         ? "No AI provider is configured. Go to Settings > AI Providers to add your API key (Groq, Gemini, OpenAI, or Mistral)."
         : "I couldn't connect to the AI service. Please try again in a moment.";
       const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
+        id: uniqueId(),
         role: "assistant",
         content: errorMsg,
         provider: "Error",

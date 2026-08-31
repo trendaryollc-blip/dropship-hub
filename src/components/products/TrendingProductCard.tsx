@@ -37,7 +37,7 @@ export default function TrendingProductCard({ product, index, rank }: {
     "from-purple-400/60 to-purple-500",
     "from-pink-400/60 to-pink-500",
   ];
-  const rankBg = rankGradients[Math.min(rank - 1, rankGradients.length - 1)];
+  const rankBg = rankGradients[Math.max(0, Math.min(rank - 1, rankGradients.length - 1))];
   const demand = demandConfig[product.demandLevel];
   const comp = compConfig[product.competitionLevel];
 

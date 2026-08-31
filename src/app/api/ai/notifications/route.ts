@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 import { DocumentData } from "firebase-admin/firestore";
+import { safeNum, safeStr } from "@/lib/utils-helpers";
 
 interface NotificationPayload {
   title: string;
@@ -10,23 +13,8 @@ interface NotificationPayload {
   severity: "info" | "warning" | "critical";
 }
 
-function safeNum(val: unknown, fallback = 0): number {
-  return typeof val === "number" ? val : fallback;
-}
-
-function safeStr(val: unknown, fallback = ""): string {
-  return typeof val === "string" ? val : fallback;
-}
-
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
-    const body = await request.json();
-    const { uid } = body;
-
-    if (!uid) {
-      return NextResponse.json({ error: "uid is required" }, { status: 400 });
-    }
-
     const db = await getAdminDB();
     const userRef = db.collection("users").doc(uid);
 
@@ -144,13 +132,19 @@ export async function POST(request: NextRequest) {
     }
     await batch.commit();
 
-    // Try to send FCM push notification (if token exists)
-    const fcmToken = localStorage?.getItem?.("fcmToken") || null;
+    // Try to send FCM push notification (if token stored in Firestore)
     let pushSent = false;
 
-    if (fcmToken && process.env.FIREBASE_SERVER_KEY) {
+    const settingsDoc = await userRef.collection("settings").doc("notifications").get();
+    const fcmToken = settingsDoc.exists ? (settingsDoc.data() as DocumentData)?.fcmToken || null : null;
+
+    if (fcmToken) {
       try {
-        const payload = {
+        const { getAdminAuth } = await import("@/lib/firebase-admin");
+        const auth = getAdminAuth();
+        const projectId = process.env.FIREBASE_PROJECT_ID || "";
+
+        const messagePayload = {
           notification: {
             title: notifications[0].title,
             body: notifications[0].body,
@@ -162,13 +156,13 @@ export async function POST(request: NextRequest) {
           token: fcmToken,
         };
 
-        const fcmRes = await fetch("https://fcm.googleapis.com/v1/projects/" + (process.env.FIREBASE_PROJECT_ID || "") + "/messages:send", {
+        const fcmRes = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${await getAccessToken()}`,
+            Authorization: `Bearer ${await auth.createCustomToken(uid)}`,
           },
-          body: JSON.stringify({ message: payload }),
+          body: JSON.stringify({ message: messagePayload }),
         });
 
         pushSent = fcmRes.ok;
@@ -191,18 +185,11 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, LIMITS.AI_CHAT);
 
 // GET: Fetch recent notifications for in-app display
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
-    const { searchParams } = new URL(request.url);
-    const uid = searchParams.get("uid");
-
-    if (!uid) {
-      return NextResponse.json({ error: "uid is required" }, { status: 400 });
-    }
-
     const db = await getAdminDB();
     const snap = await db
       .collection("users")
@@ -222,14 +209,45 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, LIMITS.AI_CHAT);
 
-// Helper to get Google Auth token for FCM
-async function getAccessToken(): Promise<string> {
-  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || "{}");
-  if (!serviceAccount.client_email) return "";
+// PATCH: Mark notifications as read
+export const PATCH = withAuth(async (request: NextRequest, uid: string) => {
+  try {
+    const body = await request.json();
+    const { markAll, notificationIds } = body;
 
-  // For server-side FCM, we'd use google-auth-library
-  // This is a simplified version — in production use googleapis
-  return "";
-}
+    const db = await getAdminDB();
+    const collRef = db.collection("users").doc(uid).collection("notifications");
+
+    if (markAll) {
+      const snap = await collRef.where("read", "==", false).limit(100).get();
+      if (!snap.empty) {
+        const batch = db.batch();
+        for (const doc of snap.docs) {
+          batch.update(doc.ref, { read: true });
+        }
+        await batch.commit();
+      }
+      return NextResponse.json({ success: true, marked: snap.size });
+    }
+
+    if (notificationIds && Array.isArray(notificationIds)) {
+      const batch = db.batch();
+      for (const id of notificationIds) {
+        batch.update(collRef.doc(id), { read: true });
+      }
+      await batch.commit();
+      return NextResponse.json({ success: true, marked: notificationIds.length });
+    }
+
+    return NextResponse.json({ error: "Provide markAll: true or notificationIds: string[]" }, { status: 400 });
+  } catch (error) {
+    return NextResponse.json(
+      { error: "Failed to mark notifications", details: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 }
+    );
+  }
+}, LIMITS.AI_CHAT);
+
+

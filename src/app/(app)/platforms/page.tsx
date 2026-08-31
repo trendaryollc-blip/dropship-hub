@@ -4,9 +4,15 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Globe, Plus, Trash2, Key, Shield, Zap, CheckCircle2, XCircle,
   Loader2, X, Eye, EyeOff, RotateCcw, GripVertical, AlertTriangle,
-  Settings, RefreshCw, ChevronDown, ChevronUp, TestTube,
+  Settings, RefreshCw, ChevronDown, ChevronUp, TestTube, Search,
+  Layers, Store, MousePointer2, Brain,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
+import CuratedListTab from "@/components/platforms/CuratedListTab";
+import NoCodeConnectorTab from "@/components/platforms/NoCodeConnectorTab";
+import AiAutosetupTab from "@/components/platforms/AiAutosetupTab";
+import { safeFetch } from "@/lib/safe-fetch";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 interface ApiKeyEntry {
   id: string;
@@ -47,6 +53,8 @@ export default function PlatformsPage() {
   const { user } = useAuth();
   const [platforms, setPlatforms] = useState<PlatformData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isOwner, setIsOwner] = useState<boolean | null>(null);
+  const [tab, setTab] = useState<"platforms" | "curated" | "connector" | "ai">("platforms");
   const [showAddModal, setShowAddModal] = useState(false);
   const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
@@ -71,6 +79,10 @@ export default function PlatformsPage() {
 
   // Edit key state
   const [editingKey, setEditingKey] = useState<{ platformId: string; keyId: string } | null>(null);
+
+  // Confirm dialog state
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [confirmRemoveKey, setConfirmRemoveKey] = useState<{ platformId: string; keyId: string } | null>(null);
   const [editKeyVal, setEditKeyVal] = useState("");
   const [editKeyLabel, setEditKeyLabel] = useState("");
   const [editKeyLimit, setEditKeyLimit] = useState("");
@@ -79,6 +91,10 @@ export default function PlatformsPage() {
   // Seed state
   const [seeding, setSeeding] = useState(false);
   const [seedResult, setSeedResult] = useState<string | null>(null);
+
+  // Drag-and-drop state for key reordering
+  const [draggedKey, setDraggedKey] = useState<{ platformId: string; keyId: string } | null>(null);
+  const [dragOverKey, setDragOverKey] = useState<{ platformId: string; keyId: string } | null>(null);
 
   // Visibility state for API keys
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
@@ -96,11 +112,25 @@ export default function PlatformsPage() {
     if (!user) return;
     try {
       const token = await user.getIdToken();
-      const res = await fetch("/api/platforms/admin", {
+      let meData;
+      try {
+        meData = await safeFetch<{ isOwner: boolean }>("/api/auth/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch {
+        return;
+      }
+      if (typeof meData.isOwner !== "boolean") {
+        return;
+      }
+      setIsOwner(meData.isOwner);
+      if (!meData.isOwner) {
+        return;
+      }
+      const data = await safeFetch<{ platforms?: PlatformData[] }>("/api/platforms/admin", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await res.json();
-      if (res.ok) setPlatforms(data.platforms || []);
+      setPlatforms(data.platforms || []);
     } catch {
       // silent
     } finally {
@@ -109,6 +139,8 @@ export default function PlatformsPage() {
   }, [user]);
 
   useEffect(() => {
+    // Async data fetch on mount — state updates happen only after awaits.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPlatforms();
   }, [fetchPlatforms]);
 
@@ -126,17 +158,13 @@ export default function PlatformsPage() {
     setSeedResult(null);
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch("/api/platforms/admin/seed?reset=true", {
+      const data = await safeFetch<{ message?: string }>("/api/platforms/admin/seed?reset=true", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify({}),
       });
-      const data = await res.json();
-      if (res.ok) {
-        setSeedResult(data.message);
-        await fetchPlatforms();
-      } else {
-        setSeedResult(data.error || "Seed failed");
-      }
+      setSeedResult(data.message ?? null);
+      await fetchPlatforms();
     } finally {
       setSeeding(false);
     }
@@ -151,16 +179,13 @@ export default function PlatformsPage() {
     setClearingCooldowns(true);
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch("/api/platforms/admin", {
+      const data = await safeFetch<{ message?: string }>("/api/platforms/admin", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...headers },
         body: JSON.stringify({ action: "clear_cooldowns" }),
       });
-      const data = await res.json();
-      if (res.ok) {
-        setSeedResult(data.message || "Cooldowns cleared");
-        await fetchPlatforms();
-      }
+      setSeedResult(data.message || "Cooldowns cleared");
+      await fetchPlatforms();
     } finally {
       setClearingCooldowns(false);
     }
@@ -173,7 +198,7 @@ export default function PlatformsPage() {
     setAdding(true);
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch("/api/platforms/admin", {
+      await safeFetch("/api/platforms/admin", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...headers },
         body: JSON.stringify({
@@ -185,16 +210,14 @@ export default function PlatformsPage() {
           resetDate: newResetDate || undefined,
         }),
       });
-      if (res.ok) {
-        setShowAddModal(false);
-        setNewName("");
-        setNewMethod("official_api");
-        setNewKey("");
-        setNewKeyLabel("Primary");
-        setNewRequestsLimit("100");
-        setNewResetDate("");
-        await fetchPlatforms();
-      }
+      setShowAddModal(false);
+      setNewName("");
+      setNewMethod("official_api");
+      setNewKey("");
+      setNewKeyLabel("Primary");
+      setNewRequestsLimit("100");
+      setNewResetDate("");
+      await fetchPlatforms();
     } finally {
       setAdding(false);
     }
@@ -205,7 +228,7 @@ export default function PlatformsPage() {
   const handleToggleEnabled = async (id: string, current: boolean) => {
     if (!user) return;
     const headers = await getAuthHeaders();
-    await fetch("/api/platforms/admin", {
+    await safeFetch("/api/platforms/admin", {
       method: "PUT",
       headers: { "Content-Type": "application/json", ...headers },
       body: JSON.stringify({ id, enabled: !current }),
@@ -218,14 +241,18 @@ export default function PlatformsPage() {
   // ── Delete Platform ────────────────────────────────────────────────────
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this platform? This cannot be undone.")) return;
-    if (!user) return;
+    setConfirmDelete(id);
+  };
+
+  const confirmDeletePlatform = async () => {
+    if (!confirmDelete || !user) return;
     const headers = await getAuthHeaders();
-    await fetch(`/api/platforms/admin?id=${id}`, {
+    await safeFetch(`/api/platforms/admin?id=${confirmDelete}`, {
       method: "DELETE",
       headers,
     });
-    setPlatforms((prev) => prev.filter((p) => p.id !== id));
+    setPlatforms((prev) => prev.filter((p) => p.id !== confirmDelete));
+    setConfirmDelete(null);
   };
 
   // ── Test Connection ────────────────────────────────────────────────────
@@ -235,7 +262,7 @@ export default function PlatformsPage() {
     setTestResult(null);
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch("/api/platforms/admin/test", {
+      const data = await safeFetch<{ success: boolean; message: string }>("/api/platforms/admin/test", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...headers },
         body: JSON.stringify({
@@ -245,9 +272,7 @@ export default function PlatformsPage() {
           method: platform.method,
         }),
       });
-      const data = await res.json();
       setTestResult({ id: `${platform.id}_${key.id}`, success: data.success, message: data.message });
-      // Refresh to get updated health status
       await fetchPlatforms();
     } finally {
       setTesting(null);
@@ -261,7 +286,7 @@ export default function PlatformsPage() {
     setAddingKey(true);
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch("/api/platforms/admin", {
+      await safeFetch("/api/platforms/admin", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...headers },
         body: JSON.stringify({
@@ -273,14 +298,12 @@ export default function PlatformsPage() {
           resetDate: addKeyReset || undefined,
         }),
       });
-      if (res.ok) {
-        setShowAddKeyFor(null);
-        setAddKeyVal("");
-        setAddKeyLabel("");
-        setAddKeyLimit("100");
-        setAddKeyReset("");
-        await fetchPlatforms();
-      }
+      setShowAddKeyFor(null);
+      setAddKeyVal("");
+      setAddKeyLabel("");
+      setAddKeyLimit("100");
+      setAddKeyReset("");
+      await fetchPlatforms();
     } finally {
       setAddingKey(false);
     }
@@ -289,15 +312,19 @@ export default function PlatformsPage() {
   // ── Remove Key ─────────────────────────────────────────────────────────
 
   const handleRemoveKey = async (platformId: string, keyId: string) => {
-    if (!confirm("Remove this API key?")) return;
-    if (!user) return;
+    setConfirmRemoveKey({ platformId, keyId });
+  };
+
+  const confirmRemoveApiKey = async () => {
+    if (!confirmRemoveKey || !user) return;
     const headers = await getAuthHeaders();
-    await fetch("/api/platforms/admin", {
+    await safeFetch("/api/platforms/admin", {
       method: "POST",
       headers: { "Content-Type": "application/json", ...headers },
-      body: JSON.stringify({ action: "remove_key", platformId, keyId }),
+      body: JSON.stringify({ action: "remove_key", platformId: confirmRemoveKey.platformId, keyId: confirmRemoveKey.keyId }),
     });
     await fetchPlatforms();
+    setConfirmRemoveKey(null);
   };
 
   // ── Edit Key ───────────────────────────────────────────────────────────
@@ -313,7 +340,7 @@ export default function PlatformsPage() {
   const handleSaveEditKey = async () => {
     if (!editingKey || !user) return;
     const headers = await getAuthHeaders();
-    await fetch("/api/platforms/admin", {
+    await safeFetch("/api/platforms/admin", {
       method: "POST",
       headers: { "Content-Type": "application/json", ...headers },
       body: JSON.stringify({
@@ -332,12 +359,84 @@ export default function PlatformsPage() {
     await fetchPlatforms();
   };
 
+  // ── Drag-and-Drop Reorder ───────────────────────────────────────────────
+
+  const handleDragStart = (platformId: string, keyId: string) => {
+    setDraggedKey({ platformId, keyId });
+  };
+
+  const handleDragOver = (e: React.DragEvent, platformId: string, keyId: string) => {
+    e.preventDefault();
+    if (draggedKey && draggedKey.platformId === platformId && draggedKey.keyId !== keyId) {
+      setDragOverKey({ platformId, keyId });
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverKey(null);
+  };
+
+  const handleDrop = async (platformId: string, targetKeyId: string) => {
+    if (!draggedKey || draggedKey.platformId !== platformId || draggedKey.keyId === targetKeyId) {
+      setDraggedKey(null);
+      setDragOverKey(null);
+      return;
+    }
+
+    const platform = platforms.find((p) => p.id === platformId);
+    if (!platform) {
+      setDraggedKey(null);
+      setDragOverKey(null);
+      return;
+    }
+
+    const sortedKeys = [...platform.keys].sort((a, b) => a.priority - b.priority);
+    const draggedIndex = sortedKeys.findIndex((k) => k.id === draggedKey.keyId);
+    const targetIndex = sortedKeys.findIndex((k) => k.id === targetKeyId);
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedKey(null);
+      setDragOverKey(null);
+      return;
+    }
+
+    const newOrder = [...sortedKeys];
+    const [moved] = newOrder.splice(draggedIndex, 1);
+    newOrder.splice(targetIndex, 0, moved);
+
+    const newKeyIds = newOrder.map((k) => k.id);
+
+    setDraggedKey(null);
+    setDragOverKey(null);
+
+    try {
+      const headers = await getAuthHeaders();
+      await safeFetch("/api/platforms/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify({
+          action: "reorder_keys",
+          platformId,
+          keyIds: newKeyIds,
+        }),
+      });
+      await fetchPlatforms();
+    } catch {
+      // silent
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedKey(null);
+    setDragOverKey(null);
+  };
+
   // ── Reset Usage ────────────────────────────────────────────────────────
 
   const handleResetUsage = async (platformId: string, keyId: string) => {
     if (!user) return;
     const headers = await getAuthHeaders();
-    await fetch("/api/platforms/admin", {
+    await safeFetch("/api/platforms/admin", {
       method: "POST",
       headers: { "Content-Type": "application/json", ...headers },
       body: JSON.stringify({ action: "reset_usage", platformId, keyId }),
@@ -352,6 +451,9 @@ export default function PlatformsPage() {
   const healthyCount = platforms.filter((p) => p.lastHealth === "healthy").length;
   const errorCount = platforms.filter((p) => p.lastHealth === "error").length;
   const totalKeys = platforms.reduce((sum, p) => sum + p.keys.length, 0);
+  // A platform is "searchable" when it's enabled AND has at least one API key —
+  // these are the only platforms that appear in the product search for users.
+  const searchableCount = platforms.filter((p) => p.enabled && p.keys.length > 0).length;
 
   if (loading) {
     return (
@@ -359,6 +461,21 @@ export default function PlatformsPage() {
         <div className="flex items-center gap-3 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />
           <span>Loading platforms...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Only the app owner may access platform management.
+  if (!isOwner) {
+    return (
+      <div className="max-w-7xl mx-auto flex items-center justify-center min-h-[60vh]">
+        <div className="glass rounded-2xl p-12 border border-border text-center max-w-md">
+          <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="font-display text-lg font-semibold text-foreground mb-2">Access Restricted</h3>
+          <p className="text-sm text-muted-foreground">
+            Platform management is available only to the app owner.
+          </p>
         </div>
       </div>
     );
@@ -407,8 +524,34 @@ export default function PlatformsPage() {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 rounded-xl bg-surface border border-border">
+        {([
+          { key: "platforms" as const, label: "Platforms", icon: <Layers className="h-3.5 w-3.5" /> },
+          { key: "curated" as const, label: "Curated", icon: <Store className="h-3.5 w-3.5" /> },
+          { key: "connector" as const, label: "No-Code", icon: <MousePointer2 className="h-3.5 w-3.5" /> },
+          { key: "ai" as const, label: "AI Setup", icon: <Brain className="h-3.5 w-3.5" /> },
+        ]).map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              tab === t.key
+                ? "bg-accent text-white shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+            }`}
+          >
+            {t.icon}
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ═══ Tab: Platforms (managed platform list) ═══ */}
+      {tab === "platforms" && (
+        <>
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <div className="glass rounded-xl p-4 border border-border">
           <div className="flex items-center gap-2 mb-1">
             <Globe className="h-3.5 w-3.5 text-accent" />
@@ -443,6 +586,14 @@ export default function PlatformsPage() {
             <span className="text-[10px] text-muted-foreground uppercase tracking-wider">API Keys</span>
           </div>
           <p className="text-2xl font-bold text-purple-400">{totalKeys}</p>
+        </div>
+        <div className="glass rounded-xl p-4 border border-border">
+          <div className="flex items-center gap-2 mb-1">
+            <Search className="h-3.5 w-3.5 text-cyan-400" />
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">In Search</span>
+          </div>
+          <p className="text-2xl font-bold text-cyan-400">{searchableCount}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">enabled + have keys</p>
         </div>
       </div>
 
@@ -496,6 +647,17 @@ export default function PlatformsPage() {
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-400/10 text-purple-400 border border-purple-400/20">
                             {platform.keys.length} key{platform.keys.length !== 1 ? "s" : ""}
                           </span>
+                        )}
+                        {platform.enabled && (
+                          platform.keys.length > 0 ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-400/10 text-cyan-400 border border-cyan-400/20">
+                              In Search
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/10 text-amber-400 border border-amber-400/20">
+                              Needs Key
+                            </span>
+                          )
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5">
@@ -581,7 +743,22 @@ export default function PlatformsPage() {
                       {platform.keys
                         .sort((a, b) => a.priority - b.priority)
                         .map((key) => (
-                          <div key={key.id} className="p-4 rounded-xl bg-surface/50 border border-border">
+                          <div
+                            key={key.id}
+                            draggable={editingKey?.platformId !== platform.id || editingKey?.keyId !== key.id}
+                            onDragStart={() => handleDragStart(platform.id, key.id)}
+                            onDragOver={(e) => handleDragOver(e, platform.id, key.id)}
+                            onDragLeave={handleDragLeave}
+                            onDrop={() => handleDrop(platform.id, key.id)}
+                            onDragEnd={handleDragEnd}
+                            className={`p-4 rounded-xl bg-surface/50 border transition-all ${
+                              draggedKey?.keyId === key.id
+                                ? "opacity-50 border-accent/50"
+                                : dragOverKey?.keyId === key.id
+                                  ? "border-accent/50 bg-accent/5"
+                                  : "border-border"
+                            }`}
+                          >
                             {editingKey?.platformId === platform.id && editingKey?.keyId === key.id ? (
                               /* Edit mode */
                               <div className="space-y-3">
@@ -642,8 +819,8 @@ export default function PlatformsPage() {
                               /* Display mode */
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-4">
-                                  <div className="flex items-center gap-1.5">
-                                    <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40" />
+                                  <div className="flex items-center gap-1.5 cursor-grab active:cursor-grabbing">
+                                    <GripVertical className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-accent transition-colors" />
                                     <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-accent/10 text-accent border border-accent/20">
                                       #{key.priority}
                                     </span>
@@ -967,6 +1144,42 @@ export default function PlatformsPage() {
           </div>
         </div>
       )}
+        </>
+      )}
+
+      {/* ═══ Tab: Curated List ═══ */}
+      {tab === "curated" && (
+        <CuratedListTab onCreated={() => fetchPlatforms()} />
+      )}
+
+      {/* ═══ Tab: No-Code Connector ═══ */}
+      {tab === "connector" && (
+        <NoCodeConnectorTab onCreated={() => fetchPlatforms()} />
+      )}
+
+      {/* ═══ Tab: AI Autosetup ═══ */}
+      {tab === "ai" && (
+        <AiAutosetupTab onCreated={() => fetchPlatforms()} />
+      )}
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Delete this platform?"
+        description="This platform and all its API keys will be permanently removed. This cannot be undone."
+        confirmLabel="Delete"
+        danger
+        onConfirm={confirmDeletePlatform}
+        onCancel={() => setConfirmDelete(null)}
+      />
+      <ConfirmDialog
+        open={!!confirmRemoveKey}
+        title="Remove this API key?"
+        description="This key will be removed from the platform. You can add it back later."
+        confirmLabel="Remove"
+        danger
+        onConfirm={confirmRemoveApiKey}
+        onCancel={() => setConfirmRemoveKey(null)}
+      />
     </div>
   );
 }

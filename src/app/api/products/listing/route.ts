@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 
 const SERP_API_KEY = process.env.SERP_API_KEY;
 
@@ -99,7 +101,7 @@ function generateListingFromCompetitors(
   };
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest) => {
   try {
     const { title, category, price, platform: _platform } = await request.json();
 
@@ -117,4 +119,4 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Failed to generate listing" }, { status: 500 });
   }
-}
+}, LIMITS.DEFAULT);

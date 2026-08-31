@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
+import { validateBody, AIChatSchema } from "@/lib/validation";
 
 interface AIMessage {
   role: "user" | "assistant" | "system";
@@ -174,9 +177,9 @@ async function callGemini(messages: AIMessage[], apiKey: string, systemPrompt: s
     role: m.role === "assistant" ? "model" : "user",
     parts: [{ text: m.content }],
   }));
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+  const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
     body: JSON.stringify({
       contents,
       systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -278,7 +281,12 @@ async function callHuggingFace(messages: AIMessage[], apiKey: string, systemProm
   const res = await fetch("https://api-inference.huggingface.co/models/meta-llama/Llama-3.1-70B-Instruct", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ inputs: { messages: [{ role: "system", content: systemPrompt }, ...formatted] }, parameters: { temperature: 0.7, max_new_tokens: 2048 } }),
+    body: JSON.stringify({
+      model: "meta-llama/Llama-3.1-70B-Instruct",
+      messages: [{ role: "system", content: systemPrompt }, ...formatted],
+      temperature: 0.7,
+      max_tokens: 2048,
+    }),
   });
   if (!res.ok) throw new Error(`HuggingFace ${res.status}: ${await res.text()}`);
   const data = await res.json();
@@ -323,14 +331,18 @@ const allProviders: ProviderConfig[] = [
 
 // ── Streaming provider calls ─────────────────────────────────────
 
-async function* streamOpenAI(messages: AIMessage[], apiKey: string, systemPrompt: string): AsyncGenerator<string> {
-  const formatted = messages.map((m) => ({ role: m.role, content: m.content }));
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+async function* streamOpenAICompatible(
+  url: string,
+  headers: Record<string, string>,
+  body: Record<string, unknown>,
+  extractToken: (json: Record<string, unknown>) => string | undefined,
+): AsyncGenerator<string> {
+  const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: systemPrompt }, ...formatted], temperature: 0.7, max_tokens: 2048, stream: true }),
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`OpenAI ${res.status}`);
+  if (!res.ok) throw new Error(`Provider ${res.status}`);
   const reader = res.body?.getReader();
   if (!reader) throw new Error("No response body");
   const decoder = new TextDecoder();
@@ -344,8 +356,8 @@ async function* streamOpenAI(messages: AIMessage[], apiKey: string, systemPrompt
     for (const line of lines) {
       if (line.startsWith("data: ") && line !== "data: [DONE]") {
         try {
-          const json = JSON.parse(line.slice(6));
-          const token = json.choices?.[0]?.delta?.content;
+          const json = JSON.parse(line.slice(6)) as Record<string, unknown>;
+          const token = extractToken(json);
           if (token) yield token;
         } catch { /* skip malformed */ }
       }
@@ -353,34 +365,30 @@ async function* streamOpenAI(messages: AIMessage[], apiKey: string, systemPrompt
   }
 }
 
+const openAICompatibleTokenExtractor = (json: Record<string, unknown>): string | undefined => {
+  const choices = json.choices as Record<string, unknown>[] | undefined;
+  const delta = choices?.[0] as Record<string, unknown> | undefined;
+  return delta?.content as string | undefined;
+};
+
+async function* streamOpenAI(messages: AIMessage[], apiKey: string, systemPrompt: string): AsyncGenerator<string> {
+  const formatted = messages.map((m) => ({ role: m.role, content: m.content }));
+  yield* streamOpenAICompatible(
+    "https://api.openai.com/v1/chat/completions",
+    { Authorization: `Bearer ${apiKey}` },
+    { model: "gpt-4o-mini", messages: [{ role: "system", content: systemPrompt }, ...formatted], temperature: 0.7, max_tokens: 2048, stream: true },
+    openAICompatibleTokenExtractor,
+  );
+}
+
 async function* streamGroq(messages: AIMessage[], apiKey: string, systemPrompt: string): AsyncGenerator<string> {
   const formatted = messages.map((m) => ({ role: m.role, content: m.content }));
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ model: "llama-3.1-8b-instant", messages: [{ role: "system", content: systemPrompt }, ...formatted], temperature: 0.7, max_tokens: 2048, stream: true }),
-  });
-  if (!res.ok) throw new Error(`Groq ${res.status}`);
-  const reader = res.body?.getReader();
-  if (!reader) throw new Error("No response body");
-  const decoder = new TextDecoder();
-  let buffer = "";
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
-    for (const line of lines) {
-      if (line.startsWith("data: ") && line !== "data: [DONE]") {
-        try {
-          const json = JSON.parse(line.slice(6));
-          const token = json.choices?.[0]?.delta?.content;
-          if (token) yield token;
-        } catch { /* skip malformed */ }
-      }
-    }
-  }
+  yield* streamOpenAICompatible(
+    "https://api.groq.com/openai/v1/chat/completions",
+    { Authorization: `Bearer ${apiKey}` },
+    { model: "llama-3.1-8b-instant", messages: [{ role: "system", content: systemPrompt }, ...formatted], temperature: 0.7, max_tokens: 2048, stream: true },
+    openAICompatibleTokenExtractor,
+  );
 }
 
 async function* streamGemini(messages: AIMessage[], apiKey: string, systemPrompt: string): AsyncGenerator<string> {
@@ -388,9 +396,9 @@ async function* streamGemini(messages: AIMessage[], apiKey: string, systemPrompt
     role: m.role === "assistant" ? "model" : "user",
     parts: [{ text: m.content }],
   }));
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?key=${apiKey}`, {
+  const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
     body: JSON.stringify({
       contents,
       systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -421,32 +429,12 @@ async function* streamGemini(messages: AIMessage[], apiKey: string, systemPrompt
 
 async function* streamMistral(messages: AIMessage[], apiKey: string, systemPrompt: string): AsyncGenerator<string> {
   const formatted = messages.map((m) => ({ role: m.role, content: m.content }));
-  const res = await fetch("https://api.mistral.ai/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ model: "mistral-small-latest", messages: [{ role: "system", content: systemPrompt }, ...formatted], temperature: 0.7, max_tokens: 2048, stream: true }),
-  });
-  if (!res.ok) throw new Error(`Mistral ${res.status}`);
-  const reader = res.body?.getReader();
-  if (!reader) throw new Error("No response body");
-  const decoder = new TextDecoder();
-  let buffer = "";
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
-    for (const line of lines) {
-      if (line.startsWith("data: ") && line !== "data: [DONE]") {
-        try {
-          const json = JSON.parse(line.slice(6));
-          const token = json.choices?.[0]?.delta?.content;
-          if (token) yield token;
-        } catch { /* skip malformed */ }
-      }
-    }
-  }
+  yield* streamOpenAICompatible(
+    "https://api.mistral.ai/v1/chat/completions",
+    { Authorization: `Bearer ${apiKey}` },
+    { model: "mistral-small-latest", messages: [{ role: "system", content: systemPrompt }, ...formatted], temperature: 0.7, max_tokens: 2048, stream: true },
+    openAICompatibleTokenExtractor,
+  );
 }
 
 // ── Streaming provider registry ──────────────────────────────────
@@ -467,17 +455,15 @@ const streamProviders: StreamProviderConfig[] = [
 
 // ── Route handler ─────────────────────────────────────────────────
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
-    const { messages, providerPriority, context, stream } = await request.json();
-
-    if (!messages || !Array.isArray(messages)) {
-      return NextResponse.json({ error: "Messages array is required" }, { status: 400 });
-    }
+    const parseResult = validateBody(AIChatSchema, await request.json());
+    if (!parseResult.success) return parseResult.response;
+    const { messages, providerPriority, context, stream } = parseResult.data;
 
     // Build system prompt — contextual if business data provided, else generic
     const systemPrompt = context
-      ? buildContextualSystemPrompt(context as BusinessContext)
+      ? buildContextualSystemPrompt(context as unknown as BusinessContext)
       : BASE_SYSTEM_PROMPT;
 
     // Build ordered list from user preference or default priority
@@ -588,14 +574,14 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-}
+}, LIMITS.AI_CHAT);
 
 // List available providers
-export async function GET() {
+export const GET = withAuth(async () => {
   const available = allProviders.map((p) => ({
     id: p.id,
     name: p.name,
     configured: !!process.env[p.envKey],
   }));
   return NextResponse.json({ providers: available });
-}
+}, LIMITS.AI_CHAT);

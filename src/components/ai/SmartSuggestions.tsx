@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   TrendingUp, DollarSign, AlertTriangle, Sparkles,
@@ -8,6 +8,7 @@ import {
   Clock, ShoppingCart, Target, Zap,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useAPI } from "@/hooks/useAPI";
 
 interface Suggestion {
   id: string;
@@ -96,28 +97,14 @@ const defaultSuggestions: Suggestion[] = [
 
 export default function SmartSuggestions() {
   const { user } = useAuth();
-  const [suggestions, setSuggestions] = useState<Suggestion[]>(defaultSuggestions);
-  const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(true);
 
-  const fetchSuggestions = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/ai/suggestions?uid=${user.uid}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.suggestions?.length) setSuggestions(data.suggestions);
-      }
-    } catch { /* use defaults */ }
-    setLoading(false);
-  }, [user]);
-
-  useEffect(() => {
-    fetchSuggestions();
-    const interval = setInterval(fetchSuggestions, 300000);
-    return () => clearInterval(interval);
-  }, [fetchSuggestions]);
+  const uid = user?.uid || "";
+  const { data, isLoading: loading, mutate } = useAPI<{ suggestions?: Suggestion[] }>(
+    uid ? `/api/ai/suggestions?uid=${uid}` : null,
+    { refreshInterval: 300000 }
+  );
+  const suggestions = data?.suggestions?.length ? data.suggestions : defaultSuggestions;
 
   return (
     <div className="bg-white/[0.02] rounded-2xl border border-white/[0.06] overflow-hidden">
@@ -138,7 +125,7 @@ export default function SmartSuggestions() {
           <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ml-auto ${expanded ? "rotate-90" : ""}`} />
         </button>
         <button
-          onClick={() => fetchSuggestions()}
+          onClick={() => mutate()}
           className="p-1.5 rounded-lg hover:bg-white/5 transition-colors ml-2"
         >
           <RefreshCw className={`h-3.5 w-3.5 text-muted-foreground ${loading ? "animate-spin" : ""}`} />

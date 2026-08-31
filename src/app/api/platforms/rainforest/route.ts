@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth";
 
 const RAINFOREST_API_KEY = process.env.RAINFOREST_API_KEY;
 
@@ -45,7 +46,7 @@ async function searchAmazonByCategory(category: string) {
   return res.json();
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const { query, action, asin } = await request.json();
     if (!RAINFOREST_API_KEY) {
@@ -69,11 +70,11 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Rainforest API request failed" }, { status: 500 });
   }
-}
+});
 
-export async function GET() {
+export const GET = withAuth(async (request: NextRequest, uid: string) => {
   return NextResponse.json({
     platform: "Rainforest API (Amazon)",
     configured: !!RAINFOREST_API_KEY,
   });
-}
+});

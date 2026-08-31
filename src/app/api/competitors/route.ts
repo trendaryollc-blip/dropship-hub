@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchAmazon, searchGoogleShopping, searchCJProducts, searchKeepaProducts, searchAliExpress, type SearchResult } from "@/lib/platform-search";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 
 // Types
 interface CompetitorListing {
@@ -13,7 +15,7 @@ interface CompetitorListing {
   link: string;
   shipping: string;
   condition: "New";
-  daysAgo: number;
+  daysAgo: number | null;
 }
 
 interface PlatformData {
@@ -35,8 +37,7 @@ interface MarketData {
   priceRange: { min: number; max: number };
   totalListings: number;
   priceDistribution: { range: string; count: number; percent: number; isSweetSpot: boolean }[];
-  priceHistory: { date: string; price: number; volume: number }[];
-  topSellers: { name: string; platform: string; rating: number; totalProducts: number; price: number; threatLevel: "low" | "medium" | "high"; isDropshipper: boolean; otherProducts: { name: string; price: number }[]; responseTime: string; returnPolicy: string }[];
+  topSellers: { name: string; platform: string; rating: number; totalProducts: number; price: number; threatLevel: "low" | "medium" | "high"; isDropshipper: null; otherProducts: { name: string; price: number }[]; responseTime: null; returnPolicy: null }[];
   opportunities: { type: "opportunity" | "gap" | "avoid"; title: string; description: string; count: number; potentialMargin?: number; actionLabel: string }[];
   pricingOptions: { label: string; icon: string; price: number; margin: number; competition: string; recommendation: string }[];
   insights: string[];
@@ -63,13 +64,13 @@ function searchPlatform(
         title: r.title || "Product",
         price: r.price || 0,
         source: key,
-        seller: `${key} seller`,
-        sellerRating: r.rating || 4.0,
-        sellerProducts: Math.round(50 + Math.random() * 500),
+        seller: (typeof r.seller === "string" ? r.seller : null) || `${key} seller`,
+        sellerRating: (typeof r.rating === "number" ? r.rating : null) || 4.0,
+        sellerProducts: (typeof r.sellerProducts === "number" ? r.sellerProducts : null) || 0,
         link: r.link || "#",
-        shipping: "Standard",
+        shipping: (typeof r.shipping === "string" ? r.shipping : null) ?? "Varies",
         condition: "New" as const,
-        daysAgo: Math.round(Math.random() * 30),
+        daysAgo: (typeof r.daysAgo === "number" ? r.daysAgo : null) ?? null,
       }));
       if (!results || results.length === 0) return null;
 
@@ -116,7 +117,7 @@ function searchPlatform(
         link: r.link,
         shipping: r.shipping ?? "Varies",
         condition: "New" as const,
-        daysAgo: r.daysAgo ?? Math.floor(Math.random() * 30) + 1,
+        daysAgo: r.daysAgo ?? null,
       }));
 
       const config = platformConfig[key] ?? { icon: "🛒" };
@@ -158,30 +159,7 @@ function buildPriceDistribution(prices: number[]): { range: string; count: numbe
   });
 }
 
-function buildPriceHistory(prices: number[]): { date: string; price: number; volume: number }[] {
-  const history: { date: string; price: number; volume: number }[] = [];
-  const now = new Date();
-
-  for (let i = 13; i >= 0; i--) {
-    const date = new Date(now);
-    date.setDate(date.getDate() - i);
-    const dateStr = date.toISOString().split("T")[0];
-
-    const variance = 0.95 + Math.random() * 0.1;
-    const basePrice = prices.length > 0 ? prices.reduce((a, b) => a + b, 0) / prices.length : 25;
-    const volume = Math.floor(Math.random() * 20) + 5;
-
-    history.push({
-      date: dateStr,
-      price: Math.round(basePrice * variance * 100) / 100,
-      volume,
-    });
-  }
-
-  return history;
-}
-
-function buildTopSellers(platforms: PlatformData[]): { name: string; platform: string; rating: number; totalProducts: number; price: number; threatLevel: "low" | "medium" | "high"; isDropshipper: boolean; otherProducts: { name: string; price: number }[]; responseTime: string; returnPolicy: string }[] {
+function buildTopSellers(platforms: PlatformData[]): { name: string; platform: string; rating: number; totalProducts: number; price: number; threatLevel: "low" | "medium" | "high"; isDropshipper: null; otherProducts: { name: string; price: number }[]; responseTime: null; returnPolicy: null }[] {
   const sellerMap = new Map<string, { platform: string; rating: number; totalProducts: number; price: number; otherProducts: { name: string; price: number }[] }>();
 
   for (const p of platforms) {
@@ -205,14 +183,6 @@ function buildTopSellers(platforms: PlatformData[]): { name: string; platform: s
     if (data.totalProducts > 200 && data.rating > 4.5) threatLevel = "high";
     else if (data.totalProducts > 50 || data.rating > 4.0) threatLevel = "medium";
 
-    const isDropshipper = data.otherProducts.length > 2;
-
-    const responseTimes = ["< 1 hour", "< 24 hours", "1-2 days", "2-3 days", "3-5 days"];
-    const responseTime = responseTimes[Math.floor(Math.random() * responseTimes.length)];
-
-    const returnPolicies = ["30-day returns", "60-day returns", "No returns accepted", "14-day returns"];
-    const returnPolicy = returnPolicies[Math.floor(Math.random() * returnPolicies.length)];
-
     return {
       name,
       platform: data.platform,
@@ -220,10 +190,10 @@ function buildTopSellers(platforms: PlatformData[]): { name: string; platform: s
       totalProducts: data.totalProducts,
       price: data.price,
       threatLevel,
-      isDropshipper,
+      isDropshipper: null,
       otherProducts: data.otherProducts,
-      responseTime,
-      returnPolicy,
+      responseTime: null,
+      returnPolicy: null,
     };
   });
 
@@ -357,7 +327,7 @@ function buildInsights(platforms: PlatformData[], avgPrice: number, priceRange: 
   return insights;
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest) => {
   try {
     const body = await request.json();
     const { query } = body as { query?: string };
@@ -400,7 +370,6 @@ export async function POST(request: NextRequest) {
     const totalListings = allListings.length;
 
     const priceDistribution = buildPriceDistribution(allPrices);
-    const priceHistory = buildPriceHistory(allPrices);
     const topSellers = buildTopSellers(platforms);
     const opportunities = buildOpportunities(platforms);
     const pricingOptions = buildPricingOptions(platforms);
@@ -412,7 +381,6 @@ export async function POST(request: NextRequest) {
       priceRange,
       totalListings,
       priceDistribution,
-      priceHistory,
       topSellers,
       opportunities,
       pricingOptions,
@@ -424,4 +392,4 @@ export async function POST(request: NextRequest) {
     const message = error instanceof Error ? error.message : "Internal server error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+}, LIMITS.DEFAULT);

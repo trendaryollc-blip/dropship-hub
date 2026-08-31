@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 
 const WOOCOMMERCE_URL = process.env.WOOCOMMERCE_URL;
 const WOOCOMMERCE_CONSUMER_KEY = process.env.WOOCOMMERCE_CONSUMER_KEY;
@@ -10,13 +12,13 @@ async function wooCommerceFetch(endpoint: string, options?: RequestInit) {
   }
 
   const url = new URL(`${WOOCOMMERCE_URL}/wp-json/wc/v3${endpoint}`);
-  url.searchParams.append("consumer_key", WOOCOMMERCE_CONSUMER_KEY);
-  url.searchParams.append("consumer_secret", WOOCOMMERCE_CONSUMER_SECRET);
+  const credentials = Buffer.from(`${WOOCOMMERCE_CONSUMER_KEY}:${WOOCOMMERCE_CONSUMER_SECRET}`).toString("base64");
 
   const res = await fetch(url.toString(), {
     ...options,
     headers: {
       "Content-Type": "application/json",
+      Authorization: `Basic ${credentials}`,
       ...options?.headers,
     },
   });
@@ -73,7 +75,7 @@ async function getCategories(page = 1, perPage = 100) {
   return wooCommerceFetch(`/products/categories?page=${page}&per_page=${perPage}`);
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest) => {
   try {
     const { action, productId, product, page, perPage, force } = await request.json();
 
@@ -125,11 +127,11 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, LIMITS.DEFAULT);
 
-export async function GET() {
+export const GET = withAuth(async () => {
   return NextResponse.json({
     platform: "WooCommerce",
     configured: !!(WOOCOMMERCE_URL && WOOCOMMERCE_CONSUMER_KEY && WOOCOMMERCE_CONSUMER_SECRET),
   });
-}
+}, LIMITS.DEFAULT);

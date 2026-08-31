@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Store, CheckCircle, AlertTriangle, XCircle, ShoppingBag, ChevronDown, ChevronUp } from "lucide-react";
+import { safeFetch } from "@/lib/safe-fetch";
 
 interface StorePerformance {
   id: string;
@@ -33,13 +34,12 @@ export default function StoreComparator({ uid }: { uid: string }) {
   const analyze = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/ai/stores", {
+      setData(await safeFetch("/api/ai/stores", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uid }),
-      });
-      setData(await res.json());
-    } catch {}
+      }));
+    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[StoreComparator] silently caught", e); }
     setLoading(false);
   };
 

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { searchCJProducts } from "@/lib/platform-search";
+import { getAdminDB } from "@/lib/firebase-admin";
 import { sendDigestEmail } from "@/lib/email-digest";
+import { withAuth } from "@/lib/auth";
+import { DocumentData } from "firebase-admin/firestore";
 
 interface DigestMetrics {
   orders: number;
@@ -30,23 +32,45 @@ interface DigestResponse {
   };
 }
 
-function generateMockMetrics(): DigestMetrics {
-  const orders = Math.floor(8 + Math.random() * 20);
-  const revenue = Number((orders * (25 + Math.random() * 50)).toFixed(2));
-  const profit = Number((revenue * (0.15 + Math.random() * 0.25)).toFixed(2));
-  const stockAlerts = Math.floor(1 + Math.random() * 5);
-  const supplierDelays = Math.floor(Math.random() * 3);
-  return { orders, revenue, profit, stockAlerts, supplierDelays };
+async function fetchRealMetrics(db: Awaited<ReturnType<typeof getAdminDB>>, uid: string, digestDate: string): Promise<DigestMetrics> {
+  const userRef = db.collection("users").doc(uid);
+  const dayAgo = new Date(Date.now() - 86400000).toISOString();
+
+  const [ordersSnap, profitSnap, monitoredSnap, supplierAlertsSnap] = await Promise.all([
+    userRef.collection("fulfillmentOrders").where("createdAt", ">=", dayAgo).get(),
+    userRef.collection("profitEntries").where("date", "==", digestDate).get(),
+    userRef.collection("monitoredProducts").get(),
+    userRef.collection("supplierAlerts").where("read", "==", false).get(),
+  ]);
+
+  const orders = ordersSnap.size;
+  const revenue = profitSnap.docs.reduce((sum, doc) => {
+    const data = doc.data() as DocumentData;
+    return sum + (typeof data.revenue === "number" ? data.revenue : 0);
+  }, 0);
+  const profit = profitSnap.docs.reduce((sum, doc) => {
+    const data = doc.data() as DocumentData;
+    return sum + (typeof data.profit === "number" ? data.profit : 0);
+  }, 0);
+
+  const stockAlerts = monitoredSnap.docs.filter((doc) => {
+    const data = doc.data() as DocumentData;
+    return data.stockStatus === "out_of_stock";
+  }).length;
+
+  const supplierDelays = supplierAlertsSnap.size;
+
+  return { orders, revenue: Number(revenue.toFixed(2)), profit: Number(profit.toFixed(2)), stockAlerts, supplierDelays };
 }
 
-function generateMockAlerts(metrics: DigestMetrics): DigestAlert[] {
+function generateAlertsFromMetrics(metrics: DigestMetrics): DigestAlert[] {
   const alerts: DigestAlert[] = [];
 
   if (metrics.stockAlerts > 0) {
     alerts.push({
       type: "stock",
-      title: `${metrics.stockAlerts} Low Stock Alert${metrics.stockAlerts > 1 ? "s" : ""}`,
-      description: `${metrics.stockAlerts} product${metrics.stockAlerts > 1 ? "s are" : " is"} running low on inventory. Consider reordering to avoid stockouts.`,
+      title: `${metrics.stockAlerts} Out-of-Stock Product${metrics.stockAlerts > 1 ? "s" : ""}`,
+      description: `${metrics.stockAlerts} monitored product${metrics.stockAlerts > 1 ? "s are" : " is"} out of stock at the supplier. Consider finding alternatives or delisting.`,
       severity: metrics.stockAlerts > 3 ? "high" : "medium",
     });
   }
@@ -54,56 +78,62 @@ function generateMockAlerts(metrics: DigestMetrics): DigestAlert[] {
   if (metrics.supplierDelays > 0) {
     alerts.push({
       type: "supplier",
-      title: `${metrics.supplierDelays} Supplier Delay${metrics.supplierDelays > 1 ? "s" : ""} Detected`,
-      description: `${metrics.supplierDelays} supplier${metrics.supplierDelays > 1 ? "s have" : " has"} reported processing delays. Monitor order fulfillment closely.`,
+      title: `${metrics.supplierDelays} Supplier Alert${metrics.supplierDelays > 1 ? "s" : ""}`,
+      description: `${metrics.supplierDelays} unresolved supplier alert${metrics.supplierDelays > 1 ? "s" : ""} require${metrics.supplierDelays === 1 ? "s" : ""} attention.`,
       severity: metrics.supplierDelays > 2 ? "high" : "medium",
     });
   }
 
-  const adSpendAnomaly = Math.random() > 0.7;
-  if (adSpendAnomaly) {
+  if (metrics.orders === 0 && metrics.revenue === 0) {
     alerts.push({
-      type: "adSpend",
-      title: "Ad Spend Anomaly Detected",
-      description: "Advertising spend is 20% higher than usual with no corresponding increase in conversions. Review campaign settings.",
+      type: "trend",
+      title: "No Activity Today",
+      description: "No orders or revenue recorded for this period. Review your product listings and marketing strategy.",
       severity: "medium",
     });
   }
 
-  alerts.push({
-    type: "trend",
-    title: "Market Trend Update",
-    description: "Electronics category showing 15% increase in demand. Consider expanding product range in this niche.",
-    severity: "low",
-  });
+  if (metrics.revenue > 0 && metrics.profit / metrics.revenue < 0.15) {
+    alerts.push({
+      type: "adSpend",
+      title: "Low Profit Margin",
+      description: `Current margin is ${((metrics.profit / metrics.revenue) * 100).toFixed(1)}%. Consider adjusting pricing or reducing costs.`,
+      severity: "medium",
+    });
+  }
 
   return alerts;
 }
 
-function generateMockRecommendations(metrics: DigestMetrics, alerts: DigestAlert[]): string[] {
+function generateRecommendations(metrics: DigestMetrics, alerts: DigestAlert[]): string[] {
   const recommendations: string[] = [];
 
   if (metrics.stockAlerts > 0) {
-    recommendations.push(`Reorder SKU-882 and ${metrics.stockAlerts - 1} other low-stock items to prevent lost sales.`);
+    recommendations.push(`Review ${metrics.stockAlerts} out-of-stock product${metrics.stockAlerts > 1 ? "s" : ""} and find alternative suppliers or delist.`);
   }
 
-  if (metrics.profit / metrics.revenue < 0.2) {
+  if (metrics.orders > 0 && metrics.profit / metrics.revenue < 0.2) {
     recommendations.push("Profit margins are below 20%. Consider adjusting pricing or finding lower-cost suppliers.");
+  }
+
+  if (metrics.orders === 0) {
+    recommendations.push("No orders today. Check product visibility, pricing competitiveness, and marketing campaigns.");
   }
 
   const highSeverityAlerts = alerts.filter((a) => a.severity === "high");
   if (highSeverityAlerts.length > 0) {
-    recommendations.push(`Address ${highSeverityAlerts.length} high-severity alert${highSeverityAlerts.length > 1 ? "s" : ""} immediately to minimize impact.`);
+    recommendations.push(`Address ${highSeverityAlerts.length} high-severity alert${highSeverityAlerts.length > 1 ? "s" : ""} immediately.`);
   }
 
-  recommendations.push("Review competitor pricing for top 5 products to ensure competitiveness.");
-  recommendations.push("Analyze customer feedback from the last 7 days to identify improvement opportunities.");
+  if (metrics.orders > 5) {
+    recommendations.push("Strong order volume — consider expanding your product range in top-performing categories.");
+  }
 
   return recommendations;
 }
 
 async function generateAISummary(metrics: DigestMetrics, alerts: DigestAlert[], recommendations: string[]): Promise<string> {
-  const alertSummary = alerts.map((a) => `${a.title}: ${a.description}`).join("\n");
+  const alertSummary = alerts.length > 0 ? alerts.map((a) => `${a.title}: ${a.description}`).join("\n") : "No alerts.";
   const recommendationSummary = recommendations.map((r) => `- ${r}`).join("\n");
 
   const prompt = `Generate a concise daily business intelligence summary for a dropshipping store. Use these metrics and alerts:
@@ -151,9 +181,9 @@ Provide a 2-3 sentence executive summary highlighting the most important insight
             return data.choices?.[0]?.message?.content || generateFallbackSummary(metrics);
           }
         } else if (provider.name === "Gemini") {
-          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+          const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
             body: JSON.stringify({
               contents: [{ role: "user", parts: [{ text: prompt }] }],
               generationConfig: { temperature: 0.5, maxOutputTokens: 200 },
@@ -192,46 +222,57 @@ Provide a 2-3 sentence executive summary highlighting the most important insight
 
 function generateFallbackSummary(metrics: DigestMetrics): string {
   const profitMargin = metrics.revenue > 0 ? ((metrics.profit / metrics.revenue) * 100).toFixed(1) : "0";
-  return `Yesterday: ${metrics.orders} orders, $${metrics.revenue} revenue, $${metrics.profit} actual profit (${profitMargin}% margin). ${metrics.stockAlerts} low-stock alerts require attention. ${metrics.supplierDelays > 0 ? `${metrics.supplierDelays} supplier delays detected — monitor fulfillment.` : "All suppliers operating normally."} Recommended action: Review inventory levels and reorder critical items.`;
+  return `Yesterday: ${metrics.orders} orders, $${metrics.revenue} revenue, $${metrics.profit} actual profit (${profitMargin}% margin). ${metrics.stockAlerts} out-of-stock products require attention. ${metrics.supplierDelays > 0 ? `${metrics.supplierDelays} supplier alert${metrics.supplierDelays > 1 ? "s" : ""} pending.` : "All suppliers operating normally."} Recommended action: Review inventory levels and address outstanding alerts.`;
 }
 
-function generateWeeklyTrend(): { direction: "up" | "down" | "stable"; percentage: number; insight: string } {
-  const direction = Math.random() > 0.6 ? "up" : Math.random() > 0.3 ? "stable" : "down";
-  const percentage = direction === "up" ? Math.round(5 + Math.random() * 20) : direction === "down" ? Math.round(3 + Math.random() * 15) : Math.round(Math.random() * 5);
+async function computeWeeklyTrend(db: Awaited<ReturnType<typeof getAdminDB>>, uid: string): Promise<{ direction: "up" | "down" | "stable"; percentage: number; insight: string }> {
+  const userRef = db.collection("users").doc(uid);
 
-  const insights = {
-    up: "Revenue trending upward over the past 7 days. Momentum is strong — consider scaling ad spend on top performers.",
-    down: "Revenue declining over the past week. Review underperforming products and adjust pricing or marketing strategy.",
-    stable: "Revenue holding steady this week. Maintain current strategy while exploring new product opportunities.",
-  };
+  const [thisWeekSnap, lastWeekSnap] = await Promise.all([
+    userRef.collection("profitEntries").where("date", ">=", new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0]).get(),
+    userRef.collection("profitEntries").where("date", ">=", new Date(Date.now() - 14 * 86400000).toISOString().split("T")[0]).where("date", "<", new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0]).get(),
+  ]);
 
-  return { direction, percentage, insight: insights[direction] };
+  const thisWeekRevenue = thisWeekSnap.docs.reduce((sum, doc) => {
+    const data = doc.data() as DocumentData;
+    return sum + (typeof data.revenue === "number" ? data.revenue : 0);
+  }, 0);
+
+  const lastWeekRevenue = lastWeekSnap.docs.reduce((sum, doc) => {
+    const data = doc.data() as DocumentData;
+    return sum + (typeof data.revenue === "number" ? data.revenue : 0);
+  }, 0);
+
+  if (lastWeekRevenue === 0 && thisWeekRevenue === 0) {
+    return { direction: "stable", percentage: 0, insight: "No revenue data for the past two weeks. Focus on driving traffic and conversions." };
+  }
+
+  if (lastWeekRevenue === 0) {
+    return { direction: "up", percentage: 100, insight: `Revenue started at $${thisWeekRevenue.toFixed(0)} this week. Keep building momentum.` };
+  }
+
+  const changePercent = Math.round(((thisWeekRevenue - lastWeekRevenue) / lastWeekRevenue) * 100);
+
+  if (changePercent > 5) {
+    return { direction: "up", percentage: changePercent, insight: `Revenue trending upward (+${changePercent}%). Momentum is strong — consider scaling top performers.` };
+  }
+  if (changePercent < -5) {
+    return { direction: "down", percentage: Math.abs(changePercent), insight: `Revenue declining (${changePercent}%). Review underperforming products and adjust strategy.` };
+  }
+  return { direction: "stable", percentage: Math.abs(changePercent), insight: "Revenue holding steady. Maintain current strategy while exploring new opportunities." };
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const { date, email, notify } = await request.json();
     const digestDate = date || new Date().toISOString().split("T")[0];
+    const db = await getAdminDB();
 
-    let metrics: DigestMetrics;
-    try {
-      const categories = ["electronics", "fashion", "home gadgets"];
-      const results = await Promise.allSettled(categories.map((cat) => searchCJProducts(cat)));
-      const hasRealData = results.some((r) => r.status === "fulfilled" && r.value.search_results.length > 0);
-
-      if (hasRealData) {
-        metrics = generateMockMetrics();
-      } else {
-        metrics = generateMockMetrics();
-      }
-    } catch {
-      metrics = generateMockMetrics();
-    }
-
-    const alerts = generateMockAlerts(metrics);
-    const recommendations = generateMockRecommendations(metrics, alerts);
+    const metrics = await fetchRealMetrics(db, uid, digestDate);
+    const alerts = generateAlertsFromMetrics(metrics);
+    const recommendations = generateRecommendations(metrics, alerts);
     const summary = await generateAISummary(metrics, alerts, recommendations);
-    const weeklyTrend = generateWeeklyTrend();
+    const weeklyTrend = await computeWeeklyTrend(db, uid);
 
     const digest: DigestResponse = {
       date: digestDate,
@@ -242,7 +283,12 @@ export async function POST(request: NextRequest) {
       weeklyTrend,
     };
 
-    // Send email if requested
+    const userRef = db.collection("users").doc(uid);
+    await userRef.collection("digests").doc(digestDate).set({
+      ...digest,
+      createdAt: new Date().toISOString(),
+    });
+
     let emailSent = false;
     if (email) {
       emailSent = await sendDigestEmail(email, digest);
@@ -258,11 +304,29 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Failed to generate digest" }, { status: 500 });
   }
-}
+});
 
-export async function GET() {
-  return NextResponse.json({
-    message: "Daily Intelligence Digest API",
-    usage: "POST with optional { date: 'YYYY-MM-DD' } to generate a digest",
-  });
-}
+export const GET = withAuth(async (request: NextRequest, uid: string) => {
+  try {
+    const db = await getAdminDB();
+    const userRef = db.collection("users").doc(uid);
+
+    const url = new URL(request.url);
+    const date = url.searchParams.get("date");
+
+    if (date) {
+      const doc = await userRef.collection("digests").doc(date).get();
+      if (!doc.exists) {
+        return NextResponse.json({ error: "No digest found for this date" }, { status: 404 });
+      }
+      return NextResponse.json({ digest: { id: doc.id, ...doc.data() } });
+    }
+
+    const snap = await userRef.collection("digests").orderBy("date", "desc").limit(30).get();
+    const digests = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+    return NextResponse.json({ digests });
+  } catch {
+    return NextResponse.json({ error: "Failed to fetch digests" }, { status: 500 });
+  }
+});

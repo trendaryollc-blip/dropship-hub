@@ -110,7 +110,7 @@ export default function CompetitorProfiles({ sellers }: { sellers: SellerProfile
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <button className="flex items-center gap-1.5 text-xs font-medium text-accent hover:text-accent/80 transition-colors">
+                    <button className="flex items-center gap-1.5 text-xs font-medium text-accent hover:text-accent/80 transition-colors" disabled>
                       <ExternalLink className="h-3.5 w-3.5" /> Visit Store
                     </button>
                     <button className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">

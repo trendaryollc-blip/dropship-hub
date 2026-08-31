@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { DEFAULT_FULFILLMENT_SETTINGS } from "@/types/fulfillment";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
-    const uid = req.nextUrl.searchParams.get("uid");
-    if (!uid) return NextResponse.json({ error: "uid required" }, { status: 400 });
-
     const db = await getAdminDB();
     const doc = await db.collection("users").doc(uid).collection("fulfillmentSettings").doc("config").get();
     const settings = doc.exists ? { ...DEFAULT_FULFILLMENT_SETTINGS, ...doc.data() } : DEFAULT_FULFILLMENT_SETTINGS;
@@ -14,13 +13,13 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch settings", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
   }
-}
+}, LIMITS.FULFILLMENT);
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
     const body = await req.json();
-    const { uid, settings } = body;
-    if (!uid || !settings) return NextResponse.json({ error: "uid and settings required" }, { status: 400 });
+    const { settings } = body;
+    if (!settings) return NextResponse.json({ error: "settings required" }, { status: 400 });
 
     const db = await getAdminDB();
     await db.collection("users").doc(uid).collection("fulfillmentSettings").doc("config").set(settings, { merge: true });
@@ -28,4 +27,4 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     return NextResponse.json({ error: "Failed to save settings", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
   }
-}
+}, LIMITS.FULFILLMENT);

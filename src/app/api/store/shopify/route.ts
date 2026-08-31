@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 
 const SHOPIFY_STORE_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN;
 const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
@@ -65,7 +67,7 @@ async function getCustomers(page = 1, limit = 20) {
   return shopifyFetch(`/customers.json?page=${page}&limit=${limit}`);
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest) => {
   try {
     const { action, productId, product, page, limit } = await request.json();
 
@@ -114,11 +116,11 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, LIMITS.DEFAULT);
 
-export async function GET() {
+export const GET = withAuth(async () => {
   return NextResponse.json({
     platform: "Shopify",
     configured: !!(SHOPIFY_STORE_DOMAIN && SHOPIFY_ACCESS_TOKEN),
   });
-}
+}, LIMITS.DEFAULT);

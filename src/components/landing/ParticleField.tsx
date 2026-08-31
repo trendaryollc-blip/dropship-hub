@@ -67,20 +67,42 @@ export default function ParticleField() {
         ctx.fill();
       });
 
-      // Draw connections
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x;
-          const dy = particles[i].y - particles[j].y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
+      // Draw connections (with spatial optimization — only check nearby particles)
+      const gridSize = 120;
+      const grid = new Map<string, Particle[]>();
+      for (const p of particles) {
+        const gx = Math.floor(p.x / gridSize);
+        const gy = Math.floor(p.y / gridSize);
+        const key = `${gx},${gy}`;
+        const cell = grid.get(key);
+        if (cell) cell.push(p);
+        else grid.set(key, [p]);
+      }
 
-          if (dist < 120) {
-            ctx.beginPath();
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = `rgba(59, 130, 246, ${0.08 * (1 - dist / 120)})`;
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
+      for (let i = 0; i < particles.length; i++) {
+        const pi = particles[i];
+        const gx = Math.floor(pi.x / gridSize);
+        const gy = Math.floor(pi.y / gridSize);
+
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            const cell = grid.get(`${gx + dx},${gy + dy}`);
+            if (!cell) continue;
+            for (const pj of cell) {
+              if (pi === pj) continue;
+              const ddx = pi.x - pj.x;
+              const ddy = pi.y - pj.y;
+              const dist = Math.sqrt(ddx * ddx + ddy * ddy);
+
+              if (dist < 120) {
+                ctx.beginPath();
+                ctx.moveTo(pi.x, pi.y);
+                ctx.lineTo(pj.x, pj.y);
+                ctx.strokeStyle = `rgba(59, 130, 246, ${0.08 * (1 - dist / 120)})`;
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+              }
+            }
           }
         }
       }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Route, Clock, DollarSign, TrendingUp,
   ArrowRight, MapPin, Truck, Settings,
@@ -9,6 +9,7 @@ import { useInView } from "@/hooks/useInView";
 import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
 import { useAuth } from "@/components/auth/AuthProvider";
 import type { RoutingDecision, RoutingPreferences, RoutingAnalytics, RoutingHistory } from "@/types/order";
+import { useAPI } from "@/hooks/useAPI";
 
 // ─── Sub-components ──────────────────────────────────────────────
 
@@ -232,39 +233,18 @@ function HistoryTable({ history }: { history: RoutingHistory[] }) {
 
 export default function OrderRouterPage() {
   const { user } = useAuth();
-  const [decisions, setDecisions] = useState<RoutingDecision[]>([]);
-  const [preferences, setPreferences] = useState<RoutingPreferences | null>(null);
-  const [analytics, setAnalytics] = useState<RoutingAnalytics | null>(null);
-  const [history, setHistory] = useState<RoutingHistory[]>([]);
-  const [loading, setLoading] = useState(true);
+  const uid = user?.uid || "";
+  const { data: dData } = useAPI<{ decisions?: RoutingDecision[] }>(uid ? `/api/orders?type=decisions&uid=${uid}` : null);
+  const { data: pData } = useAPI<{ preferences?: RoutingPreferences }>(uid ? `/api/orders?type=preferences&uid=${uid}` : null);
+  const { data: aData } = useAPI<{ analytics?: RoutingAnalytics }>(uid ? `/api/orders?type=analytics&uid=${uid}` : null);
+  const { data: hData } = useAPI<{ history?: RoutingHistory[] }>(uid ? `/api/orders?type=history&uid=${uid}` : null);
+  const decisions = dData?.decisions || [];
+  const preferences = pData?.preferences || null;
+  const analytics = aData?.analytics || null;
+  const history = hData?.history || [];
+  const loading = !user || (!dData && !pData);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"queue" | "analytics" | "history" | "settings">("queue");
-
-  useEffect(() => {
-    if (!user) return;
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const uid = user.uid;
-        const [dRes, pRes, aRes, hRes] = await Promise.all([
-          fetch(`/api/orders?type=decisions&uid=${uid}`),
-          fetch(`/api/orders?type=preferences&uid=${uid}`),
-          fetch(`/api/orders?type=analytics&uid=${uid}`),
-          fetch(`/api/orders?type=history&uid=${uid}`),
-        ]);
-        const dData = await dRes.json();
-        const pData = await pRes.json();
-        const aData = await aRes.json();
-        const hData = await hRes.json();
-        if (dData.decisions) setDecisions(dData.decisions);
-        if (pData.preferences) setPreferences(pData.preferences);
-        if (aData.analytics) setAnalytics(aData.analytics);
-        if (hData.history) setHistory(hData.history);
-      } catch (err) { console.error("Failed to fetch routing data:", err); setError("Failed to load data. Please try again."); }
-      setLoading(false);
-    };
-    fetchData();
-  }, [user]);
 
   const pendingCount = decisions.filter((d) => d.status === "pending").length;
 

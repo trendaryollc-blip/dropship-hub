@@ -1,19 +1,23 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   Zap, CheckCircle2, ArrowUpRight, Target, Shield, DollarSign,
-  BarChart3, Package, RotateCcw, ExternalLink,
+  BarChart3, Package, RotateCcw, ExternalLink, TrendingUp,
+  Store, ShoppingCart,
 } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useHealthData } from "@/hooks/useHealthData";
+import { logger } from "@/lib/logger";
 
 interface HealthItem {
   label: string;
   done: boolean;
   impact: string;
+  autoDetected?: boolean;
 }
 
 interface HealthCategory {
@@ -26,6 +30,14 @@ interface HealthCategory {
   href: string;
   hrefLabel: string;
   items: HealthItem[];
+}
+
+interface DynamicRecommendation {
+  priority: "high" | "medium" | "low";
+  text: string;
+  href: string;
+  icon: typeof Zap;
+  description: string;
 }
 
 const STORAGE_KEY = "dropship-health-state";
@@ -77,27 +89,19 @@ const defaultCategories: HealthCategory[] = [
   },
 ];
 
-const recommendations = [
-  { priority: "high", text: "Find reliable suppliers with gold trust badges", href: "/suppliers", icon: Shield },
-  { priority: "high", text: "Calculate profit margins for your top 3 products", href: "/calculator", icon: DollarSign },
-  { priority: "medium", text: "Analyze your top 3 competitors", href: "/competitors", icon: BarChart3 },
-  { priority: "medium", text: "Search for trending products in your niche", href: "/products", icon: Target },
-  { priority: "low", text: "Set up AI providers for automated insights", href: "/settings", icon: Zap },
-];
-
 function loadStateLocal(): Record<string, boolean[]> {
   if (typeof window === "undefined") return {};
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw);
-  } catch {}
+  } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[HealthPage] silently caught", e); }
   return {};
 }
 
 function saveStateLocal(state: Record<string, boolean[]>) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {}
+  } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[HealthPage] silently caught", e); }
 }
 
 async function loadStateFirestore(uid: string): Promise<Record<string, boolean[]> | null> {
@@ -105,7 +109,7 @@ async function loadStateFirestore(uid: string): Promise<Record<string, boolean[]
     const snap = await getDoc(doc(db, "users", uid, "settings", "health"));
     return snap.exists() ? (snap.data().state as Record<string, boolean[]>) : null;
   } catch (err) {
-    console.error("Failed to load health state from Firestore:", err);
+    logger.error("Failed to load health state from Firestore", { error: err instanceof Error ? err.message : String(err) });
     return null;
   }
 }
@@ -114,7 +118,7 @@ async function saveStateFirestore(uid: string, state: Record<string, boolean[]>)
   try {
     await setDoc(doc(db, "users", uid, "settings", "health"), { state });
   } catch (err) {
-    console.error("Failed to save health state to Firestore:", err);
+    logger.error("Failed to save health state to Firestore", { error: err instanceof Error ? err.message : String(err) });
   }
 }
 
@@ -134,6 +138,77 @@ export default function HealthPage() {
   const { user } = useAuth();
   const [categories, setCategories] = useState<HealthCategory[]>(defaultCategories);
   const [mounted, setMounted] = useState(false);
+  const healthData = useHealthData();
+
+  const autoDetectedCategories = useMemo(() => {
+    if (healthData.loading) return categories;
+
+    return categories.map((cat) => {
+      const newItems = cat.items.map((item) => {
+        let autoDetected = false;
+        let done = item.done;
+
+        switch (cat.id) {
+          case "product":
+            if (item.label === "Search for trending products" && healthData.searchHistoryCount > 0) {
+              done = true;
+              autoDetected = true;
+            }
+            if (item.label === "Analyze product profit margins" && healthData.calcHistoryCount > 0) {
+              done = true;
+              autoDetected = true;
+            }
+            if (item.label === "Check competition levels" && healthData.competitorSearchCount > 0) {
+              done = true;
+              autoDetected = true;
+            }
+            if (item.label === "Verify supplier availability" && healthData.savedProductCount > 0) {
+              done = true;
+              autoDetected = true;
+            }
+            break;
+          case "supplier":
+            if (item.label === "Find 3+ reliable suppliers" && healthData.supplierFavoriteCount >= 3) {
+              done = true;
+              autoDetected = true;
+            }
+            if (item.label === "Set up backup suppliers" && healthData.supplierFavoriteCount >= 2) {
+              done = true;
+              autoDetected = true;
+            }
+            break;
+          case "financial":
+            if (item.label === "Calculate break-even point" && healthData.calcHistoryCount > 0) {
+              done = true;
+              autoDetected = true;
+            }
+            if (item.label === "Set up profit tracking" && healthData.revenueEntryCount > 0) {
+              done = true;
+              autoDetected = true;
+            }
+            if (item.label === "Analyze cost breakdown" && healthData.costProfileCount > 0) {
+              done = true;
+              autoDetected = true;
+            }
+            break;
+          case "market":
+            if (item.label === "Analyze top competitors" && healthData.competitorSearchCount > 0) {
+              done = true;
+              autoDetected = true;
+            }
+            if (item.label === "Track pricing trends" && healthData.watchlistCount > 0) {
+              done = true;
+              autoDetected = true;
+            }
+            break;
+        }
+
+        return { ...item, done, autoDetected };
+      });
+
+      return { ...cat, items: newItems };
+    });
+  }, [categories, healthData]);
 
   useEffect(() => {
     async function hydrate() {
@@ -197,15 +272,91 @@ export default function HealthPage() {
     }
   }, [user]);
 
-  const catScores = categories.map((cat) => {
+  const dynamicRecommendations = useMemo<DynamicRecommendation[]>(() => {
+    const recs: DynamicRecommendation[] = [];
+
+    if (healthData.searchHistoryCount === 0) {
+      recs.push({
+        priority: "high",
+        text: "Search for trending products to start your research",
+        href: "/products",
+        icon: TrendingUp,
+        description: "You haven't searched for any products yet",
+      });
+    }
+
+    if (healthData.calcHistoryCount === 0) {
+      recs.push({
+        priority: "high",
+        text: "Calculate profit margins for your first product",
+        href: "/calculator",
+        icon: DollarSign,
+        description: "Understanding margins is critical for profitability",
+      });
+    }
+
+    if (healthData.supplierFavoriteCount < 3) {
+      recs.push({
+        priority: "high",
+        text: `Find ${3 - healthData.supplierFavoriteCount} more reliable suppliers`,
+        href: "/suppliers",
+        icon: Shield,
+        description: "Having backup suppliers prevents stockouts",
+      });
+    }
+
+    if (healthData.competitorSearchCount === 0) {
+      recs.push({
+        priority: "medium",
+        text: "Analyze competitors in your niche",
+        href: "/competitors",
+        icon: BarChart3,
+        description: "Understanding competition helps you price strategically",
+      });
+    }
+
+    if (healthData.storeConnectionCount === 0) {
+      recs.push({
+        priority: "medium",
+        text: "Connect your first store",
+        href: "/store",
+        icon: Store,
+        description: "Start selling by connecting Shopify or WooCommerce",
+      });
+    }
+
+    if (healthData.revenueEntryCount === 0 && healthData.storeConnectionCount > 0) {
+      recs.push({
+        priority: "medium",
+        text: "Track your first revenue entry",
+        href: "/profit-tracker",
+        icon: TrendingUp,
+        description: "Monitor your business performance",
+      });
+    }
+
+    if (healthData.costProfileCount === 0) {
+      recs.push({
+        priority: "low",
+        text: "Create cost profiles for accurate profit calculations",
+        href: "/calculator",
+        icon: DollarSign,
+        description: "Detailed cost breakdowns improve pricing decisions",
+      });
+    }
+
+    return recs.slice(0, 5);
+  }, [healthData]);
+
+  const catScores = autoDetectedCategories.map((cat) => {
     const doneCount = cat.items.filter((i) => i.done).length;
     return Math.round((doneCount / cat.items.length) * 25);
   });
 
   const totalScore = catScores.reduce((a, b) => a + b, 0);
   const percentage = totalScore;
-  const totalDone = categories.reduce((sum, cat) => sum + cat.items.filter((i) => i.done).length, 0);
-  const totalItems = categories.reduce((sum, cat) => sum + cat.items.length, 0);
+  const totalDone = autoDetectedCategories.reduce((sum, cat) => sum + cat.items.filter((i) => i.done).length, 0);
+  const totalItems = autoDetectedCategories.reduce((sum, cat) => sum + cat.items.length, 0);
 
   const getScoreLabel = (pct: number) => {
     if (pct >= 80) return "Excellent";
@@ -270,7 +421,7 @@ export default function HealthPage() {
                 : `You've completed ${totalDone} of ${totalItems} tasks (${percentage}%). Keep going to reach the next level!`}
             </p>
             <div className="flex flex-wrap gap-2 justify-center md:justify-start">
-              {categories.map((cat, i) => (
+              {autoDetectedCategories.map((cat, i) => (
                 <div key={cat.id} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-border">
                   <div className={`w-2 h-2 rounded-full ${catScores[i] > 0 ? "bg-emerald-400" : "bg-muted-foreground/30"}`} />
                   <span className="text-xs text-muted-foreground">{cat.label}</span>
@@ -282,9 +433,43 @@ export default function HealthPage() {
         </div>
       </div>
 
+      {/* Business Overview */}
+      {!healthData.loading && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="glass rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Package className="h-4 w-4 text-blue-400" />
+              <span className="text-xs text-muted-foreground">Products Searched</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{healthData.searchHistoryCount}</p>
+          </div>
+          <div className="glass rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Shield className="h-4 w-4 text-emerald-400" />
+              <span className="text-xs text-muted-foreground">Suppliers Saved</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{healthData.supplierFavoriteCount}</p>
+          </div>
+          <div className="glass rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Store className="h-4 w-4 text-amber-400" />
+              <span className="text-xs text-muted-foreground">Stores Connected</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{healthData.storeConnectionCount}</p>
+          </div>
+          <div className="glass rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <ShoppingCart className="h-4 w-4 text-purple-400" />
+              <span className="text-xs text-muted-foreground">Revenue Entries</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{healthData.revenueEntryCount}</p>
+          </div>
+        </div>
+      )}
+
       {/* Category Breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {categories.map((cat, catIdx) => {
+        {autoDetectedCategories.map((cat, catIdx) => {
           const catPct = Math.round((cat.items.filter((i) => i.done).length / cat.items.length) * 100);
           const catScore = catScores[catIdx];
           return (
@@ -330,13 +515,20 @@ export default function HealthPage() {
                     }`}>
                       {item.label}
                     </span>
-                    <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
-                      item.impact === "high" ? "bg-red-400/10 text-red-400"
-                        : item.impact === "medium" ? "bg-amber-400/10 text-amber-400"
-                        : "bg-surface text-muted-foreground"
-                    }`}>
-                      {item.impact}
-                    </span>
+                    {item.autoDetected && (
+                      <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-400/10 text-emerald-400">
+                        auto
+                      </span>
+                    )}
+                    {!item.autoDetected && (
+                      <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                        item.impact === "high" ? "bg-red-400/10 text-red-400"
+                          : item.impact === "medium" ? "bg-amber-400/10 text-amber-400"
+                          : "bg-surface text-muted-foreground"
+                      }`}>
+                        {item.impact}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -352,29 +544,32 @@ export default function HealthPage() {
         })}
       </div>
 
-      {/* Recommendations */}
-      <div className="glass rounded-2xl p-6">
-        <h3 className="font-display text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-          <Target className="h-5 w-5 text-accent" /> Priority Actions
-        </h3>
-        <div className="space-y-2">
-          {recommendations.map((rec, i) => (
-            <Link key={i} href={rec.href}
-              className="flex items-center gap-3 p-3 rounded-xl bg-surface/50 hover:bg-surface transition-all group">
-              <div className={`p-2 rounded-lg ${rec.priority === "high" ? "bg-red-400/10" : rec.priority === "medium" ? "bg-amber-400/10" : "bg-surface"}`}>
-                <rec.icon className={`h-4 w-4 ${rec.priority === "high" ? "text-red-400" : rec.priority === "medium" ? "text-amber-400" : "text-muted-foreground"}`} />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm text-foreground group-hover:text-accent transition-colors">{rec.text}</p>
-              </div>
-              <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded ${rec.priority === "high" ? "bg-red-400/10 text-red-400" : rec.priority === "medium" ? "bg-amber-400/10 text-amber-400" : "bg-surface text-muted-foreground"}`}>
-                {rec.priority}
-              </span>
-              <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-            </Link>
-          ))}
+      {/* Dynamic Recommendations */}
+      {dynamicRecommendations.length > 0 && (
+        <div className="glass rounded-2xl p-6">
+          <h3 className="font-display text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+            <Target className="h-5 w-5 text-accent" /> Priority Actions
+          </h3>
+          <div className="space-y-2">
+            {dynamicRecommendations.map((rec, i) => (
+              <Link key={i} href={rec.href}
+                className="flex items-center gap-3 p-3 rounded-xl bg-surface/50 hover:bg-surface transition-all group">
+                <div className={`p-2 rounded-lg ${rec.priority === "high" ? "bg-red-400/10" : rec.priority === "medium" ? "bg-amber-400/10" : "bg-surface"}`}>
+                  <rec.icon className={`h-4 w-4 ${rec.priority === "high" ? "text-red-400" : rec.priority === "medium" ? "text-amber-400" : "text-muted-foreground"}`} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm text-foreground group-hover:text-accent transition-colors">{rec.text}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{rec.description}</p>
+                </div>
+                <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded ${rec.priority === "high" ? "bg-red-400/10 text-red-400" : rec.priority === "medium" ? "bg-amber-400/10 text-amber-400" : "bg-surface text-muted-foreground"}`}>
+                  {rec.priority}
+                </span>
+                <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+              </Link>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

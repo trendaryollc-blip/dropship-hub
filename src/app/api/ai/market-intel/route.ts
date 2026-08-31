@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
-    const uid = req.nextUrl.searchParams.get("uid");
-    if (!uid) return NextResponse.json({ trending: [], alerts: [] });
-
     // In production, this would fetch real market data from external APIs
     // For now, return contextual mock data
     const trending = [
@@ -22,8 +21,8 @@ export async function GET(req: NextRequest) {
       { id: "4", type: "opportunity", text: "Summer products peaking NOW", value: "Hot" },
     ];
 
-    return NextResponse.json({ trending, alerts });
-  } catch {
-    return NextResponse.json({ trending: [], alerts: [] });
-  }
+  return NextResponse.json({ trending, alerts, isMock: true, notice: "This is static mock data. In production, it would fetch real market data from external APIs." });
+} catch {
+  return NextResponse.json({ trending: [], alerts: [] });
 }
+}, LIMITS.AI_CHAT);

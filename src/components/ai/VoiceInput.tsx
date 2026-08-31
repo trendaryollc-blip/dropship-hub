@@ -3,6 +3,36 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Mic, Loader2 } from "lucide-react";
 
+interface SpeechRecognitionResultList {
+  length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  length: number;
+  item(index: number): SpeechRecognitionAlternative;
+  [index: number]: SpeechRecognitionAlternative;
+  isFinal: boolean;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
+interface SpeechRecognitionInstance extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: Event) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+
 interface SpeechRecognitionEvent extends Event {
   resultIndex: number;
   results: SpeechRecognitionResultList;
@@ -13,11 +43,10 @@ interface VoiceInputProps {
   disabled?: boolean;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare global {
   interface Window {
-    SpeechRecognition: any;
-    webkitSpeechRecognition: any;
+    SpeechRecognition: new () => SpeechRecognitionInstance;
+    webkitSpeechRecognition: new () => SpeechRecognitionInstance;
   }
 }
 
@@ -25,53 +54,62 @@ export default function VoiceInput({ onTranscript, disabled = false }: VoiceInpu
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState("");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const onTranscriptRef = useRef(onTranscript);
+
+  useEffect(() => {
+    onTranscriptRef.current = onTranscript;
+  });
 
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      setIsSupported(true);
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = true;
-      recognition.lang = "en-US";
+    if (!SpeechRecognition) return;
 
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
-        let interim = "";
-        let final = "";
+    setIsSupported(true);
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
 
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            final += transcript;
-          } else {
-            interim += transcript;
-          }
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let interim = "";
+      let final = "";
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          final += transcript;
+        } else {
+          interim += transcript;
         }
+      }
 
-        setInterimTranscript(interim);
+      setInterimTranscript(interim);
 
-        if (final) {
-          onTranscript(final);
-          setIsListening(false);
-          setInterimTranscript("");
-        }
-      };
-
-      recognition.onerror = () => {
+      if (final) {
+        onTranscriptRef.current(final);
         setIsListening(false);
         setInterimTranscript("");
-      };
+      }
+    };
 
-      recognition.onend = () => {
-        setIsListening(false);
-        setInterimTranscript("");
-      };
+    recognition.onerror = () => {
+      setIsListening(false);
+      setInterimTranscript("");
+    };
 
-      recognitionRef.current = recognition;
-    }
-  }, [onTranscript]);
+    recognition.onend = () => {
+      setIsListening(false);
+      setInterimTranscript("");
+    };
+
+    recognitionRef.current = recognition;
+
+    return () => {
+      recognition.abort();
+      recognitionRef.current = null;
+    };
+  }, []);
 
   const toggleListening = useCallback(() => {
     if (!recognitionRef.current) return;
@@ -103,6 +141,7 @@ export default function VoiceInput({ onTranscript, disabled = false }: VoiceInpu
             : "bg-white/[0.06] text-muted-foreground hover:text-foreground hover:bg-white/[0.1]"
         }`}
         title={isListening ? "Stop listening" : "Voice input"}
+        aria-label={isListening ? "Stop listening" : "Voice input"}
       >
         {isListening ? (
           <Loader2 className="h-4 w-4 animate-spin" />

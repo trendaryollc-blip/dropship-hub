@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { Check, ChevronDown, X, Package } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { safeFetch } from "@/lib/safe-fetch";
+import { useAPI } from "@/hooks/useAPI";
 
 const SUPPLIERS = [
   { id: "cj", name: "CJ Dropshipping", color: "bg-blue-500/20 text-blue-400" },
@@ -29,35 +31,29 @@ interface SupplierPickerProps {
 
 export function SupplierPicker({ productId, productName, onAssigned }: SupplierPickerProps) {
   const { user } = useAuth();
-  const [assignment, setAssignment] = useState<SupplierAssignment | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [unitCost, setUnitCost] = useState("0");
   const [shippingCost, setShippingCost] = useState("0");
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
+
+  const uid = user?.uid || "";
+  const { data: supplierData, isLoading: initialLoading } = useAPI<{ assignment?: SupplierAssignment }>(
+    uid ? `/api/fulfillment/suppliers?uid=${uid}&productId=${productId}` : null
+  );
+  const assignment = supplierData?.assignment || null;
 
   useEffect(() => {
-    if (!user) return;
-    (async () => {
-      try {
-        const res = await fetch(`/api/fulfillment/suppliers?uid=${user.uid}&productId=${productId}`);
-        const data = await res.json();
-        if (data.assignment) {
-          setAssignment(data.assignment);
-          setUnitCost(String(data.assignment.unitCost || 0));
-          setShippingCost(String(data.assignment.shippingCost || 0));
-        }
-      } catch {} finally {
-        setInitialLoading(false);
-      }
-    })();
-  }, [user, productId]);
+    if (assignment) {
+      setUnitCost(String(assignment.unitCost || 0));
+      setShippingCost(String(assignment.shippingCost || 0));
+    }
+  }, [assignment]);
 
   const handleAssign = async (supplierId: string, supplierName: string) => {
     if (!user) return;
     setLoading(true);
     try {
-      await fetch("/api/fulfillment/suppliers", {
+      await safeFetch("/api/fulfillment/suppliers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -70,19 +66,17 @@ export function SupplierPicker({ productId, productName, onAssigned }: SupplierP
         }),
       });
       const newAssignment = { supplierId, supplierName, unitCost: parseFloat(unitCost) || 0, shippingCost: parseFloat(shippingCost) || 0, source: "manual" };
-      setAssignment(newAssignment);
       setShowPicker(false);
       onAssigned?.(newAssignment);
-    } catch {}
+    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[SupplierPicker] silently caught", e); }
     setLoading(false);
   };
 
   const handleClear = async () => {
     if (!user) return;
     try {
-      await fetch(`/api/fulfillment/suppliers?uid=${user.uid}&productId=${productId}`, { method: "DELETE" });
-      setAssignment(null);
-    } catch {}
+      await safeFetch(`/api/fulfillment/suppliers?uid=${user.uid}&productId=${productId}`, { method: "DELETE" });
+    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[SupplierPicker] silently caught", e); }
   };
 
   if (initialLoading) {

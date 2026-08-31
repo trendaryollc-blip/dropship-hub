@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
-// TODO: Add auth verification using verifyAuth from @/lib/auth to secure these endpoints
+import { withAuth } from "@/lib/auth";
+import { ProfitEntrySchema, validateBody } from "@/lib/validation";
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const { searchParams } = new URL(request.url);
-    const uid = searchParams.get("uid");
     const timeframe = searchParams.get("timeframe") || "30d";
     const platform = searchParams.get("platform");
-
-    if (!uid) {
-      return NextResponse.json({ error: "uid is required" }, { status: 400 });
-    }
 
     const db = await getAdminDB();
     const snap = await db.collection("users").doc(uid).collection("profitEntries").orderBy("createdAt", "desc").limit(200).get();
@@ -134,16 +130,14 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const body = await request.json();
-    const { uid, ...entry } = body;
-
-    if (!uid) {
-      return NextResponse.json({ error: "uid is required" }, { status: 400 });
-    }
+    const validation = validateBody(ProfitEntrySchema, body);
+    if (!validation.success) return validation.response;
+    const entry = validation.data;
 
     const db = await getAdminDB();
     const ref = await db.collection("users").doc(uid).collection("profitEntries").add({
@@ -158,4 +152,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

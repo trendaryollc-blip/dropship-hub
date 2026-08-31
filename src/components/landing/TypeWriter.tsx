@@ -5,7 +5,6 @@ import { useState, useEffect, useRef } from "react";
 interface TypeWriterProps {
   words: string[];
   typingSpeed?: number;
-  deletingSpeed?: number;
   pauseTime?: number;
   className?: string;
 }

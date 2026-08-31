@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import Link from "next/link";
 import {
@@ -9,10 +9,13 @@ import {
   DollarSign, ArrowRight, Globe, Send, RefreshCw, X,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
+import { useAPI } from "@/hooks/useAPI";
+import { safeFetch } from "@/lib/safe-fetch";
 import type {
-  FulfillmentOrder, FulfillmentSettings, PlatformConfig,
+  FulfillmentOrder, FulfillmentSettings, PlatformDisplayConfig,
 } from "@/types/fulfillment";
 import { PLATFORM_CONFIGS, DEFAULT_FULFILLMENT_SETTINGS } from "@/types/fulfillment";
+import { logger } from "@/lib/logger";
 
 const statusConfig: Record<string, { color: string; bg: string; icon: React.ReactNode }> = {
   pending: { color: "text-amber-400", bg: "bg-amber-400/10 border-amber-400/20", icon: <Clock className="h-3 w-3" /> },
@@ -476,10 +479,20 @@ function Zap({ className }: { className?: string }) {
 
 export default function FulfillmentPage() {
   const { user } = useAuth();
+  const ordersUrl = user ? `/api/fulfillment?uid=${user.uid}` : null;
+  const settingsUrl = user ? `/api/fulfillment/settings?uid=${user.uid}` : null;
+  const storesUrl = user ? `/api/store/connections?uid=${user.uid}` : null;
+
+  const { data: ordersData, isLoading: ordersLoading, mutate: mutateOrders } = useAPI<{ orders?: FulfillmentOrder[] }>(ordersUrl);
+  const { data: settingsData, mutate: mutateSettings } = useAPI<{ settings?: FulfillmentSettings }>(settingsUrl);
+  const { data: storesData, mutate: mutateStores } = useAPI<{ connections?: Array<{ id: string; platform: string; name: string }> }>(storesUrl);
+
+  const orders = ordersData?.orders ?? [];
+  const connectedStores = (storesData?.connections ?? []).map((c) => ({ id: c.id, platform: c.platform, name: c.name }));
+  const loading = ordersLoading;
+
   const [activeTab, setActiveTab] = useState<"pending" | "in_progress" | "shipped" | "completed">("pending");
-  const [orders, setOrders] = useState<FulfillmentOrder[]>([]);
   const [settings, setSettings] = useState<FulfillmentSettings>(DEFAULT_FULFILLMENT_SETTINGS);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -487,80 +500,46 @@ export default function FulfillmentPage() {
   const [storeFilter, setStoreFilter] = useState("all");
   const [showSettings, setShowSettings] = useState(false);
   const [dismissedOnboarding, setDismissedOnboarding] = useState(false);
-  const [connectedStores, setConnectedStores] = useState<Array<{ id: string; platform: string; name: string }>>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchOrders = useCallback(async () => {
-    if (!user) return;
-    try {
-      const res = await fetch(`/api/fulfillment?uid=${user.uid}`);
-      const data = await res.json();
-      setOrders(data.orders || []);
-    } catch (err) { console.error("Failed to fetch orders:", err); setError("Failed to load data. Please try again."); }
-  }, [user]);
-
-  const fetchSettings = useCallback(async () => {
-    if (!user) return;
-    try {
-      const res = await fetch(`/api/fulfillment/settings?uid=${user.uid}`);
-      const data = await res.json();
-      if (data.settings) setSettings(data.settings);
-    } catch (err) { console.error("Failed to fetch settings:", err); setError("Failed to load data. Please try again."); }
-  }, [user]);
-
-  const fetchConnectedStores = useCallback(async () => {
-    if (!user) return;
-    try {
-      const res = await fetch(`/api/store/connections?uid=${user.uid}`);
-      const data = await res.json();
-      const stores: Array<{ id: string; platform: string; name: string }> = (data.connections || []).map((c: { id: string; platform: string; name: string }) => ({
-        id: c.id,
-        platform: c.platform,
-        name: c.name,
-      }));
-      setConnectedStores(stores);
-    } catch (err) { console.error("Failed to fetch connected stores:", err); setError("Failed to load data. Please try again."); }
-  }, [user]);
-
   useEffect(() => {
-    if (!user) return;
-    setLoading(true);
-    Promise.all([fetchOrders(), fetchSettings(), fetchConnectedStores()]).then(() => setLoading(false));
-  }, [user, fetchOrders, fetchSettings, fetchConnectedStores]);
+    if (settingsData?.settings) setSettings(settingsData.settings);
+  }, [settingsData?.settings]);
 
   const handleAction = async (orderId: string, action: string, data?: Record<string, unknown>) => {
     if (!user) return;
     setActionLoading(orderId);
     try {
       if (action === "syncTracking") {
-        await fetch("/api/fulfillment/sync-tracking", {
+        await safeFetch<unknown>("/api/fulfillment/sync-tracking", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ uid: user.uid, fulfillmentOrderId: orderId, trackingNumber: data?.trackingNumber, carrier: data?.carrier }),
         });
       } else {
-        await fetch("/api/fulfillment", {
+        await safeFetch<unknown>("/api/fulfillment", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ uid: user.uid, orderId, action, ...data }),
         });
       }
-      await fetchOrders();
-    } catch (err) { console.error("Failed to perform action:", err); setError("Failed to load data. Please try again."); }
+      await mutateOrders();
+    } catch (err) { logger.error("Failed to perform action", { error: err instanceof Error ? err.message : String(err) }); setError("Failed to load data. Please try again."); }
     setActionLoading(null);
   };
 
   const handleSaveSettings = async (newSettings: FulfillmentSettings) => {
     if (!user) return;
     try {
-      await fetch("/api/fulfillment/settings", {
+      await safeFetch<unknown>("/api/fulfillment/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uid: user.uid, settings: newSettings }),
       });
       setSettings(newSettings);
+      mutateSettings();
       setShowSettings(false);
-    } catch (err) { console.error("Failed to save settings:", err); setError("Failed to load data. Please try again."); }
+    } catch (err) { logger.error("Failed to save settings", { error: err instanceof Error ? err.message : String(err) }); setError("Failed to load data. Please try again."); }
   };
 
   const filteredOrders = orders.filter((o) => {
@@ -609,7 +588,7 @@ export default function FulfillmentPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-24">
-      {error && (<div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-red-400 text-sm flex items-center gap-2"><AlertCircle className="h-4 w-4 shrink-0" />{error}<button onClick={() => { setError(null); fetchOrders(); fetchSettings(); fetchConnectedStores(); }} className="ml-auto text-xs underline">Retry</button></div>)}
+      {error && (<div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-red-400 text-sm flex items-center gap-2"><AlertCircle className="h-4 w-4 shrink-0" />{error}<button onClick={() => { setError(null); mutateOrders(); mutateSettings(); mutateStores(); }} className="ml-auto text-xs underline">Retry</button></div>)}
       {/* Onboarding Banner */}
       {!dismissedOnboarding && !hasOrders && (
         <OnboardingBanner onDismiss={() => setDismissedOnboarding(true)} />
@@ -724,20 +703,20 @@ export default function FulfillmentPage() {
                 if (!user) return;
                 setSyncing(true);
                 try {
-                  await fetch("/api/fulfillment/poll", {
+                  await safeFetch<unknown>("/api/fulfillment/poll", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ uid: user.uid }),
                   });
-                  await fetchOrders();
-                } catch (err) { console.error("Failed to sync orders:", err); setError("Failed to load data. Please try again."); }
-                setSyncing(false);
-              }}
-              disabled={syncing}
-              className="flex items-center gap-1.5 px-3 py-2 bg-accent/20 text-accent rounded-lg text-xs font-medium hover:bg-accent/30 transition-all disabled:opacity-50"
-            >
-              {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-              Sync Orders
+                  mutateOrders();
+                    } catch (err) { logger.error("Failed to sync orders", { error: err instanceof Error ? err.message : String(err) }); setError("Failed to load data. Please try again."); }
+                    setSyncing(false);
+                  }}
+                  disabled={syncing}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-accent/20 text-accent rounded-lg text-xs font-medium hover:bg-accent/30 transition-all disabled:opacity-50"
+                >
+                  {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                  Sync Orders
             </button>
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-card border border-white/10 rounded-lg text-[10px] text-muted-foreground whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-lg z-50">
               Pull latest orders from all connected stores
@@ -775,13 +754,13 @@ export default function FulfillmentPage() {
                     if (!user) return;
                     setSyncing(true);
                     try {
-                      await fetch("/api/fulfillment/poll", {
+                      await safeFetch<unknown>("/api/fulfillment/poll", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ uid: user.uid }),
                       });
-                      await fetchOrders();
-                    } catch (err) { console.error("Failed to sync orders:", err); setError("Failed to load data. Please try again."); }
+                      mutateOrders();
+                    } catch (err) { logger.error("Failed to sync orders", { error: err instanceof Error ? err.message : String(err) }); setError("Failed to load data. Please try again."); }
                     setSyncing(false);
                   }}
                   className="flex items-center gap-2 px-4 py-2.5 bg-surface border border-white/10 text-foreground rounded-xl text-xs font-medium hover:bg-surface/80 transition-all"

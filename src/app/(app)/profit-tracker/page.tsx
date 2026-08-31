@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import {
   DollarSign, TrendingUp, TrendingDown, ShoppingCart, Download,
   Target, RefreshCw,
@@ -8,6 +8,7 @@ import {
 import { useInView } from "@/hooks/useInView";
 import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useAPI } from "@/hooks/useAPI";
 import type { ProductProfitability, DailyProfit, CostBreakdownItem, CampaignProfit } from "@/types/profit";
 
 // ─── Sub-components ──────────────────────────────────────────────
@@ -245,36 +246,22 @@ export default function ProfitTrackerPage() {
   const { user } = useAuth();
   const [timeframe, setTimeframe] = useState<"7d" | "30d" | "90d" | "all">("30d");
   const [platform, setPlatform] = useState("all");
-  const [loading, setLoading] = useState(true);
-  const [topProducts, setTopProducts] = useState<ProductProfitability[]>([]);
-  const [dailyBreakdown, setDailyBreakdown] = useState<DailyProfit[]>([]);
-  const [costBreakdown, setCostBreakdown] = useState<CostBreakdownItem[]>([]);
-  const [campaignProfits, setCampaignProfits] = useState<CampaignProfit[]>([]);
-  const [summary, setSummary] = useState<{
-    totalRevenue: number; totalProfit: number; profitMargin: number; totalOrders: number;
-    avgOrderProfit: number; avgOrderValue: number; refundRate: number; totalCosts: number;
-  } | null>(null);
 
-  const fetchData = async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ timeframe, platform, uid: user.uid });
-      const res = await fetch(`/api/profit?${params}`);
-      const data = await res.json();
-      if (data.summary) {
-        setSummary(data.summary);
-        setTopProducts(data.topProducts || []);
-        setDailyBreakdown(data.dailyBreakdown || []);
-        setCostBreakdown(data.costBreakdown || []);
-        setCampaignProfits(data.campaignProfits || []);
-      }
-    } catch (err) { console.error("Failed to fetch profit data:", err); }
-    setLoading(false);
-  };
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- async data fetch on mount
-  useEffect(() => { void fetchData(); }, [timeframe, platform]);
+  const uid = user?.uid || "";
+  const profitUrl = uid ? `/api/profit?timeframe=${timeframe}&platform=${platform}&uid=${uid}` : null;
+  const { data: profitData, isLoading, mutate: refetchProfit } = useAPI<{
+    summary?: { totalRevenue: number; totalProfit: number; profitMargin: number; totalOrders: number; avgOrderProfit: number; avgOrderValue: number; refundRate: number; totalCosts: number; avgMargin: number };
+    topProducts?: ProductProfitability[];
+    dailyBreakdown?: DailyProfit[];
+    costBreakdown?: CostBreakdownItem[];
+    campaignProfits?: CampaignProfit[];
+  }>(profitUrl);
+  const loading = isLoading;
+  const summary = profitData?.summary || null;
+  const topProducts = profitData?.topProducts || [];
+  const dailyBreakdown = profitData?.dailyBreakdown || [];
+  const costBreakdown = profitData?.costBreakdown || [];
+  const campaignProfits = profitData?.campaignProfits || [];
 
   const sparkRevenue = dailyBreakdown.map((d) => d.revenue);
   const sparkProfit = dailyBreakdown.map((d) => d.profit);
@@ -414,7 +401,7 @@ export default function ProfitTrackerPage() {
           <DollarSign className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
           <h3 className="font-display text-lg font-semibold text-foreground mb-2">No profit data available</h3>
           <p className="text-sm text-muted-foreground mb-4">Connect your store to start tracking real-time profits</p>
-          <button onClick={fetchData} className="text-sm text-accent hover:text-accent/80 flex items-center gap-2 mx-auto"><RefreshCw className="h-4 w-4" /> Retry</button>
+          <button onClick={() => refetchProfit()} className="text-sm text-accent hover:text-accent/80 flex items-center gap-2 mx-auto"><RefreshCw className="h-4 w-4" /> Retry</button>
         </div>
       )}
     </div>

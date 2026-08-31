@@ -1,4 +1,6 @@
-import { getAllPlatforms, incrementKeyUsage, markKeyError, markKeyHealthy, setPlatformCooldown, selectBestKey, type PlatformConfig as FirestorePlatform } from "./platform-config";
+import { getAllPlatforms, incrementKeyUsage, markKeyError, markKeyHealthy, setPlatformCooldown, type PlatformFirestoreConfig } from "./platform-config";
+import { getCJAccessToken } from "./cj-auth";
+import { logger } from "@/lib/logger";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -118,26 +120,6 @@ async function searchGoogleShoppingWithKey(apiKey: string, query: string): Promi
 }
 
 // ── CJ Dropshipping ─────────────────────────────────────────────────────────
-
-async function getCJAccessToken(apiKey: string): Promise<string> {
-  if (apiKey.startsWith("MCP@")) return apiKey;
-
-  const res = await fetch("https://developers.cjdropshipping.com/api2.0/v1/authentication/getAccessToken", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ apiKey }),
-    signal: AbortSignal.timeout(10000),
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`CJ Auth ${res.status}: ${body.slice(0, 200)}`);
-  }
-
-  const data = await res.json();
-  const token = data.data?.accessToken;
-  if (!token) throw new Error("CJ auth returned no token");
-  return token;
-}
 
 async function searchCJProductsWithKey(apiKey: string, query: string): Promise<{ search_results: SearchResult[] }> {
   const accessToken = await getCJAccessToken(apiKey);
@@ -344,6 +326,39 @@ async function searchAliExpressWithKey(apiKey: string, query: string): Promise<{
 
   const html = await res.text();
 
+  // Try JSON-LD structured data first
+  const jsonLdPattern = /<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi;
+  const jsonLdItems: SearchResult[] = [];
+  let jsonLdMatch;
+  while ((jsonLdMatch = jsonLdPattern.exec(html)) !== null) {
+    try {
+      const parsed = JSON.parse(jsonLdMatch[1]);
+      const items = parsed["@type"] === "ItemList" ? parsed.itemListElement || [] : [parsed];
+      for (const item of items) {
+        const product = item.item || item;
+        if (product["@type"] !== "Product" && product["@type"] !== "Offer") continue;
+        const offers = product.offers || product;
+        const price = typeof offers.price === "number" ? offers.price
+          : typeof offers.lowPrice === "number" ? offers.lowPrice
+          : typeof offers.price === "string" ? parseFloat(offers.price) : null;
+        if (product.name && price && price > 0) {
+          jsonLdItems.push({
+            title: String(product.name),
+            price,
+            image: product.image ? (Array.isArray(product.image) ? product.image[0] : String(product.image)) : null,
+            link: product.url ? String(product.url) : targetUrl,
+            source: "aliexpress",
+          });
+        }
+      }
+    } catch { /* skip malformed JSON-LD */ }
+  }
+
+  if (jsonLdItems.length >= 3) {
+    return { search_results: jsonLdItems.slice(0, 15) };
+  }
+
+  // Fallback to regex extraction
   const productLinkPattern = /href="(\/item\/\d+\.html[^"]*)"/gi;
   const productLinks: string[] = [];
   let linkMatch;
@@ -358,7 +373,7 @@ async function searchAliExpressWithKey(apiKey: string, query: string): Promise<{
   const priceMatches = html.match(/\$[\d,]+\.?\d*/g) || [];
   const imgMatches = html.match(/src="(https?:\/\/[^"]*\.(jpg|png|webp)[^"]*)/gi) || [];
 
-  const items: SearchResult[] = titleMatches.slice(0, 15).map((t, i) => ({
+  const regexItems: SearchResult[] = titleMatches.slice(0, 15).map((t, i) => ({
     title: t.replace(/<[^>]*>/g, "").replace(/class="[^"]*"/g, "").trim(),
     price: priceMatches[i] ? parseFloat(priceMatches[i].replace("$", "").replace(",", "")) : null,
     image: imgMatches[i] ? imgMatches[i].replace('src="', "").replace(/["'].*$/, "") : null,
@@ -366,7 +381,20 @@ async function searchAliExpressWithKey(apiKey: string, query: string): Promise<{
     source: "aliexpress",
   }));
 
-  return { search_results: items };
+  const allItems = [...jsonLdItems, ...regexItems];
+  const seen = new Set<string>();
+  const unique = allItems.filter((item) => {
+    const key = `${item.title}|${item.price}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  if (unique.length === 0) {
+    throw new Error("No results scraped from AliExpress. The site may have changed its layout or blocked the request.");
+  }
+
+  return { search_results: unique.slice(0, 15) };
 }
 
 // ── Generic Scraper-Based Search ─────────────────────────────────────────────
@@ -407,6 +435,31 @@ const scraperSearchConfigs: Record<string, { name: string; searchUrl: (q: string
     searchUrl: (q) => `https://www.alibaba.com/trade/search?SearchText=${encodeURIComponent(q)}`,
     linkPattern: /href="(\/product-detail\/[^"]+)"/gi,
   },
+  wish: {
+    name: "Wish",
+    searchUrl: (q) => `https://www.wish.com/search/${encodeURIComponent(q)}`,
+    linkPattern: /href="(\/product\/[^"]+)"/gi,
+  },
+  ebay: {
+    name: "eBay",
+    searchUrl: (q) => `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(q)}`,
+    linkPattern: /href="(\/(?:itm|sch)\/[^"?]+[^"]*)"/gi,
+  },
+  shopee: {
+    name: "Shopee",
+    searchUrl: (q) => `https://shopee.com/search?keyword=${encodeURIComponent(q)}`,
+    linkPattern: /href="(\/[^"]+?-i\.\d+[^"]*)"/gi,
+  },
+  cn_1688: {
+    name: "1688",
+    searchUrl: (q) => `https://s.1688.com/selloffer/offer_search.htm?keywords=${encodeURIComponent(q)}`,
+    linkPattern: /(?:href="|data-href=")(\/offer\/\d+\.html[^"]*)/gi,
+  },
+  global_sources: {
+    name: "Global Sources",
+    searchUrl: (q) => `https://www.globalsources.com/api/search-new/result?keywords=${encodeURIComponent(q)}`,
+    linkPattern: /href="(\/[^"]+-p-\d+\.html[^"]*)"/gi,
+  },
 };
 
 async function searchViaScraperWithKey(apiKey: string, platformId: string, query: string): Promise<{ search_results: SearchResult[] }> {
@@ -414,13 +467,11 @@ async function searchViaScraperWithKey(apiKey: string, platformId: string, query
   if (!config) throw new Error(`No scraper config for ${platformId}`);
 
   const targetUrl = config.searchUrl(query);
-  const params = new URLSearchParams({
-    api_key: apiKey,
-    url: targetUrl,
-    render: "true",
-  });
 
-  const res = await fetch(`https://api.scraperapi.com?${params}`, {
+  const res = await fetch("https://api.scraperapi.com", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ api_key: apiKey, url: targetUrl, render: true }),
     signal: AbortSignal.timeout(30000),
   });
   if (!res.ok) {
@@ -430,6 +481,42 @@ async function searchViaScraperWithKey(apiKey: string, platformId: string, query
 
   const html = await res.text();
 
+  // Try JSON-LD structured data first (most reliable)
+  const jsonLdPattern = /<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi;
+  const jsonLdItems: SearchResult[] = [];
+  let jsonLdMatch;
+  while ((jsonLdMatch = jsonLdPattern.exec(html)) !== null) {
+    try {
+      const parsed = JSON.parse(jsonLdMatch[1]);
+      const items = parsed["@type"] === "ItemList" ? parsed.itemListElement || [] : [parsed];
+      for (const item of items) {
+        const product = item.item || item;
+        if (product["@type"] !== "Product" && product["@type"] !== "Offer") continue;
+        const offers = product.offers || product;
+        const price = typeof offers.price === "number" ? offers.price
+          : typeof offers.lowPrice === "number" ? offers.lowPrice
+          : typeof offers.price === "string" ? parseFloat(offers.price) : null;
+        if (product.name && price && price > 0) {
+          jsonLdItems.push({
+            title: String(product.name),
+            price,
+            image: product.image ? (Array.isArray(product.image) ? product.image[0] : String(product.image)) : null,
+            link: product.url ? String(product.url) : targetUrl,
+            source: platformId,
+            brand: product.brand ? String(product.brand.name || product.brand) : undefined,
+            rating: typeof product.aggregateRating?.ratingValue === "number" ? product.aggregateRating.ratingValue : undefined,
+            reviews: typeof product.aggregateRating?.reviewCount === "number" ? product.aggregateRating.reviewCount : undefined,
+          });
+        }
+      }
+    } catch { /* skip malformed JSON-LD */ }
+  }
+
+  if (jsonLdItems.length >= 3) {
+    return { search_results: jsonLdItems.slice(0, 20) };
+  }
+
+  // Fallback to regex extraction
   const productLinks: string[] = [];
   let linkMatch;
   while ((linkMatch = config.linkPattern.exec(html)) !== null) {
@@ -477,8 +564,124 @@ async function searchViaScraperWithKey(apiKey: string, platformId: string, query
     });
   }
 
+  // Merge with any JSON-LD items we found
+  const allItems = [...jsonLdItems, ...items];
+  const seen = new Set<string>();
+  const unique = allItems.filter((item) => {
+    const key = `${item.title}|${item.price}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  if (unique.length === 0) {
+    throw new Error(`No results scraped from ${config.name}. The site may have changed its layout or blocked the request.`);
+  }
+
+  return { search_results: unique.slice(0, 20) };
+}
+
+// ── Custom No-Code / AI-Generated Connector Search ─────────────────────────
+
+async function searchViaCustomConnectorWithKey(
+  apiKey: string,
+  searchUrlTemplate: string,
+  query: string,
+  selectors?: Record<string, string>
+): Promise<{ search_results: SearchResult[] }> {
+  const targetUrl = searchUrlTemplate.replace(/\{\{query\}\}/gi, encodeURIComponent(query));
+  const params = new URLSearchParams({
+    api_key: apiKey,
+    url: targetUrl,
+    render: "true",
+  });
+
+  const res = await fetch(`https://api.scraperapi.com?${params}`, {
+    signal: AbortSignal.timeout(30000),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`ScraperAPI ${res.status}: ${body.slice(0, 200)}`);
+  }
+
+  const html = await res.text();
+
+  const linkPattern = selectors?.link
+    ? new RegExp(selectors.link, "gi")
+    : /href="(\/[^"]+)"/gi;
+
+  const productLinks: string[] = [];
+  let linkMatch;
+  while ((linkMatch = linkPattern.exec(html)) !== null) {
+    let fullUrl = linkMatch[1];
+    if (fullUrl.startsWith("/")) {
+      const base = new URL(targetUrl);
+      fullUrl = `${base.origin}${fullUrl}`;
+    }
+    if (!productLinks.includes(fullUrl)) {
+      productLinks.push(fullUrl);
+    }
+  }
+
+  const titlePatterns = selectors?.title
+    ? [new RegExp(selectors.title, "gi")]
+    : [
+        /class="[^"]*(?:product-title|item-title|goods-title|product-name)[^"]*"[^>]*>([^<]{5,150})/gi,
+        /<h3[^>]*>([^<]{5,150})<\/h3>/gi,
+        /<h2[^>]*>([^<]{5,150})<\/h2>/gi,
+        /class="[^"]*title[^"]*"[^>]*>([^<]{5,120})/gi,
+      ];
+
+  const titles: string[] = [];
+  for (const pat of titlePatterns) {
+    let m;
+    while ((m = pat.exec(html)) !== null) {
+      const t = m[1].replace(/<[^>]*>/g, "").trim();
+      if (t.length > 5 && !titles.includes(t)) titles.push(t);
+    }
+    if (titles.length > 0) break;
+  }
+
+  const pricePatterns = selectors?.price
+    ? [new RegExp(selectors.price, "gi")]
+    : [/\$[\d,]+\.?\d*/g];
+
+  const prices: number[] = [];
+  for (const pat of pricePatterns) {
+    let m;
+    while ((m = pat.exec(html)) !== null) {
+      const val = parseFloat(m[1].replace(/[$,]/g, ""));
+      if (!isNaN(val) && val > 0) prices.push(val);
+    }
+  }
+
+  const imgPatterns = selectors?.image
+    ? [new RegExp(selectors.image, "gi")]
+    : [/src="(https?:\/\/[^"]*\.(jpg|png|webp)[^"]*)/gi];
+
+  const images: string[] = [];
+  for (const pat of imgPatterns) {
+    let m;
+    while ((m = pat.exec(html)) !== null) {
+      const url = m[1].replace(/^src="/, "").replace(/["'].*$/, "");
+      if (url.startsWith("http") && !images.includes(url)) images.push(url);
+    }
+  }
+
+  const count = Math.min(titles.length, 20);
+  const items: SearchResult[] = [];
+  for (let i = 0; i < count; i++) {
+    items.push({
+      title: titles[i],
+      price: prices[i] ?? null,
+      image: images[i] || null,
+      link: productLinks[i] || targetUrl,
+      source: "custom",
+    });
+  }
+
   if (items.length === 0) {
-    throw new Error(`No results scraped from ${config.name}`);
+    throw new Error("No results scraped via custom connector. Try adjusting selectors.");
   }
 
   return { search_results: items };
@@ -510,9 +713,44 @@ const dedicatedSearchFns: Record<string, SearchFn> = {
   banggood: (key, q) => searchViaScraperWithKey(key, "banggood", q),
   dhgate: (key, q) => searchViaScraperWithKey(key, "dhgate", q),
   alibaba: (key, q) => searchViaScraperWithKey(key, "alibaba", q),
+  wish: (key, q) => searchViaScraperWithKey(key, "wish", q),
+  ebay: (key, q) => searchViaScraperWithKey(key, "ebay", q),
+  shopee: (key, q) => searchViaScraperWithKey(key, "shopee", q),
+  "1688": (key, q) => searchViaScraperWithKey(key, "cn_1688", q),
+  global_sources: (key, q) => searchViaScraperWithKey(key, "global_sources", q),
 };
 
-function getSearchFn(platform: FirestorePlatform): SearchFn {
+// Build a search function from a custom (no-code / AI-generated) connector.
+function searchFnFromConnector(platform: PlatformFirestoreConfig): SearchFn {
+  const connector = platform.connector;
+  if (!connector) {
+    return searchFunctions.scraperapi;
+  }
+  // If the connector simply points at a built-in site, reuse its scraper config.
+  if (connector.siteKey && scraperSearchConfigs[connector.siteKey]) {
+    return (key, q) => searchViaScraperWithKey(key, connector.siteKey as string, q);
+  }
+  // Otherwise build a custom scraper from the URL template + selectors.
+  if (connector.searchUrlTemplate) {
+    return (key, q) =>
+      searchViaCustomConnectorWithKey(
+        key,
+        connector.searchUrlTemplate as string,
+        q,
+        connector.selectors
+      );
+  }
+  return searchFunctions.scraperapi;
+}
+
+function getSearchFn(platform: PlatformFirestoreConfig): SearchFn {
+  // Custom no-code / AI connectors take priority (they are self-describing).
+  if (platform.connector) {
+    const connectorFn = searchFnFromConnector(platform);
+    if (connectorFn !== searchFunctions.scraperapi) {
+      return connectorFn;
+    }
+  }
   // First check if the platform's method has a direct match
   if (searchFunctions[platform.method]) {
     return searchFunctions[platform.method];
@@ -531,11 +769,11 @@ export async function searchAllPlatformsFromFirestore(
   query: string,
   selectedIds?: string[]
 ): Promise<PlatformSearchResult[]> {
-  let platforms: FirestorePlatform[];
+  let platforms: PlatformFirestoreConfig[];
   try {
     platforms = await getAllPlatforms();
   } catch (error) {
-    console.error("[platform-search] Failed to load platforms from Firestore:", error);
+    logger.error("[platform-search] Failed to load platforms from Firestore:", { error: String(error) });
     return [];
   }
 
@@ -641,14 +879,14 @@ const SERP_API_KEY = process.env.SERP_API_KEY;
 const CJ_API_KEY = process.env.CJ_API_KEY;
 const KEEPA_API_KEY = process.env.KEEPA_API_KEY;
 
-export interface PlatformConfig {
+export interface PlatformSearchConfig {
   id: string;
   name: string;
   envKey: string;
   searchFn: (query: string) => Promise<{ search_results: SearchResult[] }>;
 }
 
-export const platforms: PlatformConfig[] = [
+export const platforms: PlatformSearchConfig[] = [
   { id: "amazon", name: "Amazon", envKey: "RAINFOREST_API_KEY", searchFn: (q) => searchAmazonWithKey(RAINFOREST_API_KEY || "", q) },
   { id: "google_shopping", name: "Google Shopping", envKey: "SERP_API_KEY", searchFn: (q) => searchGoogleShoppingWithKey(SERP_API_KEY || "", q) },
   { id: "cj", name: "CJ Dropshipping", envKey: "CJ_API_KEY", searchFn: (q) => searchCJProductsWithKey(CJ_API_KEY || "", q) },
@@ -672,7 +910,7 @@ export async function searchAllPlatforms(
     const firestoreResults = await searchAllPlatformsFromFirestore(query, selectedIds);
     if (firestoreResults.length > 0) return firestoreResults;
   } catch (error) {
-    console.warn("[platform-search] Firestore search failed, falling back to env vars:", error);
+    logger.warn("[platform-search] Firestore search failed, falling back to env vars:", { error: String(error) });
   }
 
   // Fallback to env-based search

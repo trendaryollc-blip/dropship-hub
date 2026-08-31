@@ -26,6 +26,17 @@ interface DigestData {
   };
 }
 
+import { logger } from "@/lib/logger";
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 const severityColors: Record<string, string> = {
   low: "#3b82f6",
   medium: "#f59e0b",
@@ -48,10 +59,10 @@ function generateEmailHTML(digest: DigestData): string {
       <td style="padding:12px;border-bottom:1px solid #1f2937;">
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${severityColors[alert.severity]};"></span>
-          <span style="color:#f3f4f6;font-size:14px;font-weight:600;">${alert.title}</span>
+          <span style="color:#f3f4f6;font-size:14px;font-weight:600;">${escapeHtml(alert.title)}</span>
           <span style="color:#9ca3af;font-size:11px;background:#374151;padding:2px 6px;border-radius:4px;">${typeLabels[alert.type]}</span>
         </div>
-        <p style="color:#9ca3af;font-size:13px;margin:6px 0 0 16px;">${alert.description}</p>
+        <p style="color:#9ca3af;font-size:13px;margin:6px 0 0 16px;">${escapeHtml(alert.description)}</p>
       </td>
     </tr>
   `).join("");
@@ -61,7 +72,7 @@ function generateEmailHTML(digest: DigestData): string {
       <td style="padding:10px 12px;border-bottom:1px solid #1f2937;">
         <div style="display:flex;align-items:flex-start;gap:8px;">
           <span style="color:#a78bfa;font-size:14px;">⚡</span>
-          <span style="color:#d1d5db;font-size:13px;line-height:1.5;">${rec}</span>
+          <span style="color:#d1d5db;font-size:13px;line-height:1.5;">${escapeHtml(rec)}</span>
         </div>
       </td>
     </tr>
@@ -83,7 +94,7 @@ function generateEmailHTML(digest: DigestData): string {
     <!-- Summary -->
     <div style="background:#111827;border:1px solid #1f2937;border-radius:12px;padding:20px;margin-bottom:24px;">
       <h2 style="color:#a78bfa;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:0 0 12px;">AI Summary</h2>
-      <p style="color:#d1d5db;font-size:14px;line-height:1.6;margin:0;">${digest.summary}</p>
+      <p style="color:#d1d5db;font-size:14px;line-height:1.6;margin:0;">${escapeHtml(digest.summary)}</p>
     </div>
 
     <!-- Metrics -->
@@ -111,7 +122,7 @@ function generateEmailHTML(digest: DigestData): string {
           <span style="color:#6b7280;font-size:12px;margin-left:6px;">vs last week</span>
         </div>
       </div>
-      <p style="color:#9ca3af;font-size:13px;margin:8px 0 0;line-height:1.5;">${digest.weeklyTrend.insight}</p>
+      <p style="color:#9ca3af;font-size:13px;margin:8px 0 0;line-height:1.5;">${escapeHtml(digest.weeklyTrend.insight)}</p>
     </div>
 
     ${digest.alerts.length > 0 ? `
@@ -147,7 +158,7 @@ function generateEmailHTML(digest: DigestData): string {
 export async function sendDigestEmail(to: string, digest: DigestData): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.error("RESEND_API_KEY not configured");
+    logger.error("RESEND_API_KEY not configured");
     return false;
   }
 
@@ -170,13 +181,13 @@ export async function sendDigestEmail(to: string, digest: DigestData): Promise<b
 
     if (!res.ok) {
       const err = await res.text();
-      console.error("Resend error:", err);
+      logger.error("Resend error", { error: typeof err === "string" ? err : JSON.stringify(err) });
       return false;
     }
 
     return true;
   } catch (err) {
-    console.error("Email send failed:", err);
+    logger.error("Email send failed", { error: err instanceof Error ? err.message : String(err) });
     return false;
   }
 }

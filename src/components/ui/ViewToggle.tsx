@@ -8,14 +8,16 @@ export default function ViewToggle({ viewMode, setViewMode }: { viewMode: "grid"
       <button
         onClick={() => setViewMode("grid")}
         className={`p-2.5 rounded-md transition-all min-w-[36px] min-h-[36px] flex items-center justify-center ${viewMode === "grid" ? "bg-accent/10 text-accent" : "text-muted-foreground hover:text-foreground"}`}
-        title="Grid view"
+        aria-pressed={viewMode === "grid"}
+        aria-label="Grid view"
       >
         <LayoutGrid className="h-4 w-4" />
       </button>
       <button
         onClick={() => setViewMode("list")}
         className={`p-2.5 rounded-md transition-all min-w-[36px] min-h-[36px] flex items-center justify-center ${viewMode === "list" ? "bg-accent/10 text-accent" : "text-muted-foreground hover:text-foreground"}`}
-        title="List view"
+        aria-pressed={viewMode === "list"}
+        aria-label="List view"
       >
         <List className="h-4 w-4" />
       </button>

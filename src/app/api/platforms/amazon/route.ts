@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchAmazon } from "@/lib/platform-search";
+import { withAuth } from "@/lib/auth";
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const { query, asin } = await request.json();
 
@@ -30,8 +31,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Amazon search failed" }, { status: 500 });
   }
-}
+});
 
-export async function GET() {
+export const GET = withAuth(async (request: NextRequest, uid: string) => {
   return NextResponse.json({ platform: "Amazon", configured: !!process.env.RAINFOREST_API_KEY });
-}
+});

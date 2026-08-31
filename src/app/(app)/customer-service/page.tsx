@@ -9,6 +9,7 @@ import {
 import { useInView } from "@/hooks/useInView";
 import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useAPI } from "@/hooks/useAPI";
 import type { Conversation, CSMessage, CSTemplate, Escalation, CSStats } from "@/types/customer-service";
 
 // ─── Sub-components ──────────────────────────────────────────────
@@ -173,45 +174,23 @@ function TemplateManager({ templates }: { templates: CSTemplate[] }) {
 
 export default function CustomerServicePage() {
   const { user } = useAuth();
-  const [stats, setStats] = useState<CSStats | null>(null);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [messages, setMessages] = useState<CSMessage[]>([]);
-  const [templates, setTemplates] = useState<CSTemplate[]>([]);
-  const [escalations, setEscalations] = useState<Escalation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const uid = user?.uid || "";
+
+  const { data: statsData } = useAPI<{ stats?: CSStats }>(uid ? `/api/customer-service?uid=${uid}` : null);
+  const { data: convData } = useAPI<{ conversations?: Conversation[] }>(uid ? `/api/customer-service?type=conversations&uid=${uid}` : null);
+  const { data: msgData, mutate: mutateMessages } = useAPI<{ messages?: CSMessage[] }>(uid ? `/api/customer-service?type=messages&uid=${uid}` : null);
+  const { data: tmplData } = useAPI<{ templates?: CSTemplate[] }>(uid ? `/api/customer-service?type=templates&uid=${uid}` : null);
+  const { data: escData, mutate: mutateEscalations } = useAPI<{ escalations?: Escalation[] }>(uid ? `/api/customer-service?type=escalations&uid=${uid}` : null);
+
+  const stats = statsData?.stats || null;
+  const conversations = convData?.conversations || [];
+  const messages = msgData?.messages || [];
+  const templates = tmplData?.templates || [];
+  const escalations = escData?.escalations || [];
+  const loading = !user || (!statsData && !convData);
+
   const [selectedConv, setSelectedConv] = useState("conv-1");
   const [activeTab, setActiveTab] = useState<"dashboard" | "chat" | "escalations" | "templates">("dashboard");
-
-  useEffect(() => {
-    if (!user) return;
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const uid = user.uid;
-        const [sRes, cRes, mRes, tRes, eRes] = await Promise.all([
-          fetch(`/api/customer-service?uid=${uid}`),
-          fetch(`/api/customer-service?type=conversations&uid=${uid}`),
-          fetch(`/api/customer-service?type=messages&conversationId=conv-1&uid=${uid}`),
-          fetch(`/api/customer-service?type=templates&uid=${uid}`),
-          fetch(`/api/customer-service?type=escalations&uid=${uid}`),
-        ]);
-        const sData = await sRes.json();
-        const cData = await cRes.json();
-        const mData = await mRes.json();
-        const tData = await tRes.json();
-        const eData = await eRes.json();
-        if (sData.stats) setStats(sData.stats);
-        if (cData.conversations) setConversations(cData.conversations);
-        if (mData.messages) setMessages(mData.messages);
-        if (tData.templates) setTemplates(tData.templates);
-        if (eData.escalations) setEscalations(eData.escalations);
-    } catch (err) {
-      console.error("Failed to load data:", err);
-    }
-      setLoading(false);
-    };
-    fetchData();
-  }, [user]);
 
   const loadMessages = async (convId: string) => {
     setSelectedConv(convId);
@@ -219,15 +198,13 @@ export default function CustomerServicePage() {
       const uid = user?.uid || "";
       const res = await fetch(`/api/customer-service?type=messages&conversationId=${convId}&uid=${uid}`);
       const data = await res.json();
-      if (data.messages) setMessages(data.messages);
-    } catch (err) {
-      console.error("Failed to load messages:", err);
-    }
+      if (data.messages) mutateMessages((prev) => ({ messages: data.messages }), false);
+    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[CustomerServicePage] silently caught", e); }
   };
 
   const handleSend = async (content: string) => {
     const userMsg: CSMessage = { id: `msg-${Date.now()}`, conversationId: selectedConv, role: "customer", content, timestamp: new Date().toISOString() };
-    setMessages((prev) => [...prev, userMsg]);
+    mutateMessages((prev) => ({ messages: [...(prev?.messages || []), userMsg] }), false);
     try {
       const uid = user?.uid || "";
       const res = await fetch("/api/customer-service", {
@@ -237,15 +214,17 @@ export default function CustomerServicePage() {
       });
       const data = await res.json();
       if (data.message) {
-        setMessages((prev) => [...prev, data.message]);
+        mutateMessages((prev) => ({ messages: [...(prev?.messages || []), data.message] }), false);
         if (data.shouldEscalate) {
-          setEscalations((prev) => [...prev, {
-            id: `esc-${Date.now()}`, conversationId: selectedConv, customerName: "Customer", reason: data.escalationReason || "low_confidence",
-            reasonDetail: "Auto-escalated by AI", confidence: data.confidence, customerMessage: content, status: "pending", createdAt: new Date().toISOString(),
-          }]);
+          mutateEscalations((prev) => ({
+            escalations: [...(prev?.escalations || []), {
+              id: `esc-${Date.now()}`, conversationId: selectedConv, customerName: "Customer", reason: (data.escalationReason || "low_confidence") as Escalation["reason"],
+              reasonDetail: "Auto-escalated by AI", confidence: data.confidence || 0, customerMessage: content, status: "pending", createdAt: new Date().toISOString(),
+            }],
+          }), false);
         }
       }
-    } catch (err) { console.error("Failed to send message:", err); }
+    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[CustomerServicePage] silently caught", e); }
   };
 
   return (

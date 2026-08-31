@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchAmazon, searchGoogleShopping, searchCJProducts, searchKeepaProducts, searchAliExpress } from "@/lib/platform-search";
 import { getSuppliers } from "@/lib/supplier-service";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 
 interface PlatformPrice {
   platform: string;
@@ -63,7 +65,7 @@ function generateMockPrices(basePrice: number): PlatformPrice[] {
   }));
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest) => {
   try {
     const { title, source, price } = await request.json();
 
@@ -148,7 +150,9 @@ export async function POST(request: NextRequest) {
           reliabilityScore: s.stats.reliabilityScore,
           responseTime: s.stats.responseTime,
         }));
-    } catch {}
+    } catch (err) {
+      // Supplier matching is optional — log and continue
+    }
 
     return NextResponse.json({
       platforms: validPrices,
@@ -165,4 +169,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, LIMITS.PRODUCT_ENRICH);

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth";
 
 const EBAY_APP_ID = process.env.EBAY_APP_ID;
 
@@ -6,7 +7,7 @@ function isPlaceholderKey(key: string | undefined): boolean {
   return !key || key.startsWith("Your") || key === "placeholder";
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const { query } = await request.json();
 
@@ -50,8 +51,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "eBay search failed" }, { status: 500 });
   }
-}
+});
 
-export async function GET() {
+export const GET = withAuth(async (request: NextRequest, uid: string) => {
   return NextResponse.json({ platform: "eBay", configured: !isPlaceholderKey(EBAY_APP_ID) });
-}
+});

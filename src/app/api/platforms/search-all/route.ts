@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchAllPlatforms, platforms } from "@/lib/platform-search";
 import { getAllPlatforms } from "@/lib/platform-config";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
+import { createLogger } from "@/lib/logger";
 
-export async function POST(request: NextRequest) {
+const logger = createLogger({ route: "api/search-all" });
+
+export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const { query, platforms: selectedPlatforms } = await request.json();
 
@@ -13,18 +18,18 @@ export async function POST(request: NextRequest) {
     // Detailed logging for debugging
     results.forEach((r) => {
       if (r.error) {
-        console.error(`[search-all] ❌ ${r.platform} (${r.name}) FAILED:`, r.error);
+        logger.error(`[search-all] ❌ ${r.platform} (${r.name}) FAILED:`, { error: r.error });
       } else if (r.data?.search_results?.length === 0) {
-        console.warn(`[search-all] ⚠️ ${r.platform} (${r.name}): 0 results`);
+        logger.warn(`[search-all] ⚠️ ${r.platform} (${r.name}): 0 results`);
       } else {
-        console.log(`[search-all] ✅ ${r.platform} (${r.name}): ${r.data?.search_results?.length ?? 0} results`);
+        logger.info(`[search-all] ✅ ${r.platform} (${r.name}): ${r.data?.search_results?.length ?? 0} results`);
       }
     });
 
     const successful = results.filter((r) => r.data !== null && r.data?.search_results && r.data.search_results.length > 0);
     const failed = results.filter((r) => r.data === null || !r.data?.search_results || r.data.search_results.length === 0);
 
-    let totalProducts = successful.reduce((acc, r) => {
+    const totalProducts = successful.reduce((acc, r) => {
       const items = r.data?.search_results ?? [];
       return acc + items.length;
     }, 0);
@@ -53,9 +58,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Multi-search failed" }, { status: 500 });
   }
-}
+}, LIMITS.PLATFORM_SEARCH);
 
-export async function GET() {
+export const GET = withAuth(async (request: NextRequest, uid: string) => {
   // Try to get platforms from Firestore
   try {
     const firestorePlatforms = await getAllPlatforms();
@@ -89,4 +94,4 @@ export async function GET() {
   }));
 
   return NextResponse.json({ platforms: available, source: "env" });
-}
+}, LIMITS.PLATFORM_SEARCH);

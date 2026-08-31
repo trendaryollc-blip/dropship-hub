@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
-import jwt from "jsonwebtoken";
+import { signTrendaryoToken } from "@/lib/jwt";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
+import { validateBody, StorePushInputSchema } from "@/lib/validation";
 
 interface PushProductPayload {
   uid: string;
@@ -24,7 +27,7 @@ async function pushToShopify(domain: string, accessToken: string, product: PushP
     body: JSON.stringify({
       product: {
         title: product.productTitle,
-        body_html: `<p>${product.productDescription}</p>`,
+        body_html: `<p>${product.productDescription.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>`,
         vendor: "DropShip Hub",
         images: product.productImage ? [{ src: product.productImage }] : [],
         variants: product.productVariants?.length
@@ -42,9 +45,13 @@ async function pushToShopify(domain: string, accessToken: string, product: PushP
 }
 
 async function pushToWooCommerce(url: string, key: string, secret: string, product: PushProductPayload) {
+  const credentials = Buffer.from(`${key}:${secret}`).toString("base64");
   const resp = await fetch(`${url}/wp-json/wc/v3/products`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Basic ${credentials}`,
+    },
     body: JSON.stringify({
       name: product.productTitle,
       description: product.productDescription,
@@ -52,7 +59,6 @@ async function pushToWooCommerce(url: string, key: string, secret: string, produ
       images: product.productImage ? [{ src: product.productImage }] : [],
       categories: [{ name: "DropShip Hub" }],
     }),
-    // WooCommerce auth via URL params
   });
   const data = await resp.json();
   return { success: resp.ok, platformProductId: data.id, error: data.message };
@@ -80,12 +86,13 @@ async function pushToCustomStore(storeUrl: string, apiKey: string, product: Push
 }
 
 async function pushToTrendaryo(backendUrl: string, apiKey: string, product: PushProductPayload) {
-  const jwtSecret = process.env.TRENDARYO_JWT_SECRET || "";
   const adminUid = process.env.TRENDARYO_ADMIN_UID || "";
 
   let authToken = "";
-  if (jwtSecret && adminUid) {
-    authToken = jwt.sign({ userId: adminUid, role: "admin", type: "access" }, jwtSecret, { expiresIn: "1h" });
+  if (adminUid) {
+    try {
+      authToken = signTrendaryoToken({ userId: adminUid, role: "admin", type: "access" });
+    } catch { /* JWT secret not configured */ }
   }
 
   const headers: Record<string, string> = {
@@ -117,7 +124,9 @@ async function pushToTrendaryo(backendUrl: string, apiKey: string, product: Push
         imageUrl = uploadData.data.url;
         images = [uploadData.data.url];
       }
-    } catch {}
+    } catch {
+      // Image upload is optional — continue with original URL
+    }
   }
 
   const resp = await fetch(`${backendUrl}/api/products`, {
@@ -143,19 +152,18 @@ async function pushToTrendaryo(backendUrl: string, apiKey: string, product: Push
   return { success: true, platformProductId: data.data?.id, error: undefined };
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
-    const body: PushProductPayload & { uid: string } = await req.json();
-    const { uid, storeId, ...product } = body;
-    if (!uid || !storeId || !product.productTitle) {
-      return NextResponse.json({ error: "uid, storeId, and productTitle are required" }, { status: 400 });
-    }
+    const body = await req.json();
+    const parseResult = validateBody(StorePushInputSchema, body);
+    if (!parseResult.success) return parseResult.response;
+    const { storeId, ...product } = parseResult.data;
 
     const db = await getAdminDB();
     const storeSnap = await db.collection("users").doc(uid).collection("storeConnections").doc(storeId).get();
     if (!storeSnap.exists) return NextResponse.json({ error: "Store not found" }, { status: 404 });
 
-    const store = storeSnap.data()!;
+    const store = storeSnap.data() ?? {};
     let result: { success: boolean; platformProductId?: number | string; error?: unknown };
 
     switch (store.platform) {
@@ -203,13 +211,10 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     return NextResponse.json({ error: "Push failed", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
   }
-}
+}, LIMITS.STORE_PUSH);
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
-    const uid = req.nextUrl.searchParams.get("uid");
-    if (!uid) return NextResponse.json({ error: "uid required" }, { status: 400 });
-
     const db = await getAdminDB();
     const snap = await db.collection("users").doc(uid).collection("pushedProducts").orderBy("pushedAt", "desc").limit(50).get();
     const products = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -217,13 +222,12 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch pushed products", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
   }
-}
+}, LIMITS.STORE_PUSH);
 
-export async function DELETE(req: NextRequest) {
+export const DELETE = withAuth(async (req: NextRequest, uid: string) => {
   try {
-    const uid = req.nextUrl.searchParams.get("uid");
     const productId = req.nextUrl.searchParams.get("productId");
-    if (!uid || !productId) return NextResponse.json({ error: "uid and productId required" }, { status: 400 });
+    if (!productId) return NextResponse.json({ error: "productId required" }, { status: 400 });
 
     const db = await getAdminDB();
     await db.collection("users").doc(uid).collection("pushedProducts").doc(productId).delete();
@@ -231,4 +235,4 @@ export async function DELETE(req: NextRequest) {
   } catch (error) {
     return NextResponse.json({ error: "Failed to delete pushed product", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
   }
-}
+}, LIMITS.STORE_PUSH);

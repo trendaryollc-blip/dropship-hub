@@ -12,6 +12,7 @@ import {
   User,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { logger } from "@/lib/logger";
 
 interface AuthContextType {
   user: User | null;
@@ -48,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
       }
     }, (error) => {
-      console.error("Token refresh failed:", error);
+      logger.error("Token refresh failed", { error: error instanceof Error ? error.message : String(error) });
       setUser(null);
     });
     return unsubscribe;

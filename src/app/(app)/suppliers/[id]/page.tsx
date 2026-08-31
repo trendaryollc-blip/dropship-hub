@@ -1,6 +1,6 @@
 "use client";
 
-import { use, Suspense, useState, useEffect } from "react";
+import { use, Suspense, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft, Shield, Star, MapPin, Clock, Truck, Package,
@@ -9,30 +9,9 @@ import {
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { SupplierProfile } from "@/types/supplier";
-
-const badgeConfig: Record<string, { label: string; color: string; border: string; glow: string }> = {
-  gold: { label: "Gold", color: "text-amber-400 bg-amber-400/10", border: "border-amber-400/20", glow: "shadow-[0_0_12px_rgba(251,191,36,0.15)]" },
-  silver: { label: "Silver", color: "text-slate-300 bg-slate-300/10", border: "border-slate-300/20", glow: "shadow-[0_0_12px_rgba(148,163,184,0.15)]" },
-  bronze: { label: "Bronze", color: "text-orange-400 bg-orange-400/10", border: "border-orange-400/20", glow: "shadow-[0_0_12px_rgba(251,146,60,0.15)]" },
-};
-
-function ScoreRing({ score, size = 48 }: { score: number; size?: number }) {
-  const r = (size - 6) / 2;
-  const circ = 2 * Math.PI * r;
-  const offset = circ - (score / 100) * circ;
-  const color = score >= 90 ? "#22c55e" : score >= 75 ? "#3b82f6" : "#f59e0b";
-  return (
-    <div className="relative" style={{ width: size, height: size }}>
-      <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full -rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="3" />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth="3" strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round" />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-xs font-bold text-foreground">{score}</span>
-      </div>
-    </div>
-  );
-}
+import { badgeConfig, ScoreRing, dataSourceConfig } from "@/components/suppliers/supplier-shared";
+import { useAPI } from "@/hooks/useAPI";
+import { logger } from "@/lib/logger";
 
 function StarRating({ rating, size = 16 }: { rating: number; size?: number }) {
   return (
@@ -50,6 +29,122 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className="text-xs font-medium text-foreground text-right min-w-0 truncate max-w-[60%]">{value}</span>
     </div>
+  );
+}
+
+function ContactForm({ supplierName }: { supplierName: string }) {
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    company: "",
+    subject: "",
+    message: "",
+    quantity: "",
+  });
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // In production, this would send to an API endpoint
+    logger.info("Contact form submitted:", { supplierName, ...formData });
+    setSubmitted(true);
+  };
+
+  if (submitted) {
+    return (
+      <div className="text-center py-8">
+        <CheckCircle2 className="h-12 w-12 text-emerald-400 mx-auto mb-4" />
+        <h4 className="font-display text-lg font-semibold text-foreground mb-2">Message Sent!</h4>
+        <p className="text-sm text-muted-foreground mb-4">
+          Your inquiry has been sent to {supplierName}. They typically respond within their stated response time.
+        </p>
+        <button
+          onClick={() => { setSubmitted(false); setFormData({ name: "", email: "", company: "", subject: "", message: "", quantity: "" }); }}
+          className="text-sm text-accent hover:text-accent/80"
+        >
+          Send another message
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs text-muted-foreground mb-1.5">Your Name *</label>
+          <input
+            type="text"
+            required
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50"
+            placeholder="John Smith"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-muted-foreground mb-1.5">Email *</label>
+          <input
+            type="email"
+            required
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50"
+            placeholder="john@company.com"
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs text-muted-foreground mb-1.5">Company</label>
+          <input
+            type="text"
+            value={formData.company}
+            onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+            className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50"
+            placeholder="Your Company LLC"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-muted-foreground mb-1.5">Quantity Needed</label>
+          <input
+            type="text"
+            value={formData.quantity}
+            onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+            className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50"
+            placeholder="e.g., 100-500 units/month"
+          />
+        </div>
+      </div>
+      <div>
+        <label className="block text-xs text-muted-foreground mb-1.5">Subject *</label>
+        <input
+          type="text"
+          required
+          value={formData.subject}
+          onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+          className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50"
+          placeholder="Product sourcing inquiry"
+        />
+      </div>
+      <div>
+        <label className="block text-xs text-muted-foreground mb-1.5">Message *</label>
+        <textarea
+          required
+          rows={4}
+          value={formData.message}
+          onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+          className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 resize-none"
+          placeholder="Describe what products you're looking for, your target price, and any specific requirements..."
+        />
+      </div>
+      <button
+        type="submit"
+        className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-all active:scale-[0.98]"
+      >
+        <Mail className="h-4 w-4" /> Send Inquiry
+      </button>
+    </form>
   );
 }
 
@@ -73,30 +168,12 @@ function SectionCard({ children, delay = 0 }: { children: React.ReactNode; delay
 }
 
 function SupplierDetailContent({ id }: { id: string }) {
-  const [supplier, setSupplier] = useState<SupplierProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: supplierData, error: supplierError, isLoading } = useAPI<{ supplier?: SupplierProfile; error?: string }>(`/api/suppliers?id=${encodeURIComponent(id)}`);
+  const supplier = supplierData?.supplier || null;
+  const error = supplierError?.message || supplierData?.error || null;
+  const loading = isLoading;
   const { ref: heroRef, isInView: heroVisible } = useInView({ threshold: 0.1 });
   const { ref: ctaRef, isInView: ctaVisible } = useInView({ threshold: 0.1 });
-
-  useEffect(() => {
-    const fetchSupplier = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/suppliers?id=${encodeURIComponent(id)}`);
-        const data = await res.json();
-        if (data.supplier) {
-          setSupplier(data.supplier);
-        } else {
-          setError(data.error || "Supplier not found");
-        }
-      } catch {
-        setError("Failed to load supplier");
-      }
-      setLoading(false);
-    };
-    fetchSupplier();
-  }, [id]);
 
   if (loading) {
     return (
@@ -143,13 +220,11 @@ function SupplierDetailContent({ id }: { id: string }) {
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">{supplier.name}</h1>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold uppercase ${badge.color} ${badge.border} ${badge.glow}`}>{badge.label} Supplier</span>
-                {supplier.source === "cj" && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-400/10 border border-emerald-400/20 text-emerald-400 font-bold">LIVE API</span>
-                )}
+                <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold uppercase ${dataSourceConfig[supplier.dataSource].color}`}>{dataSourceConfig[supplier.dataSource].label}</span>
               </div>
               <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
                 <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /> {supplier.flag} {supplier.location}</span>
-                <span className="flex items-center gap-1.5"><Globe className="h-3.5 w-3.5" /> <span className="text-emerald-400 text-xs font-medium">Online Now</span></span>
+                <span className="text-xs text-muted-foreground/60">{dataSourceConfig[supplier.dataSource].description}</span>
               </div>
               <div className="flex items-center gap-3">
                 <StarRating rating={supplier.stats.rating} size={14} />
@@ -176,6 +251,14 @@ function SupplierDetailContent({ id }: { id: string }) {
           </div>
         </div>
       </div>
+
+      {/* Contact / RFQ Form */}
+      <SectionCard delay={75}>
+        <h3 className="font-display text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+          <Mail className="h-4 w-4 text-accent" /> Contact Supplier
+        </h3>
+        <ContactForm supplierName={supplier.name} />
+      </SectionCard>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {([

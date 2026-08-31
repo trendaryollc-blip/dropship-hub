@@ -22,6 +22,7 @@ import QuickCompareBar from "@/components/dashboard/QuickCompareBar";
 import TrendingProducts from "@/components/dashboard/TrendingProducts";
 import GreetingCard from "@/components/dashboard/GreetingCard";
 import DailyDigest from "@/components/dashboard/DailyDigest";
+import { PageErrorBoundary } from "@/components/ui/PageErrorBoundary";
 
 const gettingStartedSteps = [
   { id: "search", text: "Search for your first product", href: "/products", icon: Search },
@@ -66,7 +67,7 @@ export default function DashboardHome() {
     if (user) {
       const saved = localStorage.getItem(`dashboard_steps_${user.uid}`);
       if (saved) {
-        try { setCompletedSteps(JSON.parse(saved)); } catch {}
+        try { setCompletedSteps(JSON.parse(saved)); } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[DashboardHome] silently caught", e); }
       }
       // Read onboarding profile for personalization
       try {
@@ -74,7 +75,7 @@ export default function DashboardHome() {
         if (stored) {
           setProfile(JSON.parse(stored));
         }
-      } catch {}
+      } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[DashboardHome] silently caught", e); }
     }
   }, [user]);
 
@@ -90,6 +91,7 @@ export default function DashboardHome() {
   const progressPct = Math.round((completedCount / gettingStartedSteps.length) * 100);
 
   return (
+    <PageErrorBoundary>
     <div className="max-w-7xl mx-auto space-y-6 pb-24">
       {/* Header with mode toggle */}
       <div className="flex items-center justify-between">
@@ -203,7 +205,7 @@ export default function DashboardHome() {
             stats={[]}
           />
 
-          {data.mission && <DailyMission mission={data.mission} />}
+          {data.mission && <DailyMission />}
 
           <IntelligenceHub
             alerts={data.alerts}
@@ -239,5 +241,6 @@ export default function DashboardHome() {
         </>
       )}
     </div>
+    </PageErrorBoundary>
   );
 }

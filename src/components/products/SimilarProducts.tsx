@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Package, Sparkles, ExternalLink, Star } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
+import { safeFetch } from "@/lib/safe-fetch";
 
 interface SimilarProduct {
   title: string;
@@ -19,7 +20,7 @@ function SimilarCard({ product, index }: { product: SimilarProduct; index: numbe
   const { ref, isInView } = useInView({ threshold: 0.1 });
 
   return (
-    <div ref={ref} className={`similar-card ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transition: `all 0.5s cubic-bezier(0.16, 1, 0.3, 1) ${index * 80}ms` }}>
+    <div ref={ref} className={`group similar-card ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transition: `all 0.5s cubic-bezier(0.16, 1, 0.3, 1) ${index * 80}ms` }}>
       <a href={product.link} target="_blank" rel="noopener noreferrer" className="block">
         <div className="similar-image-wrap h-36 bg-gradient-to-br from-surface to-muted/20 border-b border-border/30 flex items-center justify-center">
           {product.image ? (
@@ -101,17 +102,18 @@ export default function SimilarProducts({ category, title, currentPrice }: { cat
     const fetchSimilar = async () => {
       setLoading(true);
       try {
-        const res = await fetch("/api/products/similar", {
+        const data = await safeFetch<{ similar?: SimilarProduct[]; boughtTogether?: SimilarProduct[] }>("/api/products/similar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title, category, currentPrice }),
         });
-        const data = await res.json();
         if (!cancelled) {
           if (data.similar) setSimilar(data.similar);
           if (data.boughtTogether) setBoughtTogether(data.boughtTogether);
         }
-      } catch {}
+      } catch {
+        // Silently handle fetch errors
+      }
       if (!cancelled) setLoading(false);
     };
 

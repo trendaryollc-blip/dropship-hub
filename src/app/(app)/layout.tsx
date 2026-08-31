@@ -5,6 +5,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { User } from "firebase/auth";
 import { AuthProvider, useAuth } from "@/components/auth/AuthProvider";
 import { SavedProductsProvider } from "@/components/saved/SavedProductsProvider";
+import { ToastProvider } from "@/components/ui/Toast";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import Sidebar from "@/components/dashboard/Sidebar";
 import Topbar from "@/components/dashboard/Topbar";
 import OnboardingWizard from "@/components/onboarding/OnboardingWizard";
@@ -98,7 +100,11 @@ export default function AppLayout({
   return (
     <AuthProvider>
       <SavedProductsProvider>
-        <AuthGuard>{children}</AuthGuard>
+        <ToastProvider>
+          <ErrorBoundary>
+            <AuthGuard>{children}</AuthGuard>
+          </ErrorBoundary>
+        </ToastProvider>
       </SavedProductsProvider>
     </AuthProvider>
   );

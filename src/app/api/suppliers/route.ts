@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSuppliers, getSupplierById, searchSuppliers } from "@/lib/supplier-service";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
@@ -28,4 +30,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, LIMITS.DEFAULT);

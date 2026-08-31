@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Plug, CheckCircle, AlertTriangle, XCircle, Shield, ChevronDown, ChevronUp } from "lucide-react";
+import { safeFetch } from "@/lib/safe-fetch";
 
 interface IntegrationStatus {
   id: string;
@@ -27,13 +28,12 @@ export default function IntegrationMonitor({ uid }: { uid: string }) {
   const check = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/ai/integrations", {
+      setData(await safeFetch("/api/ai/integrations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uid }),
-      });
-      setData(await res.json());
-    } catch {}
+      }));
+    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[IntegrationMonitor] silently caught", e); }
     setLoading(false);
   };
 

@@ -179,7 +179,7 @@ export default function ReportViewer({ report, onGenerate, loading = false }: Re
         <div className="text-center py-8 rounded-2xl border border-dashed border-white/[0.1]">
           <Calendar className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">No report generated yet</p>
-          <p className="text-[11px] text-muted-foreground/60 mt-1">Click "Generate Report" to create your first business report</p>
+          <p className="text-[11px] text-muted-foreground/60 mt-1">Click &quot;Generate Report&quot; to create your first business report</p>
         </div>
       )}
     </div>

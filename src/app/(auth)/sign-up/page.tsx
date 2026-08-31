@@ -6,6 +6,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Zap, Mail, Lock, User, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 
+function sanitizeCallbackUrl(raw: string | null): string {
+  if (!raw) return "/dashboard";
+  if (!raw.startsWith("/") || raw.startsWith("//") || /https?:\/\//i.test(raw) || /javascript:/i.test(raw)) {
+    return "/dashboard";
+  }
+  return raw;
+}
+
 function SignUpContent() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -16,7 +24,7 @@ function SignUpContent() {
   const { signUpWithEmail, signInWithGoogle } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  const callbackUrl = sanitizeCallbackUrl(searchParams.get("callbackUrl"));
 
   const handleEmailSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,7 +32,7 @@ function SignUpContent() {
     setLoading(true);
     try {
       await signUpWithEmail(email, password);
-      router.push(callbackUrl);
+      window.location.href = callbackUrl;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to create account";
       setError(msg);
@@ -38,7 +46,7 @@ function SignUpContent() {
     setLoading(true);
     try {
       await signInWithGoogle();
-      router.push(callbackUrl);
+      window.location.href = callbackUrl;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to sign up with Google";
       setError(msg);

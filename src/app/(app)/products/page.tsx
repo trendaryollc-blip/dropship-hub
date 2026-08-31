@@ -16,6 +16,10 @@ import EnrichedProductCard from "@/components/products/EnrichedProductCard";
 import ListItemCard from "@/components/products/ListItemCard";
 import ResultsHeader from "@/components/products/ResultsHeader";
 import { useSavedProducts } from "@/components/saved/SavedProductsProvider";
+import { useAPI } from "@/hooks/useAPI";
+import { safeFetch } from "@/lib/safe-fetch";
+import { PageErrorBoundary } from "@/components/ui/PageErrorBoundary";
+import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 
 interface SearchResult {
   id: string;
@@ -41,6 +45,13 @@ interface PlatformError {
   platform: string;
   name: string;
   error: string;
+}
+
+interface PlatformInfo {
+  id: string;
+  name: string;
+  enabled: boolean;
+  configured: boolean;
 }
 
 interface TrendingProduct {
@@ -208,16 +219,8 @@ function EmptyState() {
 function TrendingSection() {
   const { ref, isInView } = useInView({ threshold: 0.1 });
   const router = useRouter();
-  const [products, setProducts] = useState<TrendingProduct[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("/api/products/trending")
-      .then((r) => r.json())
-      .then((data) => { if (data.products) setProducts(data.products); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+  const { data, isLoading: loading } = useAPI<{ products?: TrendingProduct[] }>("/api/products/trending");
+  const products = data?.products || [];
 
   const viewProduct = (product: TrendingProduct) => {
     sessionStorage.setItem("selectedProduct", JSON.stringify({
@@ -281,16 +284,7 @@ function TrendingSection() {
       {loading && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="glass rounded-2xl overflow-hidden animate-pulse">
-              <div className="aspect-[3/4] bg-surface" />
-              <div className="p-3 space-y-2">
-                <div className="h-3 bg-surface rounded w-3/4" />
-                <div className="h-2 bg-surface rounded w-1/2" />
-                <div className="flex gap-1"><div className="h-4 bg-surface rounded w-8" /><div className="h-4 bg-surface rounded w-8" /></div>
-                <div className="h-2 bg-surface rounded w-full" />
-                <div className="h-8 bg-surface rounded w-full" />
-              </div>
-            </div>
+            <ProductCardSkeleton key={i} />
           ))}
         </div>
       )}
@@ -392,16 +386,8 @@ function TrendingSection() {
 
 function NichesSection() {
   const { ref, isInView } = useInView({ threshold: 0.1 });
-  const [niches, setNiches] = useState<NicheData[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("/api/niches")
-      .then((r) => r.json())
-      .then((data) => { if (data.niches) setNiches(data.niches.slice(0, 8)); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+  const { data, isLoading: loading } = useAPI<{ niches?: NicheData[] }>("/api/niches");
+  const niches = (data?.niches || []).slice(0, 8);
 
   return (
     <div ref={ref} className={`transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
@@ -481,16 +467,8 @@ function NichesSection() {
 
 function CategoriesSection() {
   const { ref, isInView } = useInView({ threshold: 0.1 });
-  const [categories, setCategories] = useState<CategoryData[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("/api/products/categories")
-      .then((r) => r.json())
-      .then((data) => { if (data.categories) setCategories(data.categories); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+  const { data, isLoading: loading } = useAPI<{ categories?: CategoryData[] }>("/api/products/categories");
+  const categories = data?.categories || [];
 
   return (
     <div ref={ref} className={`transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
@@ -569,9 +547,11 @@ function CategoriesSection() {
 
 export default function ProductsPage() {
   return (
-    <Suspense fallback={<div className="max-w-7xl mx-auto p-4 md:p-8 text-center text-muted-foreground">Loading...</div>}>
-      <ProductsContent />
-    </Suspense>
+    <PageErrorBoundary>
+      <Suspense fallback={<div className="max-w-7xl mx-auto p-4 md:p-8 text-center text-muted-foreground">Loading...</div>}>
+        <ProductsContent />
+      </Suspense>
+    </PageErrorBoundary>
   );
 }
 
@@ -580,6 +560,22 @@ let _lastQuery = "";
 let _lastResults: SearchResult[] = [];
 let _lastPlatformResults: PlatformResult[] = [];
 let _lastPlatformErrors: PlatformError[] = [];
+
+// Static fallback platform list — used only until the backend platform list loads.
+const DEFAULT_PLATFORMS: PlatformInfo[] = [
+  { id: "amazon", name: "Amazon", enabled: true, configured: true },
+  { id: "ebay", name: "Ebay", enabled: true, configured: true },
+  { id: "aliexpress", name: "Aliexpress", enabled: true, configured: true },
+  { id: "cj", name: "CJ", enabled: true, configured: true },
+  { id: "google_shopping", name: "Google Shopping", enabled: true, configured: true },
+  { id: "walmart", name: "Walmart", enabled: true, configured: true },
+  { id: "etsy", name: "Etsy", enabled: true, configured: true },
+  { id: "temu", name: "Temu", enabled: true, configured: true },
+  { id: "shein", name: "Shein", enabled: true, configured: true },
+  { id: "banggood", name: "Banggood", enabled: true, configured: true },
+  { id: "dhgate", name: "DHgate", enabled: true, configured: true },
+  { id: "alibaba", name: "Alibaba", enabled: true, configured: true },
+];
 
 function ProductsContent() {
   const searchParams = useSearchParams();
@@ -592,6 +588,7 @@ function ProductsContent() {
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(() => _lastResults.length > 0 || _lastQuery !== "");
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+  const [availablePlatforms, setAvailablePlatforms] = useState<PlatformInfo[]>(DEFAULT_PLATFORMS);
   const [sortBy, setSortBy] = useState<"relevance" | "price-asc" | "price-desc" | "rating" | "reviews">("relevance");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showFilters, setShowFilters] = useState(false);
@@ -605,7 +602,7 @@ function ProductsContent() {
       const stored = JSON.parse(localStorage.getItem("recentSearches") || "[]");
       // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe localStorage hydration
       if (Array.isArray(stored)) setRecentSearches(stored);
-    } catch {}
+    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[Products] silently caught", e); }
   }, []);
 
   const saveRecentSearch = (q: string) => {
@@ -651,7 +648,7 @@ function ProductsContent() {
         _lastPlatformErrors = [];
         return;
       }
-    } catch {}
+    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[Products] silently caught", e); }
 
     setLoading(true);
     setError(null);
@@ -663,7 +660,7 @@ function ProductsContent() {
     saveRecentSearch(q);
 
     try {
-      const res = await fetch("/api/platforms/search-all", {
+      const data = await safeFetch<{ platforms?: PlatformResult[]; platformErrors?: PlatformError[] }>("/api/platforms/search-all", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -672,11 +669,6 @@ function ProductsContent() {
         }),
         signal: controller.signal,
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Search failed");
-        return;
-      }
       const allResults: SearchResult[] = [];
       const platformData: PlatformResult[] = data.platforms || [];
       platformData.forEach((p: PlatformResult) => {
@@ -693,25 +685,24 @@ function ProductsContent() {
       _lastPlatformErrors = errs;
       try {
         sessionStorage.setItem(cacheKey, JSON.stringify({ query: q, results: allResults, platformResults: platformData }));
-      } catch {}
+      } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[Products] silently caught", e); }
 
       // Background: fetch missing images from product URLs
       const missingImages = allResults.filter((r) => !r.image && r.link && r.link !== "#");
       if (missingImages.length > 0) {
         const urlsToFetch = missingImages.map((r) => r.link);
-        fetch("/api/platforms/batch-images", {
+        safeFetch<{ images?: (string | undefined)[] }>("/api/platforms/batch-images", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ urls: urlsToFetch }),
         })
-          .then((r) => r.json())
           .then((imgData) => {
             if (!imgData.images) return;
             setResults((prev) => {
               const updated = prev.map((item) => {
                 if (item.image) return item;
                 const idx = missingImages.findIndex((m) => m.link === item.link);
-                if (idx >= 0 && imgData.images[idx]) {
+                if (idx >= 0 && imgData.images && imgData.images[idx]) {
                   return { ...item, image: imgData.images[idx] };
                 }
                 return item;
@@ -719,11 +710,11 @@ function ProductsContent() {
               _lastResults = updated;
               try {
                 sessionStorage.setItem(cacheKey, JSON.stringify({ query: q, results: updated, platformResults: platformData }));
-              } catch {}
+              } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[Products] silently caught", e); }
               return updated;
             });
           })
-          .catch(() => {});
+          .catch((e) => { if (process.env.NODE_ENV === "development") console.warn("[ProductsPage] silently caught", e); });
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
@@ -736,20 +727,35 @@ function ProductsContent() {
   // On mount: if URL has ?q=, trigger a search using current platform selection
   // If we already have cached results for this query, skip re-fetching
   const initialSearchDone = useRef(false);
+  const lastSearchParam = useRef<string | null>(null);
   useEffect(() => {
     const q = searchParams.get("q");
-    if (!q || initialSearchDone.current) return;
+    if (!q) return;
+    
+    // Skip if this is the same query we already processed
+    if (q === lastSearchParam.current && initialSearchDone.current) return;
+    lastSearchParam.current = q;
     initialSearchDone.current = true;
+    
     // If we already have results for this query (from module-level cache), skip fetch
     if (_lastQuery === q && _lastResults.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- cache hit guard, not a data sync
       setSearched(true);
+      setQuery(q);
       return;
     }
     handleSearch(q);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchParams]);
 
-  const allPlatforms = ["amazon", "ebay", "aliexpress", "cj", "google_shopping", "walmart", "etsy", "temu", "shein", "banggood", "dhgate", "alibaba"];
+  const { data: platformData } = useAPI<{ platforms?: PlatformInfo[] }>("/api/platforms/search-all");
+  useEffect(() => {
+    if (platformData?.platforms) {
+      const list = platformData.platforms.filter((p: PlatformInfo) => p.enabled && p.configured).map((p: PlatformInfo) => ({ id: p.id, name: p.name, enabled: true, configured: true }));
+      if (list.length > 0) setAvailablePlatforms(list);
+      setSelectedPlatforms(prev => prev.filter(id => list.some(p => p.id === id)));
+    }
+  }, [platformData]);
 
   const togglePlatform = (p: string) => {
     setSelectedPlatforms((prev) =>
@@ -798,7 +804,7 @@ function ProductsContent() {
         setQuery={setQuery}
         onSearch={() => handleSearch()}
         loading={loading}
-        allPlatforms={allPlatforms}
+        platforms={availablePlatforms}
         selectedPlatforms={selectedPlatforms}
         togglePlatform={togglePlatform}
         showFilters={showFilters}

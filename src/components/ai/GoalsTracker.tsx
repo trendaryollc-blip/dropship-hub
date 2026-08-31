@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Target, CheckCircle, Clock, AlertTriangle, TrendingUp, ChevronDown, ChevronUp } from "lucide-react";
+import { safeFetch } from "@/lib/safe-fetch";
 
 interface BusinessGoal {
   id: string;
@@ -30,13 +31,13 @@ export default function GoalsTracker({ uid }: { uid: string }) {
   const load = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/ai/goals", {
+      const data = await safeFetch<GoalsResult>("/api/ai/goals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uid }),
       });
-      setData(await res.json());
-    } catch {}
+      setData(data);
+    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[GoalsTracker] silently caught", e); }
     setLoading(false);
   };
 

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useCallback, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Search, Globe, Loader2, Crosshair, BookmarkPlus } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { type MarketData } from "@/lib/mock-competitors";
+import { useMutation } from "@/hooks/useAPI";
 import MarketStatsBar from "@/components/competitors/MarketStatsBar";
 import PriceDistribution from "@/components/competitors/PriceDistribution";
 import PlatformBreakdown from "@/components/competitors/PlatformBreakdown";
@@ -13,6 +14,7 @@ import PricingStrategy from "@/components/competitors/PricingStrategy";
 import CompetitorProfiles from "@/components/competitors/CompetitorProfiles";
 import PriceHistory from "@/components/competitors/PriceHistory";
 import InsightsPanel from "@/components/competitors/InsightsPanel";
+import { PageErrorBoundary } from "@/components/ui/PageErrorBoundary";
 
 interface RawMarketData {
   platforms: { platform: string; icon: string; avgPrice: number; minPrice: number; maxPrice: number; sellerCount: number; trend: string; trendPercent: number; sparkline: number[]; listings: { id: string; title: string; price: number; source: string; seller: string; sellerRating: number; sellerProducts: number; link: string; shipping: string; condition: string; daysAgo: number }[] }[];
@@ -114,15 +116,17 @@ const savedSearches = [
 
 export default function CompetitorsPage() {
   return (
-    <Suspense fallback={
-      <div className="max-w-7xl mx-auto flex items-center justify-center py-20">
-        <div className="flex h-8 w-8 items-center justify-center">
-          <Loader2 className="h-8 w-8 text-accent animate-spin" />
+    <PageErrorBoundary>
+      <Suspense fallback={
+        <div className="max-w-7xl mx-auto flex items-center justify-center py-20">
+          <div className="flex h-8 w-8 items-center justify-center">
+            <Loader2 className="h-8 w-8 text-accent animate-spin" />
+          </div>
         </div>
-      </div>
-    }>
-      <CompetitorsContent />
-    </Suspense>
+      }>
+        <CompetitorsContent />
+      </Suspense>
+    </PageErrorBoundary>
   );
 }
 
@@ -130,41 +134,28 @@ function CompetitorsContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
   const [query, setQuery] = useState(initialQuery);
-  const [loading, setLoading] = useState(false);
-  const [marketData, setMarketData] = useState<MarketData | null>(null);
+  const [selectedPlatforms] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const { ref: heroRef, isInView: heroInView } = useInView({ threshold: 0.1 });
 
-  const handleSearch = useCallback(async (q?: string) => {
+  const { trigger, data: rawData, isMutating } = useMutation("/api/competitors");
+
+  const raw = rawData as (RawMarketData & { error?: string }) | undefined;
+  const marketData = raw && !raw.error ? castToMarketData(raw) : null;
+
+  const handleSearch = async (q?: string) => {
     const searchQuery = q || query;
     if (!searchQuery.trim()) return;
-    setLoading(true);
-    setMarketData(null);
     setError(null);
     try {
-      const res = await fetch("/api/competitors", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: searchQuery.trim() }),
-      });
-      const data = await res.json();
-      if (data.error) {
-        setError(data.error);
-      } else if (data.platforms) {
-        setMarketData(castToMarketData(data));
+      const result = (await trigger({ body: { query: searchQuery.trim(), platforms: selectedPlatforms } } as never)) as (RawMarketData & { error?: string }) | undefined;
+      if (result?.error) {
+        setError(result.error);
       }
     } catch {
       setError("Failed to analyze market. Please try again.");
     }
-    setLoading(false);
-  }, [query]);
-
-  useEffect(() => {
-    if (initialQuery && initialQuery.trim()) {
-      const timer = setTimeout(() => handleSearch(initialQuery), 0);
-      return () => clearTimeout(timer);
-    }
-  }, [handleSearch, initialQuery]);
+  };
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -195,10 +186,10 @@ function CompetitorsContent() {
           </div>
           <button
             onClick={() => handleSearch()}
-            disabled={loading || !query.trim()}
+            disabled={isMutating || !query.trim()}
             className="flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-accent to-accent/80 text-white text-sm font-semibold hover:from-accent/90 hover:to-accent/70 transition-all disabled:opacity-50 shadow-lg shadow-accent/20"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
+            {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
             Analyze Market
           </button>
         </div>
@@ -211,7 +202,7 @@ function CompetitorsContent() {
         </div>
       </div>
 
-      {loading && (
+      {isMutating && (
         <div className="glass rounded-2xl p-6 sm:p-12 text-center border border-border">
           <div className="relative w-16 h-16 mx-auto mb-4">
             <Loader2 className="h-16 w-16 text-accent animate-spin" />
@@ -229,7 +220,7 @@ function CompetitorsContent() {
         </div>
       )}
 
-      {error && !loading && (
+      {error && !isMutating && (
         <div className="glass rounded-2xl p-6 sm:p-12 text-center border border-border">
           <Crosshair className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
           <h3 className="font-display text-lg font-semibold text-foreground mb-2">Analysis Failed</h3>
@@ -238,7 +229,7 @@ function CompetitorsContent() {
         </div>
       )}
 
-      {marketData && !loading && (
+      {marketData && !isMutating && (
         <div className="space-y-6">
           <MarketStatsBar data={marketData} />
           <PriceDistribution tiers={marketData.priceDistribution} avgPrice={marketData.avgPrice} />
@@ -251,7 +242,7 @@ function CompetitorsContent() {
         </div>
       )}
 
-      {!marketData && !loading && !error && (
+      {!marketData && !isMutating && !error && (
         <div className="glass rounded-2xl p-6 sm:p-12 text-center border border-border">
           <div className="w-20 h-20 rounded-2xl bg-accent/5 flex items-center justify-center mx-auto mb-5 border border-accent/10">
             <Crosshair className="h-10 w-10 text-accent/40" />

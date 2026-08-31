@@ -9,6 +9,7 @@ import {
 import { useAuth } from "@/components/auth/AuthProvider";
 import { db } from "@/lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
+import { logger } from "@/lib/logger";
 
 interface OnboardingWizardProps {
   onComplete: () => void;
@@ -60,7 +61,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
       try {
         await setDoc(doc(db, "users", user.uid), { profile }, { merge: true });
       } catch (err) {
-        console.error("Failed to save profile to Firestore:", err);
+        logger.error("Failed to save profile to Firestore", { error: err instanceof Error ? err.message : String(err) });
       }
     }
     onComplete();

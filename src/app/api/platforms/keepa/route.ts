@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchKeepaProducts } from "@/lib/platform-search";
+import { withAuth } from "@/lib/auth";
 
 const KEEPA_API_KEY = process.env.KEEPA_API_KEY;
 
@@ -9,7 +10,7 @@ async function getKeepaProduct(asin: string) {
   return res.json();
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const { query, asin } = await request.json();
 
@@ -43,8 +44,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Keepa search failed" }, { status: 500 });
   }
-}
+});
 
-export async function GET() {
+export const GET = withAuth(async (request: NextRequest, uid: string) => {
   return NextResponse.json({ platform: "Keepa", configured: !!KEEPA_API_KEY });
-}
+});

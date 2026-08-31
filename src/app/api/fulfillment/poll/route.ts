@@ -1,23 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { fetchOrdersFromStore } from "@/lib/fulfillment/store-adapters";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 
 function sanitizeProductId(id: string): string {
   return id.replace(/\//g, "__SLASH__");
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
     const body = await req.json();
-    const { uid, storeId } = body;
-    if (!uid) return NextResponse.json({ error: "uid required" }, { status: 400 });
+    const { storeId } = body;
 
     const db = await getAdminDB();
 
     let stores: Array<Record<string, unknown>> = [];
     if (storeId) {
       const doc = await db.collection("users").doc(uid).collection("storeConnections").doc(storeId).get();
-      if (doc.exists) stores = [{ id: doc.id, ...doc.data()! }];
+      if (doc.exists) stores = [{ id: doc.id, ...(doc.data() ?? {}) }];
     } else {
       const snap = await db.collection("users").doc(uid).collection("storeConnections").where("status", "==", "connected").get();
       stores = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -83,4 +84,4 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     return NextResponse.json({ error: "Failed to poll orders", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
   }
-}
+}, LIMITS.FULFILLMENT);

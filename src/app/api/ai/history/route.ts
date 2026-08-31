@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
-    const { searchParams } = new URL(request.url);
-    const uid = searchParams.get("uid");
-
-    if (!uid) {
-      return NextResponse.json({ error: "uid is required" }, { status: 400 });
-    }
-
     const db = await getAdminDB();
     const snap = await db
       .collection("users")
@@ -28,15 +23,15 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, LIMITS.AI_CHAT);
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const body = await request.json();
-    const { uid, role, content, provider } = body;
+    const { role, content, provider } = body;
 
-    if (!uid || !role || !content) {
-      return NextResponse.json({ error: "uid, role, and content are required" }, { status: 400 });
+    if (!role || !content) {
+      return NextResponse.json({ error: "role and content are required" }, { status: 400 });
     }
 
     const db = await getAdminDB();
@@ -54,27 +49,29 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, LIMITS.AI_CHAT);
 
-export async function DELETE(request: NextRequest) {
+export const DELETE = withAuth(async (request: NextRequest, uid: string) => {
   try {
-    const { searchParams } = new URL(request.url);
-    const uid = searchParams.get("uid");
-
-    if (!uid) {
-      return NextResponse.json({ error: "uid is required" }, { status: 400 });
-    }
-
     const db = await getAdminDB();
-    const snap = await db
-      .collection("users")
-      .doc(uid)
-      .collection("chatHistory")
-      .get();
+    const BATCH_SIZE = 500;
+    let deleted = BATCH_SIZE;
 
-    const batch = db.batch();
-    snap.docs.forEach((doc) => batch.delete(doc.ref));
-    await batch.commit();
+    while (deleted === BATCH_SIZE) {
+      const snap = await db
+        .collection("users")
+        .doc(uid)
+        .collection("chatHistory")
+        .limit(BATCH_SIZE)
+        .get();
+
+      deleted = snap.size;
+      if (deleted === 0) break;
+
+      const batch = db.batch();
+      snap.docs.forEach((doc) => batch.delete(doc.ref));
+      await batch.commit();
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -83,4 +80,4 @@ export async function DELETE(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, LIMITS.AI_CHAT);

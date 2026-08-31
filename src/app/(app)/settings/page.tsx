@@ -23,7 +23,18 @@ import {
   Search,
   Sparkles,
   TrendingUp,
+  Bell,
+  User,
+  Download,
+  Upload,
+  Trash2,
+  Loader2,
+  Save,
 } from "lucide-react";
+import { safeFetch } from "@/lib/safe-fetch";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { useToast } from "@/components/ui/Toast";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 interface AIProvider {
   id: string;
@@ -153,24 +164,70 @@ const platformConnectors: PlatformConnector[] = [
 ];
 
 export default function AISettingsPage() {
+  const { user } = useAuth();
+  const toast = useToast();
   const [providers, setProviders] = useState<AIProvider[]>(allProviders);
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
-  const [activeTab, setActiveTab] = useState<"providers" | "features" | "platforms">("providers");
+  const [activeTab, setActiveTab] = useState<"providers" | "features" | "platforms" | "stores" | "notifications" | "account" | "data">("providers");
+  const [loading, setLoading] = useState(true);
+
+  // API key state
+  const [apiKeys, setApiKeys] = useState<Record<string, string>>({})
+  const [testingProvider, setTestingProvider] = useState<string | null>(null);
+  const [savingProvider, setSavingProvider] = useState<string | null>(null);
+  const [keyStatus, setKeyStatus] = useState<Record<string, { success: boolean; message: string }>>({});
+
+  // Store connections state
+  const [stores, setStores] = useState<Array<{ id: string; name: string; platform: string; status: string; url: string }>>([]);
+
+  // Notification preferences state
+  const [notifPrefs, setNotifPrefs] = useState({
+    priceAlerts: true,
+    stockAlerts: true,
+    orderUpdates: true,
+    aiRecommendations: true,
+    weeklyDigest: true,
+  });
+
+  // Account state
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+
+  // Data export state
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+
+  // Confirm dialogs
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
-    fetch("/api/ai")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.providers) {
-          setProviders((prev) =>
-            prev.map((p) => ({
-              ...p,
-              configured: data.providers[p.id]?.configured ?? false,
-            }))
-          );
+    Promise.all([
+      safeFetch<{ providers?: Record<string, { configured: boolean }> }>("/api/ai"),
+      safeFetch<{ connections?: Array<{ id: string; name: string; platform: string; status: string; url: string }> }>("/api/store/connections"),
+      safeFetch<{ preferences?: typeof notifPrefs }>("/api/settings/notifications"),
+      safeFetch<{ keys?: Record<string, { masked: string; configured: boolean }> }>("/api/settings/api-keys"),
+    ]).then(([aiData, storeData, notifData, keyData]) => {
+      if (aiData?.providers) {
+        setProviders((prev) =>
+          prev.map((p) => ({
+            ...p,
+            configured: aiData.providers![p.id]?.configured ?? false,
+          }))
+        );
+      }
+      if (storeData?.connections) setStores(storeData.connections);
+      if (notifData?.preferences) setNotifPrefs(notifData.preferences);
+      if (keyData?.keys) {
+        const statusMap: Record<string, { success: boolean; message: string }> = {};
+        for (const [id, info] of Object.entries(keyData.keys)) {
+          if (info.configured) {
+            statusMap[id] = { success: true, message: `Key saved (${info.masked})` };
+          }
         }
-      })
-      .catch(() => {});
+        setKeyStatus(statusMap);
+      }
+    }).catch((e) => { if (process.env.NODE_ENV === "development") console.warn("[SettingsPage] silently caught", e); }).finally(() => setLoading(false));
   }, []);
 
   const handleToggleActive = (id: string) => {
@@ -183,6 +240,176 @@ export default function AISettingsPage() {
     setProviders((prev) =>
       prev.map((p) => (p.id === id ? { ...p, priority: newPriority } : p))
     );
+  };
+
+  const handleSaveApiKey = async (provider: string, key: string) => {
+    if (!key.trim()) return;
+    setSavingProvider(provider);
+    setKeyStatus((prev) => ({ ...prev, [provider]: { success: false, message: "" } }));
+    try {
+      const res = await safeFetch<{ masked?: string }>("/api/settings/api-keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider, key: key.trim() }),
+      });
+      setKeyStatus((prev) => ({
+        ...prev,
+        [provider]: { success: true, message: `Saved (${res.masked})` },
+      }));
+      toast.success(`${provider} API key saved`);
+    } catch {
+      setKeyStatus((prev) => ({
+        ...prev,
+        [provider]: { success: false, message: "Failed to save" },
+      }));
+      toast.error(`Failed to save ${provider} API key`);
+    } finally {
+      setSavingProvider(null);
+    }
+  };
+
+  const handleDeleteApiKey = async (provider: string) => {
+    try {
+      await safeFetch("/api/settings/api-keys", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider }),
+      });
+      setKeyStatus((prev) => ({
+        ...prev,
+        [provider]: { success: false, message: "" },
+      }));
+      setApiKeys((prev) => ({ ...prev, [provider]: "" }));
+      toast.success(`${provider} API key removed`);
+    } catch {
+      toast.error(`Failed to remove ${provider} API key`);
+    }
+  };
+
+  const handleTestConnection = async (provider: string) => {
+    setTestingProvider(provider);
+    setKeyStatus((prev) => ({ ...prev, [provider]: { success: false, message: "" } }));
+    try {
+      const res = await safeFetch<{ ok?: boolean; error?: string }>("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [{ role: "user", content: "Say hi" }],
+          providerPriority: [{ id: provider, priority: 1, active: true }],
+        }),
+      });
+      setKeyStatus((prev) => ({
+        ...prev,
+        [provider]: { success: true, message: "Connection successful!" },
+      }));
+      toast.success(`${provider} connection works`);
+    } catch (err) {
+      setKeyStatus((prev) => ({
+        ...prev,
+        [provider]: { success: false, message: err instanceof Error ? err.message : "Test failed" },
+      }));
+      toast.error(`${provider} test failed`);
+    } finally {
+      setTestingProvider(null);
+    }
+  };
+
+  const handleNotifPrefChange = async (key: keyof typeof notifPrefs) => {
+    const updated = { ...notifPrefs, [key]: !notifPrefs[key] };
+    setNotifPrefs(updated);
+    try {
+      await safeFetch("/api/settings/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preferences: updated }),
+      });
+      toast.success("Notification preferences saved");
+    } catch {
+      toast.error("Failed to save preferences");
+      setNotifPrefs(notifPrefs);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    setUpdatingPassword(true);
+    try {
+      const { updatePassword } = await import("firebase/auth");
+      if (user && updatePassword) {
+        await updatePassword(user, newPassword);
+        toast.success("Password updated successfully");
+        setNewPassword("");
+        setConfirmPassword("");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update password");
+    } finally {
+      setUpdatingPassword(false);
+    }
+  };
+
+  const handleExportData = async () => {
+    setExporting(true);
+    try {
+      const data = await safeFetch<Record<string, unknown>>("/api/settings/export");
+      if (data) {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `dropship-hub-export-${new Date().toISOString().split("T")[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("Data exported successfully");
+      }
+    } catch {
+      toast.error("Failed to export data");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleImportData = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      setImporting(true);
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        await safeFetch("/api/settings/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ data }),
+        });
+        toast.success("Data imported successfully");
+      } catch {
+        toast.error("Failed to import data — invalid file format");
+      } finally {
+        setImporting(false);
+      }
+    };
+    input.click();
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      await safeFetch("/api/settings/delete-account", { method: "POST" });
+      toast.success("Account deleted");
+      window.location.href = "/";
+    } catch {
+      toast.error("Failed to delete account");
+    }
   };
 
   const configuredCount = providers.filter((p) => p.configured).length;
@@ -272,9 +499,13 @@ export default function AISettingsPage() {
           { id: "providers" as const, label: "API Providers", icon: Key },
           { id: "features" as const, label: "AI Features", icon: Zap },
           { id: "platforms" as const, label: "Platforms", icon: Globe },
+          { id: "stores" as const, label: "Stores", icon: Store },
+          { id: "notifications" as const, label: "Notifications", icon: Bell },
+          { id: "account" as const, label: "Account", icon: User },
+          { id: "data" as const, label: "Data", icon: Download },
         ].map((tab) => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${activeTab === tab.id ? "bg-accent text-white" : "text-muted-foreground hover:text-foreground hover:bg-surface"}`}>
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap ${activeTab === tab.id ? "bg-accent text-white" : "text-muted-foreground hover:text-foreground hover:bg-surface"}`}>
             <tab.icon className="h-4 w-4" /> {tab.label}
           </button>
         ))}
@@ -325,22 +556,79 @@ export default function AISettingsPage() {
                   ))}
                 </div>
 
+                {/* API Key Input */}
+                <div className="pt-3 border-t border-border/50 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Key className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-xs font-medium text-foreground">API Key</span>
+                    {keyStatus[provider.id]?.success && (
+                      <span className="text-[10px] text-emerald-400">{keyStatus[provider.id].message}</span>
+                    )}
+                    {keyStatus[provider.id] && !keyStatus[provider.id].success && keyStatus[provider.id].message && (
+                      <span className="text-[10px] text-red-400">{keyStatus[provider.id].message}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        type={showKeys[provider.id] ? "text" : "password"}
+                        placeholder={provider.envKey}
+                        value={apiKeys[provider.id] || ""}
+                        onChange={(e) => setApiKeys((prev) => ({ ...prev, [provider.id]: e.target.value }))}
+                        className="w-full px-3 py-2 pr-9 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground/50 font-mono focus:outline-none focus:border-accent/30 transition-all"
+                      />
+                      <button
+                        onClick={() => setShowKeys((prev) => ({ ...prev, [provider.id]: !prev[provider.id] }))}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {showKeys[provider.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => handleSaveApiKey(provider.id, apiKeys[provider.id] || "")}
+                      disabled={!apiKeys[provider.id]?.trim() || savingProvider === provider.id}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-accent text-white text-xs font-semibold hover:bg-accent/90 transition-all disabled:opacity-50 shrink-0"
+                    >
+                      {savingProvider === provider.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Save className="h-3.5 w-3.5" />
+                      )}
+                      Save
+                    </button>
+                    <button
+                      onClick={() => handleTestConnection(provider.id)}
+                      disabled={!apiKeys[provider.id]?.trim() || testingProvider === provider.id}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:border-accent/20 transition-all disabled:opacity-50 shrink-0"
+                    >
+                      {testingProvider === provider.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Zap className="h-3.5 w-3.5" />
+                      )}
+                      Test
+                    </button>
+                    {keyStatus[provider.id]?.success && (
+                      <button
+                        onClick={() => handleDeleteApiKey(provider.id)}
+                        className="flex items-center gap-1 px-2 py-2 rounded-xl bg-surface border border-red-400/20 text-xs font-medium text-red-400 hover:bg-red-400/10 transition-all shrink-0"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-border/50">
                   <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <Key className="w-3 h-3" />
-                    <span className="font-mono text-[11px]">{provider.envKey}</span>
-                    <button onClick={() => setShowKeys((prev) => ({ ...prev, [provider.id]: !prev[provider.id] }))}
-                      className="text-muted-foreground hover:text-foreground transition-colors">
-                      {showKeys[provider.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                    </button>
+                    <span>Free tier: <span className="text-foreground">{provider.freeTier}</span></span>
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
-                    <span className="text-xs text-muted-foreground">Free tier: <span className="text-foreground">{provider.freeTier}</span></span>
                     <select value={provider.priority}
                       onChange={(e) => handlePriorityChange(provider.id, Number(e.target.value))}
                       className="px-2 py-1 rounded-lg text-xs bg-surface border border-border text-foreground">
                       {Array.from({ length: providers.length }, (_, i) => i + 1).map((num) => (
-                        <option key={num} value={num}>{num}</option>
+                        <option key={num} value={num}>Priority {num}</option>
                       ))}
                     </select>
                     <Link href={provider.href}
@@ -477,6 +765,214 @@ export default function AISettingsPage() {
         </div>
       )}
 
+      {/* Stores Tab */}
+      {activeTab === "stores" && (
+        <div className="space-y-4 animate-slide-up">
+          <div className="glass rounded-2xl p-5 border border-accent/10">
+            <div className="flex items-start gap-3">
+              <Store className="h-5 w-5 text-accent shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-1">Store Connections</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Manage your connected stores. Push products, sync inventory, and track orders from one place.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {stores.length === 0 ? (
+            <div className="glass rounded-2xl p-8 text-center">
+              <Store className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground mb-3">No stores connected yet</p>
+              <Link href="/store" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent/90 transition-all">
+                Connect a Store
+              </Link>
+            </div>
+          ) : (
+            stores.map((store) => (
+              <div key={store.id} className="glass rounded-2xl p-5 border border-border">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-accent/10 border border-accent/20">
+                      <Store className="h-5 w-5 text-accent" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{store.name}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{store.platform} · {store.url || "No URL"}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded-full text-xs flex items-center gap-1 ${
+                      store.status === "connected"
+                        ? "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20"
+                        : "bg-red-400/10 text-red-400 border border-red-400/20"
+                    }`}>
+                      {store.status === "connected" ? <><CheckCircle2 className="h-3 w-3" /> Connected</> : <><AlertTriangle className="h-3 w-3" /> Disconnected</>}
+                    </span>
+                    <Link href="/store" className="text-xs text-accent hover:text-accent/80">Manage</Link>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Notifications Tab */}
+      {activeTab === "notifications" && (
+        <div className="space-y-4 animate-slide-up">
+          <div className="glass rounded-2xl p-5 border border-accent/10">
+            <div className="flex items-start gap-3">
+              <Bell className="h-5 w-5 text-accent shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-1">Notification Preferences</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Choose which notifications you want to receive. Changes are saved automatically.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {[
+            { key: "priceAlerts" as const, label: "Price Drop Alerts", description: "Get notified when monitored product prices drop" },
+            { key: "stockAlerts" as const, label: "Stock Out Alerts", description: "Get notified when products go out of stock" },
+            { key: "orderUpdates" as const, label: "Order Updates", description: "Get notified about order status changes" },
+            { key: "aiRecommendations" as const, label: "AI Recommendations", description: "Get daily AI-powered product recommendations" },
+            { key: "weeklyDigest" as const, label: "Weekly Digest", description: "Receive a weekly summary of your store performance" },
+          ].map((pref) => (
+            <div key={pref.key} className="glass rounded-2xl p-5 border border-border">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{pref.label}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{pref.description}</p>
+                </div>
+                <button
+                  onClick={() => handleNotifPrefChange(pref.key)}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${notifPrefs[pref.key] ? "bg-accent" : "bg-surface"}`}
+                >
+                  <div className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white transition-transform ${notifPrefs[pref.key] ? "translate-x-5" : ""}`} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Account Tab */}
+      {activeTab === "account" && (
+        <div className="space-y-4 animate-slide-up">
+          <div className="glass rounded-2xl p-5 border border-accent/10">
+            <div className="flex items-start gap-3">
+              <User className="h-5 w-5 text-accent shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-1">Account Management</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Manage your account settings, password, and preferences.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Email */}
+          <div className="glass rounded-2xl p-5 border border-border">
+            <p className="text-sm font-semibold text-foreground mb-1">Email</p>
+            <p className="text-xs text-muted-foreground mb-3">{user?.email || "Not signed in"}</p>
+            <p className="text-[10px] text-muted-foreground/60">Email is managed through your Firebase Authentication provider.</p>
+          </div>
+
+          {/* Change Password */}
+          <div className="glass rounded-2xl p-5 border border-border space-y-3">
+            <p className="text-sm font-semibold text-foreground">Change Password</p>
+            <input
+              type="password"
+              placeholder="New password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/30 transition-all"
+            />
+            <input
+              type="password"
+              placeholder="Confirm new password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/30 transition-all"
+            />
+            <button
+              onClick={handleChangePassword}
+              disabled={updatingPassword || !newPassword}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent/90 transition-all disabled:opacity-50"
+            >
+              {updatingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Update Password
+            </button>
+          </div>
+
+          {/* Danger Zone */}
+          <div className="glass rounded-2xl p-5 border border-red-400/20">
+            <p className="text-sm font-semibold text-red-400 mb-1">Danger Zone</p>
+            <p className="text-xs text-muted-foreground mb-3">Permanently delete your account and all associated data.</p>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-400/10 border border-red-400/20 text-red-400 text-sm font-semibold hover:bg-red-400/20 transition-all"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete Account
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Data Tab */}
+      {activeTab === "data" && (
+        <div className="space-y-4 animate-slide-up">
+          <div className="glass rounded-2xl p-5 border border-accent/10">
+            <div className="flex items-start gap-3">
+              <Download className="h-5 w-5 text-accent shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-1">Data Export & Import</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Export your data for backup or import it into another account. Exported data includes settings, saved products, missions, and more.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="glass rounded-2xl p-5 border border-border">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Export Data</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Download all your data as a JSON file</p>
+              </div>
+              <button
+                onClick={handleExportData}
+                disabled={exporting}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent/10 border border-accent/20 text-accent text-sm font-semibold hover:bg-accent/20 transition-all disabled:opacity-50"
+              >
+                {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                Export
+              </button>
+            </div>
+          </div>
+
+          <div className="glass rounded-2xl p-5 border border-border">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Import Data</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Restore from a previously exported JSON file</p>
+              </div>
+              <button
+                onClick={handleImportData}
+                disabled={importing}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-border text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all disabled:opacity-50"
+              >
+                {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                Import
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* How It Works */}
       <div className="glass rounded-2xl p-6 border border-border space-y-4">
         <h2 className="font-display font-semibold text-foreground">How It Works</h2>
@@ -499,7 +995,7 @@ export default function AISettingsPage() {
           <div className="flex items-start gap-3">
             <Shield className="w-4 h-4 mt-0.5 text-emerald-400 shrink-0" />
             <span>
-              <strong className="text-foreground">Security:</strong> API keys are stored server-side only in <code className="px-1 py-0.5 rounded bg-surface text-[11px] text-foreground font-mono">.env.local</code>, never exposed to the client.
+              <strong className="text-foreground">Security:</strong> API keys are stored securely in Firestore under your account. You can also use environment variables in <code className="px-1 py-0.5 rounded bg-surface text-[11px] text-foreground font-mono">.env.local</code>.
             </span>
           </div>
         </div>
@@ -511,8 +1007,8 @@ export default function AISettingsPage() {
         <div className="space-y-3">
           {[
             { step: 1, text: "Get a free API key from Groq (fastest setup)", href: "https://groq.com", external: true },
-            { step: 2, text: 'Add GROQ_API_KEY=your_key to .env.local', href: null, external: false },
-            { step: 3, text: "Test it in the AI Assistant", href: "/ai", external: false },
+            { step: 2, text: "Paste your key in the Groq provider card above and click Save", href: null, external: false },
+            { step: 3, text: "Click Test to verify your connection works", href: null, external: false },
             { step: 4, text: "Search for products with AI-powered insights", href: "/products", external: false },
           ].map((item) => (
             <div key={item.step} className="flex items-center gap-3 p-3 rounded-xl bg-surface/50">
@@ -537,6 +1033,20 @@ export default function AISettingsPage() {
           ))}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="Delete Account"
+        description="Are you sure you want to delete your account? This action cannot be undone."
+        confirmLabel="Delete Account"
+        cancelLabel="Cancel"
+        danger
+        onConfirm={() => {
+          setShowDeleteConfirm(false);
+          handleDeleteAccount();
+        }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }

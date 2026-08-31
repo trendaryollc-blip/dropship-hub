@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 import { DocumentData } from "firebase-admin/firestore";
+import { safeNum, safeStr } from "@/lib/utils-helpers";
+
+function safeDateParse(value: unknown): Date {
+  if (!value) return new Date(0);
+  if (value instanceof Date) return value;
+  if (typeof value === "string") return new Date(value);
+  if (typeof value === "object" && value !== null && "seconds" in value) {
+    return new Date((value as { seconds: number }).seconds * 1000);
+  }
+  return new Date(0);
+}
 
 interface CompetitorChange {
   id: string;
@@ -23,134 +36,8 @@ interface CompetitorWatch {
   changesDetected: number;
 }
 
-function safeStr(val: unknown, fallback = ""): string {
-  return typeof val === "string" ? val : fallback;
-}
-
-// Simulated competitor monitoring data
-function generateCompetitorChanges(watchedProducts: string[]): CompetitorChange[] {
-  const changes: CompetitorChange[] = [];
-  const competitors = ["TechGadget Store", "QuickShip Supplies", "PrimeDrop Co", "ValueMart Direct", "EliteProducts"];
-  const products = watchedProducts.length > 0 ? watchedProducts : ["Wireless Earbuds", "LED Strip Lights", "Phone Mount", "Posture Corrector"];
-
-  // Generate some realistic changes
-  const changeTypes: CompetitorChange["changeType"][] = ["price-drop", "price-increase", "new-listing", "out-of-stock", "rating-change", "review-surge"];
-
-  for (let i = 0; i < Math.min(5, products.length * 2); i++) {
-    const changeType = changeTypes[Math.floor(Math.random() * changeTypes.length)];
-    const competitor = competitors[Math.floor(Math.random() * competitors.length)];
-    const product = products[Math.floor(Math.random() * products.length)];
-    const basePrice = 15 + Math.random() * 30;
-
-    let change: CompetitorChange;
-
-    switch (changeType) {
-      case "price-drop":
-        const newPrice = (basePrice * (0.7 + Math.random() * 0.2)).toFixed(2);
-        change = {
-          id: `change-${i}`,
-          competitorName: competitor,
-          changeType: "price-drop",
-          severity: "warning",
-          product,
-          oldValue: `$${basePrice.toFixed(2)}`,
-          newValue: `$${newPrice}`,
-          impact: "May reduce your competitive advantage",
-          recommendation: `Consider matching the price or differentiating on value (bundle, warranty, faster shipping)`,
-          detectedAt: new Date(Date.now() - Math.random() * 3600000).toISOString(),
-        };
-        break;
-      case "price-increase":
-        const increasedPrice = (basePrice * (1.1 + Math.random() * 0.15)).toFixed(2);
-        change = {
-          id: `change-${i}`,
-          competitorName: competitor,
-          changeType: "price-increase",
-          severity: "info",
-          product,
-          oldValue: `$${basePrice.toFixed(2)}`,
-          newValue: `$${increasedPrice}`,
-          impact: "Opportunity to capture price-sensitive customers",
-          recommendation: `You could maintain current pricing to gain market share, or raise slightly for better margins`,
-          detectedAt: new Date(Date.now() - Math.random() * 3600000).toISOString(),
-        };
-        break;
-      case "new-listing":
-        change = {
-          id: `change-${i}`,
-          competitorName: competitor,
-          changeType: "new-listing",
-          severity: "warning",
-          product: `New ${product} variant`,
-          oldValue: "N/A",
-          newValue: "Listed",
-          impact: "Increased competition in your niche",
-          recommendation: `Differentiate your listing with better images, description, or bundle offer`,
-          detectedAt: new Date(Date.now() - Math.random() * 3600000).toISOString(),
-        };
-        break;
-      case "out-of-stock":
-        change = {
-          id: `change-${i}`,
-          competitorName: competitor,
-          changeType: "out-of-stock",
-          severity: "critical",
-          product,
-          oldValue: "In Stock",
-          newValue: "Out of Stock",
-          impact: "Potential to capture their customers",
-          recommendation: `Run targeted ads for this product while competitor is out of stock — capture their demand`,
-          detectedAt: new Date(Date.now() - Math.random() * 3600000).toISOString(),
-        };
-        break;
-      case "rating-change":
-        change = {
-          id: `change-${i}`,
-          competitorName: competitor,
-          changeType: "rating-change",
-          severity: "info",
-          product,
-          oldValue: "4.5 stars",
-          newValue: "4.2 stars",
-          impact: "Competitor quality declining — opportunity",
-          recommendation: `Highlight your quality and customer reviews in marketing`,
-          detectedAt: new Date(Date.now() - Math.random() * 3600000).toISOString(),
-        };
-        break;
-      case "review-surge":
-        change = {
-          id: `change-${i}`,
-          competitorName: competitor,
-          changeType: "review-surge",
-          severity: "info",
-          product,
-          oldValue: "150 reviews",
-          newValue: "280 reviews",
-          impact: "Competitor gaining social proof",
-          recommendation: `Encourage more reviews from your customers or add review incentives`,
-          detectedAt: new Date(Date.now() - Math.random() * 3600000).toISOString(),
-        };
-        break;
-    }
-
-    changes.push(change!);
-  }
-
-  return changes.sort((a, b) => {
-    const severityOrder = { critical: 0, warning: 1, info: 2 };
-    return severityOrder[a.severity] - severityOrder[b.severity];
-  });
-}
-
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
-    const body = await request.json();
-    const { uid } = body;
-
-    if (!uid) {
-      return NextResponse.json({ error: "uid is required" }, { status: 400 });
-    }
-
     const db = await getAdminDB();
     const userRef = db.collection("users").doc(uid);
 
@@ -173,19 +60,90 @@ export async function POST(request: NextRequest) {
     // Extract product names from searches
     const watchedProducts = searches.map((s) => safeStr(s.query)).filter(Boolean);
 
-    // Generate changes
-    const changes = generateCompetitorChanges(watchedProducts);
+    // Analyze real competitor data from Firestore
+    const changes: CompetitorChange[] = [];
 
-    // Build watch list
-    const watchList: CompetitorWatch[] = [
-      ...watches.map((w) => ({
-        id: safeStr(w.itemId, "unknown"),
-        name: safeStr(w.title, "Unknown Competitor"),
-        platforms: ["Multiple"],
-        lastChecked: new Date().toISOString(),
-        changesDetected: changes.filter((c) => c.competitorName === safeStr(w.title)).length,
-      })),
-    ];
+    // Build watch list from real watched competitors
+    const watchList: CompetitorWatch[] = watches.map((w) => ({
+      id: safeStr(w.itemId, "unknown"),
+      name: safeStr(w.title, "Unknown Competitor"),
+      platforms: Array.isArray(w.platforms) ? w.platforms : ["Multiple"],
+      lastChecked: w.lastChecked ? safeDateParse(w.lastChecked).toISOString() : new Date().toISOString(),
+      changesDetected: 0,
+    }));
+
+    // Check for price changes in monitored products
+    const monitoredSnap = await userRef
+      .collection("monitoredProducts")
+      .limit(20)
+      .get();
+
+    for (const doc of monitoredSnap.docs) {
+      const data = doc.data();
+      const priceHistory = data.priceHistory || [];
+      if (priceHistory.length < 2) continue;
+
+      const latest = priceHistory[priceHistory.length - 1];
+      const previous = priceHistory[priceHistory.length - 2];
+      const latestPrice = safeNum(latest?.price);
+      const previousPrice = safeNum(previous?.price);
+
+      if (latestPrice === 0 || previousPrice === 0) continue;
+
+      const changePercent = ((latestPrice - previousPrice) / previousPrice) * 100;
+
+      if (Math.abs(changePercent) >= 2) {
+        const isIncrease = changePercent > 0;
+        changes.push({
+          id: `monitored-${doc.id}`,
+          competitorName: safeStr(data.source, "Supplier"),
+          changeType: isIncrease ? "price-increase" : "price-drop",
+          severity: isIncrease ? "info" : "warning",
+          product: safeStr(data.title, "Unknown product"),
+          oldValue: `$${previousPrice.toFixed(2)}`,
+          newValue: `$${latestPrice.toFixed(2)}`,
+          impact: isIncrease
+            ? "Supplier price increased — your margin may be reduced"
+            : "Supplier price decreased — opportunity to increase margin or undercut competitors",
+          recommendation: isIncrease
+            ? "Consider raising your retail price to maintain margin, or absorb the cost for competitive advantage"
+            : "You can lower your retail price to undercut competitors, or keep the same price for higher margin",
+          detectedAt: latest?.date ? new Date(latest.date).toISOString() : new Date().toISOString(),
+        });
+      }
+    }
+
+    // Check for out-of-stock items
+    const pushedSnap = await userRef
+      .collection("pushedProducts")
+      .limit(20)
+      .get();
+
+    for (const doc of pushedSnap.docs) {
+      const data = doc.data();
+      if (data.stockStatus === "out_of_stock" || data.inStock === false) {
+        changes.push({
+          id: `oos-${doc.id}`,
+          competitorName: safeStr(data.supplier, "Supplier"),
+          changeType: "out-of-stock",
+          severity: "critical",
+          product: safeStr(data.title, "Unknown product"),
+          oldValue: "In Stock",
+          newValue: "Out of Stock",
+          impact: "Your listing may generate orders you cannot fulfill",
+          recommendation: "Delist this product or find an alternative supplier immediately",
+          detectedAt: data.updatedAt ? safeDateParse(data.updatedAt).toISOString() : new Date().toISOString(),
+        });
+      }
+    }
+
+    // Sort by severity then date
+    const severityOrder = { critical: 0, warning: 1, info: 2 };
+    changes.sort((a, b) => {
+      const sevDiff = severityOrder[a.severity] - severityOrder[b.severity];
+      if (sevDiff !== 0) return sevDiff;
+      return new Date(b.detectedAt).getTime() - new Date(a.detectedAt).getTime();
+    });
 
     return NextResponse.json({
       changes,
@@ -204,4 +162,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, LIMITS.AI_CHAT);

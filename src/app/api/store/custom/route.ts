@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth";
+import { isUrlSafe } from "@/lib/url-allowlist";
+import { LIMITS } from "@/lib/rate-limit";
 
 interface CustomStoreRequest {
   action: "test" | "products" | "orders" | "customers" | "sync";
@@ -114,7 +117,7 @@ async function syncStore(
   return summary;
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest) => {
   try {
     const body: CustomStoreRequest = await request.json();
     const {
@@ -130,11 +133,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Store URL is required" }, { status: 400 });
     }
 
-    // Validate URL
+    // Validate URL format
     try {
       new URL(storeUrl);
     } catch {
       return NextResponse.json({ error: "Invalid store URL" }, { status: 400 });
+    }
+
+    // SSRF protection — verify URL is safe to fetch
+    const urlCheck = await isUrlSafe(storeUrl);
+    if (!urlCheck.safe) {
+      return NextResponse.json({ error: `URL not allowed: ${urlCheck.reason}` }, { status: 400 });
     }
 
     let data;
@@ -169,12 +178,12 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, LIMITS.DEFAULT);
 
-export async function GET() {
+export const GET = withAuth(async () => {
   return NextResponse.json({
     platform: "Custom Store",
     description: "Connect any store built from scratch",
     supportedActions: ["test", "products", "orders", "customers", "sync"],
   });
-}
+}, LIMITS.DEFAULT);

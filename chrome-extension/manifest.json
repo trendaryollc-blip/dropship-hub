@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "DropShip Hub",
+  "version": "1.0.0",
+  "description": "Save products from any supplier to DropShip Hub",
+  "permissions": ["activeTab", "storage"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.aliexpress.com/*",
+        "*://*.amazon.com/*",
+        "*://*.cjdropshipping.com/*",
+        "*://*.ebay.com/*",
+        "*://*.walmart.com/*",
+        "*://*.etsy.com/*"
+      ],
+      "js": ["content.js"]
+    }
+  ],
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  }
+}

@@ -45,7 +45,7 @@ function saveLocal(products: SavedProduct[]) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
-  } catch {}
+  } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[SavedProductsProvider] silently caught", e); }
 }
 
 export function SavedProductsProvider({ children }: { children: ReactNode }) {
@@ -54,10 +54,12 @@ export function SavedProductsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const local = loadLocal();
+    let cancelled = false;
 
     if (user) {
       getDocs(collection(db, "users", user.uid, "savedProducts"))
         .then((snap) => {
+          if (cancelled) return;
           const remote: SavedProduct[] = snap.docs.map((d) => {
             const data = d.data();
             return {
@@ -82,12 +84,17 @@ export function SavedProductsProvider({ children }: { children: ReactNode }) {
           setProducts(merged);
           saveLocal(merged);
         })
-        .catch(() => {
-          setProducts(local);
+        .catch((e) => {
+          if (!cancelled) {
+            if (process.env.NODE_ENV === "development") console.warn("[SavedProductsProvider] silently caught", e);
+            setProducts(local);
+          }
         });
     } else {
       setProducts(local);
     }
+
+    return () => { cancelled = true; };
   }, [user?.uid]);
 
   const toggleSave = useCallback(
@@ -98,7 +105,7 @@ export function SavedProductsProvider({ children }: { children: ReactNode }) {
         if (exists) {
           next = prev.filter((p) => p.id !== product.id);
           if (user) {
-            void deleteDoc(doc(db, "users", user.uid, "savedProducts", product.id)).catch(() => {});
+            void deleteDoc(doc(db, "users", user.uid, "savedProducts", product.id)).catch((e) => { if (process.env.NODE_ENV === "development") console.warn("[SavedProductsProvider] silently caught", e); });
           }
         } else {
           next = [{ ...product, savedAt: Date.now() }, ...prev];
@@ -113,7 +120,7 @@ export function SavedProductsProvider({ children }: { children: ReactNode }) {
               rating: product.rating ?? null,
               reviews: product.reviews ?? null,
               savedAt: Date.now(),
-            }).catch(() => {});
+            }).catch((e) => { if (process.env.NODE_ENV === "development") console.warn("[SavedProductsProvider] silently caught", e); });
           }
         }
         saveLocal(next);
@@ -131,7 +138,7 @@ export function SavedProductsProvider({ children }: { children: ReactNode }) {
         return next;
       });
       if (user) {
-        void deleteDoc(doc(db, "users", user.uid, "savedProducts", id)).catch(() => {});
+        void deleteDoc(doc(db, "users", user.uid, "savedProducts", id)).catch((e) => { if (process.env.NODE_ENV === "development") console.warn("[SavedProductsProvider] silently caught", e); });
       }
     },
     [user]
@@ -144,10 +151,10 @@ export function SavedProductsProvider({ children }: { children: ReactNode }) {
       void getDocs(collection(db, "users", user.uid, "savedProducts"))
         .then((snap) => {
           for (const d of snap.docs) {
-            void deleteDoc(doc(db, "users", user.uid, "savedProducts", d.id)).catch(() => {});
+            void deleteDoc(doc(db, "users", user.uid, "savedProducts", d.id)).catch((e) => { if (process.env.NODE_ENV === "development") console.warn("[SavedProductsProvider] silently caught", e); });
           }
         })
-        .catch(() => {});
+        .catch((e) => { if (process.env.NODE_ENV === "development") console.warn("[SavedProductsProvider] silently caught", e); });
     }
   }, [user]);
 

@@ -73,8 +73,13 @@ export interface StoreConnection {
   platform: string;
   name: string;
   url: string;
-  status: "connected" | "disconnected";
-  lastSyncedAt?: string;
+  apiKey?: string;
+  apiSecret?: string;
+  accessToken?: string;
+  storeDomain?: string;
+  status: "connected" | "disconnected" | "error";
+  connectedAt: string;
+  lastSyncAt?: string;
 }
 
 export interface SupplierPreference {
@@ -86,7 +91,7 @@ export interface SupplierPreference {
   maxShippingDays: number;
 }
 
-export interface PlatformConfig {
+export interface PlatformDisplayConfig {
   id: string;
   name: string;
   icon: string;
@@ -96,7 +101,7 @@ export interface PlatformConfig {
   description: string;
 }
 
-export const PLATFORM_CONFIGS: PlatformConfig[] = [
+export const PLATFORM_CONFIGS: PlatformDisplayConfig[] = [
   { id: "cj", name: "CJ Dropshipping", icon: "🚚", color: "#22c55e", hasApi: true, autoOrderSupported: true, description: "Full API — orders placed automatically" },
   { id: "aliexpress", name: "AliExpress", icon: "🇨🇳", color: "#e11d48", hasApi: false, autoOrderSupported: false, description: "Manual — open supplier link and order" },
   { id: "amazon", name: "Amazon", icon: "📦", color: "#f59e0b", hasApi: false, autoOrderSupported: false, description: "Manual — copy order details to Amazon" },

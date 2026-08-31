@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth";
 
 const RAINFOREST_API_KEY = process.env.RAINFOREST_API_KEY;
 const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY;
@@ -154,7 +155,7 @@ async function scrapeImagesFromHtml(html: string): Promise<string[]> {
         }
       };
       extractFromJsonLd(json);
-    } catch {}
+    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[ProductImages] silently caught", e); }
   }
 
   // 2. Meta tags
@@ -297,7 +298,7 @@ function extractAsin(url: string): string {
   return "";
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const { asin, url, source } = await request.json();
 
@@ -348,4 +349,4 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ images: [], error: "Failed to fetch product images" }, { status: 500 });
   }
-}
+});

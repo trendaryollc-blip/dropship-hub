@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
+import { withAuth } from "@/lib/auth";
+import { SupplierPerformanceSchema, validateBody } from "@/lib/validation";
+import { LIMITS } from "@/lib/rate-limit";
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type") || "overview";
-    const uid = searchParams.get("uid");
-
-    if (!uid) {
-      return NextResponse.json({ error: "uid is required" }, { status: 400 });
-    }
 
     const db = await getAdminDB();
 
@@ -87,16 +85,14 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, LIMITS.DEFAULT);
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const body = await request.json();
-    const { uid, ...entry } = body;
-
-    if (!uid) {
-      return NextResponse.json({ error: "uid is required" }, { status: 400 });
-    }
+    const validation = validateBody(SupplierPerformanceSchema, body);
+    if (!validation.success) return validation.response;
+    const entry = validation.data;
 
     const db = await getAdminDB();
     const ref = await db.collection("users").doc(uid).collection("supplierPerformance").add({
@@ -111,4 +107,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, LIMITS.DEFAULT);

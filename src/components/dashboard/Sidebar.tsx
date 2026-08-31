@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { safeFetch } from "@/lib/safe-fetch";
 import {
   LayoutDashboard,
   Search,
@@ -129,14 +131,9 @@ const moreItems = [
   { label: "Lifecycle", href: "/product-lifecycle", icon: Activity },
   { label: "Order Router", href: "/order-router", icon: Route },
   { label: "Missions", href: "/missions", icon: Target },
+  { label: "Price Monitor", href: "/monitoring", icon: Activity },
   { label: "Platforms", href: "/platforms", icon: Globe },
   { label: "Daily Digest", href: "/digest", icon: FileText },
-];
-
-const sections = [
-  { id: "core", label: "Essentials" },
-  { id: "tools", label: "Tools" },
-  { id: "analytics", label: "Analytics" },
 ];
 
 interface SidebarProps {
@@ -144,36 +141,77 @@ interface SidebarProps {
   onClose: () => void;
 }
 
+function NavItem({ item, pathname, collapsed, isOpen, onClose }: { item: typeof navItems[0]; pathname: string; collapsed: boolean; isOpen: boolean; onClose: () => void }) {
+  const active = pathname === item.href || pathname.startsWith(item.href + "/");
+  return (
+    <Link
+      href={item.href}
+      onClick={onClose}
+      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all mb-0.5 ${
+        active
+          ? "bg-accent/10 text-accent border border-accent/20"
+          : "text-muted-foreground hover:text-foreground hover:bg-surface-hover border border-transparent"
+      }`}
+      title={collapsed && !isOpen ? item.label : undefined}
+    >
+      <item.icon className={`h-4 w-4 shrink-0 ${active ? "text-accent" : ""}`} />
+      {!(collapsed && !isOpen) && <span>{item.label}</span>}
+    </Link>
+  );
+}
+
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
+  const { user } = useAuth();
   const pathname = usePathname();
+  const dialogRef = useRef<HTMLDivElement>(null);
 
-  const grouped = sections.map((s) => ({
-    ...s,
-    items: navItems.filter((i) => i.section === s.id),
-  }));
+  // Determine whether the signed-in user is the app owner. Only owners see
+  // platform management — regular users must never see this process.
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    user.getIdToken()
+      .then((token) =>
+        safeFetch<{ isOwner?: boolean }>("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } })
+      )
+      .then((data) => {
+        if (active && typeof data.isOwner === "boolean") setIsOwner(data.isOwner);
+      })
+      .catch((e) => { if (process.env.NODE_ENV === "development") console.warn("[Sidebar] silently caught", e); });
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
-  const isMoreActive = moreItems.some((item) => pathname === item.href || pathname.startsWith(item.href + "/"));
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { onClose(); return; }
+      if (e.key === "Tab" && dialogRef.current) {
+        const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [isOpen, onClose]);
 
-  const NavItem = ({ item }: { item: typeof navItems[0] }) => {
-    const active = pathname === item.href || pathname.startsWith(item.href + "/");
-    return (
-      <Link
-        href={item.href}
-        onClick={onClose}
-        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all mb-0.5 ${
-          active
-            ? "bg-accent/10 text-accent border border-accent/20"
-            : "text-muted-foreground hover:text-foreground hover:bg-surface-hover border border-transparent"
-        }`}
-        title={collapsed && !isOpen ? item.label : undefined}
-      >
-        <item.icon className={`h-4 w-4 shrink-0 ${active ? "text-accent" : ""}`} />
-        {!(collapsed && !isOpen) && <span>{item.label}</span>}
-      </Link>
-    );
-  };
+  const visibleMoreItems = isOwner ? moreItems : moreItems.filter((item) => item.href !== "/platforms");
+  const isMoreActive = visibleMoreItems.some((item) => pathname === item.href || pathname.startsWith(item.href + "/"));
 
   const navContent = (
     <>
@@ -229,7 +267,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           </p>
         )}
         {navItems.filter((i) => i.section === "core").map((item) => (
-          <NavItem key={item.href} item={item} />
+          <NavItem key={item.href} item={item} pathname={pathname} collapsed={collapsed} isOpen={isOpen} onClose={onClose} />
         ))}
 
         {/* Tools */}
@@ -239,7 +277,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           </p>
         )}
         {navItems.filter((i) => i.section === "tools").map((item) => (
-          <NavItem key={item.href} item={item} />
+          <NavItem key={item.href} item={item} pathname={pathname} collapsed={collapsed} isOpen={isOpen} onClose={onClose} />
         ))}
 
         {/* Analytics */}
@@ -249,7 +287,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           </p>
         )}
         {navItems.filter((i) => i.section === "analytics").map((item) => (
-          <NavItem key={item.href} item={item} />
+          <NavItem key={item.href} item={item} pathname={pathname} collapsed={collapsed} isOpen={isOpen} onClose={onClose} />
         ))}
 
         {/* More */}
@@ -269,7 +307,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             </button>
             {moreOpen && (
               <div className="ml-2 mt-1 space-y-0.5 animate-slide-up">
-                {moreItems.map((item) => {
+                {visibleMoreItems.map((item) => {
                   const active = pathname === item.href || pathname.startsWith(item.href + "/");
                   return (
                     <Link
@@ -337,7 +375,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
             onClick={onClose}
           />
-          <aside className="absolute left-0 top-0 bottom-0 w-[280px] flex flex-col border-r border-white/[0.04] backdrop-blur-xl animate-in slide-in-from-left duration-300" style={{ backgroundColor: "var(--sidebar)" }}>
+          <aside ref={dialogRef} className="absolute left-0 top-0 bottom-0 w-[280px] flex flex-col border-r border-white/[0.04] backdrop-blur-xl animate-in slide-in-from-left duration-300" style={{ backgroundColor: "var(--sidebar)" }}>
             {navContent}
           </aside>
         </div>

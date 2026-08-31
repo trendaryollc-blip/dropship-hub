@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
-    const uid = req.nextUrl.searchParams.get("uid");
-    if (!uid) return NextResponse.json({ suggestions: [] });
-
     const db = await getAdminDB();
 
     // Fetch user context data to generate smart suggestions
@@ -78,48 +77,8 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Always show trending products suggestion
-    suggestions.push({
-      id: "trending-now",
-      type: "trending",
-      title: "Pet GPS Trackers trending +340%",
-      description: "Low competition, high demand. Perfect timing to enter.",
-      action: "View Products",
-      href: "/products",
-      icon: "trending",
-      color: "text-emerald-400",
-      bgColor: "bg-emerald-400/10 border-emerald-400/20",
-      timestamp: "2 min ago",
-    });
-
-    suggestions.push({
-      id: "price-drop",
-      type: "price_drop",
-      title: "Wireless Earbuds source price dropped",
-      description: "AliExpress price: $8.50 → $6.20. Margin increased to 68%.",
-      action: "Check Calculator",
-      href: "/calculator",
-      icon: "dollar",
-      color: "text-blue-400",
-      bgColor: "bg-blue-400/10 border-blue-400/20",
-      timestamp: "15 min ago",
-    });
-
-    suggestions.push({
-      id: "competitor-alert",
-      type: "competitor",
-      title: "3 competitors entered your niche",
-      description: "LED Strip Lights market getting saturated. Consider pivoting.",
-      action: "Analyze Competitors",
-      href: "/competitors",
-      icon: "alert",
-      color: "text-amber-400",
-      bgColor: "bg-amber-400/10 border-amber-400/20",
-      timestamp: "1 hour ago",
-    });
-
-    return NextResponse.json({ suggestions });
-  } catch {
-    return NextResponse.json({ suggestions: [] });
-  }
+  return NextResponse.json({ suggestions });
+} catch {
+  return NextResponse.json({ suggestions: [] });
 }
+}, LIMITS.AI_CHAT);

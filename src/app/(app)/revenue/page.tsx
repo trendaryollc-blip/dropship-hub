@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useMemo } from "react";
 import Link from "next/link";
 import {
   DollarSign,
@@ -19,7 +19,9 @@ import {
 import { useInView } from "@/hooks/useInView";
 import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
 import { useAuth } from "@/components/auth/AuthProvider";
-import DemoBadge from "@/components/ui/DemoBadge";
+import { useAPI } from "@/hooks/useAPI";
+import { KPICardSkeleton, ChartSkeleton } from "@/components/ui/Skeleton";
+import { PageErrorBoundary } from "@/components/ui/PageErrorBoundary";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -401,130 +403,112 @@ function InsightCard({ icon: Icon, title, description, type, delay }: { icon: ty
 export default function RevenuePage() {
   const { user } = useAuth();
   const [timeframe, setTimeframe] = useState<Timeframe>("30d");
-  const [loading, setLoading] = useState(true);
-  const [revenueData, setRevenueData] = useState<{ actual: { date: string; value: number }[]; predicted: { date: string; value: number }[] }>({ actual: [], predicted: [] });
-  const [categoryData, setCategoryData] = useState<CategoryBreakdown[]>([]);
-  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
-  const [monthlyComparison, setMonthlyComparison] = useState<MonthlyComparison[]>([]);
-  const [platformRevenue, setPlatformRevenue] = useState<{ name: string; revenue: number; share: number; color: string }[]>([]);
-  const [kpiData, setKpiData] = useState<Record<Timeframe, { revenue: number; profit: number; orders: number; margin: number; revenueChange: string; profitChange: string; ordersChange: string; marginChange: string; revenueSparkline: number[]; profitSparkline: number[]; ordersSparkline: number[]; marginSparkline: number[] }>>({
-    "7d": { revenue: 0, profit: 0, orders: 0, margin: 0, revenueChange: "0%", profitChange: "0%", ordersChange: "0%", marginChange: "0%", revenueSparkline: [], profitSparkline: [], ordersSparkline: [], marginSparkline: [] },
-    "30d": { revenue: 0, profit: 0, orders: 0, margin: 0, revenueChange: "0%", profitChange: "0%", ordersChange: "0%", marginChange: "0%", revenueSparkline: [], profitSparkline: [], ordersSparkline: [], marginSparkline: [] },
-    "90d": { revenue: 0, profit: 0, orders: 0, margin: 0, revenueChange: "0%", profitChange: "0%", ordersChange: "0%", marginChange: "0%", revenueSparkline: [], profitSparkline: [], ordersSparkline: [], marginSparkline: [] },
-  });
 
-  useEffect(() => {
-    const fetchRevenueData = async () => {
-      if (!user?.uid) {
-        setLoading(false);
-        return;
-      }
-      setLoading(true);
-      try {
-        // Fetch data for each timeframe
-        const fetchTimeframe = async (tf: Timeframe) => {
-          const res = await fetch(`/api/profit?uid=${user!.uid}&timeframe=${tf}`);
-          if (!res.ok) return null;
-          return res.json();
-        };
+  const uid = user?.uid || "";
+  const profit7dUrl = uid ? `/api/profit?uid=${uid}&timeframe=7d` : null;
+  const profit30dUrl = uid ? `/api/profit?uid=${uid}&timeframe=30d` : null;
+  const profit90dUrl = uid ? `/api/profit?uid=${uid}&timeframe=90d` : null;
 
-        const [data7d, data30d, data90d] = await Promise.all([
-          fetchTimeframe("7d"),
-          fetchTimeframe("30d"),
-          fetchTimeframe("90d"),
-        ]);
+  type ProfitResponse = {
+    summary?: { totalRevenue: number; totalProfit: number; totalOrders: number; avgMargin: number };
+    dailyBreakdown?: Array<{ date: string; revenue: number; profit: number; orders: number }>;
+    topProducts?: unknown[];
+    campaignProfits?: unknown[];
+  };
 
-        const buildKpiForTimeframe = (data: Awaited<ReturnType<typeof fetchTimeframe>>): typeof kpiData["7d"] => {
-          if (!data?.summary) return { revenue: 0, profit: 0, orders: 0, margin: 0, revenueChange: "0%", profitChange: "0%", ordersChange: "0%", marginChange: "0%", revenueSparkline: [], profitSparkline: [], ordersSparkline: [], marginSparkline: [] };
-          const summary = data.summary;
-          const daily: Array<{ date: string; revenue: number; profit: number; orders: number }> = data.dailyBreakdown ?? [];
-          return {
-            revenue: Math.round(summary.totalRevenue),
-            profit: Math.round(summary.totalProfit),
-            orders: summary.totalOrders,
-            margin: summary.avgMargin,
-            revenueChange: "—",
-            profitChange: "—",
-            ordersChange: "—",
-            marginChange: "—",
-            revenueSparkline: daily.slice(-7).map((d: { revenue: number }) => d.revenue),
-            profitSparkline: daily.slice(-7).map((d: { profit: number }) => d.profit),
-            ordersSparkline: daily.slice(-7).map((d: { orders: number }) => d.orders),
-            marginSparkline: daily.slice(-7).map((d: { revenue: number; profit: number }) => d.revenue > 0 ? +((d.profit / d.revenue) * 100).toFixed(1) : 0),
-          };
-        };
+  const { data: data7d, isLoading: loading7d } = useAPI<ProfitResponse>(profit7dUrl);
+  const { data: data30d, isLoading: loading30d } = useAPI<ProfitResponse>(profit30dUrl);
+  const { data: data90d, isLoading: loading90d } = useAPI<ProfitResponse>(profit90dUrl);
 
-        setKpiData({
-          "7d": buildKpiForTimeframe(data7d),
-          "30d": buildKpiForTimeframe(data30d),
-          "90d": buildKpiForTimeframe(data90d),
-        });
+  const loading = loading7d || loading30d || loading90d;
 
-        // Use 30d data as the primary dataset for charts/tables
-        const primary = data30d;
-        if (primary?.dailyBreakdown?.length) {
-          const daily = primary.dailyBreakdown as Array<{ date: string; revenue: number }>;
-          setRevenueData({
-            actual: daily.map((d) => ({ date: d.date.slice(5), value: Math.round(d.revenue) })),
-            predicted: [],
-          });
-        }
-
-        if (primary?.topProducts?.length) {
-          // Build top products from the API's topProducts
-          const apiTopProducts = primary.topProducts as Array<{ productTitle: string; productImage: string; totalRevenue: number; totalOrders: number; profitMargin: number; trend: number }>;
-          setTopProducts(apiTopProducts.slice(0, 5).map((p) => ({
-            name: p.productTitle,
-            image: p.productImage || "📦",
-            revenue: Math.round(p.totalRevenue),
-            orders: p.totalOrders,
-            margin: p.profitMargin,
-            platform: "—",
-          })));
-          // Category data is not available from profit API, leave empty
-          setCategoryData([]);
-        }
-
-        if (primary?.campaignProfits?.length) {
-          const campaigns = primary.campaignProfits as Array<{ campaignName: string; revenue: number }>;
-          const totalRev = campaigns.reduce((s, c) => s + c.revenue, 0);
-          const platformColors = ["#f59e0b", "#22c55e", "#3b82f6", "#a855f7", "#ef4444"];
-          setPlatformRevenue(campaigns.filter((c) => c.revenue > 0).map((c, i) => ({
-            name: c.campaignName,
-            revenue: Math.round(c.revenue),
-            share: totalRev > 0 ? Math.round((c.revenue / totalRev) * 100) : 0,
-            color: platformColors[i % platformColors.length],
-          })));
-        }
-
-        // Build monthly comparison from daily data
-        const allDaily30 = primary?.dailyBreakdown as Array<{ date: string; revenue: number; profit: number; orders: number }> | undefined;
-        if (allDaily30?.length) {
-          const monthMap = new Map<string, { month: string; revenue: number; profit: number; orders: number }>();
-          const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-          for (const d of allDaily30) {
-            const dt = new Date(d.date);
-            const key = `${dt.getFullYear()}-${dt.getMonth()}`;
-            const label = monthNames[dt.getMonth()];
-            const existing = monthMap.get(key) || { month: label, revenue: 0, profit: 0, orders: 0 };
-            existing.revenue += d.revenue;
-            existing.profit += d.profit;
-            existing.orders += d.orders;
-            monthMap.set(key, existing);
-          }
-          setMonthlyComparison(Array.from(monthMap.values()));
-        }
-      } catch {
-        // Silently fail — data stays at defaults
-      } finally {
-        setLoading(false);
-      }
+  const buildKpiForTimeframe = (data: ProfitResponse | undefined) => {
+    if (!data?.summary) return { revenue: 0, profit: 0, orders: 0, margin: 0, revenueChange: "0%", profitChange: "0%", ordersChange: "0%", marginChange: "0%", revenueSparkline: [] as number[], profitSparkline: [] as number[], ordersSparkline: [] as number[], marginSparkline: [] as number[] };
+    const summary = data.summary;
+    const daily: Array<{ date: string; revenue: number; profit: number; orders: number }> = data.dailyBreakdown ?? [];
+    return {
+      revenue: Math.round(summary.totalRevenue),
+      profit: Math.round(summary.totalProfit),
+      orders: summary.totalOrders,
+      margin: summary.avgMargin,
+      revenueChange: "—",
+      profitChange: "—",
+      ordersChange: "—",
+      marginChange: "—",
+      revenueSparkline: daily.slice(-7).map((d: { revenue: number }) => d.revenue),
+      profitSparkline: daily.slice(-7).map((d: { profit: number }) => d.profit),
+      ordersSparkline: daily.slice(-7).map((d: { orders: number }) => d.orders),
+      marginSparkline: daily.slice(-7).map((d: { revenue: number; profit: number }) => d.revenue > 0 ? +((d.profit / d.revenue) * 100).toFixed(1) : 0),
     };
+  };
 
-    fetchRevenueData();
-  }, [user?.uid]);
+  const kpiData = useMemo<Record<Timeframe, ReturnType<typeof buildKpiForTimeframe>>>(() => ({
+    "7d": buildKpiForTimeframe(data7d),
+    "30d": buildKpiForTimeframe(data30d),
+    "90d": buildKpiForTimeframe(data90d),
+  }), [data7d, data30d, data90d]);
 
   const kpi = kpiData[timeframe];
+
+  const revenueData = useMemo(() => {
+    const primary = data30d;
+    const result: { actual: { date: string; value: number }[]; predicted: { date: string; value: number }[] } = { actual: [], predicted: [] };
+    if (primary?.dailyBreakdown?.length) {
+      const daily = primary.dailyBreakdown as Array<{ date: string; revenue: number }>;
+      result.actual = daily.map((d) => ({ date: d.date.slice(5), value: Math.round(d.revenue) }));
+    }
+    return result;
+  }, [data30d]);
+
+  const categoryData = useMemo<CategoryBreakdown[]>(() => [], []);
+
+  const topProducts = useMemo<TopProduct[]>(() => {
+    const primary = data30d;
+    if (!primary?.topProducts?.length) return [];
+    const apiTopProducts = primary.topProducts as Array<{ productTitle: string; productImage: string; totalRevenue: number; totalOrders: number; profitMargin: number; trend: number }>;
+    return apiTopProducts.slice(0, 5).map((p) => ({
+      name: p.productTitle,
+      image: p.productImage || "📦",
+      revenue: Math.round(p.totalRevenue),
+      orders: p.totalOrders,
+      margin: p.profitMargin,
+      platform: "—",
+    }));
+  }, [data30d]);
+
+  const platformRevenue = useMemo(() => {
+    const primary = data30d;
+    if (!primary?.campaignProfits?.length) return [];
+    const campaigns = primary.campaignProfits as Array<{ campaignName: string; revenue: number }>;
+    const totalRev = campaigns.reduce((s, c) => s + c.revenue, 0);
+    const platformColors = ["#f59e0b", "#22c55e", "#3b82f6", "#a855f7", "#ef4444"];
+    return campaigns.filter((c) => c.revenue > 0).map((c, i) => ({
+      name: c.campaignName,
+      revenue: Math.round(c.revenue),
+      share: totalRev > 0 ? Math.round((c.revenue / totalRev) * 100) : 0,
+      color: platformColors[i % platformColors.length],
+    }));
+  }, [data30d]);
+
+  const monthlyComparison = useMemo<MonthlyComparison[]>(() => {
+    const primary = data30d;
+    const allDaily30 = primary?.dailyBreakdown as Array<{ date: string; revenue: number; profit: number; orders: number }> | undefined;
+    if (!allDaily30?.length) return [];
+    const monthMap = new Map<string, { month: string; revenue: number; profit: number; orders: number }>();
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    for (const d of allDaily30) {
+      const dt = new Date(d.date);
+      const key = `${dt.getFullYear()}-${dt.getMonth()}`;
+      const label = monthNames[dt.getMonth()];
+      const existing = monthMap.get(key) || { month: label, revenue: 0, profit: 0, orders: 0 };
+      existing.revenue += d.revenue;
+      existing.profit += d.profit;
+      existing.orders += d.orders;
+      monthMap.set(key, existing);
+    }
+    return Array.from(monthMap.values());
+  }, [data30d]);
+
   const { actual, predicted } = revenueData;
   const maxCategoryRevenue = categoryData.length > 0 ? Math.max(...categoryData.map((c) => c.revenue)) : 0;
   const maxMonthlyRevenue = monthlyComparison.length > 0 ? Math.max(...monthlyComparison.map((m) => m.revenue)) : 0;
@@ -532,6 +516,7 @@ export default function RevenuePage() {
   const hasAnyData = hasData || categoryData.length > 0 || topProducts.length > 0 || monthlyComparison.length > 0 || platformRevenue.length > 0 || kpi.revenue > 0;
 
   return (
+    <PageErrorBoundary>
     <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 px-3 sm:px-4 lg:px-6 pb-24">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -540,7 +525,6 @@ export default function RevenuePage() {
             <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground">
               Revenue Forecast
             </h1>
-            <DemoBadge />
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">
             Revenue trends, forecasts, and growth analytics across all platforms. For per-order cost breakdown, see Profit Tracker.
@@ -558,7 +542,19 @@ export default function RevenuePage() {
               </button>
             ))}
           </div>
-          <button className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl border border-border text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all">
+          <button onClick={() => {
+            if (!revenueData.actual.length) return;
+            const csv = [["Date", "Revenue", "Profit", "Orders"]].concat(
+              revenueData.actual.map((d) => [d.date, String(d.value), "", ""])
+            ).map((r) => r.join(",")).join("\n");
+            const blob = new Blob([csv], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `revenue-${timeframe}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+          }} className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl border border-border text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all">
             <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span className="hidden sm:inline">Export</span>
           </button>
@@ -580,15 +576,25 @@ export default function RevenuePage() {
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-        <KPICard label="Revenue This Month" value={kpi.revenue} prefix="$" change={kpi.revenueChange} up icon={DollarSign} color="text-emerald-400" sparkline={kpi.revenueSparkline} delay={0} />
-        <KPICard label="Est. Profit" value={kpi.profit} prefix="$" change={kpi.profitChange} up icon={TrendingUp} color="text-purple-400" sparkline={kpi.profitSparkline} delay={100} />
-        <KPICard label="Active Orders" value={kpi.orders} change={kpi.ordersChange} up icon={ShoppingCart} color="text-amber-400" sparkline={kpi.ordersSparkline} delay={200} />
-        <KPICard label="Avg. Margin" value={kpi.margin} suffix="%" change={kpi.marginChange} up icon={Target} color="text-blue-400" sparkline={kpi.marginSparkline} delay={300} />
-      </div>
+      {loading ? (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+          {[0, 1, 2, 3].map((i) => (
+            <KPICardSkeleton key={i} />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+          <KPICard label="Revenue This Month" value={kpi.revenue} prefix="$" change={kpi.revenueChange} up icon={DollarSign} color="text-emerald-400" sparkline={kpi.revenueSparkline} delay={0} />
+          <KPICard label="Est. Profit" value={kpi.profit} prefix="$" change={kpi.profitChange} up icon={TrendingUp} color="text-purple-400" sparkline={kpi.profitSparkline} delay={100} />
+          <KPICard label="Active Orders" value={kpi.orders} change={kpi.ordersChange} up icon={ShoppingCart} color="text-amber-400" sparkline={kpi.ordersSparkline} delay={200} />
+          <KPICard label="Avg. Margin" value={kpi.margin} suffix="%" change={kpi.marginChange} up icon={Target} color="text-blue-400" sparkline={kpi.marginSparkline} delay={300} />
+        </div>
+      )}
 
       {/* Main Revenue Chart */}
-      {hasData ? (
+      {loading ? (
+        <ChartSkeleton height={260} />
+      ) : hasData ? (
         <RevenueChart actual={actual} predicted={predicted} />
       ) : (
         <div className="glass rounded-2xl p-6 sm:p-8 text-center">
@@ -712,35 +718,52 @@ export default function RevenuePage() {
       </div>
 
       {/* Growth Insights */}
-      <div>
-        <div className="mb-3 sm:mb-4">
-          <h3 className="font-display text-sm sm:text-base font-semibold text-foreground">Growth Insights</h3>
-          <p className="text-[10px] sm:text-[11px] text-muted-foreground">AI-powered recommendations to boost your revenue</p>
+      {kpi.revenue > 0 && (
+        <div>
+          <div className="mb-3 sm:mb-4">
+            <h3 className="font-display text-sm sm:text-base font-semibold text-foreground">Growth Insights</h3>
+            <p className="text-[10px] sm:text-[11px] text-muted-foreground">AI-powered recommendations to boost your revenue</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3">
+            {kpi.margin >= 50 && (
+              <InsightCard
+                icon={TrendingUp}
+                title="Strong Margins"
+                description={`Your avg margin is ${kpi.margin}%. This is healthy — consider scaling your top performing products.`}
+                type="success"
+                delay={0}
+              />
+            )}
+            {topProducts.length > 0 && (
+              <InsightCard
+                icon={Package}
+                title="Top Product Focus"
+                description={`"${topProducts[0].name}" generated $${topProducts[0].revenue.toLocaleString()} with ${topProducts[0].margin}% margin. Double down on winners.`}
+                type="info"
+                delay={100}
+              />
+            )}
+            {platformRevenue.length > 1 && (
+              <InsightCard
+                icon={Zap}
+                title="Platform Diversity"
+                description={`Your revenue is spread across ${platformRevenue.length} channels. Diversification reduces dependency risk.`}
+                type="success"
+                delay={200}
+              />
+            )}
+            {platformRevenue.length === 1 && (
+              <InsightCard
+                icon={AlertTriangle}
+                title="Single Platform Risk"
+                description={`All revenue from ${platformRevenue[0]?.name}. Consider diversifying to reduce platform dependency.`}
+                type="warning"
+                delay={200}
+              />
+            )}
+          </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3">
-          <InsightCard
-            icon={TrendingUp}
-            title="Scale Beauty Products"
-            description="Beauty category grew 32% this month with 78% avg margin. Consider expanding your catalog here."
-            type="success"
-            delay={0}
-          />
-          <InsightCard
-            icon={AlertTriangle}
-            title="Home & Garden Slowing"
-            description="Revenue dipped 5% this week. Check competitor pricing and consider refreshing product listings."
-            type="warning"
-            delay={100}
-          />
-          <InsightCard
-            icon={Zap}
-            title="Amazon Dominance"
-            description="49% of revenue comes from Amazon. Diversifying to Shopify could reduce platform dependency risk."
-            type="info"
-            delay={200}
-          />
-        </div>
-      </div>
+      )}
 
       {/* Quick Actions */}
       <div className="glass rounded-2xl p-4 sm:p-5">
@@ -785,5 +808,6 @@ export default function RevenuePage() {
         </div>
       </div>
     </div>
+    </PageErrorBoundary>
   );
 }

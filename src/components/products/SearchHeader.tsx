@@ -25,14 +25,14 @@ const platformLabels: Record<string, string> = {
 };
 
 export default function SearchHeader({
-  query, setQuery, onSearch, loading, allPlatforms, selectedPlatforms,
+  query, setQuery, onSearch, loading, platforms, selectedPlatforms,
   togglePlatform, showFilters, setShowFilters, recentSearches, onRecentClick,
 }: {
   query: string;
   setQuery: (q: string) => void;
   onSearch: () => void;
   loading: boolean;
-  allPlatforms: string[];
+  platforms: { id: string; name: string }[];
   selectedPlatforms: string[];
   togglePlatform: (p: string) => void;
   showFilters: boolean;
@@ -47,7 +47,7 @@ export default function SearchHeader({
           Product Search
         </h1>
         <p className="text-muted-foreground">
-          Search real products across {selectedPlatforms.length > 0 ? selectedPlatforms.length : allPlatforms.length} platform{selectedPlatforms.length !== 1 ? "s" : ""}
+          Search real products across {selectedPlatforms.length > 0 ? selectedPlatforms.length : platforms.length} platform{selectedPlatforms.length !== 1 ? "s" : ""}
         </p>
       </div>
 
@@ -65,18 +65,19 @@ export default function SearchHeader({
             )}
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-            {allPlatforms.map((p) => (
+            {platforms.map((p) => (
               <button
-                key={p}
-                onClick={() => togglePlatform(p)}
+                key={p.id}
+                onClick={() => togglePlatform(p.id)}
+                aria-pressed={selectedPlatforms.includes(p.id)}
                 className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all h-11 ${
-                  selectedPlatforms.includes(p)
+                  selectedPlatforms.includes(p.id)
                     ? "bg-accent/10 text-accent border border-accent/20"
                     : "bg-surface border border-border text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <span>{platformIcons[p]}</span>
-                {platformLabels[p] || p}
+                <span>{platformIcons[p.id]}</span>
+                {platformLabels[p.id] || p.name}
               </button>
             ))}
           </div>

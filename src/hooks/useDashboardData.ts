@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import type { TickerItem, AIDailyPick, SmartAlert, NicheCard, SupplierStatus, DailyMission, HeatmapCategory, TrendingProduct } from "@/lib/mock-dashboard";
+import { useAPI } from "@/hooks/useAPI";
 
 interface AIBriefing {
   insights: string[];
@@ -56,82 +57,85 @@ export interface DashboardData {
   actionStats: QuickActionStat[];
 }
 
-export function useDashboardData() {
-  const [data, setData] = useState<DashboardData>({
-    ticker: [],
-    dailyPick: null,
-    revenue: { actual: [], predicted: [], stats: { revenue: 0, growth: 0, orders: 0, avgOrder: 0 } },
-    alerts: [],
-    niches: [],
-    suppliers: [],
-    mission: null,
-    heatmap: [],
-    trending: [],
-    tasks: [],
-    actions: [],
-    compareItems: [],
-    briefing: {
-      insights: [],
-      sentiment: 50,
-      sentimentLabel: "Neutral",
-      opportunities: 0,
-      risks: 0,
-      trends: 0,
-      lastScan: "",
-    },
-    pulse: [],
-    actionStats: [],
-  });
-  const [loading, setLoading] = useState(true);
+const defaults = {
+  ticker: [] as TickerItem[],
+  dailyPick: null as AIDailyPick | null,
+  revenue: { actual: [], predicted: [], stats: { revenue: 0, growth: 0, orders: 0, avgOrder: 0 } } as RevenueData,
+  alerts: [] as SmartAlert[],
+  niches: [] as NicheCard[],
+  suppliers: [] as SupplierStatus[],
+  mission: null as DailyMission | null,
+  heatmap: [] as HeatmapCategory[],
+  trending: [] as TrendingProduct[],
+  tasks: [] as { id: string; text: string; done: boolean }[],
+  actions: [] as { label: string; href: string; icon: string; color: string }[],
+  briefing: {
+    insights: [],
+    sentiment: 50,
+    sentimentLabel: "Neutral",
+    opportunities: 0,
+    risks: 0,
+    trends: 0,
+    lastScan: "",
+  } as AIBriefing,
+  pulse: [] as MarketPulseCard[],
+  actionStats: [] as QuickActionStat[],
+};
 
-  useEffect(() => {
-    const fetchDashboard = async () => {
-      try {
-        const res = await fetch(`/api/dashboard?t=${Date.now()}`);
-        if (res.ok) {
-          const apiData = await res.json();
-          setData((prev) => ({
-            ...prev,
-            ticker: apiData.ticker?.length ? apiData.ticker : prev.ticker,
-            dailyPick: apiData.aiDailyPick || prev.dailyPick,
-            revenue: apiData.revenueStats ? {
-              actual: prev.revenue.actual,
-              predicted: prev.revenue.predicted,
-              stats: apiData.revenueStats,
-            } : prev.revenue,
-            alerts: apiData.alerts?.length ? apiData.alerts : prev.alerts,
-            niches: apiData.nicheCards?.length ? apiData.nicheCards : prev.niches,
-            suppliers: apiData.supplierStatuses?.length ? apiData.supplierStatuses : prev.suppliers,
-            heatmap: apiData.heatmap?.length ? apiData.heatmap : prev.heatmap,
-            trending: apiData.trending?.length ? apiData.trending : prev.trending,
-            briefing: apiData.briefing || prev.briefing,
-            pulse: apiData.pulse?.length ? apiData.pulse : prev.pulse,
-            actionStats: apiData.actionStats?.length ? apiData.actionStats : prev.actionStats,
-          }));
-        }
-      } catch (err) {
-        console.error("Dashboard fetch failed:", err);
-      }
-      setLoading(false);
-    };
-    fetchDashboard();
-  }, []);
+export function useDashboardData() {
+  const { data: apiData, isLoading, mutate } = useAPI<{
+    ticker?: TickerItem[];
+    aiDailyPick?: AIDailyPick | null;
+    revenueStats?: { revenue: number; growth: number; orders: number; avgOrder: number };
+    alerts?: SmartAlert[];
+    nicheCards?: NicheCard[];
+    supplierStatuses?: SupplierStatus[];
+    heatmap?: HeatmapCategory[];
+    trending?: TrendingProduct[];
+    briefing?: AIBriefing;
+    pulse?: MarketPulseCard[];
+    actionStats?: QuickActionStat[];
+  }>("/api/dashboard", {
+    refreshInterval: 60000,
+  });
+
+  const data: DashboardData = {
+    ticker: apiData?.ticker?.length ? apiData.ticker : defaults.ticker,
+    dailyPick: apiData?.aiDailyPick ?? defaults.dailyPick,
+    revenue: {
+      actual: defaults.revenue.actual,
+      predicted: defaults.revenue.predicted,
+      stats: apiData?.revenueStats ?? defaults.revenue.stats,
+    },
+    alerts: apiData?.alerts?.length ? apiData.alerts : defaults.alerts,
+    niches: apiData?.nicheCards?.length ? apiData.nicheCards : defaults.niches,
+    suppliers: apiData?.supplierStatuses?.length ? apiData.supplierStatuses : defaults.suppliers,
+    mission: defaults.mission,
+    heatmap: apiData?.heatmap?.length ? apiData.heatmap : defaults.heatmap,
+    trending: apiData?.trending?.length ? apiData.trending : defaults.trending,
+    tasks: defaults.tasks,
+    actions: defaults.actions,
+    compareItems: [],
+    briefing: apiData?.briefing ?? defaults.briefing,
+    pulse: apiData?.pulse?.length ? apiData.pulse : defaults.pulse,
+    actionStats: apiData?.actionStats?.length ? apiData.actionStats : defaults.actionStats,
+  };
 
   const [compareItems, setCompareItems] = useState<DashboardData["compareItems"]>([]);
 
   const markAlertRead = useCallback((id: string) => {
-    setData((prev) => ({
-      ...prev,
-      alerts: prev.alerts.map((a) => (a.id === id ? { ...a, read: true } : a)),
-    }));
-  }, []);
+    mutate((prev) => {
+      if (!prev?.alerts) return prev;
+      return { ...prev, alerts: prev.alerts.map((a) => (a.id === id ? { ...a, read: true } : a)) };
+    }, { revalidate: false });
+  }, [mutate]);
 
   const markAllAlertsRead = useCallback(() => {
-    setData((prev) => ({
-      ...prev,
-      alerts: prev.alerts.map((a) => ({ ...a, read: true })),
-    }));
-  }, []);
+    mutate((prev) => {
+      if (!prev?.alerts) return prev;
+      return { ...prev, alerts: prev.alerts.map((a) => ({ ...a, read: true })) };
+    }, { revalidate: false });
+  }, [mutate]);
 
   const addToCompare = useCallback((item: { name: string; price: number; margin: number; image: string }) => {
     setCompareItems((prev) => {
@@ -151,7 +155,7 @@ export function useDashboardData() {
 
   return {
     data: { ...data, compareItems },
-    loading,
+    loading: isLoading,
     markAlertRead,
     markAllAlertsRead,
     addToCompare,

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { placeCJOrder, getCJOrderStatus } from "@/lib/fulfillment/cj-adapter";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest) => {
   try {
     const body = await req.json();
     const { action } = body;
@@ -26,4 +28,4 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     return NextResponse.json({ error: "CJ request failed", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
   }
-}
+}, LIMITS.FULFILLMENT);

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAuth } from "@/lib/auth";
-import { getPlatform, markKeyHealthy, markKeyError } from "@/lib/platform-config";
+import { verifyAuth, isOwner } from "@/lib/auth";
+import { markKeyHealthy, markKeyError } from "@/lib/platform-config";
 
 async function testPlatformKey(
   method: string,
@@ -153,6 +153,7 @@ async function testPlatformKey(
 export async function POST(request: NextRequest) {
   const uid = await verifyAuth(request);
   if (!uid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await isOwner(uid))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
     const { platformId, keyId, key, method } = await request.json();

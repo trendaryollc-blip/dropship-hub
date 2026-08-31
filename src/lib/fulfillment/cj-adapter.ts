@@ -1,20 +1,7 @@
-import jwt from "jsonwebtoken";
+import { getCJAccessToken } from "@/lib/cj-auth";
 
 const CJ_API_URL = "https://developers.cjdropshipping.com/api2.0/v1";
-const CJ_API_KEY = process.env.CJ_API_KEY || "";
-const CJ_ACCESS_TOKEN = CJ_API_KEY.startsWith("MCP@") ? CJ_API_KEY : "";
-
-async function getCJAccessToken(): Promise<string> {
-  if (CJ_ACCESS_TOKEN) return CJ_ACCESS_TOKEN;
-  const res = await fetch(`${CJ_API_URL}/authentication/getAccessToken`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: "", password: "", apiKey: CJ_API_KEY }),
-    signal: AbortSignal.timeout(10000),
-  });
-  const data = await res.json();
-  return data.data?.accessToken || "";
-}
+const _CJ_API_KEY = process.env.CJ_API_KEY || "";
 
 export async function placeCJOrder(params: {
   productId: string;

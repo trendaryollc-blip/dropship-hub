@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 
 const RAINFOREST_API_KEY = process.env.RAINFOREST_API_KEY;
 
@@ -226,7 +228,7 @@ async function scrapeGoogleShoppingReviews(url: string, _title: string): Promise
   }
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest) => {
   try {
     const { url, source, title, rating, reviews: reviewCount } = await request.json();
 
@@ -278,4 +280,4 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Failed to fetch reviews" }, { status: 500 });
   }
-}
+}, LIMITS.DEFAULT);

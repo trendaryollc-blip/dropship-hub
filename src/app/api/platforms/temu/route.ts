@@ -1,23 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth";
 
 const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY;
 const ZENROWS_API_KEY = process.env.ZENROWS_API_KEY;
 
-async function scrapeUrl(url: string) {
+async function scrapeUrl(url: string): Promise<{ html: string | null; error?: string }> {
   if (SCRAPER_API_KEY) {
-    const params = new URLSearchParams({ api_key: SCRAPER_API_KEY, url, render: "true" });
-    const res = await fetch(`https://api.scraperapi.com?${params}`);
-    if (res.ok) return res.text();
+    try {
+      const params = new URLSearchParams({ api_key: SCRAPER_API_KEY, url, render: "true" });
+      const res = await fetch(`https://api.scraperapi.com?${params}`, { signal: AbortSignal.timeout(30000) });
+      if (res.ok) return { html: await res.text() };
+      if (res.status === 429) return { html: null, error: "ScraperAPI rate limited (429)" };
+      if (res.status === 402) return { html: null, error: "ScraperAPI quota exceeded (402)" };
+      return { html: null, error: `ScraperAPI returned ${res.status}` };
+    } catch (e) {
+      if (e instanceof Error && e.name === "TimeoutError") return { html: null, error: "ScraperAPI request timed out (30s)" };
+    }
   }
   if (ZENROWS_API_KEY) {
-    const res = await fetch("https://api.zenrows.com/v1/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ api_key: ZENROWS_API_KEY, url, js_render: true, anti_bot: true }),
-    });
-    if (res.ok) return res.text();
+    try {
+      const res = await fetch("https://api.zenrows.com/v1/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ api_key: ZENROWS_API_KEY, url, js_render: true, anti_bot: true }),
+        signal: AbortSignal.timeout(30000),
+      });
+      if (res.ok) return { html: await res.text() };
+      if (res.status === 429) return { html: null, error: "ZenRows rate limited (429)" };
+      return { html: null, error: `ZenRows returned ${res.status}` };
+    } catch (e) {
+      if (e instanceof Error && e.name === "TimeoutError") return { html: null, error: "ZenRows request timed out (30s)" };
+    }
   }
-  throw new Error("No scraper available");
+  return { html: null, error: "No scraper API key configured" };
 }
 
 function extractProducts(html: string, source: string) {
@@ -32,19 +47,24 @@ function extractProducts(html: string, source: string) {
   }));
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const { query } = await request.json();
     if (!query) return NextResponse.json({ error: "Query is required" }, { status: 400 });
-    if (!SCRAPER_API_KEY && !ZENROWS_API_KEY) return NextResponse.json({ error: "No scraper configured" }, { status: 503 });
-    const html = await scrapeUrl(`https://www.temu.com/search_result.html?search_key=${encodeURIComponent(query)}`);
+    if (!SCRAPER_API_KEY && !ZENROWS_API_KEY) return NextResponse.json({ error: "No scraper configured", scraperError: "SCRAPER_API_KEY and ZENROWS_API_KEY are both missing" }, { status: 503 });
+
+    const { html, error: scraperError } = await scrapeUrl(`https://www.temu.com/search_result.html?search_key=${encodeURIComponent(query)}`);
+    if (!html) {
+      return NextResponse.json({ data: { search_results: [] }, source: "temu", query, scraperError: scraperError || "Failed to fetch page" });
+    }
+
     const products = extractProducts(html, "Temu");
     return NextResponse.json({ data: { search_results: products }, source: "temu", query });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Temu search failed" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Temu search failed", scraperError: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
   }
-}
+});
 
-export async function GET() {
+export const GET = withAuth(async (request: NextRequest, uid: string) => {
   return NextResponse.json({ platform: "Temu", configured: !!(SCRAPER_API_KEY || ZENROWS_API_KEY) });
-}
+});

@@ -1,0 +1,4 @@
+{
+  "*.{ts,tsx}": ["npx tsc --noEmit --pretty", "npx eslint --fix --max-warnings=0"],
+  "*.{js,jsx,json,css,md}": ["npx prettier --write"]
+}

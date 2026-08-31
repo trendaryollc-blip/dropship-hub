@@ -5,6 +5,8 @@ import {
   searchCJProducts,
   searchAliExpress,
 } from "@/lib/platform-search";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 
 interface TrendingProduct {
   id: string;
@@ -12,17 +14,17 @@ interface TrendingProduct {
   fullName: string;
   category: string;
   price: number;
-  sellPrice: number;
-  profit: number;
-  margin: number;
+  sellPrice: number | null;
+  profit: number | null;
+  margin: number | null;
   platform: string;
   platformId: string;
   link: string;
-  trend: number;
-  sparkline: number[];
-  confidence: number;
-  demandLevel: "low" | "medium" | "high";
-  competitionLevel: "low" | "medium" | "high";
+  trend: number | null;
+  sparkline: number[] | null;
+  confidence: number | null;
+  demandLevel: "low" | "medium" | "high" | null;
+  competitionLevel: "low" | "medium" | "high" | null;
   image: string;
   tags: string[];
   rating: number | null;
@@ -43,26 +45,7 @@ const PLATFORM_QUERIES = [
   { query: "car phone mount", searchFn: searchAliExpress, platform: "AliExpress", platformId: "aliexpress" },
 ];
 
-function estimateDemand(orders: number): "low" | "medium" | "high" {
-  if (orders > 300) return "high";
-  if (orders > 100) return "medium";
-  return "low";
-}
-
-function estimateCompetition(price: number): "low" | "medium" | "high" {
-  if (price < 5) return "high";
-  if (price < 15) return "medium";
-  return "low";
-}
-
-function generateSparkline(price: number): number[] {
-  const base = Math.min(price * 3, 60);
-  return Array.from({ length: 7 }, (_, i) =>
-    Math.round(base + Math.sin(i * 0.8) * 8 + (Math.random() * 4 - 2))
-  );
-}
-
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     if (cachedTrending && cachedTrending.products.length > 0 && Date.now() - cachedTrending.timestamp < CACHE_TTL) {
       return NextResponse.json({ products: cachedTrending.products, cached: true });
@@ -90,10 +73,6 @@ export async function GET() {
 
       for (const item of top) {
         const price = item.price!;
-        const sellPrice = Math.round(price * 2.5 * 100) / 100;
-        const profit = Math.round((sellPrice - price) * 100) / 100;
-        const margin = sellPrice > 0 ? Math.round((profit / sellPrice) * 100) : 0;
-        const growth = Math.round(Math.random() * 35 + 5);
 
         const itemLink = item.link || "";
         const isSearchUrl = itemLink.includes("/wholesale") || itemLink.includes("SearchText=");
@@ -104,31 +83,28 @@ export async function GET() {
           fullName: item.title,
           category: platformConfig.query.split(" ").slice(0, 2).join(" "),
           price,
-          sellPrice,
-          profit,
-          margin,
+          sellPrice: null,
+          profit: null,
+          margin: null,
           platform: platformConfig.platform,
           platformId: platformConfig.platformId,
           link: isSearchUrl ? "" : itemLink,
-          trend: growth,
-          sparkline: generateSparkline(price),
-          confidence: Math.min(
-            95,
-            Math.round(60 + margin * 0.4 + Math.random() * 10)
-          ),
-          demandLevel: estimateDemand(Math.round(100 + Math.random() * 400)),
-          competitionLevel: estimateCompetition(price),
+          trend: null,
+          sparkline: null,
+          confidence: null,
+          demandLevel: null,
+          competitionLevel: null,
           image: item.image || "",
           tags: platformConfig.query.split(" ").slice(0, 3),
-          rating: item.rating ?? Math.round((3.5 + Math.random() * 1.5) * 10) / 10,
-          reviews: item.reviews ?? Math.floor(50 + Math.random() * 2000),
+          rating: item.rating ?? null,
+          reviews: item.reviews ?? null,
         });
       }
     }
 
     if (allProducts.length > 0) {
       const sorted = allProducts
-        .sort((a, b) => b.confidence - a.confidence)
+        .sort((a, b) => a.price - b.price)
         .slice(0, 8);
 
       cachedTrending = { products: sorted, timestamp: Date.now() };
@@ -151,4 +127,4 @@ export async function GET() {
       }
     );
   }
-}
+}, LIMITS.DEFAULT);

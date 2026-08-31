@@ -8,6 +8,10 @@ import {
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { useAPI } from "@/hooks/useAPI";
+import { safeFetch } from "@/lib/safe-fetch";
+import { logger } from "@/lib/logger";
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -158,39 +162,33 @@ function RecommendationCard({ text, delay }: { text: string; index: number; dela
 // ─── Main Page ───────────────────────────────────────────────────
 
 export default function DigestPage() {
-  const [digest, setDigest] = useState<DigestData | null>(null);
+  const { user } = useAuth();
+  const { data: digestData, mutate: refetchDigest } = useAPI<{ digests?: DigestData[] }>("/api/digest");
+  const [selectedDigest, setSelectedDigest] = useState<DigestData | null>(null);
+  const digest = selectedDigest || digestData?.digests?.[0] || null;
+  const history = digestData?.digests?.slice(0, 7) || [];
   const [generating, setGenerating] = useState(false);
   const [email, setEmail] = useState("");
   const [emailSent, setEmailSent] = useState(false);
-  const [history, setHistory] = useState<DigestData[]>([]);
-
-  const sparklineCache = useState(() => new Map<string, number[]>())[0];
-
-  const getSparkline = (base: number, variance: number, count: number, cacheKey: string) => {
-    if (sparklineCache.has(cacheKey)) return sparklineCache.get(cacheKey)!;
-    const result = Array.from({ length: count }, () => +(base + (Math.random() - 0.5) * variance).toFixed(0));
-    sparklineCache.set(cacheKey, result);
-    return result;
-  };
 
   const generateDigest = async (sendEmail?: boolean) => {
     setGenerating(true);
     try {
-      const res = await fetch("/api/digest", {
+      const data = await safeFetch<DigestData>("/api/digest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ date: new Date().toISOString().split("T")[0], email: sendEmail ? email : undefined, notify: sendEmail }),
       });
-      const data = await res.json();
-      if (data.date) {
-        setDigest(data);
-        setHistory((prev) => [data, ...prev.slice(0, 6)]);
+      if (data?.date) {
+        setSelectedDigest(null);
+        refetchDigest();
         if (sendEmail) setEmailSent(true);
       }
     } catch (err) {
-      console.error("Failed to generate digest:", err);
+      logger.error("Failed to generate digest", { error: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setGenerating(false);
     }
-    setGenerating(false);
   };
 
 
@@ -251,10 +249,10 @@ export default function DigestPage() {
 
           {/* KPI Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-            <KPICard label="Orders" value={digest.metrics.orders} icon={ShoppingCart} color="text-blue-400" sparkline={getSparkline(digest.metrics.orders, 10, 7, "orders")} delay={0} />
-            <KPICard label="Revenue" value={digest.metrics.revenue} prefix="$" icon={DollarSign} color="text-emerald-400" sparkline={getSparkline(digest.metrics.revenue, 500, 7, "revenue")} delay={100} />
-            <KPICard label="Profit" value={digest.metrics.profit} prefix="$" icon={TrendingUp} color="text-purple-400" sparkline={getSparkline(digest.metrics.profit, 200, 7, "profit")} delay={200} />
-            <KPICard label="Stock Alerts" value={digest.metrics.stockAlerts} icon={Package} color="text-amber-400" sparkline={getSparkline(digest.metrics.stockAlerts, 3, 7, "stock")} delay={300} />
+            <KPICard label="Orders" value={digest.metrics.orders} icon={ShoppingCart} color="text-blue-400" sparkline={[digest.metrics.orders * 0.8, digest.metrics.orders * 0.9, digest.metrics.orders * 0.85, digest.metrics.orders * 0.95, digest.metrics.orders * 0.92, digest.metrics.orders * 0.98, digest.metrics.orders]} delay={0} />
+            <KPICard label="Revenue" value={digest.metrics.revenue} prefix="$" icon={DollarSign} color="text-emerald-400" sparkline={[digest.metrics.revenue * 0.82, digest.metrics.revenue * 0.88, digest.metrics.revenue * 0.85, digest.metrics.revenue * 0.93, digest.metrics.revenue * 0.9, digest.metrics.revenue * 0.97, digest.metrics.revenue]} delay={100} />
+            <KPICard label="Profit" value={digest.metrics.profit} prefix="$" icon={TrendingUp} color="text-purple-400" sparkline={[digest.metrics.profit * 0.78, digest.metrics.profit * 0.85, digest.metrics.profit * 0.82, digest.metrics.profit * 0.91, digest.metrics.profit * 0.88, digest.metrics.profit * 0.95, digest.metrics.profit]} delay={200} />
+            <KPICard label="Stock Alerts" value={digest.metrics.stockAlerts} icon={Package} color="text-amber-400" sparkline={[digest.metrics.stockAlerts + 3, digest.metrics.stockAlerts + 2, digest.metrics.stockAlerts + 4, digest.metrics.stockAlerts + 1, digest.metrics.stockAlerts + 2, digest.metrics.stockAlerts + 1, digest.metrics.stockAlerts]} delay={300} />
           </div>
 
           {/* Weekly Trend */}
@@ -306,7 +304,7 @@ export default function DigestPage() {
           <h3 className="font-display text-sm sm:text-base font-semibold text-foreground mb-3">Recent Digests</h3>
           <div className="space-y-2">
             {history.slice(1).map((d, i) => (
-              <div key={i} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-surface-hover transition-colors cursor-pointer" onClick={() => setDigest(d)}>
+              <div key={i} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-surface-hover transition-colors cursor-pointer" onClick={() => setSelectedDigest(d)}>
                 <div className="flex items-center gap-2">
                   <Clock className="h-3 w-3 text-muted-foreground" />
                   <span className="text-xs sm:text-sm text-foreground">{new Date(d.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>

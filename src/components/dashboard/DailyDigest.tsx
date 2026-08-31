@@ -9,6 +9,7 @@ import {
 import { useInView } from "@/hooks/useInView";
 import { useDigest } from "@/hooks/useDigest";
 import { requestNotificationPermission } from "@/lib/firebase-messaging";
+import { safeFetch } from "@/lib/safe-fetch";
 
 interface DigestMetrics {
   orders: number;
@@ -181,16 +182,14 @@ export default function DailyDigest() {
     if (!email || !digest) return;
     setSendingEmail(true);
     try {
-      const res = await fetch("/api/digest", {
+      await safeFetch<unknown>("/api/digest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ date: digest.date, email }),
       });
-      if (res.ok) {
-        setEmailSent(true);
-        setTimeout(() => setEmailSent(false), 3000);
-      }
-    } catch {}
+      setEmailSent(true);
+      setTimeout(() => setEmailSent(false), 3000);
+    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[DailyDigest] silently caught", e); }
     setSendingEmail(false);
   };
 

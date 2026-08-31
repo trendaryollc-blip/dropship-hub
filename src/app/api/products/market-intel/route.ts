@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth";
 
 const SERP_API_KEY = process.env.SERP_API_KEY;
 
@@ -181,7 +182,7 @@ function deriveMarketIntel(
   };
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest) => {
   try {
     const { title, price, rating, reviews } = await request.json();
 
@@ -208,4 +209,4 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Failed to analyze market" }, { status: 500 });
   }
-}
+});

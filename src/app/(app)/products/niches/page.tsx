@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Target, Search, Flame, BarChart3, TrendingUp, RefreshCw } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { NicheData } from "@/lib/mock-niches";
+import { useAPI } from "@/hooks/useAPI";
 import NicheHeatmapCard from "@/components/niches/NicheHeatmapCard";
 import NicheListItem from "@/components/niches/NicheListItem";
 import NicheDetail from "@/components/niches/NicheDetail";
@@ -20,35 +21,14 @@ type SortKey = typeof sortOptions[number]["value"];
 
 export default function NichesPage() {
   const { ref: heroRef, isInView: heroVisible } = useInView({ threshold: 0.1 });
-  const [niches, setNiches] = useState<NicheData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: nicheData, error: nicheError, isLoading, mutate: refetchNiches } = useAPI<{ niches?: NicheData[]; error?: string }>("/api/niches");
+  const niches = nicheData?.niches || [];
+  const error = nicheError?.message || nicheData?.error || null;
+  const loading = isLoading;
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("heat");
   const [selectedNicheId, setSelectedNicheId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-
-  const fetchNiches = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/niches");
-      const data = await res.json();
-      if (data.niches) {
-        setNiches(data.niches);
-      } else if (data.error) {
-        setError(data.error);
-      }
-    } catch {
-      setError("Failed to load niche data");
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetch is safe
-    void fetchNiches();
-  }, []);
 
   const filteredNiches = useMemo(() => {
     const list = query
@@ -93,7 +73,7 @@ export default function NichesPage() {
               ))}
             </select>
             <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
-            <button onClick={fetchNiches} disabled={loading} className="px-4 py-3 rounded-xl bg-surface border border-border text-sm text-muted-foreground hover:text-foreground transition-all min-h-[44px] flex items-center gap-2">
+            <button onClick={() => refetchNiches()} disabled={loading} className="px-4 py-3 rounded-xl bg-surface border border-border text-sm text-muted-foreground hover:text-foreground transition-all min-h-[44px] flex items-center gap-2">
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh
             </button>
           </div>
@@ -112,7 +92,7 @@ export default function NichesPage() {
           <Target className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
           <h3 className="font-display text-lg font-semibold text-foreground mb-2">Failed to load niches</h3>
           <p className="text-sm text-muted-foreground mb-4">{error}</p>
-          <button onClick={fetchNiches} className="text-sm text-accent hover:text-accent/80">Retry</button>
+          <button onClick={() => refetchNiches()} className="text-sm text-accent hover:text-accent/80">Retry</button>
         </div>
       )}
 

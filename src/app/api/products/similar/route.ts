@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchAmazon, searchGoogleShopping, searchCJProducts } from "@/lib/platform-search";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 
 interface SimilarProduct {
   title: string;
@@ -59,7 +61,7 @@ async function searchSimilarProducts(query: string, category: string): Promise<S
   return results;
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest) => {
   try {
     const { title, category, currentPrice: _currentPrice } = await request.json();
 
@@ -85,4 +87,4 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Failed to find similar products" }, { status: 500 });
   }
-}
+}, LIMITS.DEFAULT);

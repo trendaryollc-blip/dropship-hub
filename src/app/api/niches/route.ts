@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth";
+import { getCJAccessToken } from "@/lib/cj-auth";
 
 const CJ_API_KEY = process.env.CJ_API_KEY;
 
@@ -11,26 +13,26 @@ interface NicheData {
   heat: number;
   productCount: number;
   avgMargin: number;
-  growth: number;
-  trend: "up" | "down" | "stable";
-  trendDirection: "rising" | "stable" | "declining";
-  weeklyData: number[];
-  demandSparkline: number[];
+  growth: number | null;
+  trend: "up" | "down" | "stable" | "unknown";
+  trendDirection: "rising" | "stable" | "declining" | "unknown";
+  weeklyData: number[] | null;
+  demandSparkline: number[] | null;
   scores: { demand: number; profit: number; competition: number; trend: number; seasonality: number };
   overallScore: number;
   grade: "A+" | "A" | "B+" | "B" | "C+" | "C";
   topProduct: string;
   topProductPrice: number;
   topProductMargin: number;
-  aiInsight: string;
+  aiInsight: string | null;
   competitionLevel: "low" | "medium" | "high" | "very-high";
   saturation: number;
   avgSellingPrice: number;
-  bestPlatforms: string[];
-  seasonality: string;
+  bestPlatforms: string[] | null;
+  seasonality: string | null;
   riskLevel: "low" | "medium" | "high";
-  topSuppliers: { name: string; badge: "gold" | "silver" | "bronze"; reliability: number }[];
-  relatedNiches: string[];
+  topSuppliers: { name: string; badge: "gold" | "silver" | "bronze"; reliability: number }[] | null;
+  relatedNiches: string[] | null;
   keywords: string[];
 }
 
@@ -61,19 +63,6 @@ interface CJProductResponse {
 
 let cachedNiches: { niches: NicheData[]; timestamp: number } | null = null;
 const CACHE_TTL = 30 * 60 * 1000;
-
-async function getCJAccessToken(): Promise<string> {
-  if (!CJ_API_KEY) throw new Error("CJ_API_KEY not configured");
-  if (CJ_API_KEY.startsWith("MCP@")) return CJ_API_KEY;
-  const res = await fetch("https://developers.cjdropshipping.com/api2.0/v1/authentication/getAccessToken", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ apiKey: CJ_API_KEY }),
-    signal: AbortSignal.timeout(10000),
-  });
-  const data = await res.json();
-  return data.data?.accessToken;
-}
 
 async function getCJCategories(token: string): Promise<CJCategory[]> {
   const res = await fetch("https://developers.cjdropshipping.com/api2.0/v1/product/getCategory", {
@@ -147,17 +136,6 @@ function computeRiskLevel(margin: number, competition: string): "low" | "medium"
   return "medium";
 }
 
-function generateWeeklyData(productCount: number, growth: number): number[] {
-  const base = Math.min(productCount, 100);
-  const step = growth / 6;
-  return Array.from({ length: 7 }, (_, i) => Math.round(base + step * i + (Math.random() * 6 - 3)));
-}
-
-function generateSparkline(productCount: number, margin: number): number[] {
-  const base = Math.min(margin, 100);
-  return Array.from({ length: 7 }, (_, i) => Math.round(base + Math.sin(i) * 10 + Math.random() * 5));
-}
-
 function getNicheImage(categoryName: string, products: CJProduct[]): string {
   const firstWithImage = products.find((p) => p.productImage && p.productImage.startsWith("http"));
   if (firstWithImage) return firstWithImage.productImage!;
@@ -192,51 +170,23 @@ function buildNicheFromCategory(
   const topProductCost = topByValue ? Number(topByValue.productPrice) : avgCost;
   const topProductMargin = topProductPrice > 0 ? Math.round(((topProductPrice - topProductCost) / topProductPrice) * 100) : 50;
 
-  const demandScore = Math.min(95, Math.round(40 + (productCount / 10) * 3 + Math.random() * 10));
-  const profitScore = Math.min(95, Math.round(avgMargin * 1.1 + Math.random() * 5));
-  const competitionScore = Math.max(15, Math.round(85 - productCount * 0.3 + Math.random() * 10));
-  const trendScore = Math.round(50 + Math.random() * 40);
-  const seasonalityScore = Math.round(60 + Math.random() * 30);
+  const demandScore = Math.min(95, productCount * 5);
+  const profitScore = avgMargin;
+  const competitionScore = Math.max(10, Math.min(95, 100 - productCount * 2));
+  const trendScore = Math.round(50 + (avgMargin > 40 ? 20 : avgMargin > 25 ? 10 : 0));
+  const seasonalityScore = Math.round(60 + (productCount > 15 ? 15 : productCount > 8 ? 10 : 0));
 
   const overallScore = Math.round(
     demandScore * 0.25 + profitScore * 0.25 + competitionScore * 0.2 + trendScore * 0.15 + seasonalityScore * 0.15
   );
 
-  const heat = Math.min(99, Math.round(overallScore * 0.85 + Math.random() * 10));
-  const growth = Math.round(-5 + Math.random() * 30);
+  const heat = Math.min(99, Math.round(overallScore * 0.85));
+  const growth = Math.round(-5 + (avgMargin > 40 ? 20 : avgMargin > 25 ? 10 : 5));
   const trend: "up" | "down" | "stable" = growth > 8 ? "up" : growth < -2 ? "down" : "stable";
   const trendDirection: "rising" | "stable" | "declining" = growth > 8 ? "rising" : growth < -2 ? "declining" : "stable";
-  const saturation = Math.min(95, Math.max(5, Math.round(100 - competitionScore + Math.random() * 10)));
+  const saturation = Math.min(95, Math.max(5, Math.round(100 - competitionScore)));
   const competitionLevel = computeCompetitionLevel(saturation);
   const riskLevel = computeRiskLevel(avgMargin, competitionLevel);
-
-  const weeklyData = generateWeeklyData(heat, growth);
-  const demandSparkline = generateSparkline(productCount, avgMargin);
-
-  const nameSuffixes = ["Hub", "Zone", "Lab", "Edge", "Hub", "Nest", "Vault", "Den"];
-  const name = `${cat.categoryName} ${nameSuffixes[index % nameSuffixes.length]}`;
-
-  const platforms = ["Amazon", "Shopify", "eBay", "TikTok Shop", "Etsy"];
-  const bestPlatforms = platforms.slice(0, 2 + Math.floor(Math.random() * 2));
-
-  const seasonalityOptions = [
-    "Year-round steady demand",
-    "Holiday season peak (Nov-Dec)",
-    "Summer peak season",
-    "Back-to-school surge",
-    "New Year resolution spike",
-    "Steady with Q4 boost",
-  ];
-
-  const relatedPool = allCategoryNames.filter((n) => n !== cat.categoryName);
-  const relatedNiches = relatedPool.slice(0, 2);
-
-  const supplierPool = ["CJ Direct", "AsiaMart Direct", "Pacific Rim Trading", "TechSource Global", "EuropaSupply"];
-  const topSuppliers = supplierPool.slice(0, 2).map((s, i) => ({
-    name: s,
-    badge: (["gold", "silver", "bronze"] as const)[i % 3],
-    reliability: 80 + Math.round(Math.random() * 18),
-  }));
 
   const aiInsight = `Analyzed ${productCount} CJ products in ${cat.categoryName}. ` +
     `Average sell price $${avgSellPrice.toFixed(2)} with ~${avgMargin}% margins. ` +
@@ -245,7 +195,7 @@ function buildNicheFromCategory(
 
   return {
     id: `cj-niche-${cat.cid || index}`,
-    name,
+    name: cat.categoryName,
     icon: getCategoryIcon(cat.categoryName),
     image: getNicheImage(cat.categoryName, products),
     category: cat.categoryName,
@@ -255,8 +205,8 @@ function buildNicheFromCategory(
     growth,
     trend,
     trendDirection,
-    weeklyData,
-    demandSparkline,
+    weeklyData: null,
+    demandSparkline: null,
     scores: { demand: demandScore, profit: profitScore, competition: competitionScore, trend: trendScore, seasonality: seasonalityScore },
     overallScore,
     grade: computeGrade(overallScore),
@@ -267,11 +217,11 @@ function buildNicheFromCategory(
     competitionLevel,
     saturation,
     avgSellingPrice: Math.round(avgSellPrice * 100) / 100,
-    bestPlatforms,
-    seasonality: seasonalityOptions[Math.floor(Math.random() * seasonalityOptions.length)],
+    bestPlatforms: null,
+    seasonality: null,
     riskLevel,
-    topSuppliers,
-    relatedNiches,
+    topSuppliers: null,
+    relatedNiches: null,
     keywords: [cat.categoryName.toLowerCase(), `${cat.categoryName.toLowerCase()} products`, `${cat.categoryName.toLowerCase()} dropshipping`],
   };
 }
@@ -296,7 +246,7 @@ function getFallbackNiches(): NicheData[] {
   ));
 }
 
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     if (cachedNiches && Date.now() - cachedNiches.timestamp < CACHE_TTL) {
       return NextResponse.json({ niches: cachedNiches.niches, cached: true });
@@ -304,19 +254,19 @@ export async function GET() {
 
     if (!CJ_API_KEY) {
       const fallbackNiches = getFallbackNiches();
-      return NextResponse.json({ niches: fallbackNiches, source: "fallback", reason: "CJ API key not configured" });
+      return NextResponse.json({ niches: fallbackNiches, source: "fallback", isFallback: true, reason: "CJ API key not configured" });
     }
 
     const token = await getCJAccessToken();
     if (!token) {
       const fallbackNiches = getFallbackNiches();
-      return NextResponse.json({ niches: fallbackNiches, source: "fallback", reason: "Failed to authenticate with CJ" });
+      return NextResponse.json({ niches: fallbackNiches, source: "fallback", isFallback: true, reason: "Failed to authenticate with CJ" });
     }
 
     const categories = await getCJCategories(token);
     if (!categories.length) {
       const fallbackNiches = getFallbackNiches();
-      return NextResponse.json({ niches: fallbackNiches, source: "fallback", reason: "No categories returned from CJ" });
+      return NextResponse.json({ niches: fallbackNiches, source: "fallback", isFallback: true, reason: "No categories returned from CJ" });
     }
 
     const topCategories = categories.slice(0, 8);
@@ -340,7 +290,7 @@ export async function GET() {
   } catch (error) {
     const fallbackNiches = getFallbackNiches();
     return NextResponse.json(
-      { niches: fallbackNiches, source: "fallback", error: error instanceof Error ? error.message : "Unknown error" },
+      { niches: fallbackNiches, source: "fallback", isFallback: true, error: error instanceof Error ? error.message : "Unknown error" },
     );
   }
-}
+});

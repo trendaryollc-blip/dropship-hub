@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
+import { withAuth } from "@/lib/auth";
+import { StoreConnectionSchema, StoreConnectionUpdateSchema, validateBody } from "@/lib/validation";
+import { LIMITS } from "@/lib/rate-limit";
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
-    const uid = req.nextUrl.searchParams.get("uid");
-    if (!uid) return NextResponse.json({ error: "uid required" }, { status: 400 });
-
     const db = await getAdminDB();
     const snap = await db.collection("users").doc(uid).collection("storeConnections").orderBy("connectedAt", "desc").get();
     const connections = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -13,15 +13,14 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch connections", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
   }
-}
+}, LIMITS.DEFAULT);
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
     const body = await req.json();
-    const { uid, ...store } = body;
-    if (!uid || !store.platform || !store.name) {
-      return NextResponse.json({ error: "uid, platform, and name are required" }, { status: 400 });
-    }
+    const validation = validateBody(StoreConnectionSchema, body);
+    if (!validation.success) return validation.response;
+    const store = validation.data;
 
     const db = await getAdminDB();
     const ref = await db.collection("users").doc(uid).collection("storeConnections").add({
@@ -34,13 +33,12 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     return NextResponse.json({ error: "Failed to add connection", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
   }
-}
+}, LIMITS.DEFAULT);
 
-export async function DELETE(req: NextRequest) {
+export const DELETE = withAuth(async (req: NextRequest, uid: string) => {
   try {
-    const uid = req.nextUrl.searchParams.get("uid");
     const storeId = req.nextUrl.searchParams.get("storeId");
-    if (!uid || !storeId) return NextResponse.json({ error: "uid and storeId required" }, { status: 400 });
+    if (!storeId) return NextResponse.json({ error: "storeId required" }, { status: 400 });
 
     const db = await getAdminDB();
     await db.collection("users").doc(uid).collection("storeConnections").doc(storeId).delete();
@@ -48,18 +46,21 @@ export async function DELETE(req: NextRequest) {
   } catch (error) {
     return NextResponse.json({ error: "Failed to delete connection", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
   }
-}
+}, LIMITS.DEFAULT);
 
-export async function PUT(req: NextRequest) {
+export const PUT = withAuth(async (req: NextRequest, uid: string) => {
   try {
     const body = await req.json();
-    const { uid, storeId, ...updates } = body;
-    if (!uid || !storeId) return NextResponse.json({ error: "uid and storeId required" }, { status: 400 });
+    const { storeId, ...updates } = body;
+    if (!storeId) return NextResponse.json({ error: "storeId required" }, { status: 400 });
+
+    const validation = validateBody(StoreConnectionUpdateSchema, updates);
+    if (!validation.success) return validation.response;
 
     const db = await getAdminDB();
-    await db.collection("users").doc(uid).collection("storeConnections").doc(storeId).update(updates);
+    await db.collection("users").doc(uid).collection("storeConnections").doc(storeId).update(validation.data);
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: "Failed to update connection", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
   }
-}
+}, LIMITS.DEFAULT);

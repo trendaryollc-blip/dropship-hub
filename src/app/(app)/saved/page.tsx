@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Package, Heart, Star, ArrowLeft, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { useSavedProducts } from "@/components/saved/SavedProductsProvider";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const platformIcons: Record<string, string> = {
   amazon: "\ud83d\udce6", ebay: "\ud83c\udff7\ufe0f", aliexpress: "\ud83c\udde8\ud83c\uddf3",
@@ -15,6 +17,7 @@ const platformIcons: Record<string, string> = {
 export default function SavedPage() {
   const router = useRouter();
   const { savedProducts, toggleSave, clearSaved } = useSavedProducts();
+  const [confirmClear, setConfirmClear] = useState(false);
 
   const openProduct = (p: (typeof savedProducts)[number]) => {
     sessionStorage.setItem("selectedProduct", JSON.stringify({
@@ -52,7 +55,7 @@ export default function SavedPage() {
         </div>
         {savedProducts.length > 0 && (
           <button
-            onClick={clearSaved}
+            onClick={() => setConfirmClear(true)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface border border-border text-xs font-medium text-muted-foreground hover:text-red-400 hover:border-red-400/30 transition-all"
           >
             <Trash2 className="h-3.5 w-3.5" /> Clear all
@@ -134,6 +137,15 @@ export default function SavedPage() {
           ))}
         </div>
       )}
+      <ConfirmDialog
+        open={confirmClear}
+        title="Clear all saved products?"
+        description={`This will remove all ${savedProducts.length} saved products. This cannot be undone.`}
+        confirmLabel="Clear All"
+        danger
+        onConfirm={() => { clearSaved(); setConfirmClear(false); }}
+        onCancel={() => setConfirmClear(false)}
+      />
     </div>
   );
 }

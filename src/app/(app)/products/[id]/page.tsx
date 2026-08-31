@@ -18,6 +18,8 @@ import SupplierMatchSection from "@/components/products/SupplierMatch";
 import ListingOptimization from "@/components/products/ListingOptimization";
 import SimilarProducts from "@/components/products/SimilarProducts";
 import ProductActionBar from "@/components/products/ProductActionBar";
+import { safeFetch } from "@/lib/safe-fetch";
+import { logger } from "@/lib/logger";
 
 const platformIcons: Record<string, string> = {
   amazon: "\ud83d\udce6", ebay: "\ud83c\udff7\ufe0f", aliexpress: "\ud83c\udde8\ud83c\uddf3",
@@ -137,7 +139,7 @@ function ProductDetailContent() {
     try {
       const stored = sessionStorage.getItem("selectedProduct");
       if (stored) return JSON.parse(stored);
-    } catch {}
+    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[ProductDetail] silently caught", e); }
     // Fall back to URL params (works for shared/bookmarked links)
     const t = searchParams.get("t");
     if (t) {
@@ -235,17 +237,16 @@ function ProductDetailContent() {
     const fetchImages = async () => {
       setLoadingImages(true);
       try {
-        const res = await fetch("/api/platforms/product-images", {
+        const data = await safeFetch<{ images?: string[] }>("/api/platforms/product-images", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ asin: extractedAsin, url: link, source }),
         });
-        const data = await res.json();
         if (!cancelled && data.images && data.images.length > storedImages.length) {
           setFetchedImages(data.images);
         }
       } catch (err) {
-        console.error("Failed to fetch product images:", err);
+        logger.error("Failed to fetch product images", { error: err instanceof Error ? err.message : String(err) });
       }
       if (!cancelled) setLoadingImages(false);
     };
@@ -260,16 +261,15 @@ function ProductDetailContent() {
     const fetchEnrichment = async () => {
       setLoadingEnrichment(true);
       try {
-        const res = await fetch("/api/products/enrich", {
+        const data = await safeFetch<{ platforms?: { platform: string; price: number; rating: number; reviews: number; inStock: boolean; url: string }[]; [k: string]: unknown }>("/api/products/enrich", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title, source, price: priceNum }),
         });
-        const data = await res.json();
         if (data.platforms) {
           setEnrichmentData(data);
         }
-      } catch {}
+      } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[ProductDetail] silently caught", e); }
       setLoadingEnrichment(false);
     };
 
@@ -281,16 +281,15 @@ function ProductDetailContent() {
 
     const fetchReviews = async () => {
       try {
-        const res = await fetch("/api/products/reviews", {
+        const data = await safeFetch<{ averageRating?: number; [k: string]: unknown }>("/api/products/reviews", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url: link, source, title, rating: ratingNum, reviews: reviewsNum }),
         });
-        const data = await res.json();
         if (data.averageRating !== undefined) {
           setReviewData(data);
         }
-      } catch {}
+      } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[ProductDetail] silently caught", e); }
     };
 
     fetchReviews();
@@ -301,16 +300,15 @@ function ProductDetailContent() {
 
     const fetchMarketIntel = async () => {
       try {
-        const res = await fetch("/api/products/market-intel", {
+        const data = await safeFetch<{ searchVolume?: number; [k: string]: unknown }>("/api/products/market-intel", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title, price: priceNum, rating: ratingNum, reviews: reviewsNum }),
         });
-        const data = await res.json();
         if (data.searchVolume) {
           setMarketIntelData(data);
         }
-      } catch {}
+      } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[ProductDetail] silently caught", e); }
     };
 
     fetchMarketIntel();
@@ -322,16 +320,15 @@ function ProductDetailContent() {
     const fetchListing = async () => {
       
       try {
-        const res = await fetch("/api/products/listing", {
+        const data = await safeFetch<{ title?: string; [k: string]: unknown }>("/api/products/listing", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title, category, price: priceNum, platform: source }),
         });
-        const data = await res.json();
         if (data.title) {
           setListingData(data);
         }
-      } catch {}
+      } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[ProductDetail] silently caught", e); }
       
     };
 
@@ -499,7 +496,7 @@ function ProductDetailContent() {
             {hasPrice && (
               <div className="price-hero">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-1.5 font-medium">Listed Price</p>
-                <p className="font-display text-4xl sm:text-5xl font-bold gradient-text-blue tracking-tight">${priceNum!.toFixed(2)}</p>
+                <p className="font-display text-4xl sm:text-5xl font-bold gradient-text-blue tracking-tight">${(priceNum ?? 0).toFixed(2)}</p>
               </div>
             )}
 
@@ -511,13 +508,13 @@ function ProductDetailContent() {
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-0.5">
                         {[1, 2, 3, 4, 5].map((s) => (
-                          <Star key={s} className={`h-4 w-4 ${s <= Math.round(ratingNum!) ? "text-amber-400 fill-current" : "text-muted-foreground/20"}`} />
+                          <Star key={s} className={`h-4 w-4 ${s <= Math.round(ratingNum ?? 0) ? "text-amber-400 fill-current" : "text-muted-foreground/20"}`} />
                         ))}
                       </div>
-                      <span className="font-display text-xl font-bold text-foreground">{ratingNum!.toFixed(1)}</span>
+                      <span className="font-display text-xl font-bold text-foreground">{(ratingNum ?? 0).toFixed(1)}</span>
                     </div>
                   )}
-                  {hasReviews && <span className="text-sm text-muted-foreground">{reviewsNum!.toLocaleString()} reviews</span>}
+                  {hasReviews && <span className="text-sm text-muted-foreground">{(reviewsNum ?? 0).toLocaleString()} reviews</span>}
                   {hasRating && ratingNum && ratingNum >= 4.5 && (
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-400/10 text-emerald-400 font-semibold border border-emerald-400/20 flex items-center gap-1">
                       <Shield className="h-2.5 w-2.5" /> Top Rated

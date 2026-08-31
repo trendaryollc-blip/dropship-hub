@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 
 function sanitizeProductId(id: string): string {
   return id.replace(/\//g, "__SLASH__");
 }
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
-    const uid = req.nextUrl.searchParams.get("uid");
     const productId = req.nextUrl.searchParams.get("productId");
-    if (!uid) return NextResponse.json({ error: "uid required" }, { status: 400 });
 
     const db = await getAdminDB();
 
@@ -25,14 +25,14 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch supplier assignments", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
   }
-}
+}, LIMITS.FULFILLMENT);
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
     const body = await req.json();
-    const { uid, productId, supplierId, supplierName, unitCost, shippingCost, source } = body;
-    if (!uid || !productId || !supplierId) {
-      return NextResponse.json({ error: "uid, productId, and supplierId required" }, { status: 400 });
+    const { productId, supplierId, supplierName, unitCost, shippingCost, source } = body;
+    if (!productId || !supplierId) {
+      return NextResponse.json({ error: "productId and supplierId required" }, { status: 400 });
     }
 
     const db = await getAdminDB();
@@ -51,13 +51,12 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     return NextResponse.json({ error: "Failed to save supplier assignment", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
   }
-}
+}, LIMITS.FULFILLMENT);
 
-export async function DELETE(req: NextRequest) {
+export const DELETE = withAuth(async (req: NextRequest, uid: string) => {
   try {
-    const uid = req.nextUrl.searchParams.get("uid");
     const productId = req.nextUrl.searchParams.get("productId");
-    if (!uid || !productId) return NextResponse.json({ error: "uid and productId required" }, { status: 400 });
+    if (!productId) return NextResponse.json({ error: "productId required" }, { status: 400 });
 
     const db = await getAdminDB();
     const docId = sanitizeProductId(productId);
@@ -66,4 +65,4 @@ export async function DELETE(req: NextRequest) {
   } catch (error) {
     return NextResponse.json({ error: "Failed to delete supplier assignment", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
   }
-}
+}, LIMITS.FULFILLMENT);

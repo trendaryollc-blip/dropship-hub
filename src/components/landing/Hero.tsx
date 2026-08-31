@@ -91,7 +91,6 @@ export default function Hero() {
                 <TypeWriter
                   words={["Command Center", "Profit Engine", "Market Intelligence", "Winning Edge"]}
                   typingSpeed={80}
-                  deletingSpeed={40}
                   pauseTime={2000}
                 />
               </span>

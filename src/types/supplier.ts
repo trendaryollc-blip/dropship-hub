@@ -8,6 +8,7 @@ export interface SupplierProfile {
   description: string;
   specializations: string[];
   trustBadge: "gold" | "silver" | "bronze";
+  dataSource: "live" | "estimated" | "sample";
   stats: {
     reliabilityScore: number;
     rating: number;
