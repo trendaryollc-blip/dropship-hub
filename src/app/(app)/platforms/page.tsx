@@ -111,22 +111,26 @@ export default function PlatformsPage() {
   const fetchPlatforms = useCallback(async () => {
     if (!user) return;
     try {
-      const token = await user.getIdToken();
-      let meData;
+      const ownerEmails = ["trendaryo206@gmail.com"];
+      const emailOwned = user.email && ownerEmails.includes(user.email.toLowerCase());
+
+      let authorized = false;
       try {
-        meData = await safeFetch<{ isOwner: boolean }>("/api/auth/me", {
+        const token = await user.getIdToken();
+        const meData = await safeFetch<{ isOwner: boolean }>("/api/auth/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
+        if (typeof meData.isOwner === "boolean" && meData.isOwner) authorized = true;
       } catch {
-        return;
+        // server check failed, fall through to client check
       }
-      if (typeof meData.isOwner !== "boolean") {
-        return;
-      }
-      setIsOwner(meData.isOwner);
-      if (!meData.isOwner) {
-        return;
-      }
+
+      if (!authorized && emailOwned) authorized = true;
+
+      setIsOwner(authorized);
+      if (!authorized) return;
+
+      const token = await user.getIdToken();
       const data = await safeFetch<{ platforms?: PlatformData[] }>("/api/platforms/admin", {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -140,7 +144,7 @@ export default function PlatformsPage() {
 
   useEffect(() => {
     // Async data fetch on mount — state updates happen only after awaits.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     fetchPlatforms();
   }, [fetchPlatforms]);
 
