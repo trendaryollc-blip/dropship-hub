@@ -203,28 +203,28 @@ export default function AIDailyPick({ pick }: { pick: AIDailyPickType }) {
                     <DollarSign className="h-4 w-4 text-emerald-400" />
                     <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Margin</span>
                   </div>
-                  <p className="font-display text-xl font-bold text-foreground">{pick.margin}%</p>
+                  <p className="font-display text-xl font-bold text-foreground">{pick.margin ?? 0}%</p>
                 </div>
                 <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
                   <div className="flex items-center gap-2 mb-1">
                     <ShoppingCart className="h-4 w-4 text-blue-400" />
                     <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Orders/mo</span>
                   </div>
-                  <p className="font-display text-xl font-bold text-foreground">{(pick.ordersPerMonth / 1000).toFixed(1)}K</p>
+                  <p className="font-display text-xl font-bold text-foreground">{((pick.ordersPerMonth ?? 0) / 1000).toFixed(1)}K</p>
                 </div>
                 <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
                   <div className="flex items-center gap-2 mb-1">
                     <Layers className="h-4 w-4 text-amber-400" />
                     <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Saturation</span>
                   </div>
-                  <p className="font-display text-xl font-bold text-foreground">{pick.saturation}%</p>
+                  <p className="font-display text-xl font-bold text-foreground">{pick.saturation ?? 0}%</p>
                 </div>
                 <div className="p-3 rounded-xl bg-emerald-400/10 border border-emerald-400/20">
                   <div className="flex items-center gap-2 mb-1">
                     <DollarSign className="h-4 w-4 text-emerald-400" />
                     <span className="text-[10px] text-emerald-400/70 uppercase tracking-wider">Profit/unit</span>
                   </div>
-                  <p className="font-display text-xl font-bold text-emerald-400">${pick.earningsPreview.profitPerOrder.toFixed(0)}</p>
+                  <p className="font-display text-xl font-bold text-emerald-400">${(pick.earningsPreview.profitPerOrder ?? 0).toFixed(0)}</p>
                 </div>
               </div>
             </div>
@@ -276,11 +276,11 @@ export default function AIDailyPick({ pick }: { pick: AIDailyPickType }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-5 rounded-xl bg-surface/50 border border-border flex flex-col items-center">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Opportunity Score</span>
-            <OpportunityRing score={pick.overallScore} />
+            <OpportunityRing score={pick.overallScore ?? 0} />
             <p className="text-xs text-muted-foreground mt-3 text-center">
-              {pick.overallScore >= 80
+              {(pick.overallScore ?? 0) >= 80
                 ? "Excellent opportunity - strong across all metrics"
-                : pick.overallScore >= 60
+                : (pick.overallScore ?? 0) >= 60
                 ? "Good opportunity - some areas to watch"
                 : "Moderate opportunity - proceed with research"}
             </p>
@@ -294,27 +294,27 @@ export default function AIDailyPick({ pick }: { pick: AIDailyPickType }) {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">Buy at (source)</span>
-                <span className="text-sm font-bold text-foreground">${pick.sourcePrice.toFixed(2)}</span>
+                <span className="text-sm font-bold text-foreground">${(pick.sourcePrice ?? 0).toFixed(2)}</span>
               </div>
               <div className="h-px bg-emerald-400/10" />
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">Sell at</span>
-                <span className="text-sm font-bold text-foreground">${pick.sellPrice.toFixed(2)}</span>
+                <span className="text-sm font-bold text-foreground">${(pick.sellPrice ?? 0).toFixed(2)}</span>
               </div>
               <div className="h-px bg-emerald-400/10" />
               <div className="flex items-center justify-between">
                 <span className="text-xs text-emerald-400/80">Profit per order</span>
-                <span className="text-sm font-bold text-emerald-400">${pick.earningsPreview.profitPerOrder.toFixed(2)}</span>
+                <span className="text-sm font-bold text-emerald-400">${(pick.earningsPreview.profitPerOrder ?? 0).toFixed(2)}</span>
               </div>
               <div className="h-px bg-emerald-400/10" />
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">Volume</span>
-                <span className="text-sm font-medium text-foreground">{pick.earningsPreview.ordersPerMonth} orders/mo</span>
+                <span className="text-sm font-medium text-foreground">{pick.earningsPreview.ordersPerMonth ?? 0} orders/mo</span>
               </div>
               <div className="h-px bg-emerald-400/20" />
               <div className="flex items-center justify-between pt-1">
                 <span className="text-xs font-semibold text-emerald-400">Est. monthly profit</span>
-                <span className="text-lg font-bold text-emerald-400">${pick.earningsPreview.monthlyRevenue.toLocaleString()}</span>
+                <span className="text-lg font-bold text-emerald-400">${(pick.earningsPreview.monthlyRevenue ?? 0).toLocaleString()}</span>
               </div>
             </div>
           </div>
