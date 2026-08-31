@@ -24,8 +24,8 @@ interface TickerItem {
   name: string;
   platform: string;
   price: number;
-  change: null;
-  sparkline: null;
+  change: number;
+  sparkline: number[];
 }
 
 interface AIDailyPick {
@@ -200,8 +200,8 @@ export const GET = withAuth(async (request: Request) => {
       name: p.title.length > 40 ? p.title.slice(0, 37) + "..." : p.title,
       platform: "CJ Dropshipping",
       price: Number((p.price ?? 0).toFixed(2)),
-      change: null,
-      sparkline: null,
+      change: 0,
+      sparkline: [Number((p.price ?? 0).toFixed(2))],
     }));
 
     const bestProduct = allProducts.reduce((best, p) => {

@@ -56,7 +56,7 @@ export default function MarketPulseTicker({ items }: { items: TickerItem[] }) {
                     {item.platform}
                   </span>
                   <span className="text-xs font-bold text-foreground">${item.price.toFixed(2)}</span>
-                  <MiniSparkline points={item.sparkline} positive={positive} />
+                  {item.sparkline && <MiniSparkline points={item.sparkline} positive={positive} />}
                   <span className={`inline-flex items-center gap-0.5 text-[11px] font-semibold ${positive ? "text-emerald-400" : "text-red-400"}`}>
                     {positive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                     {positive ? "+" : ""}{item.change}%
