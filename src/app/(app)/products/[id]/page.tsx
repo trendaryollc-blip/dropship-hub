@@ -178,26 +178,6 @@ function ProductDetailContent() {
 
   const hasNoData = !product && !searchParams.get("t");
 
-  if (hasNoData) {
-    return (
-      <div className="max-w-4xl mx-auto py-8 px-4">
-        <Link href="/products" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-          <ArrowLeft className="h-4 w-4" /> Back to Search
-        </Link>
-        <div className="glass rounded-2xl p-8 text-center">
-          <Package className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-          <h3 className="font-display text-lg font-semibold text-foreground mb-2">Product not found</h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            This product data is no longer available. Please search again.
-          </p>
-          <Link href="/products" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-all">
-            <Search className="h-4 w-4" /> Search Products
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   const storedImages = product?.images || (image ? [image] : []);
   const images = fetchedImages.length > storedImages.length ? fetchedImages : storedImages;
   const displayImages = images.filter((img) => img && img.startsWith("http"));
@@ -437,6 +417,26 @@ function ProductDetailContent() {
       supplierMatches: [],
     };
   }, [enrichmentData, reviewData, marketIntelData, listingData, source, priceNum, ratingNum, reviewsNum, link]);
+
+  if (hasNoData) {
+    return (
+      <div className="max-w-4xl mx-auto py-8 px-4">
+        <Link href="/products" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+          <ArrowLeft className="h-4 w-4" /> Back to Search
+        </Link>
+        <div className="glass rounded-2xl p-8 text-center">
+          <Package className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+          <h3 className="font-display text-lg font-semibold text-foreground mb-2">Product not found</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            This product data is no longer available. Please search again.
+          </p>
+          <Link href="/products" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-all">
+            <Search className="h-4 w-4" /> Search Products
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-atmosphere max-w-5xl mx-auto space-y-6 md:space-y-8 pb-20 md:pb-28 relative z-10">

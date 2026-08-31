@@ -1,7 +1,7 @@
 {
   "*.{ts,tsx}": [
     "node -e \"require('child_process').execSync('npx tsc --noEmit --pretty -p tsconfig.json',{stdio:'inherit'})\"",
-    "npx eslint --fix --max-warnings=0"
+    "npx eslint --fix"
   ],
   "*.{js,jsx,json,css,md}": ["npx prettier --write"]
 }

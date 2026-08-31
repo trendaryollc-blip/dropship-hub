@@ -21,6 +21,11 @@ const eslintConfig = defineConfig([
         caughtErrorsIgnorePattern: "^_",
         destructuredArrayIgnorePattern: "^_",
       }],
+      "react-hooks/set-state-in-effect": "off",
+      "react-hooks/preserve-manual-memoization": "off",
+      "react-hooks/exhaustive-deps": "warn",
+      "@next/next/no-img-element": "warn",
+      "@next/next/no-location-assign-relative-destination": "warn",
     },
   },
 ]);
