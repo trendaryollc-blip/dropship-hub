@@ -360,7 +360,7 @@ export const PlatformConnectorSchema = z.object({
 
 export const PlatformFirestoreConfigSchema = z.object({
   name: z.string(),
-  method: z.enum(["official_api", "rainforest", "serpapi", "scraperapi", "custom_scraper"]),
+  method: z.enum(["official_api", "rainforest", "serpapi", "serper", "rapidapi_walmart", "scraperapi", "custom_scraper"]),
   enabled: z.boolean(),
   keys: z.array(ApiKeyEntrySchema),
   connector: PlatformConnectorSchema.optional(),

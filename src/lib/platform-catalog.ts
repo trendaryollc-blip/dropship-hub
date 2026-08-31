@@ -3,7 +3,7 @@
 // pastes a key, hits "Connect". Each entry maps to a known search method/source
 // so the platform can be searched once connected.
 
-export type CatalogMethod = "official_api" | "rainforest" | "serpapi" | "scraperapi" | "custom_scraper";
+export type CatalogMethod = "official_api" | "rainforest" | "serpapi" | "serper" | "rapidapi_walmart" | "scraperapi" | "custom_scraper";
 
 export interface CatalogPlatform {
   id: string;
@@ -181,6 +181,8 @@ export const CATALOG_METHOD_LABELS: Record<CatalogMethod, string> = {
   official_api: "Official API",
   rainforest: "Rainforest API",
   serpapi: "SerpAPI",
+  serper: "Serper.dev",
+  rapidapi_walmart: "Walmart RapidAPI",
   scraperapi: "Scraper (Web)",
   custom_scraper: "Custom",
 };

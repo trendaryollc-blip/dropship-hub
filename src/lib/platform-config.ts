@@ -34,7 +34,7 @@ export interface PlatformConnector {
 export interface PlatformFirestoreConfig {
   id: string;
   name: string;
-  method: "official_api" | "rainforest" | "serpapi" | "scraperapi" | "custom_scraper";
+  method: "official_api" | "rainforest" | "serpapi" | "serper" | "rapidapi_walmart" | "scraperapi" | "custom_scraper";
   enabled: boolean;
   keys: ApiKeyEntry[];
   connector?: PlatformConnector;

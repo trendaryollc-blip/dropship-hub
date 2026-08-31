@@ -14,7 +14,21 @@ function getServiceAccount() {
   try {
     return JSON.parse(json);
   } catch {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT contains invalid JSON");
+    // Vercel's env var field can corrupt \n inside JSON string values by
+    // converting them to real newlines.  Try to repair the most common case:
+    // restore literal \n inside the private_key value so JSON.parse succeeds.
+    try {
+      const repaired = json.replace(
+        /("private_key"\s*:\s*")(.*)(",)/g,
+        (_match, prefix: string, key: string, suffix: string) => {
+          const fixedKey = key.replace(/\n/g, "\\n");
+          return `${prefix}${fixedKey}${suffix}`;
+        }
+      );
+      return JSON.parse(repaired);
+    } catch {
+      throw new Error("FIREBASE_SERVICE_ACCOUNT contains invalid JSON — please re-paste the raw service-account JSON into your Vercel env vars");
+    }
   }
 }
 
