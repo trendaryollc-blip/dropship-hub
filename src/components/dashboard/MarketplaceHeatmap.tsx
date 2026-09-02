@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Flame, TrendingUp, TrendingDown, Minus, ArrowUpRight, ShoppingCart, ChevronDown, ChevronUp, Activity } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { HeatmapCategory } from "@/lib/mock-dashboard";
+import type { HeatmapCategory } from "@/types/dashboard";
 
 function HeatRing({ heat, size = 56 }: { heat: number; size?: number }) {
   const safeHeat = heat || 0;
@@ -25,7 +25,8 @@ function HeatRing({ heat, size = 56 }: { heat: number; size?: number }) {
   );
 }
 
-function BarChart({ data, color }: { data: number[]; color: string }) {
+function BarChart({ data, color }: { data: number[] | null; color: string }) {
+  if (!data?.length) return null;
   const max = Math.max(...data);
   const colorMap: Record<string, string> = { red: "#ef4444", orange: "#f97316", amber: "#f59e0b", blue: "#3b82f6", slate: "#64748b" };
   const fill = colorMap[color] || "#3b82f6";

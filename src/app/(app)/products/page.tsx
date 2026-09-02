@@ -349,8 +349,8 @@ function TrendingSection() {
                     <div className="mt-auto space-y-2">
                       <div className="flex items-baseline justify-between">
                         <div>
-                          <p className="text-[10px] text-muted-foreground line-through">${product.sellPrice.toFixed(2)}</p>
-                          <p className="text-sm font-bold text-emerald-400">${product.profit.toFixed(2)} <span className="text-[10px] font-normal text-muted-foreground">profit</span></p>
+                          <p className="text-[10px] text-muted-foreground line-through">${(product.sellPrice ?? 0).toFixed(2)}</p>
+                          <p className="text-sm font-bold text-emerald-400">${(product.profit ?? 0).toFixed(2)} <span className="text-[10px] font-normal text-muted-foreground">profit</span></p>
                         </div>
                         <span className="text-[10px] text-muted-foreground bg-surface/80 px-1.5 py-0.5 rounded-full">{product.margin}%</span>
                       </div>

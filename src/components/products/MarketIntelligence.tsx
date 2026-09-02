@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { TrendingUp, TrendingDown, Minus, BarChart3, Users, Swords, Shield, AlertTriangle, Clock } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { MarketIntel } from "@/lib/mock-enrichment";
+import type { MarketIntel } from "@/types/enrichment";
 
 function ScoreRing({ score, size = 52 }: { score: number; size?: number }) {
   const r = (size - 6) / 2;

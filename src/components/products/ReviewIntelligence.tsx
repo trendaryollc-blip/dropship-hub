@@ -2,7 +2,7 @@
 
 import { Star, ThumbsUp, ThumbsDown, Minus, ShieldCheck, MessageSquare } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { ReviewData } from "@/lib/mock-enrichment";
+import type { ReviewData } from "@/types/enrichment";
 
 export default function ReviewIntelligence({ data }: { data: ReviewData | null }) {
   const { ref, isInView } = useInView({ threshold: 0.1 });

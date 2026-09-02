@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { TrendingUp, TrendingDown, Minus, ArrowUpRight } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { NicheQuickCard as NicheQuickCardType } from "@/lib/mock-products";
+import type { NicheQuickCard as NicheQuickCardType } from "@/types/products-types";
 
 export default function NicheQuickCard({ niche, index }: { niche: NicheQuickCardType; index: number }) {
   const { ref, isInView } = useInView({ threshold: 0.2 });

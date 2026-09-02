@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { TrendingUp, TrendingDown, Minus, Flame, ArrowRight } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { NicheData } from "@/lib/mock-niches";
+import type { NicheData } from "@/types/niches";
 
 function MiniSparkline({ points, color = "#3b82f6" }: { points: number[]; color?: string }) {
   const max = Math.max(...points);
@@ -76,7 +76,7 @@ export default function NicheHeatmapCard({ niche, index, onSelect }: { niche: Ni
       </div>
 
       <div className="mb-3">
-        <MiniSparkline points={niche.weeklyData} color={heatColor} />
+        <MiniSparkline points={niche.weeklyData ?? []} color={heatColor} />
       </div>
 
       <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mb-3">

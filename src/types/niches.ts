@@ -1,0 +1,31 @@
+export interface NicheData {
+  id: string;
+  name: string;
+  icon: string;
+  image: string;
+  category: string;
+  heat: number;
+  productCount: number;
+  avgMargin: number;
+  growth: number;
+  trend: "up" | "down" | "stable";
+  trendDirection: "rising" | "stable" | "declining";
+  weeklyData: number[] | null;
+  demandSparkline: number[] | null;
+  scores: { demand: number; profit: number; competition: number; trend: number; seasonality: number };
+  overallScore: number;
+  grade: "A+" | "A" | "B+" | "B" | "C+" | "C";
+  topProduct: string;
+  topProductPrice: number;
+  topProductMargin: number;
+  aiInsight: string;
+  competitionLevel: "low" | "medium" | "high" | "very-high";
+  saturation: number;
+  avgSellingPrice: number;
+  bestPlatforms: string[];
+  seasonality: string;
+  riskLevel: "low" | "medium" | "high";
+  topSuppliers: { name: string; badge: "gold" | "silver" | "bronze"; reliability: number }[];
+  relatedNiches: string[];
+  keywords: string[];
+}

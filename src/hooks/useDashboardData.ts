@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { TickerItem, AIDailyPick, SmartAlert, NicheCard, SupplierStatus, DailyMission, HeatmapCategory, TrendingProduct } from "@/lib/mock-dashboard";
+import type { TickerItem, AIDailyPick, SmartAlert, NicheCard, SupplierStatus, DailyMission, HeatmapCategory, TrendingProduct } from "@/types/dashboard";
 import { useAPI } from "@/hooks/useAPI";
 
 interface AIBriefing {

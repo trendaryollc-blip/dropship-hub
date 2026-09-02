@@ -26,6 +26,26 @@ function SignInContent() {
   const expired = searchParams.get("expired") === "1";
   const callbackUrl = sanitizeCallbackUrl(searchParams.get("callbackUrl"));
 
+  const getFirebaseAuthErrorMessage = (error: unknown): string => {
+    if (error && typeof error === "object" && "code" in error) {
+      const code = (error as { code: string }).code;
+      const messages: Record<string, string> = {
+        "auth/invalid-credential": "Invalid email or password. Please try again.",
+        "auth/user-not-found": "No account found with this email.",
+        "auth/wrong-password": "Incorrect password. Please try again.",
+        "auth/too-many-requests": "Too many failed attempts. Please try again later.",
+        "auth/network-request-failed": "Network error. Please check your internet connection and try again.",
+        "auth/user-disabled": "This account has been disabled.",
+        "auth/operation-not-allowed": "Email/password sign-in is not enabled. Please contact support.",
+        "auth/invalid-email": "Please enter a valid email address.",
+        "auth/popup-closed-by-user": "Sign-in popup was closed. Please try again.",
+        "auth/popup-blocked": "Pop-up was blocked by your browser. Please allow pop-ups for this site.",
+      };
+      return messages[code] || `Sign-in failed: ${code}`;
+    }
+    return "Failed to sign in. Please try again.";
+  };
+
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -34,8 +54,7 @@ function SignInContent() {
       await signInWithEmail(email, password);
       window.location.href = callbackUrl;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to sign in";
-      setError(msg);
+      setError(getFirebaseAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -48,8 +67,7 @@ function SignInContent() {
       await signInWithGoogle();
       window.location.href = callbackUrl;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to sign in with Google";
-      setError(msg);
+      setError(getFirebaseAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }

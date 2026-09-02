@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Target, ArrowUpRight, TrendingUp, TrendingDown, Package, DollarSign, ChevronDown, ChevronUp } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { NicheCard as NicheCardType } from "@/lib/mock-dashboard";
+import type { NicheCard as NicheCardType } from "@/types/dashboard";
 
 function ScoreRing({ score, size = 48 }: { score: number; size?: number }) {
   const r = (size - 6) / 2;
@@ -141,7 +141,7 @@ function NicheCard({ card, index }: { card: NicheCardType; index: number }) {
         {/* Sparkline */}
         <div className="flex items-center justify-between">
           <span className="text-[10px] text-muted-foreground">7-day demand trend</span>
-          <MiniSparkline points={card.demandSparkline} />
+          <MiniSparkline points={card.demandSparkline ?? []} />
         </div>
       </Link>
 

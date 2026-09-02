@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { TrendingUp, Star, ShieldCheck, BadgeCheck, ArrowDownRight } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { PlatformPrice } from "@/lib/mock-enrichment";
+import type { PlatformPrice } from "@/types/enrichment";
 
 function MiniSparkline({ points, id }: { points: number[]; id: string }) {
   const [mounted, setMounted] = useState(false);

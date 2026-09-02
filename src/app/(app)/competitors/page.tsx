@@ -4,7 +4,7 @@ import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Search, Globe, Loader2, Crosshair, BookmarkPlus } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import { type MarketData } from "@/lib/mock-competitors";
+import { type MarketData } from "@/types/competitors";
 import { useMutation } from "@/hooks/useAPI";
 import MarketStatsBar from "@/components/competitors/MarketStatsBar";
 import PriceDistribution from "@/components/competitors/PriceDistribution";

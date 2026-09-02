@@ -7,7 +7,7 @@ import {
   Shield, Zap, ArrowRight, ShoppingCart, Users, Globe,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { NicheData } from "@/lib/mock-niches";
+import type { NicheData } from "@/types/niches";
 
 function ScoreBar({ label, score, color }: { label: string; score: number; color: string }) {
   return (
@@ -141,7 +141,7 @@ export default function NicheDetail({ niche }: { niche: NicheData }) {
             </div>
             <div className="p-3 rounded-xl bg-surface/50 border border-border/50">
               <p className="text-[10px] text-muted-foreground mb-1">Demand Trend</p>
-              <MiniSparkline points={niche.demandSparkline} color={heatColor} />
+              <MiniSparkline points={niche.demandSparkline ?? []} color={heatColor} />
             </div>
           </div>
         </div>

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { getAdminDB } from "@/lib/firebase-admin";
+import { computeMonitoringMetrics, getMonitoringHealth } from "@/lib/monitoring/metrics";
+import { getRepriceStats, getRepriceAuditLog } from "@/lib/monitoring/reprice-audit";
 
 interface MonitoredProduct {
   id?: string;
@@ -13,15 +15,19 @@ interface MonitoredProduct {
   lowestPrice: number;
   highestPrice: number;
   lastChecked: string;
-  priceHistory: { date: string; price: number }[];
+  priceHistory: { date: string; price: number; source?: string }[];
   stockStatus: "in_stock" | "out_of_stock" | "unknown";
   alerts: PriceAlert[];
   repricingRule?: RepricingRule;
+  priceDropThreshold?: number;
+  competitorUrls?: string[];
+  autoDelist?: boolean;
+  storeConnections?: Array<{ storeId: string; platform: "shopify" | "woocommerce"; storeUrl: string; apiKey: string; apiSecret: string }>;
 }
 
 interface PriceAlert {
   id: string;
-  type: "price_drop" | "price_increase" | "out_of_stock" | "back_in_stock";
+  type: "price_drop" | "price_increase" | "out_of_stock" | "back_in_stock" | "competitor_undercut";
   message: string;
   oldPrice?: number;
   newPrice?: number;
@@ -31,7 +37,7 @@ interface PriceAlert {
 
 interface RepricingRule {
   enabled: boolean;
-  type: "margin_floor" | "undercut_competitor" | "fixedMarkup";
+  type: "margin_floor" | "undercut_competitor" | "fixed_price";
   value: number;
 }
 
@@ -41,7 +47,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     const { action } = body;
 
     if (action === "add") {
-      const { productId, productTitle, productImage, source, sourceUrl, currentPrice } = body;
+      const { productId, productTitle, productImage, source, sourceUrl, currentPrice, priceDropThreshold, competitorUrls, autoDelist } = body;
       if (!productId || !productTitle || currentPrice === undefined) {
         return NextResponse.json({ error: "productId, productTitle, and currentPrice are required" }, { status: 400 });
       }
@@ -57,9 +63,12 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
         lowestPrice: currentPrice,
         highestPrice: currentPrice,
         lastChecked: new Date().toISOString(),
-        priceHistory: [{ date: new Date().toISOString().split("T")[0], price: currentPrice }],
+        priceHistory: [{ date: new Date().toISOString().split("T")[0], price: currentPrice, source: "manual" }],
         stockStatus: "in_stock",
         alerts: [],
+        priceDropThreshold: priceDropThreshold || 5,
+        competitorUrls: competitorUrls || [],
+        autoDelist: autoDelist || false,
       };
 
       const ref = await db.collection("users").doc(uid).collection("monitoredProducts").add(doc);
@@ -91,34 +100,39 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
         if (lastEntry && lastEntry.date === today) {
           lastEntry.price = newPrice;
         } else {
-          newHistory.push({ date: today, price: newPrice });
+          newHistory.push({ date: today, price: newPrice, source: "manual" });
           if (newHistory.length > 90) newHistory.shift();
         }
 
         const alerts: PriceAlert[] = [...product.alerts];
+        const threshold = product.priceDropThreshold || 5;
 
         if (newPrice < product.currentPrice) {
           const dropPercent = Math.round(((product.currentPrice - newPrice) / product.currentPrice) * 100);
-          alerts.push({
-            id: `alert_${Date.now()}`,
-            type: "price_drop",
-            message: `Price dropped ${dropPercent}% from $${product.currentPrice.toFixed(2)} to $${newPrice.toFixed(2)}`,
-            oldPrice: product.currentPrice,
-            newPrice,
-            createdAt: new Date().toISOString(),
-            read: false,
-          });
+          if (dropPercent >= threshold) {
+            alerts.push({
+              id: `alert_${Date.now()}`,
+              type: "price_drop",
+              message: `Price dropped ${dropPercent}% from $${product.currentPrice.toFixed(2)} to $${newPrice.toFixed(2)}`,
+              oldPrice: product.currentPrice,
+              newPrice,
+              createdAt: new Date().toISOString(),
+              read: false,
+            });
+          }
         } else if (newPrice > product.currentPrice) {
           const increasePercent = Math.round(((newPrice - product.currentPrice) / product.currentPrice) * 100);
-          alerts.push({
-            id: `alert_${Date.now()}`,
-            type: "price_increase",
-            message: `Price increased ${increasePercent}% from $${product.currentPrice.toFixed(2)} to $${newPrice.toFixed(2)}`,
-            oldPrice: product.currentPrice,
-            newPrice,
-            createdAt: new Date().toISOString(),
-            read: false,
-          });
+          if (increasePercent >= threshold) {
+            alerts.push({
+              id: `alert_${Date.now()}`,
+              type: "price_increase",
+              message: `Price increased ${increasePercent}% from $${product.currentPrice.toFixed(2)} to $${newPrice.toFixed(2)}`,
+              oldPrice: product.currentPrice,
+              newPrice,
+              createdAt: new Date().toISOString(),
+              read: false,
+            });
+          }
         }
 
         if (stockStatus && stockStatus !== product.stockStatus) {
@@ -171,6 +185,22 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
       return NextResponse.json({ success: true });
     }
 
+    if (action === "updateThreshold") {
+      const { monitoredId, priceDropThreshold, competitorUrls, autoDelist } = body;
+      if (!monitoredId) {
+        return NextResponse.json({ error: "monitoredId is required" }, { status: 400 });
+      }
+
+      const db = await getAdminDB();
+      const updates: Record<string, unknown> = {};
+      if (priceDropThreshold !== undefined) updates.priceDropThreshold = priceDropThreshold;
+      if (competitorUrls !== undefined) updates.competitorUrls = competitorUrls;
+      if (autoDelist !== undefined) updates.autoDelist = autoDelist;
+
+      await db.collection("users").doc(uid).collection("monitoredProducts").doc(monitoredId).update(updates);
+      return NextResponse.json({ success: true });
+    }
+
     if (action === "remove") {
       const { monitoredId } = body;
       if (!monitoredId) {
@@ -217,6 +247,20 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
 
       allAlerts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       return NextResponse.json({ alerts: allAlerts.slice(0, 50) });
+    }
+
+    if (type === "metrics") {
+      const [metrics, health, repriceStats] = await Promise.all([
+        computeMonitoringMetrics(uid),
+        getMonitoringHealth(uid),
+        getRepriceStats(uid),
+      ]);
+      return NextResponse.json({ metrics, health, repriceStats });
+    }
+
+    if (type === "audit") {
+      const auditLog = await getRepriceAuditLog(uid);
+      return NextResponse.json({ auditLog });
     }
 
     const snap = await db

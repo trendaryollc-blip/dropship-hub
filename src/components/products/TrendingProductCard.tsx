@@ -7,7 +7,7 @@ import { TrendingUp, ChevronDown, ChevronUp, Flame, ExternalLink, Package } from
 import { useInView } from "@/hooks/useInView";
 import MiniSparkline from "./MiniSparkline";
 import ScoreRing from "./ScoreRing";
-import type { TrendingSearchProduct } from "@/lib/mock-products";
+import type { TrendingSearchProduct } from "@/types/products-types";
 
 const demandConfig: Record<string, { label: string; cls: string }> = {
   low: { label: "Low demand", cls: "text-blue-400 bg-blue-400/10 border-blue-400/20" },

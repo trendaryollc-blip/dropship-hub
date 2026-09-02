@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronDown, Star, Shield, ShoppingCart, Clock, RotateCcw, ExternalLink, Store } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { SellerProfile } from "@/lib/mock-competitors";
+import type { SellerProfile } from "@/types/competitors";
 
 const threatConfig = {
   low: { label: "Low Threat", color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/20", ring: "bg-emerald-400" },

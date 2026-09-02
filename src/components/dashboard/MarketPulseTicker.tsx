@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { TrendingUp, TrendingDown, Activity } from "lucide-react";
-import type { TickerItem } from "@/lib/mock-dashboard";
+import type { TickerItem } from "@/types/dashboard";
 
 function MiniSparkline({ points, positive }: { points: number[]; positive: boolean }) {
   const max = Math.max(...points);

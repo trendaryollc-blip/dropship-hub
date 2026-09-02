@@ -8,7 +8,7 @@ import {
   Flame, Truck, Target, Zap, Eye, Globe, RefreshCw, Package, Search, DollarSign,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { SmartAlert } from "@/lib/mock-dashboard";
+import type { SmartAlert } from "@/types/dashboard";
 
 interface AIBriefing {
   insights: string[];

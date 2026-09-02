@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { TrendingUp, TrendingDown, Minus, ExternalLink, X, Star } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { PlatformData, CompetitorListing } from "@/lib/mock-competitors";
+import type { PlatformData, CompetitorListing } from "@/types/competitors";
 
 function MiniSparkline({ data, color }: { data: number[]; color: string }) {
   const min = Math.min(...data);

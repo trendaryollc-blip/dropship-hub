@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { Target, Search, Flame, BarChart3, TrendingUp, RefreshCw } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { NicheData } from "@/lib/mock-niches";
+import type { NicheData } from "@/types/niches";
 import { useAPI } from "@/hooks/useAPI";
 import NicheHeatmapCard from "@/components/niches/NicheHeatmapCard";
 import NicheListItem from "@/components/niches/NicheListItem";

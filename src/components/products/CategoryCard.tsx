@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { ArrowUpRight, TrendingUp } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { ProductCategory } from "@/lib/mock-products";
+import type { ProductCategory } from "@/types/products-types";
 
 export default function CategoryCard({ category, index }: { category: ProductCategory; index: number }) {
   const { ref, isInView } = useInView({ threshold: 0.2 });

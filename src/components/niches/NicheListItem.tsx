@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { TrendingUp, TrendingDown, Minus, Flame, ArrowRight } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { NicheData } from "@/lib/mock-niches";
+import type { NicheData } from "@/types/niches";
 
 export default function NicheListItem({ niche, index, onSelect }: { niche: NicheData; index: number; onSelect: (id: string) => void }) {
   const { ref, isInView } = useInView({ threshold: 0.1 });

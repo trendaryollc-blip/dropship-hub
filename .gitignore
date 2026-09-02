@@ -39,6 +39,9 @@ service-account.json
 # vercel
 .vercel
 
+# playwright
+/test-results/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

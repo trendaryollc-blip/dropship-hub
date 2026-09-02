@@ -2,7 +2,7 @@
 
 import { Check, Sparkles } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { PricingOption } from "@/lib/mock-competitors";
+import type { PricingOption } from "@/types/competitors";
 
 const colorMap: Record<string, { border: string; bg: string; ring: string; btn: string; glow: string }> = {
   blue: { border: "border-blue-400/30", bg: "bg-blue-400/5", ring: "from-blue-400 to-blue-600", btn: "bg-blue-500 hover:bg-blue-600", glow: "shadow-blue-400/10" },

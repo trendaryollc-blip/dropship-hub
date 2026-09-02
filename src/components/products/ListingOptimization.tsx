@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Copy, Check, Lightbulb, Tag, FileText, DollarSign, ShoppingBag, Sparkles } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { ListingSuggestion } from "@/lib/mock-enrichment";
+import type { ListingSuggestion } from "@/types/enrichment";
 
 function CopyBtn({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);

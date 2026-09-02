@@ -3,31 +3,37 @@
 import Link from "next/link";
 import { Truck, Star, ArrowUpRight } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { SupplierStatus } from "@/lib/mock-dashboard";
+import type { SupplierStatus } from "@/types/dashboard";
 
-const badgeConfig = {
+const badgeConfig: Record<string, { color: string; bg: string; glow: string }> = {
   gold: { color: "text-amber-400", bg: "bg-amber-400/10", glow: "shadow-amber-400/20" },
   silver: { color: "text-gray-300", bg: "bg-gray-300/10", glow: "shadow-gray-300/20" },
   bronze: { color: "text-orange-400", bg: "bg-orange-400/10", glow: "shadow-orange-400/20" },
 };
 
-const statusConfig = {
+const defaultBadge = { color: "text-gray-400", bg: "bg-gray-400/10", glow: "shadow-gray-400/20" };
+
+const statusConfig: Record<string, { label: string; color: string; dot: string }> = {
   online: { label: "Online", color: "text-emerald-400", dot: "bg-emerald-400" },
   busy: { label: "Busy", color: "text-amber-400", dot: "bg-amber-400" },
   offline: { label: "Offline", color: "text-muted-foreground", dot: "bg-muted-foreground" },
 };
 
-const responseConfig = {
+const defaultStatus = { label: "Unknown", color: "text-muted-foreground", dot: "bg-muted-foreground" };
+
+const responseConfig: Record<string, { color: string; dot: string }> = {
   fast: { color: "text-emerald-400", dot: "bg-emerald-400" },
   moderate: { color: "text-amber-400", dot: "bg-amber-400" },
   slow: { color: "text-red-400", dot: "bg-red-400" },
 };
 
+const defaultResponse = { color: "text-muted-foreground", dot: "bg-muted-foreground" };
+
 function SupplierMiniCard({ supplier, index }: { supplier: SupplierStatus; index: number }) {
   const { ref, isInView } = useInView({ threshold: 0.2 });
-  const badge = badgeConfig[supplier.trustBadge];
-  const status = statusConfig[supplier.status];
-  const response = responseConfig[supplier.responseLevel];
+  const badge = badgeConfig[supplier.trustBadge] ?? defaultBadge;
+  const status = statusConfig[supplier.status] ?? defaultStatus;
+  const response = responseConfig[supplier.responseLevel] ?? defaultResponse;
 
   return (
     <div

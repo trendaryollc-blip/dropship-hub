@@ -16,7 +16,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { TrendingProduct } from "@/lib/mock-dashboard";
+import type { TrendingProduct } from "@/types/dashboard";
 
 function MiniSparkline({ points, id }: { points: number[]; id: string }) {
   const max = Math.max(...points);

@@ -20,7 +20,7 @@ import {
   Package,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { AIDailyPick as AIDailyPickType } from "@/lib/mock-dashboard";
+import type { AIDailyPick as AIDailyPickType } from "@/types/dashboard";
 
 function OpportunityRing({ score }: { score: number }) {
   const radius = 54;

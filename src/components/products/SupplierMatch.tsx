@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Truck, Clock, ArrowRight, Award, MapPin } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { SupplierMatch } from "@/lib/mock-enrichment";
+import type { SupplierMatch } from "@/types/enrichment";
 
 function ScoreRing({ score, size = 40 }: { score: number; size?: number }) {
   const r = (size - 6) / 2;

@@ -2,7 +2,7 @@
 
 import { Package, DollarSign, BarChart3, Target, TrendingUp } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { MarketData } from "@/lib/mock-competitors";
+import type { MarketData } from "@/types/competitors";
 
 export default function MarketStatsBar({ data }: { data: MarketData }) {
   const { ref, isInView } = useInView({ threshold: 0.1 });

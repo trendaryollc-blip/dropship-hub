@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Zap, AlertTriangle, ShieldAlert, ArrowRight, X } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { Opportunity } from "@/lib/mock-competitors";
+import type { Opportunity } from "@/types/competitors";
 
 const config = {
   opportunity: { icon: Zap, color: "emerald", border: "border-emerald-400/30", bg: "bg-emerald-400/5", glow: "shadow-emerald-400/10", badge: "bg-emerald-400/15 text-emerald-400 border-emerald-400/20", ring: "from-emerald-400 to-emerald-600" },

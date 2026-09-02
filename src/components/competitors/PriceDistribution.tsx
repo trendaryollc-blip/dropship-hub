@@ -2,7 +2,7 @@
 
 import { BarChart3, Sparkles } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { PriceTier } from "@/lib/mock-competitors";
+import type { PriceTier } from "@/types/competitors";
 
 export default function PriceDistribution({ tiers, avgPrice }: { tiers: PriceTier[]; avgPrice: number }) {
   const { ref, isInView } = useInView({ threshold: 0.1 });

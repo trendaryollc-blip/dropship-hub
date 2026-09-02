@@ -5,7 +5,7 @@ import Link from "next/link";
 import { TrendingUp, TrendingDown, Package, DollarSign, ShoppingCart, BarChart3, ArrowUpRight } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
-import type { RevenueStat } from "@/lib/mock-dashboard";
+import type { RevenueStat } from "@/types/dashboard";
 
 const iconMap: Record<string, typeof DollarSign> = {
   dollar: DollarSign,

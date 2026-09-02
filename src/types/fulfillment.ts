@@ -23,6 +23,9 @@ export interface FulfillmentOrder {
   totalRevenue: number;
   totalCost: number;
   profit: number;
+  assignedSupplier?: string;
+  automationError?: string;
+  automationTrigger?: "webhook" | "poll" | "manual" | "bulk" | "scheduled";
   createdAt: string;
   updatedAt: string;
 }

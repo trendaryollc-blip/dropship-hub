@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Brain, TrendingUp, AlertTriangle, Info, AlertOctagon, CheckCheck, ArrowUpRight } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import type { SmartAlert } from "@/lib/mock-dashboard";
+import type { SmartAlert } from "@/types/dashboard";
 
 const alertConfig = {
   opportunity: {

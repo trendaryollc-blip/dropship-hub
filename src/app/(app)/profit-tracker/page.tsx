@@ -164,7 +164,7 @@ function CostDonut({ data }: { data: CostBreakdownItem[] }) {
 
   const segments = data.reduce<Array<typeof data[0] & { offset: number; dash: number }>>((acc, d) => {
     const prevOffset = acc.length > 0 ? acc[acc.length - 1].offset + acc[acc.length - 1].dash : 0;
-    const dash = (d.value / total) * circumference;
+    const dash = total > 0 ? (d.value / total) * circumference : 0;
     acc.push({ ...d, offset: prevOffset, dash });
     return acc;
   }, []);
