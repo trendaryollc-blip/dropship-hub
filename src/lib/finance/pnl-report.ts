@@ -182,7 +182,24 @@ export function generatePnLReport(input: PnLReportInput, data: {
   return report;
 }
 
-function generateBreakdown(orders: PnLReportInput extends { orders: Array<infer T> } ? T[] : never): PnLReport["breakdown"] {
+function generateBreakdown(orders: Array<{
+  orderId: string;
+  orderDate: string;
+  revenue: number;
+  cogs: number;
+  shippingCost: number;
+  platformFee: number;
+  paymentProcessing: number;
+  refunds: number;
+  adSpend: number;
+  otherCosts: number;
+  productTitle: string;
+  productId: string;
+  platform: string;
+  supplierId: string;
+  supplierName: string;
+  status: string;
+}>): PnLReport["breakdown"] {
   const productMap = new Map<string, ProductBreakdown>();
   const platformMap = new Map<string, PlatformBreakdown>();
   const supplierMap = new Map<string, SupplierBreakdown>();

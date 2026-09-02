@@ -20,7 +20,7 @@ describe("Performance Tests - Calculation Benchmarks", () => {
     const { calculateProfit, calculateMargin } = await import("@/lib/calculations");
     const start = performance.now();
     for (let i = 0; i < 1000; i++) {
-      calculateProfit(10 + i, 5 + i * 0.5, 0.1, 2);
+      calculateProfit(10 + i, 5 + i * 0.5, 0.1, 2, 0.5);
       calculateMargin(10 + i, 5 + i * 0.5);
     }
     const elapsed = performance.now() - start;
@@ -31,7 +31,7 @@ describe("Performance Tests - Calculation Benchmarks", () => {
     const { calculateAdROI } = await import("@/lib/calculations");
     const start = performance.now();
     for (let i = 0; i < 1000; i++) {
-      calculateAdROI(500 + i * 10, 200 + i * 5);
+      calculateAdROI(500 + i * 10, 200 + i * 5, 10, 15, 0.02, 0.05, 50);
     }
     const elapsed = performance.now() - start;
     expect(elapsed).toBeLessThan(500);
@@ -42,7 +42,7 @@ describe("Performance Tests - Rate Limiter Benchmarks", () => {
   it("rate limiter handles 1000 checks within 100ms", async () => {
     const { rateLimitByUser } = await import("@/lib/rate-limit");
     const config = { windowMs: 60000, maxRequests: 100 };
-    const mockReq = { nextUrl: { pathname: "/api/test" } } as any;
+    const mockReq = { nextUrl: { pathname: "/api/test" } } as never;
     const start = performance.now();
     for (let i = 0; i < 1000; i++) {
       rateLimitByUser(mockReq, `perf-user-${i % 10}`, config);
@@ -59,7 +59,7 @@ describe("Performance Tests - Catalog Benchmarks", () => {
     const start = performance.now();
     for (let i = 0; i < 1000; i++) {
       for (const id of ids) {
-        PLATFORM_CATALOG[id as keyof typeof PLATFORM_CATALOG];
+        void PLATFORM_CATALOG[id as keyof typeof PLATFORM_CATALOG];
       }
     }
     const elapsed = performance.now() - start;
@@ -72,7 +72,7 @@ describe("Performance Tests - Catalog Benchmarks", () => {
     const start = performance.now();
     for (let i = 0; i < 1000; i++) {
       for (const id of ids) {
-        STORE_CATALOG[id as keyof typeof STORE_CATALOG];
+        void STORE_CATALOG[id as keyof typeof STORE_CATALOG];
       }
     }
     const elapsed = performance.now() - start;

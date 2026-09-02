@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
-import React from "react";
 
 const mockUser = { uid: "user-123" };
 
@@ -127,10 +126,10 @@ describe("useCalcHistory", () => {
   });
 
   it("loads calc history on mount", async () => {
-    const history = [{ id: "1", type: "standard", inputs: {}, result: {}, savedAt: new Date() }];
+    const history = [{ id: "1", type: "profit", inputs: {}, result: {}, savedAt: new Date() }];
     vi.mocked(getCalcHistory).mockResolvedValue(history as never);
 
-    const { result } = renderHook(() => useCalcHistory("standard"));
+    const { result } = renderHook(() => useCalcHistory("profit"));
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.history).toEqual(history);
   });
@@ -139,11 +138,11 @@ describe("useCalcHistory", () => {
     vi.mocked(saveCalcHistory).mockResolvedValue(undefined);
     vi.mocked(getCalcHistory).mockResolvedValue([]);
 
-    const { result } = renderHook(() => useCalcHistory("standard"));
+    const { result } = renderHook(() => useCalcHistory("profit"));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     await act(async () => {
-      await result.current.save({ type: "standard", inputs: {}, result: {} });
+      await result.current.save({ type: "profit", inputs: {}, result: {} });
     });
 
     expect(saveCalcHistory).toHaveBeenCalled();
@@ -153,7 +152,7 @@ describe("useCalcHistory", () => {
     const { useAuth } = await import("@/components/auth/AuthProvider");
     vi.mocked(useAuth).mockReturnValue({ user: null } as never);
 
-    const { result } = renderHook(() => useCalcHistory("standard"));
+    const { result } = renderHook(() => useCalcHistory("profit"));
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.history).toEqual([]);
 

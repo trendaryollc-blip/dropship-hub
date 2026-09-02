@@ -616,3 +616,32 @@ export const SaveChatMessageInputSchema = z.object({
   content: z.string().min(1).max(50000),
   provider: z.string().max(100).optional(),
 });
+
+// ── Product Validation ───────────────────────────────────────────────────────
+
+export const ProductValidationDocSchema = z.object({
+  productTitle: z.string(),
+  productImage: z.string().optional(),
+  productUrl: z.string().optional(),
+  goldenScore: z.number(),
+  goldenRank: z.string(),
+  trendVelocity: z.number(),
+  saturationIndex: z.number(),
+  profitScore: z.number(),
+  seasonalScore: z.number(),
+  inputs: z.record(z.string(), z.unknown()),
+  createdAt: firestoreTimestamp,
+});
+
+export const AddProductValidationInputSchema = z.object({
+  productTitle: z.string().min(1).max(500),
+  productImage: z.string().max(2000).optional(),
+  productUrl: z.string().max(2000).optional(),
+  goldenScore: z.number().min(0).max(100),
+  goldenRank: z.string().min(1).max(10),
+  trendVelocity: z.number().min(0).max(100),
+  saturationIndex: z.number().min(0).max(100),
+  profitScore: z.number().min(0).max(100),
+  seasonalScore: z.number().min(0).max(100),
+  inputs: z.record(z.string(), z.unknown()),
+});

@@ -39,7 +39,15 @@ export interface StoreAdapter {
 export interface StoreConfig {
   platform: string;
   url: string;
-  apiKey: string;
+  apiKey?: string;
   apiSecret?: string;
   accessToken?: string;
+  consumerKey?: string;
+  consumerSecret?: string;
+}
+
+export interface TrackingUpdate {
+  orderId: string;
+  trackingNumber: string;
+  carrier: string;
 }

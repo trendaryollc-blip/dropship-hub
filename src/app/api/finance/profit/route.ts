@@ -12,7 +12,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     const orders = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Array<Record<string, unknown>>;
 
     const profitOrders = orders.map((o) => ({
-      orderId: typeof o.orderId === "string" ? o.orderId : o.id || "",
+      orderId: typeof o.orderId === "string" ? o.orderId : String(o.id || ""),
       orderDate: typeof o.date === "string" ? o.date : "",
       productTitle: typeof o.productTitle === "string" ? o.productTitle : "Unknown",
       productImage: typeof o.productImage === "string" ? o.productImage : undefined,
@@ -30,7 +30,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
       taxAmount: typeof o.taxAmount === "number" ? o.taxAmount : 0,
       netProfit: typeof o.netProfit === "number" ? o.netProfit : 0,
       profitMargin: typeof o.profitMargin === "number" ? o.profitMargin : 0,
-      status: typeof o.status === "string" ? o.status : "completed",
+      status: (typeof o.status === "string" ? o.status : "completed") as "completed" | "pending" | "refunded" | "disputed",
     }));
 
     if (action === "summary") {

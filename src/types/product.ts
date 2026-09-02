@@ -99,6 +99,7 @@ export interface LifecycleSnapshot {
   profit: number;
   competitionCount: number;
   searchVolume: number;
+  trendDirection: "rising" | "stable" | "declining";
 }
 
 export interface LifecycleAlert {

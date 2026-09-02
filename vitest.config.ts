@@ -20,11 +20,6 @@ export default defineConfig({
         "public/**",
       ],
     },
-    resolve: {
-      alias: {
-        "@": path.resolve(__dirname, "./src"),
-      },
-    },
   },
   resolve: {
     alias: {

@@ -146,7 +146,7 @@ interface QuickActionStat {
   statLabel: string;
 }
 
-export const GET = withAuth(async (request: Request) => {
+export const GET = withAuth(async (_request: Request) => {
   try {
     const categories = ["electronics", "fashion", "home gadgets", "beauty", "toys"];
 
@@ -324,7 +324,7 @@ export const GET = withAuth(async (request: Request) => {
         category: cat,
         productCount: data.search_results.length,
         avgMargin: Math.round(15 + Math.random() * 25),
-        trend: (["up", "down", "flat"] as const)[Math.floor(Math.random() * 3)],
+        trend: (["up", "down", "stable"] as const)[Math.floor(Math.random() * 3)],
         weeklyData: Array.from({ length: 7 }, () => Math.round(Math.random() * heat)),
         topProduct,
         topProductMargin: Math.round(10 + Math.random() * 30),

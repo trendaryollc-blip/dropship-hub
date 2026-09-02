@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getAdminDB } from "./firebase-admin";
-import { PlatformFirestoreConfigSchema } from "./data/schemas";
 import {
   getAllPlatforms,
   getPlatform,
@@ -59,13 +58,12 @@ function makeMockFirestore(collectionDocs: ReturnType<typeof makeMockDoc>[] = []
   const collection = makeMockCollection(collectionDocs);
   return {
     collection: vi.fn().mockReturnValue(collection),
-    runTransaction: vi.fn(async (fn: (tx: { get: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> }) => Promise<void>) => {
+    runTransaction: vi.fn(async (fn: (tx: { get: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> }) => Promise<unknown>) => {
       const tx = {
         get: vi.fn().mockResolvedValue(collectionDocs[0] || { id: "p1", data: () => ({ keys: [] }), exists: true }),
         update: vi.fn().mockResolvedValue(undefined),
       };
       await fn(tx);
-      return tx;
     }),
   };
 }
@@ -249,7 +247,7 @@ describe("platform-config key management", () => {
         ],
       };
       const txUpdate = vi.fn();
-      const mockCollection = makeMockCollection([]);
+      const _mockCollection = makeMockCollection([]);
       mockFirestore = makeMockFirestore([]);
       mockFirestore.runTransaction = vi.fn(async (fn) => {
         const tx = {

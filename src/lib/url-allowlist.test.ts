@@ -5,7 +5,7 @@ vi.mock("dns", () => ({
   promises: {
     lookup: vi.fn((_hostname: string, _opts: unknown, cb: (err: Error | null, addr?: string) => void) => {
       cb(null, "93.184.216.34");
-    }),
+    }) as never,
   },
 }));
 
@@ -59,9 +59,9 @@ describe("isUrlSafe", () => {
 
   it("allows valid public URLs", async () => {
     const { promises } = await import("dns");
-    vi.mocked(promises.lookup).mockImplementation((_hostname, _opts, cb) => {
-      (cb as Function)(null, "93.184.216.34");
-    });
+    vi.mocked(promises.lookup).mockImplementation(((_hostname: unknown, _opts: unknown, cb: (err: Error | null, addr?: string) => void) => {
+      cb(null, "93.184.216.34");
+    }) as never);
 
     const result = await isUrlSafe("https://example.com/data");
     expect(result.safe).toBe(true);
@@ -69,9 +69,9 @@ describe("isUrlSafe", () => {
 
   it("allows http protocol", async () => {
     const { promises } = await import("dns");
-    vi.mocked(promises.lookup).mockImplementation((_hostname, _opts, cb) => {
-      (cb as Function)(null, "93.184.216.34");
-    });
+    vi.mocked(promises.lookup).mockImplementation(((_hostname: unknown, _opts: unknown, cb: (err: Error | null, addr?: string) => void) => {
+      cb(null, "93.184.216.34");
+    }) as never);
 
     const result = await isUrlSafe("http://example.com");
     expect(result.safe).toBe(true);
@@ -109,9 +109,9 @@ describe("isUrlSafe", () => {
 
   it("rejects hostname that resolves to blocked IP", async () => {
     const { promises } = await import("dns");
-    vi.mocked(promises.lookup).mockImplementation((_hostname, _opts, cb) => {
-      (cb as Function)(null, "10.0.0.1");
-    });
+    vi.mocked(promises.lookup).mockImplementation(((_hostname: unknown, _opts: unknown, cb: (err: Error | null, addr?: string) => void) => {
+      cb(null, "10.0.0.1");
+    }) as never);
 
     const result = await isUrlSafe("https://internal.example.com");
     expect(result.safe).toBe(false);
@@ -120,9 +120,9 @@ describe("isUrlSafe", () => {
 
   it("rejects when DNS lookup fails", async () => {
     const { promises } = await import("dns");
-    vi.mocked(promises.lookup).mockImplementation((_hostname, _opts, cb) => {
-      (cb as Function)(new Error("ENOTFOUND"));
-    });
+    vi.mocked(promises.lookup).mockImplementation(((_hostname: unknown, _opts: unknown, cb: (err: Error | null, addr?: string) => void) => {
+      cb(new Error("ENOTFOUND"));
+    }) as never);
 
     const result = await isUrlSafe("https://unknown.invalid");
     expect(result.safe).toBe(false);

@@ -6,9 +6,9 @@ export const shopifyAdapter: StoreAdapter = {
   async fetchOrders(config: StoreConfig, since?: string): Promise<StoreOrder[]> {
     const domain = config.url.replace("https://", "").replace("http://", "").replace(/\/$/, "");
     const baseUrl = `https://${domain}/admin/api/2024-01`;
-    const headers = {
+    const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      "X-Shopify-Access-Token": config.accessToken || config.apiKey,
+      "X-Shopify-Access-Token": config.accessToken || config.apiKey || "",
     };
 
     let url = `${baseUrl}/orders.json?status=any&limit=50`;
@@ -55,9 +55,9 @@ export const shopifyAdapter: StoreAdapter = {
   async pushTracking(config: StoreConfig, orderId: string, trackingNumber: string, carrier: string): Promise<boolean> {
     const domain = config.url.replace("https://", "").replace("http://", "").replace(/\/$/, "");
     const baseUrl = `https://${domain}/admin/api/2024-01`;
-    const headers = {
+    const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      "X-Shopify-Access-Token": config.accessToken || config.apiKey,
+      "X-Shopify-Access-Token": config.accessToken || config.apiKey || "",
     };
 
     const res = await fetch(`${baseUrl}/orders/${orderId}/fulfillments.json`, {

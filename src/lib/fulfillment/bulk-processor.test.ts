@@ -47,7 +47,7 @@ describe("Bulk Processor", () => {
     it("rejects invalid action", () => {
       const result = validateBulkInput({
         orderIds: ["order_1"],
-        action: "invalid",
+        action: "invalid" as "fulfill",
       });
       expect(result.valid).toBe(false);
     });

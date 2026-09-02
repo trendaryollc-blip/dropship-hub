@@ -5,8 +5,8 @@ export const etsyAdapter: StoreAdapter = {
 
   async fetchOrders(config: StoreConfig, since?: string): Promise<StoreOrder[]> {
     const baseUrl = "https://openapi.etsy.com/v3";
-    const headers = {
-      "x-api-key": config.apiKey,
+    const headers: Record<string, string> = {
+      "x-api-key": config.apiKey || "",
       Authorization: `Bearer ${config.accessToken || ""}`,
     };
 
@@ -57,8 +57,8 @@ export const etsyAdapter: StoreAdapter = {
 
   async pushTracking(config: StoreConfig, orderId: string, trackingNumber: string, carrier: string): Promise<boolean> {
     const baseUrl = "https://openapi.etsy.com/v3";
-    const headers = {
-      "x-api-key": config.apiKey,
+    const headers: Record<string, string> = {
+      "x-api-key": config.apiKey || "",
       Authorization: `Bearer ${config.accessToken || ""}`,
       "Content-Type": "application/json",
     };

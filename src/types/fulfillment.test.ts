@@ -1,12 +1,7 @@
-import { describe, it, expectTypeOf } from "vitest";
+import { describe, it, expect, expectTypeOf } from "vitest";
 import type {
   FulfillmentOrder,
-  FulfillmentOrderItem,
-  PlatformOrder,
-  FulfillmentSettings,
   StoreConnection,
-  SupplierPreference,
-  PlatformDisplayConfig,
 } from "./fulfillment";
 import { PLATFORM_CONFIGS, DEFAULT_FULFILLMENT_SETTINGS } from "./fulfillment";
 

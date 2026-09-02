@@ -124,6 +124,12 @@ const navItems = [
     icon: Truck,
     section: "analytics",
   },
+  {
+    label: "Product Validation",
+    href: "/product-validation",
+    icon: Target,
+    section: "analytics",
+  },
 ];
 
 const moreItems = [
@@ -132,6 +138,8 @@ const moreItems = [
   { label: "Order Router", href: "/order-router", icon: Route },
   { label: "Missions", href: "/missions", icon: Target },
   { label: "Price Monitor", href: "/monitoring", icon: Activity },
+  { label: "Bulk Orders", href: "/bulk-orders", icon: Package },
+  { label: "Financial Reports", href: "/reports", icon: BarChart3 },
   { label: "Platforms", href: "/platforms", icon: Globe },
   { label: "Daily Digest", href: "/digest", icon: FileText },
 ];

@@ -32,7 +32,6 @@ describe("COGS Tracker", () => {
         otherCosts: 0.25,
         effectiveDate: "2024-01-01",
         isActive: true,
-        priceHistory: [],
       });
 
       expect(entry.id).toBeDefined();
@@ -54,7 +53,6 @@ describe("COGS Tracker", () => {
         otherCosts: 0.25,
         effectiveDate: "2024-01-01",
         isActive: true,
-        priceHistory: [],
       });
 
       const entry = getCOGSByProduct("P1");
@@ -81,7 +79,6 @@ describe("COGS Tracker", () => {
         otherCosts: 0.25,
         effectiveDate: "2024-01-01",
         isActive: true,
-        priceHistory: [],
       });
 
       const updated = updateCOGSEntry(created.id, { unitCost: 12.99 });
@@ -109,7 +106,6 @@ describe("COGS Tracker", () => {
         otherCosts: 0.25,
         effectiveDate: "2024-01-01",
         isActive: true,
-        priceHistory: [],
       });
 
       const deleted = deleteCOGSEntry(created.id);
@@ -133,7 +129,6 @@ describe("COGS Tracker", () => {
         otherCosts: 0.5,
         effectiveDate: "2024-01-01",
         isActive: true,
-        priceHistory: [],
       });
 
       const cogs = calculateCOGSForOrder("P1", 3);
@@ -162,7 +157,6 @@ describe("COGS Tracker", () => {
         otherCosts: 0.5,
         effectiveDate: "2024-01-01",
         isActive: true,
-        priceHistory: [],
       });
 
       const summary = getCOGSSummary();
@@ -190,7 +184,6 @@ describe("COGS Tracker", () => {
         otherCosts: 0.5,
         effectiveDate: "2024-01-01",
         isActive: true,
-        priceHistory: [],
       });
 
       addCOGSEntry({
@@ -204,7 +197,6 @@ describe("COGS Tracker", () => {
         otherCosts: 1,
         effectiveDate: "2024-01-01",
         isActive: true,
-        priceHistory: [],
       });
 
       const result = bulkUpdateCOGS([

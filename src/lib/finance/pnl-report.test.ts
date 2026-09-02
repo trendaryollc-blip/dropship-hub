@@ -236,7 +236,7 @@ describe("P&L Report", () => {
       const result = validatePnLReportInput({
         startDate: "2024-01-01",
         endDate: "2024-01-31",
-        format: "invalid",
+        format: "invalid" as "pdf",
       });
 
       expect(result.valid).toBe(false);

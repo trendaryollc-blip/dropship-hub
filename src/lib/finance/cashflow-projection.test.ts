@@ -3,13 +3,11 @@ import {
   addCashFlowEntry,
   getCashFlowEntry,
   getAllCashFlowEntries,
-  getCashFlowEntriesByDateRange,
   updateCashFlowEntry,
   deleteCashFlowEntry,
   generateCashFlowProjection,
   calculatePaymentTermsDueDate,
   getCashFlowSummary,
-  getUpcomingPayments,
   validateCashFlowInput,
 } from "./cashflow-projection";
 
@@ -139,15 +137,17 @@ describe("Cash Flow Projection", () => {
     });
 
     it("generates alerts for negative balance", () => {
-      const entries = [];
+      const entries: import("./cashflow-projection").CashFlowEntry[] = [];
       for (let i = 1; i <= 10; i++) {
         entries.push({
-          type: "outflow" as const,
-          category: "cogs" as const,
+          id: `entry-${i}`,
+          type: "outflow",
+          category: "cogs",
           description: "Large purchase",
           amount: 200,
           date: `2024-01-${i.toString().padStart(2, "0")}`,
-          status: "completed" as const,
+          status: "completed",
+          createdAt: "2024-01-01T00:00:00Z",
         });
       }
 

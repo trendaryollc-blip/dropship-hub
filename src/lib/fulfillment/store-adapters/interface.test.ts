@@ -6,7 +6,8 @@ describe("store-adapters interface", () => {
     const adapter: StoreAdapter = {
       platform: "shopify",
       fetchOrders: async () => [],
-      pushTracking: async () => ({ success: true }),
+      pushTracking: async () => true,
+      getOrderStatus: async () => "pending",
     };
     expect(adapter.platform).toBe("shopify");
     expect(typeof adapter.fetchOrders).toBe("function");
@@ -17,6 +18,7 @@ describe("store-adapters interface", () => {
     const config: StoreConfig = {
       platform: "shopify",
       url: "https://test.myshopify.com",
+      apiKey: "test-api-key",
       accessToken: "token",
     };
     expect(config.platform).toBe("shopify");
@@ -27,8 +29,12 @@ describe("store-adapters interface", () => {
   it("StoreOrder type is importable", () => {
     const order: StoreOrder = {
       id: "order-1",
+      orderNumber: "ORD-001",
+      customerName: "John Doe",
       customerEmail: "test@example.com",
+      shippingAddress: { fullName: "John Doe", email: "test@example.com", phone: "", street: "123 Main St", city: "Anytown", state: "CA", zipCode: "12345", country: "US" },
       total: 99.99,
+      currency: "USD",
       items: [],
       status: "pending",
       createdAt: "2024-01-15T00:00:00Z",
@@ -54,7 +60,8 @@ describe("store-adapters interface", () => {
       const adapter: StoreAdapter = {
         platform,
         fetchOrders: async () => [],
-        pushTracking: async () => ({ success: true }),
+        pushTracking: async () => true,
+        getOrderStatus: async () => "pending",
       };
       expect(adapter.platform).toBe(platform);
     }
@@ -64,6 +71,7 @@ describe("store-adapters interface", () => {
     const config: StoreConfig = {
       platform: "woocommerce",
       url: "https://store.example.com",
+      apiKey: "test-key",
       accessToken: "token",
       consumerKey: "ck_test",
       consumerSecret: "cs_test",
@@ -75,8 +83,12 @@ describe("store-adapters interface", () => {
   it("StoreOrder items can be empty", () => {
     const order: StoreOrder = {
       id: "order-1",
+      orderNumber: "ORD-002",
+      customerName: "Jane Doe",
       customerEmail: "test@example.com",
+      shippingAddress: { fullName: "Jane Doe", email: "test@example.com", phone: "", street: "456 Oak Ave", city: "Othertown", state: "NY", zipCode: "67890", country: "US" },
       total: 0,
+      currency: "USD",
       items: [],
       status: "pending",
       createdAt: "2024-01-15T00:00:00Z",

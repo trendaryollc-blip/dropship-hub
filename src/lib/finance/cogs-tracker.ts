@@ -258,7 +258,7 @@ function calculateCostTrend(entries: COGSEntry[]): { direction: "increasing" | "
   return { direction: "stable", percentage: 0 };
 }
 
-function generateCostAlert(oldEntry: COGSEntry, newEntry: Omit<COGSEntry, "id" | "totalCOGS" | "priceHistory" | "createdAt" | "updatedAt">): void {
+function generateCostAlert(oldEntry: COGSEntry, newEntry: Pick<COGSEntry, "totalCOGS" | "productId" | "productTitle" | "unitCost" | "shippingCost" | "packagingCost" | "otherCosts">): void {
   const oldCost = oldEntry.totalCOGS;
   const newCost = newEntry.unitCost + newEntry.shippingCost + newEntry.packagingCost + newEntry.otherCosts;
   const changePercentage = oldCost > 0 ? +(((newCost - oldCost) / oldCost) * 100).toFixed(1) : 0;

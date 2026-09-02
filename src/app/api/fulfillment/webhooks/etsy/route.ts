@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     const items = (data.transactions || []).map((txn: Record<string, unknown>) => ({
       productId: String(txn.product_id || ""),
       name: String(txn.title || ""),
-      price: parseFloat(String(txn.price?.amount || txn.price || "0")) / 100,
+      price: parseFloat(String(typeof txn.price === "object" && txn.price !== null && "amount" in txn.price ? (txn.price as { amount: string }).amount : txn.price || "0")) / 100,
       quantity: Number(txn.quantity || 1),
       source: "unknown",
       supplierId: "unknown",

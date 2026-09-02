@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { generatePnLReport, getReport, getAllReports, deleteReport, exportReportToCSV, exportReportToPDFData, validatePnLReportInput } from "@/lib/finance/pnl-report";
 
-export const GET = withAuth(async (request: NextRequest, uid: string) => {
+export const GET = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get("action") || "list";
@@ -77,7 +77,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
       const orders = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Array<Record<string, unknown>>;
 
       const reportOrders = orders.map((o) => ({
-        orderId: typeof o.orderId === "string" ? o.orderId : o.id || "",
+        orderId: typeof o.orderId === "string" ? o.orderId : String(o.id || ""),
         orderDate: typeof o.date === "string" ? o.date : "",
         revenue: typeof o.revenue === "number" ? o.revenue : 0,
         cogs: typeof o.cogs === "number" ? o.cogs : 0,
@@ -88,7 +88,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
         adSpend: typeof o.adSpend === "number" ? o.adSpend : 0,
         otherCosts: typeof o.otherCosts === "number" ? o.otherCosts : 0,
         productTitle: typeof o.productTitle === "string" ? o.productTitle : "Unknown",
-        productId: typeof o.productId === "string" ? o.productId : o.id || "",
+        productId: typeof o.productId === "string" ? o.productId : String(o.id || ""),
         platform: typeof o.platform === "string" ? o.platform : "Unknown",
         supplierId: typeof o.supplierId === "string" ? o.supplierId : "unknown",
         supplierName: typeof o.supplierName === "string" ? o.supplierName : "Unknown",

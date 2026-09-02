@@ -33,14 +33,14 @@ import {
 describe("useHealthData", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getSearchHistory).mockResolvedValue([{ id: "1" }, { id: "2" }]);
-    vi.mocked(getCalcHistory).mockResolvedValue([{ id: "1" }]);
+    vi.mocked(getSearchHistory).mockResolvedValue([{ id: "1", query: "test", source: "manual", createdAt: "2024-01-01" }, { id: "2", query: "test2", source: "manual", createdAt: "2024-01-02" }] as never);
+    vi.mocked(getCalcHistory).mockResolvedValue([{ id: "1", type: "profit", inputs: {}, result: {}, savedAt: new Date() }] as never);
     vi.mocked(getCompetitorSearches).mockResolvedValue([]);
-    vi.mocked(getCostProfiles).mockResolvedValue([{ id: "1" }, { id: "2" }, { id: "3" }]);
-    vi.mocked(getStoreConnections).mockResolvedValue([{ id: "1" }]);
-    vi.mocked(getRevenueEntries).mockResolvedValue([{ id: "1" }, { id: "2" }]);
-    vi.mocked(getWatchlist).mockResolvedValue([{ id: "1" }]);
-    vi.mocked(getFavorites).mockResolvedValue([{ id: "1" }]);
+    vi.mocked(getCostProfiles).mockResolvedValue([{ id: "1", productId: "P1", productTitle: "Product", cogs: 10, shippingCost: 5, platformFee: 2, packagingCost: 1, otherCosts: 0.5, totalCOGS: 18.5, effectiveDate: "2024-01-01", isActive: true, priceHistory: [], createdAt: "2024-01-01", updatedAt: "2024-01-01" }, { id: "2", productId: "P2", productTitle: "Product 2", cogs: 15, shippingCost: 5, platformFee: 3, packagingCost: 1, otherCosts: 0.5, totalCOGS: 24.5, effectiveDate: "2024-01-01", isActive: true, priceHistory: [], createdAt: "2024-01-01", updatedAt: "2024-01-01" }, { id: "3", productId: "P3", productTitle: "Product 3", cogs: 20, shippingCost: 5, platformFee: 4, packagingCost: 1, otherCosts: 0.5, totalCOGS: 30.5, effectiveDate: "2024-01-01", isActive: true, priceHistory: [], createdAt: "2024-01-01", updatedAt: "2024-01-01" }] as never);
+    vi.mocked(getStoreConnections).mockResolvedValue([{ id: "1", platform: "shopify", name: "Store", url: "https://store.com", status: "connected", connectedAt: "2024-01-01" }] as never);
+    vi.mocked(getRevenueEntries).mockResolvedValue([{ id: "1", date: "2024-01-01", amount: 100, orders: 5, createdAt: "2024-01-01" }, { id: "2", date: "2024-01-02", amount: 200, orders: 10, createdAt: "2024-01-02" }] as never);
+    vi.mocked(getWatchlist).mockResolvedValue([{ id: "1", type: "product", title: "Watched", itemId: "W1", addedAt: "2024-01-01" }] as never);
+    vi.mocked(getFavorites).mockResolvedValue([{ id: "1", type: "product", title: "Fav", itemId: "F1", addedAt: "2024-01-01" }] as never);
   });
 
   it("loads health data on mount with counts", async () => {
@@ -75,7 +75,7 @@ describe("useHealthData", () => {
 
   it("handles rejected promises gracefully", async () => {
     vi.mocked(getSearchHistory).mockRejectedValue(new Error("fail"));
-    vi.mocked(getCalcHistory).mockResolvedValue([{ id: "1" }]);
+    vi.mocked(getCalcHistory).mockResolvedValue([{ id: "1", type: "profit", inputs: {}, result: {}, savedAt: new Date() }] as never);
 
     const { result } = renderHook(() => useHealthData());
 
@@ -90,7 +90,7 @@ describe("useHealthData", () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    vi.mocked(getSearchHistory).mockResolvedValue([{ id: "1" }, { id: "2" }, { id: "3" }]);
+    vi.mocked(getSearchHistory).mockResolvedValue([{ id: "1", query: "test", source: "manual", createdAt: "2024-01-01" }, { id: "2", query: "test2", source: "manual", createdAt: "2024-01-02" }, { id: "3", query: "test3", source: "manual", createdAt: "2024-01-03" }] as never);
 
     await result.current.refresh();
 

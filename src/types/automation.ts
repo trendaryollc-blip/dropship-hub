@@ -160,7 +160,7 @@ export interface AuditLogEntry {
 export interface BulkOperation {
   id: string;
   orderIds: string[];
-  action: "fulfill" | "cancel" | "sync_tracking" | "check_status";
+  action: "fulfill" | "cancel" | "sync_tracking" | "check_status" | "place_orders";
   status: "pending" | "running" | "completed" | "partial" | "failed";
   totalOrders: number;
   processedOrders: number;
@@ -239,7 +239,7 @@ export const RuleConditionSchema = z.object({
 
 export const RuleActionSchema = z.object({
   type: z.enum(["route_to_supplier", "set_priority", "auto_approve", "require_manual", "set_max_cost", "notify", "cancel_order"]),
-  params: z.record(z.union([z.string(), z.number(), z.boolean()])),
+  params: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
 });
 
 export const FulfillmentRuleSchema = z.object({
@@ -293,7 +293,7 @@ export const AutomationPipelineStateSchema = z.object({
     startedAt: z.string().nullable(),
     completedAt: z.string().nullable(),
     error: z.string().nullable(),
-    data: z.record(z.unknown()),
+    data: z.record(z.string(), z.unknown()),
   })),
 });
 
@@ -308,14 +308,14 @@ export const AuditLogEntrySchema = z.object({
     "rules_updated", "settings_updated",
   ]),
   details: z.string(),
-  metadata: z.record(z.unknown()),
+  metadata: z.record(z.string(), z.unknown()),
   timestamp: z.string(),
 });
 
 export const BulkOperationSchema = z.object({
   id: z.string(),
   orderIds: z.array(z.string()),
-  action: z.enum(["fulfill", "cancel", "sync_tracking", "check_status"]),
+  action: z.enum(["fulfill", "cancel", "sync_tracking", "check_status", "place_orders"]),
   status: z.enum(["pending", "running", "completed", "partial", "failed"]),
   totalOrders: z.number(),
   processedOrders: z.number(),

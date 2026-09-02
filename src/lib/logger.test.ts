@@ -10,10 +10,10 @@ describe("logger", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    consoleDebugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
-    consoleInfoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
-    consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    consoleDebugSpy = vi.spyOn(console, "debug").mockImplementation(() => {}) as unknown as ReturnType<typeof vi.fn>;
+    consoleInfoSpy = vi.spyOn(console, "info").mockImplementation(() => {}) as unknown as ReturnType<typeof vi.fn>;
+    consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {}) as unknown as ReturnType<typeof vi.fn>;
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {}) as unknown as ReturnType<typeof vi.fn>;
   });
 
   it("formatLog produces correct format", async () => {
@@ -62,39 +62,36 @@ describe("logger", () => {
   });
 
   it("silentCatch logs in development", async () => {
-    const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = "development";
+    vi.stubEnv("NODE_ENV", "development");
 
     const { silentCatch } = await import("./logger");
     silentCatch("ctx", new Error("fail"));
 
     expect(consoleWarnSpy).toHaveBeenCalled();
 
-    process.env.NODE_ENV = originalEnv;
+    vi.unstubAllEnvs();
   });
 
   it("silentCatch does not log in production", async () => {
-    const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
 
     const { silentCatch } = await import("./logger");
     silentCatch("ctx", new Error("fail"));
 
     expect(consoleWarnSpy).not.toHaveBeenCalled();
 
-    process.env.NODE_ENV = originalEnv;
+    vi.unstubAllEnvs();
   });
 
   it("logger.debug only logs in development", async () => {
-    const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = "development";
+    vi.stubEnv("NODE_ENV", "development");
 
     vi.resetModules();
     const { logger } = await import("./logger");
     logger.debug("debug msg");
     expect(consoleDebugSpy).toHaveBeenCalled();
 
-    process.env.NODE_ENV = originalEnv;
+    vi.unstubAllEnvs();
   });
 
   it("context parameter overrides are merged", async () => {
