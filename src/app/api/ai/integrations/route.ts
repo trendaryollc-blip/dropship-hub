@@ -33,7 +33,6 @@ function checkProviderStatus(envKeys: string[]): { configured: number; total: nu
     { name: "Groq", key: "GROQ_API_KEY" },
     { name: "Gemini", key: "GOOGLE_AI_API_KEY" },
     { name: "OpenAI", key: "OPENAI_API_KEY" },
-    { name: "Anthropic", key: "ANTHROPIC_API_KEY" },
     { name: "Mistral", key: "MISTRAL_API_KEY" },
     { name: "DeepSeek", key: "DEEPSEEK_API_KEY" },
   ];

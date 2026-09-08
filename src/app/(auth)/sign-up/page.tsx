@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Zap, Mail, Lock, User, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 
@@ -22,7 +22,6 @@ function SignUpContent() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { signUpWithEmail, signInWithGoogle } = useAuth();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = sanitizeCallbackUrl(searchParams.get("callbackUrl"));
 
@@ -31,7 +30,7 @@ function SignUpContent() {
     setError("");
     setLoading(true);
     try {
-      await signUpWithEmail(email, password);
+      await signUpWithEmail(email, password, name.trim());
       window.location.href = callbackUrl;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to create account";

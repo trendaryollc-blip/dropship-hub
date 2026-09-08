@@ -12,6 +12,64 @@ interface DigestMetrics {
   supplierDelays: number;
 }
 
+const _modelCache = new Map<string, { models: string[]; ts: number }>();
+const _MODEL_TTL = 3600000;
+const _CHAT_EXCLUDE = /whisper|guard|safeguard|tts|stt|embed|rerank|moderation|prompt/i;
+
+function _sortChatModels(ids: string[]): string[] {
+  return ids
+    .filter((id) => !_CHAT_EXCLUDE.test(id))
+    .sort((a, b) => {
+      const aN = parseFloat((a.match(/(\d+(?:\.\d+)?)b/i) || [, "0"])[1]);
+      const bN = parseFloat((b.match(/(\d+(?:\.\d+)?)b/i) || [, "0"])[1]);
+      return bN - aN;
+    });
+}
+
+async function _fetchModels(cacheKey: string, url: string, headers: Record<string, string>): Promise<string[]> {
+  const hit = _modelCache.get(cacheKey);
+  if (hit && Date.now() - hit.ts < _MODEL_TTL) return hit.models;
+  try {
+    const r = await fetch(url, { headers });
+    if (!r.ok) return hit?.models || [];
+    const d = await r.json();
+    const ids: string[] = (d.data ?? d.models ?? []).map((m: { id: string }) => m.id);
+    const sorted = _sortChatModels(ids);
+    if (sorted.length) _modelCache.set(cacheKey, { models: sorted, ts: Date.now() });
+    return sorted.length ? sorted : (hit?.models || []);
+  } catch {
+    return hit?.models || [];
+  }
+}
+
+async function _resolveModel(key: string, url: string, headers: Record<string, string>, fallback: string): Promise<string> {
+  const models = await _fetchModels(key, url, headers);
+  return models[0] || fallback;
+}
+
+async function _resolveGeminiModel(apiKey: string): Promise<string> {
+  const cacheKey = `gemini:${apiKey.slice(-8)}`;
+  const hit = _modelCache.get(cacheKey);
+  if (hit && Date.now() - hit.ts < _MODEL_TTL && hit.models.length) return hit.models[0];
+
+  const probeModels = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-1.5-flash"];
+  let lastStatus = 0;
+  let lastErrorMsg = "";
+  for (const model of probeModels) {
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey }, body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "hi" }] }] }) });
+      if (r.ok) { _modelCache.set(cacheKey, { models: [model], ts: Date.now() }); return model; }
+      lastStatus = r.status;
+      const body = await r.text().catch(() => "");
+      try { const j = JSON.parse(body); lastErrorMsg = j.error?.message || body.slice(0, 200); } catch { lastErrorMsg = body.slice(0, 200); }
+    } catch { /* try next */ }
+  }
+  if (lastStatus === 403) throw new Error("Gemini API access denied. Enable Gemini API at https://aistudio.google.com/apikey");
+  if (lastStatus === 400 && lastErrorMsg.includes("location")) throw new Error("Gemini API is not available in your region.");
+  throw new Error(`Gemini: No available models found. Last error: ${lastErrorMsg.slice(0, 200)}`);
+}
+
 interface DigestAlert {
   type: "stock" | "supplier" | "adSpend" | "trend";
   title: string;
@@ -166,11 +224,12 @@ Provide a 2-3 sentence executive summary highlighting the most important insight
 
       try {
         if (provider.name === "Groq") {
+          const model = await _resolveModel("groq", "https://api.groq.com/openai/v1/models", { Authorization: `Bearer ${apiKey}` }, "qwen/qwen3.8-27b");
           const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
             body: JSON.stringify({
-              model: "llama-3.3-70b-versatile",
+              model,
               messages: [{ role: "system", content: "You are a dropshipping business analyst. Provide concise, actionable summaries." }, { role: "user", content: prompt }],
               temperature: 0.5,
               max_tokens: 200,
@@ -181,7 +240,8 @@ Provide a 2-3 sentence executive summary highlighting the most important insight
             return data.choices?.[0]?.message?.content || generateFallbackSummary(metrics);
           }
         } else if (provider.name === "Gemini") {
-          const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent", {
+          const model = await _resolveGeminiModel(apiKey);
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
             method: "POST",
             headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
             body: JSON.stringify({
@@ -194,11 +254,12 @@ Provide a 2-3 sentence executive summary highlighting the most important insight
             return data.candidates?.[0]?.content?.parts?.[0]?.text || generateFallbackSummary(metrics);
           }
         } else if (provider.name === "OpenAI") {
+          const model = await _resolveModel("openai", "https://api.openai.com/v1/models", { Authorization: `Bearer ${apiKey}` }, "gpt-4o-mini");
           const res = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
             body: JSON.stringify({
-              model: "gpt-4o-mini",
+              model,
               messages: [{ role: "system", content: "You are a dropshipping business analyst. Provide concise, actionable summaries." }, { role: "user", content: prompt }],
               temperature: 0.5,
               max_tokens: 200,

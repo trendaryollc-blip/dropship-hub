@@ -7,7 +7,17 @@ import {
   BarChart3, Calendar, AlertTriangle, ArrowUpRight,
   ExternalLink, Info, Settings,
   Search, RefreshCcw, ChevronDown, ChevronUp,
+  Sparkles, GitBranch, Plus,
 } from "lucide-react";
+import PlatformConnect from "@/components/ad-campaigns/PlatformConnect";
+import CampaignCard from "@/components/ad-campaigns/CampaignCard";
+import CampaignForm from "@/components/ad-campaigns/CampaignForm";
+import CampaignMetrics from "@/components/ad-campaigns/CampaignMetrics";
+import CreativeGenerator from "@/components/ad-campaigns/CreativeGenerator";
+import CreativeLibrary from "@/components/ad-campaigns/CreativeLibrary";
+import ABTestCard from "@/components/ad-campaigns/ABTestCard";
+import BudgetDashboard from "@/components/ad-campaigns/BudgetDashboard";
+import { useAPI } from "@/hooks/useAPI";
 
 interface BudgetScenario {
   name: string;
@@ -76,7 +86,7 @@ function ScenarioCard({
     const roas = scenario.monthlyBudget > 0 ? monthlyRevenue / scenario.monthlyBudget : 0;
     const cpa = monthlyOrders > 0 ? scenario.monthlyBudget / monthlyOrders : 0;
     const profitMargin = monthlyRevenue > 0 ? (profit / monthlyRevenue) * 100 : 0;
-    const breakEvenOrders = Math.ceil(scenario.monthlyBudget / (scenario.avgOrderValue * 0.7));
+    const breakEvenOrders = scenario.avgOrderValue > 0 ? Math.ceil(scenario.monthlyBudget / (scenario.avgOrderValue * 0.7)) : 0;
     const requiredConvRate = monthlyClicks > 0 ? (breakEvenOrders / monthlyClicks) * 100 : 0;
     return { monthlyClicks, monthlyOrders, monthlyRevenue, profit, roas, cpa, profitMargin, breakEvenOrders, requiredConvRate };
   }, [scenario]);
@@ -196,10 +206,19 @@ function ScenarioCard({
 
 export default function AdRoiPage() {
   const [scenarios, setScenarios] = useState(defaultScenarios);
-  const [activeTab, setActiveTab] = useState<"calculator" | "timing" | "platforms">("calculator");
+  const [activeTab, setActiveTab] = useState<"calculator" | "timing" | "platforms" | "campaigns" | "creatives" | "abtests" | "optimizer">("calculator");
   const [expandedCard, setExpandedCard] = useState<number | null>(null);
   const [timingView, setTimingView] = useState<"calendar" | "ranked">("calendar");
   const [productQuery, setProductQuery] = useState("");
+  const [showCampaignForm, setShowCampaignForm] = useState(false);
+
+  const { data: campaignsData } = useAPI<{ campaigns: Array<{ id: string; platform: string; name: string; status: string; productTitle: string; dailyBudget: number; startDate: string; metrics: { impressions: number; clicks: number; conversions: number; spend: number; revenue: number; roas: number; cpc: number; ctr: number; conversionRate: number } }> }>("/api/ad-campaigns");
+  const { data: testsData } = useAPI<{ tests: Array<{ id: string; campaignId: string; name: string; status: string; creativeAId: string; creativeBId: string; splitPercent: number; winnerId?: string; winnerConfidence?: number; startDate: string; endDate?: string; results?: { aMetrics: { impressions: number; clicks: number; conversions: number; ctr: number; conversionRate: number }; bMetrics: { impressions: number; clicks: number; conversions: number; ctr: number; conversionRate: number }; statisticallySignificant: boolean; pValue?: number }; createdAt: string; updatedAt: string }> }>("/api/ab-tests");
+
+  const campaigns = campaignsData?.campaigns || [];
+  const tests = testsData?.tests || [];
+  const activeCampaigns = campaigns.filter((c) => c.status === "active");
+  const runningTests = tests.filter((t) => t.status === "running");
 
   const updateScenario = (index: number, field: keyof BudgetScenario, value: number) => {
     setScenarios((prev) => prev.map((s, i) => i === index ? { ...s, [field]: value } : s));
@@ -282,10 +301,17 @@ export default function AdRoiPage() {
           { id: "calculator" as const, label: "ROI Calculator", icon: DollarSign },
           { id: "timing" as const, label: "Market Timing", icon: Calendar },
           { id: "platforms" as const, label: "Platform Comparison", icon: BarChart3 },
+          { id: "campaigns" as const, label: "Campaigns", icon: Target, badge: activeCampaigns.length },
+          { id: "creatives" as const, label: "Creatives", icon: Sparkles },
+          { id: "abtests" as const, label: "A/B Tests", icon: GitBranch, badge: runningTests.length },
+          { id: "optimizer" as const, label: "Optimizer", icon: Zap },
         ].map((tab) => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${activeTab === tab.id ? "bg-accent text-white shadow-[0_0_15px_rgba(var(--glow-color),0.3)]" : "bg-surface border border-border text-muted-foreground hover:text-foreground"}`}>
             <tab.icon className="h-4 w-4" /> {tab.label}
+            {tab.badge !== undefined && tab.badge > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-white/20">{tab.badge}</span>
+            )}
           </button>
         ))}
       </div>
@@ -693,6 +719,97 @@ export default function AdRoiPage() {
               </Link>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Campaigns Tab */}
+      {activeTab === "campaigns" && (
+        <div className="space-y-6 animate-slide-up">
+          <PlatformConnect />
+          <CampaignMetrics />
+
+          <div className="flex items-center justify-between">
+            <h3 className="font-display text-sm font-semibold text-foreground">Your Campaigns ({campaigns.length})</h3>
+            <button
+              onClick={() => setShowCampaignForm(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 border border-accent/20 text-xs font-medium text-accent hover:bg-accent/20 transition-all"
+            >
+              <Plus className="h-3 w-3" /> New Campaign
+            </button>
+          </div>
+
+          {campaigns.length === 0 ? (
+            <div className="glass rounded-2xl p-8 text-center">
+              <Target className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground mb-2">No campaigns yet</p>
+              <p className="text-xs text-muted-foreground mb-4">Create your first campaign to start tracking ad performance.</p>
+              <button
+                onClick={() => setShowCampaignForm(true)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent/10 border border-accent/20 text-sm font-medium text-accent hover:bg-accent/20 transition-all"
+              >
+                <Plus className="h-4 w-4" /> Create Campaign
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {campaigns.map((c) => (
+                <CampaignCard key={c.id} campaign={c} />
+              ))}
+            </div>
+          )}
+
+          {showCampaignForm && <CampaignForm onClose={() => setShowCampaignForm(false)} />}
+        </div>
+      )}
+
+      {/* Creatives Tab */}
+      {activeTab === "creatives" && (
+        <div className="space-y-6 animate-slide-up">
+          <CreativeGenerator />
+          <CreativeLibrary />
+        </div>
+      )}
+
+      {/* A/B Tests Tab */}
+      {activeTab === "abtests" && (
+        <div className="space-y-6 animate-slide-up">
+          {tests.length === 0 ? (
+            <div className="glass rounded-2xl p-8 text-center">
+              <GitBranch className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground mb-2">No A/B tests yet</p>
+              <p className="text-xs text-muted-foreground">Generate some creatives first, then create A/B tests to see which perform best.</p>
+            </div>
+          ) : (
+            <>
+              {runningTests.length > 0 && (
+                <div>
+                  <h3 className="font-display text-sm font-semibold text-foreground mb-3">Running ({runningTests.length})</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {runningTests.map((t) => (
+                      <ABTestCard key={t.id} test={t} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {tests.filter((t) => t.status !== "running").length > 0 && (
+                <div>
+                  <h3 className="font-display text-sm font-semibold text-foreground mb-3">Completed</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {tests.filter((t) => t.status !== "running").map((t) => (
+                      <ABTestCard key={t.id} test={t} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Optimizer Tab */}
+      {activeTab === "optimizer" && (
+        <div className="space-y-6 animate-slide-up">
+          <BudgetDashboard />
         </div>
       )}
     </div>

@@ -35,17 +35,19 @@ type MutationArgs = {
   body?: unknown;
   method?: string;
   headers?: Record<string, string>;
+  url?: string;
 };
 
 async function mutationFetcher(_url: string, { arg }: { arg: MutationArgs }) {
-  const { body, method = "POST", headers = {} } = arg;
+  const { body, method = "POST", headers = {}, url: overrideUrl } = arg;
+  const targetUrl = overrideUrl || _url;
   const token = await getIdToken();
   const authHeaders: Record<string, string> = {
     "Content-Type": "application/json",
     ...headers,
   };
   if (token) authHeaders["Authorization"] = `Bearer ${token}`;
-  return safeFetch<unknown>(_url, {
+  return safeFetch<unknown>(targetUrl, {
     method,
     headers: authHeaders,
     body: body ? JSON.stringify(body) : undefined,

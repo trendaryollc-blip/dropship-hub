@@ -87,7 +87,9 @@ function StatCard({
 
 export default function ReportsPage() {
   const { user } = useAuth();
-  const reportsUrl = user ? `/api/fulfillment/reports?uid=${user.uid}` : null;
+  const [dateRange, setDateRange] = useState<"7d" | "30d" | "90d" | "all">("30d");
+  const [exporting, setExporting] = useState(false);
+  const reportsUrl = user ? `/api/fulfillment/reports?uid=${user.uid}&range=${dateRange}` : null;
 
   const { data: reportsData, isLoading, error: fetchError } = useAPI<{
     summary?: FinancialSummary;
@@ -105,9 +107,6 @@ export default function ReportsPage() {
   const supplierBreakdown = reportsData?.supplierBreakdown ?? [];
   const platformBreakdown = reportsData?.platformBreakdown ?? [];
   const dailyRevenue = reportsData?.dailyRevenue ?? [];
-
-  const [dateRange, setDateRange] = useState<"7d" | "30d" | "90d" | "all">("30d");
-  const [exporting, setExporting] = useState(false);
 
   const handleExport = async () => {
     if (!user) return;

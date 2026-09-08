@@ -3,243 +3,256 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  ArrowUpRight, Target, CheckCircle2, Search, DollarSign,
-  Truck, Zap, BarChart3, Eye, EyeOff,
+  DollarSign, ShoppingCart, Package, TrendingUp,
+  LayoutGrid, Crown, Search, Truck,
 } from "lucide-react";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useAuth } from "@/components/auth/AuthProvider";
+import MetricCard from "@/components/ui/MetricCard";
+import { useDashboardLayout } from "@/hooks/useDashboardLayout";
+import { layoutPresets, type BentoLayout } from "@/components/dashboard/BentoLayoutPresets";
+import BentoGrid, { BentoGridItem } from "@/components/dashboard/BentoGrid";
 
 import MarketPulseTicker from "@/components/dashboard/MarketPulseTicker";
 import AIDailyPick from "@/components/dashboard/AIDailyPick";
-import RevenueForecast from "@/components/dashboard/RevenueForecast";
-import IntelligenceHub from "@/components/dashboard/IntelligenceHub";
+import { AIMonitoringPanelWrapper, MarketPulseGridWrapper } from "@/components/dashboard/IntelligenceHub";
+import LiveIntelligenceFeedCard from "@/components/dashboard/LiveIntelligenceFeedCard";
 import NicheRadarCards from "@/components/dashboard/NicheRadarCards";
 import SupplierStatusCards from "@/components/dashboard/SupplierStatusCards";
 import DailyMission from "@/components/dashboard/DailyMission";
 import MarketplaceHeatmap from "@/components/dashboard/MarketplaceHeatmap";
-import InlineCalculator from "@/components/dashboard/InlineCalculator";
-import QuickCompareBar from "@/components/dashboard/QuickCompareBar";
 import TrendingProducts from "@/components/dashboard/TrendingProducts";
-import GreetingCard from "@/components/dashboard/GreetingCard";
-import DailyDigest from "@/components/dashboard/DailyDigest";
+import QuickCompareBar from "@/components/dashboard/QuickCompareBar";
+import CommandStatusOrbital from "@/components/dashboard/CommandStatusOrbital";
+import ContextualActions from "@/components/dashboard/ContextualActions";
+import FulfillmentPipeline from "@/components/dashboard/FulfillmentPipeline";
 import { PageErrorBoundary } from "@/components/ui/PageErrorBoundary";
 
-const gettingStartedSteps = [
-  { id: "search", text: "Search for your first product", href: "/products", icon: Search },
-  { id: "competitor", text: "Check the competition", href: "/competitors", icon: BarChart3 },
-  { id: "calc", text: "Calculate your profit margin", href: "/calculator", icon: DollarSign },
-  { id: "supplier", text: "Find a reliable supplier", href: "/suppliers", icon: Truck },
-  { id: "store", text: "Connect your store", href: "/store", icon: Zap },
-];
-
-interface UserProfile {
-  niche?: string;
-  budget?: string;
-  store?: string;
-}
-
-const nicheLabels: Record<string, string> = {
-  pets: "Pet Supplies",
-  home: "Home & Kitchen",
-  tech: "Electronics & Tech",
-  fitness: "Fitness & Health",
-  fashion: "Fashion & Accessories",
-  beauty: "Beauty & Skincare",
-  automotive: "Automotive",
-  outdoors: "Outdoor & Travel",
-};
-
-const budgetLabels: Record<string, string> = {
-  starter: "Starter ($0-500/mo)",
-  growing: "Growing ($500-2K/mo)",
-  scaling: "Scaling ($2K-10K/mo)",
-  pro: "Pro ($10K+/mo)",
+const presetIcons: Record<string, typeof Crown> = {
+  executive: Crown,
+  "product-scout": Search,
+  "financial-focus": DollarSign,
+  "command-center": LayoutGrid,
 };
 
 export default function DashboardHome() {
-  const { data, markAlertRead, markAllAlertsRead, addToCompare, removeFromCompare, clearCompare } = useDashboardData();
+  const { data, markAlertRead, markAllAlertsRead, addToCompare, removeFromCompare, clearCompare, loading } = useDashboardData();
   const { user } = useAuth();
-  const [advancedMode, setAdvancedMode] = useState(false);
-  const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>({});
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const { layout, setLayout, resetToDefault, isLoading: layoutLoading } = useDashboardLayout();
+  const [activePreset, setActivePreset] = useState("command-center");
+  const [editMode, setEditMode] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      const saved = localStorage.getItem(`dashboard_steps_${user.uid}`);
-      if (saved) {
-        try { setCompletedSteps(JSON.parse(saved)); } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[DashboardHome] silently caught", e); }
-      }
-      // Read onboarding profile for personalization
-      try {
-        const stored = localStorage.getItem("userProfile");
-        if (stored) {
-          setProfile(JSON.parse(stored));
-        }
-      } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[DashboardHome] silently caught", e); }
-    }
-  }, [user]);
+  const stats = data.revenue.stats;
 
-  const toggleStep = (stepId: string) => {
-    const updated = { ...completedSteps, [stepId]: !completedSteps[stepId] };
-    setCompletedSteps(updated);
-    if (user) {
-      localStorage.setItem(`dashboard_steps_${user.uid}`, JSON.stringify(updated));
+  const applyPreset = (presetId: string) => {
+    const preset = layoutPresets.find((p) => p.id === presetId);
+    if (preset) {
+      setActivePreset(presetId);
+      setLayout(preset.layout);
     }
   };
 
-  const completedCount = Object.values(completedSteps).filter(Boolean).length;
-  const progressPct = Math.round((completedCount / gettingStartedSteps.length) * 100);
+  const toggleItemVisibility = (id: string) => {
+    setLayout(
+      layout.map((item) =>
+        item.id === id ? { ...item, visible: !item.visible } : item
+      )
+    );
+  };
+
+  const onlineSuppliers = data.suppliers.filter((s) => s.status === "online").length;
 
   return (
     <PageErrorBoundary>
-    <div className="max-w-7xl mx-auto space-y-6 pb-24">
-      {/* Header with mode toggle */}
+    <div className="max-w-7xl mx-auto space-y-4 pb-24">
+
+      {/* ═══ ZONE 1: COMMAND STATUS ORBITAL ═══ */}
+      <CommandStatusOrbital
+        username={user?.displayName || user?.email?.split("@")[0] || "there"}
+        healthScore={87}
+        revenue={stats.revenue ?? 0}
+        orders={stats.orders ?? 0}
+        profit={stats.avgOrder ?? 0}
+        revenueChange={stats.growth}
+        storesConnected={2}
+        suppliersActive={onlineSuppliers}
+        pendingOrders={data.fulfillmentPipeline.pending}
+        contextualActions={data.contextualActions}
+      />
+
+      {/* ═══ ZONE 1: CONTEXTUAL ACTIONS ═══ */}
+      {data.contextualActions.length > 0 && (
+        <ContextualActions actions={data.contextualActions} />
+      )}
+
+      {/* ═══ ZONE 1: KPI ROW ═══ */}
+      {loading ? (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="surface-raised rounded-2xl p-5 animate-pulse">
+              <div className="space-y-3">
+                <div className="h-4 bg-surface-hover rounded-lg w-1/3" />
+                <div className="h-3 bg-surface-hover rounded-lg w-2/3" />
+                <div className="h-8 bg-surface-hover rounded-lg w-1/2 mt-4" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <MetricCard icon={DollarSign} label="Revenue" value={stats.revenue ?? 0} prefix="$" change={stats.growth ?? 0} color="emerald" delay={0} />
+          <MetricCard icon={ShoppingCart} label="Orders" value={stats.orders ?? 0} change={stats.avgOrder ?? 0} color="blue" delay={80} />
+          <MetricCard icon={Package} label="Products Tracked" value={data.trending.length} color="amber" delay={160} />
+          <MetricCard icon={TrendingUp} label="Opportunities" value={data.briefing.opportunities ?? 0} color="purple" delay={240} />
+        </div>
+      )}
+
+      {/* Header with layout controls */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Your dropshipping command center</p>
+          <h2 className="font-display text-base font-bold text-foreground">Command Center</h2>
+          <p className="text-xs text-muted-foreground">Your dropshipping operations at a glance</p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground hidden sm:inline">
-            {advancedMode ? "Switch to a simplified dashboard" : "View detailed analytics and insights"}
-          </span>
+        <div className="flex items-center gap-2">
+          {/* Preset selector */}
+          <div className="hidden sm:flex items-center gap-1 bg-surface rounded-xl border border-border p-0.5">
+            {layoutPresets.map((preset) => {
+              const Icon = presetIcons[preset.id] || LayoutGrid;
+              return (
+                <button
+                  key={preset.id}
+                  onClick={() => applyPreset(preset.id)}
+                  title={preset.description}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                    activePreset === preset.id
+                      ? "bg-accent text-white shadow-lg shadow-accent/20"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="h-3 w-3" />
+                  <span className="hidden lg:inline">{preset.label}</span>
+                </button>
+              );
+            })}
+          </div>
+          {/* Edit mode toggle */}
           <button
-            onClick={() => setAdvancedMode(!advancedMode)}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border border-border bg-surface hover:bg-surface-hover transition-all"
+            onClick={() => setEditMode(!editMode)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all duration-200 ${
+              editMode
+                ? "bg-accent/10 text-accent border-accent/20"
+                : "bg-surface text-muted-foreground border-border hover:text-foreground"
+            }`}
           >
-            {advancedMode ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-            {advancedMode ? "Simple View" : "Advanced View"}
+            <LayoutGrid className="h-3 w-3" />
+            {editMode ? "Done" : "Customize"}
           </button>
         </div>
       </div>
 
-      {/* Greeting */}
-      <GreetingCard username={user?.displayName || user?.email?.split("@")[0] || "there"} />
+      {/* ═══ ZONE 2 & 3: BENTO GRID ═══ */}
+      <BentoGrid layout={layout} editMode={editMode}>
+        {/* Fulfillment Pipeline */}
+        {layout.find((i) => i.id === "fulfillment")?.visible !== false && (
+          <BentoGridItem
+            item={layout.find((i) => i.id === "fulfillment") || { id: "fulfillment", colSpan: 2, rowSpan: 2, visible: true }}
+            editMode={editMode}
+            onToggleVisibility={toggleItemVisibility}
+          >
+            <FulfillmentPipeline data={data.fulfillmentPipeline} />
+          </BentoGridItem>
+        )}
 
-      {/* Personalized profile badge */}
-      {profile && (profile.niche || profile.budget) && (
-        <div className="flex items-center gap-2 flex-wrap">
-          {profile.niche && nicheLabels[profile.niche] && (
-            <span className="text-xs px-3 py-1.5 rounded-full bg-accent/10 text-accent border border-accent/20">
-              {nicheLabels[profile.niche]}
-            </span>
-          )}
-          {profile.budget && budgetLabels[profile.budget] && (
-            <span className="text-xs px-3 py-1.5 rounded-full bg-emerald-400/10 text-emerald-400 border border-emerald-400/20">
-              {budgetLabels[profile.budget]}
-            </span>
-          )}
-          {profile.store && profile.store !== "none" && (
-            <span className="text-xs px-3 py-1.5 rounded-full bg-purple-400/10 text-purple-400 border border-purple-400/20">
-              {profile.store.charAt(0).toUpperCase() + profile.store.slice(1)}
-            </span>
-          )}
-        </div>
-      )}
+        {/* AI Daily Pick */}
+        {layout.find((i) => i.id === "daily-pick")?.visible !== false && data.dailyPick && (
+          <BentoGridItem
+            item={layout.find((i) => i.id === "daily-pick") || { id: "daily-pick", colSpan: 2, rowSpan: 2, visible: true }}
+            editMode={editMode}
+            onToggleVisibility={toggleItemVisibility}
+          >
+            <AIDailyPick pick={data.dailyPick} />
+          </BentoGridItem>
+        )}
 
-      {/* Getting Started Checklist */}
-      <div className="glass rounded-2xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Target className="h-4 w-4 text-accent" />
-            <h3 className="font-display text-sm font-semibold text-foreground">Getting Started</h3>
+        {/* ═══ INTELLIGENCE SECTION: AI Market Intel + Live Feed ═══ */}
+        <BentoGridItem
+          item={{ id: "intelligence", colSpan: 4, rowSpan: 1, visible: true }}
+          editMode={editMode}
+          onToggleVisibility={toggleItemVisibility}
+        >
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <AIMonitoringPanelWrapper briefing={data.briefing} alerts={data.alerts} />
+            <LiveIntelligenceFeedCard
+              alerts={data.alerts}
+              onRead={markAlertRead}
+              onReadAll={markAllAlertsRead}
+            />
           </div>
-          <span className="text-xs text-muted-foreground">{completedCount}/{gettingStartedSteps.length} done</span>
-        </div>
+        </BentoGridItem>
 
-        <div className="h-1.5 rounded-full bg-surface overflow-hidden mb-4">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-accent to-emerald-400 transition-all duration-700"
-            style={{ width: `${progressPct}%` }}
-          />
-        </div>
-
-        <div className="space-y-2">
-          {gettingStartedSteps.map((step) => (
-            <button
-              key={step.id}
-              onClick={() => toggleStep(step.id)}
-              className="w-full flex items-center gap-3 p-3 rounded-xl bg-surface/50 hover:bg-surface-hover transition-all group text-left"
-            >
-              <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-all ${
-                completedSteps[step.id]
-                  ? "bg-emerald-400/10 border border-emerald-400/20"
-                  : "border border-border"
-              }`}>
-                {completedSteps[step.id] ? (
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                ) : (
-                  <step.icon className="h-3.5 w-3.5 text-muted-foreground group-hover:text-accent transition-colors" />
-                )}
-              </div>
-              <span className={`text-sm flex-1 text-left ${
-                completedSteps[step.id] ? "text-muted-foreground line-through" : "text-muted-foreground group-hover:text-foreground"
-              } transition-colors`}>
-                {step.text}
-              </span>
-              {!completedSteps[step.id] && (
-                <Link
-                  href={step.href}
-                  onClick={(e) => e.stopPropagation()}
-                  className="text-[10px] text-accent hover:text-accent/80 font-medium flex items-center gap-1 shrink-0"
-                >
-                  Do it <ArrowUpRight className="h-3 w-3" />
-                </Link>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* AI Product of the Day */}
-      {data.dailyPick && <AIDailyPick pick={data.dailyPick} />}
-
-      {/* Advanced Mode: Show all widgets */}
-      {advancedMode && (
-        <>
-          <MarketPulseTicker items={data.ticker} />
-
-          <RevenueForecast
-            actual={data.revenue.actual}
-            predicted={data.revenue.predicted}
-            stats={[]}
-          />
-
-          {data.mission && <DailyMission />}
-
-          <IntelligenceHub
-            alerts={data.alerts}
-            onRead={markAlertRead}
-            onReadAll={markAllAlertsRead}
-            briefing={data.briefing}
-            pulse={data.pulse}
-            actionStats={data.actionStats}
-          />
-
-          <DailyDigest />
-
-          <NicheRadarCards niches={data.niches} />
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1">
-              <InlineCalculator />
-            </div>
-            <div className="lg:col-span-2">
-              <SupplierStatusCards suppliers={data.suppliers} />
-            </div>
-          </div>
-
-          <MarketplaceHeatmap categories={data.heatmap} />
-
+        {/* ═══ TRENDING PRODUCTS: Full Width Carousel ═══ */}
+        <BentoGridItem
+          item={{ id: "trending", colSpan: 4, rowSpan: 1, visible: true }}
+          editMode={editMode}
+          onToggleVisibility={toggleItemVisibility}
+        >
           <TrendingProducts products={data.trending} onAddCompare={addToCompare} />
+        </BentoGridItem>
 
-          <QuickCompareBar
-            items={data.compareItems}
-            onRemove={removeFromCompare}
-            onClear={clearCompare}
-          />
-        </>
-      )}
+        {/* Niche Radar */}
+        {layout.find((i) => i.id === "niches")?.visible !== false && (
+          <BentoGridItem
+            item={layout.find((i) => i.id === "niches") || { id: "niches", colSpan: 4, rowSpan: 1, visible: true }}
+            editMode={editMode}
+            onToggleVisibility={toggleItemVisibility}
+          >
+            <NicheRadarCards niches={data.niches} />
+          </BentoGridItem>
+        )}
+
+        {/* Marketplace Heatmap */}
+        {layout.find((i) => i.id === "heatmap")?.visible !== false && (
+          <BentoGridItem
+            item={layout.find((i) => i.id === "heatmap") || { id: "heatmap", colSpan: 4, rowSpan: 1, visible: true }}
+            editMode={editMode}
+            onToggleVisibility={toggleItemVisibility}
+          >
+            <MarketplaceHeatmap categories={data.heatmap} />
+          </BentoGridItem>
+        )}
+
+        {/* Supplier Status */}
+        {layout.find((i) => i.id === "suppliers")?.visible !== false && (
+          <BentoGridItem
+            item={layout.find((i) => i.id === "suppliers") || { id: "suppliers", colSpan: 2, rowSpan: 1, visible: true }}
+            editMode={editMode}
+            onToggleVisibility={toggleItemVisibility}
+          >
+            <SupplierStatusCards suppliers={data.suppliers} />
+          </BentoGridItem>
+        )}
+
+        {/* Daily Mission */}
+        {layout.find((i) => i.id === "mission")?.visible !== false && data.mission && (
+          <BentoGridItem
+            item={layout.find((i) => i.id === "mission") || { id: "mission", colSpan: 2, rowSpan: 1, visible: true }}
+            editMode={editMode}
+            onToggleVisibility={toggleItemVisibility}
+          >
+            <DailyMission />
+          </BentoGridItem>
+        )}
+      </BentoGrid>
+
+      {/* ═══ ZONE 3: MARKET PULSE TICKER ═══ */}
+      <MarketPulseTicker items={data.ticker} />
+
+      {/* Compare Bar */}
+      <QuickCompareBar
+        items={data.compareItems}
+        onRemove={removeFromCompare}
+        onClear={clearCompare}
+      />
     </div>
     </PageErrorBoundary>
   );

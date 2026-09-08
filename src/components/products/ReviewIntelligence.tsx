@@ -3,6 +3,7 @@
 import { Star, ThumbsUp, ThumbsDown, Minus, ShieldCheck, MessageSquare } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { ReviewData } from "@/types/enrichment";
+import SectionEmpty from "./SectionEmpty";
 
 export default function ReviewIntelligence({ data }: { data: ReviewData | null }) {
   const { ref, isInView } = useInView({ threshold: 0.1 });
@@ -17,11 +18,7 @@ export default function ReviewIntelligence({ data }: { data: ReviewData | null }
             <p className="text-[10px] text-muted-foreground">Analysis of reviews</p>
           </div>
         </div>
-        <div className="p-8 text-center">
-          <MessageSquare className="h-8 w-8 text-muted-foreground/20 mx-auto mb-2" />
-          <p className="text-xs text-muted-foreground">Review data unavailable</p>
-          <p className="text-[10px] text-muted-foreground/60 mt-1">Could not fetch reviews for this product</p>
-        </div>
+        <SectionEmpty icon={MessageSquare} title="Review data unavailable" description="Could not fetch reviews for this product" iconColor="text-muted-foreground/20" />
       </div>
     );
   }

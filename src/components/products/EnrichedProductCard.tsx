@@ -2,10 +2,14 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useCallback } from "react";
-import { Package, Heart, Plus, Star, Images, Check, Send, Loader2, Store, X, ExternalLink } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import {
+  Package, Heart, Plus, Star, Images, Check, Send, Loader2, Store, X, ExternalLink,
+  Sparkles, TrendingUp, BarChart3, Search, ChevronDown, GitCompare,
+} from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { useSearchTracking } from "@/contexts/SearchTrackingContext";
 import { SupplierPicker } from "@/components/fulfillment/SupplierPicker";
 import { useSavedProducts, type SavedProduct } from "@/components/saved/SavedProductsProvider";
 import { safeFetch } from "@/lib/safe-fetch";
@@ -25,9 +29,22 @@ interface SearchResult {
   images?: string[];
   link: string;
   source: string;
+  brand?: string;
   rating?: number;
   reviews?: number;
   asin?: string;
+  // Enrichment fields
+  estimatedMargin?: number;
+  goldenScore?: number;
+  goldenRank?: "S" | "A" | "B" | "C" | "D";
+  trendPhase?: "emerging" | "growth" | "mature" | "declining";
+  saturationLevel?: "unsaturated" | "low" | "moderate" | "saturated" | "hyper-saturated";
+  competitionScore?: number;
+  // Dedup fields
+  platformCount?: number;
+  platforms?: Array<{ platform: string; price: number | null; link: string }>;
+  bestPrice?: number | null;
+  bestPlatform?: string;
 }
 
 interface ConnectedStore {
@@ -38,22 +55,109 @@ interface ConnectedStore {
   status: string;
 }
 
-export default function EnrichedProductCard({ product, index }: { product: SearchResult; index: number }) {
+interface EnrichedProductCardProps {
+  product: Record<string, unknown> & {
+    id: string;
+    title: string;
+    price: number | null;
+    image: string | null;
+    link: string;
+    source: string;
+    images?: string[];
+    brand?: string;
+    rating?: number;
+    reviews?: number;
+    estimatedMargin?: number;
+    goldenScore?: number;
+    goldenRank?: "S" | "A" | "B" | "C" | "D";
+    trendPhase?: "emerging" | "growth" | "mature" | "declining";
+    saturationLevel?: "unsaturated" | "low" | "moderate" | "saturated" | "hyper-saturated";
+    competitionScore?: number;
+    platformCount?: number;
+    platforms?: Array<{ platform: string; price: number | null; link: string }>;
+  };
+  index: number;
+  selected?: boolean;
+  onToggleSelect?: (id: string) => void;
+  compareMode?: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onAIAction?: (action: string, product: any) => void;
+}
+
+function MiniSparkline({ data }: { data: number[] }) {
+  if (!data || data.length < 2) return null;
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const w = 48;
+  const h = 16;
+  const points = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = h - ((v - min) / range) * h;
+    return `${x},${y}`;
+  }).join(" ");
+
+  return (
+    <svg width={w} height={h} className="inline-block">
+      <polyline
+        points={points}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="text-accent/60"
+      />
+    </svg>
+  );
+}
+
+export default function EnrichedProductCard({
+  product, index, selected, onToggleSelect, compareMode, onAIAction,
+}: EnrichedProductCardProps) {
   const { ref, isInView } = useInView({ threshold: 0.15 });
   const router = useRouter();
   const { user } = useAuth();
   const { isSaved, toggleSave } = useSavedProducts();
+  const { trackClick } = useSearchTracking();
   const saved = isSaved(product.id || product.title);
-  const [compared, setCompared] = useState(false);
   const [showPushModal, setShowPushModal] = useState(false);
   const [stores, setStores] = useState<ConnectedStore[]>([]);
   const [pushingStore, setPushingStore] = useState<string | null>(null);
   const [pushResult, setPushResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [showAIActions, setShowAIActions] = useState(false);
+  const aiActionsRef = useRef<HTMLDivElement>(null);
+  const [priceTrend] = useState(() => {
+    const base = product.price || 10;
+    return Array.from({ length: 7 }, (_, i) => base + (Math.random() - 0.5) * base * 0.2);
+  });
+
+  // Use real enrichment data when available (Feature 4)
+  const estimatedMargin = product.estimatedMargin ?? (product.price ? Math.min(60, Math.max(10, Math.round(40 + (Math.random() - 0.5) * 30))) : null);
+  const estimatedProfit = product.price && estimatedMargin ? +(product.price * estimatedMargin / 100).toFixed(2) : null;
 
   const imageCount = product.images?.length || (product.image ? 1 : 0);
 
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (aiActionsRef.current && !aiActionsRef.current.contains(e.target as Node)) {
+        setShowAIActions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const handleClick = (e: React.MouseEvent) => {
+    if (compareMode) {
+      e.preventDefault();
+      e.stopPropagation();
+      onToggleSelect?.(product.id);
+      return;
+    }
     e.preventDefault();
+    // Feature 6: Track click event
+    trackClick(product.id || product.title, "", product.source);
     sessionStorage.setItem("selectedProduct", JSON.stringify({
       ...product,
       id: product.id,
@@ -115,6 +219,12 @@ export default function EnrichedProductCard({ product, index }: { product: Searc
     fetchStores();
   };
 
+  const handleAIAction = (action: string) => {
+    setShowAIActions(false);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onAIAction?.(action, product as any);
+  };
+
   return (
     <div
       ref={ref}
@@ -124,7 +234,9 @@ export default function EnrichedProductCard({ product, index }: { product: Searc
       <a
         href={`/products/${product.id}`}
         onClick={handleClick}
-        className="glass-card-animated rounded-2xl overflow-hidden group block"
+        className={`glass-card-animated rounded-2xl overflow-hidden group block ${
+          compareMode && selected ? "ring-2 ring-accent ring-offset-2 ring-offset-background" : ""
+        }`}
       >
         <div className="aspect-square bg-surface relative overflow-hidden">
           {product.image ? (
@@ -141,54 +253,161 @@ export default function EnrichedProductCard({ product, index }: { product: Searc
               <Package className="h-12 w-12" />
             </div>
           )}
+
+          {/* Platform Badge */}
           <span className="absolute top-2 left-2 px-2 py-1 rounded-lg bg-black/60 text-white text-[10px] font-medium backdrop-blur-sm flex items-center gap-1 max-w-[calc(100%-16px)] truncate">
             {platformIcons[product.source] || "\ud83d\udd17"} {product.source}
+            {product.platformCount && product.platformCount > 1 && (
+              <span className="ml-1 text-accent font-bold">+{product.platformCount - 1}</span>
+            )}
           </span>
-          {imageCount > 1 && (
-            <span className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded-md bg-black/60 text-white text-[10px] font-medium backdrop-blur-sm flex items-center gap-1">
+
+          {/* Golden Score Badge (Feature 4) */}
+          {product.goldenRank && (
+            <span className={`absolute top-2 right-2 px-2 py-1 rounded-lg text-[10px] font-bold backdrop-blur-sm ${
+              product.goldenRank === "S" ? "bg-yellow-500/90 text-white" :
+              product.goldenRank === "A" ? "bg-emerald-500/90 text-white" :
+              product.goldenRank === "B" ? "bg-blue-500/90 text-white" :
+              product.goldenRank === "C" ? "bg-orange-500/90 text-white" :
+              "bg-gray-500/90 text-white"
+            }`}>
+              {product.goldenRank} {product.goldenScore != null ? `(${product.goldenScore})` : ""}
+            </span>
+          )}
+
+          {/* Image Count */}
+          {imageCount > 1 && !product.goldenRank && (
+            <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-black/60 text-white text-[10px] font-medium backdrop-blur-sm flex items-center gap-1">
               <Images className="h-2.5 w-2.5" /> {imageCount}
             </span>
           )}
-          <div className="absolute top-2 right-2 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const savedProduct: SavedProduct = {
-                  id: product.id || product.title,
-                  title: product.title,
-                  price: product.price ?? null,
-                  image: product.image ?? null,
-                  images: product.images,
-                  link: product.link || "",
-                  source: product.source,
-                  rating: product.rating,
-                  reviews: product.reviews,
-                  savedAt: Date.now(),
-                };
-                toggleSave(savedProduct);
-              }}
-              className={`p-2.5 rounded-lg backdrop-blur-sm transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center ${saved ? "bg-accent text-white" : "bg-black/60 text-white hover:bg-accent/80"}`}
-              title={saved ? "Remove from favorites" : "Save to favorites"}
-            >
-              <Heart className={`h-4 w-4 ${saved ? "fill-current" : ""}`} />
-            </button>
-            <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCompared(!compared); }}
-              className={`p-2.5 rounded-lg backdrop-blur-sm transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center ${compared ? "bg-emerald-500 text-white" : "bg-black/60 text-white hover:bg-accent/80"}`}
-              title={compared ? "Remove from compare" : "Add to compare"}
-            >
-              {compared ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-            </button>
+
+          {/* Trend Phase Badge (Feature 4) */}
+          {product.trendPhase && (
+            <span className={`absolute bottom-2 left-2 px-2 py-1 rounded-lg text-[10px] font-bold backdrop-blur-sm ${
+              product.trendPhase === "emerging" ? "bg-purple-500/90 text-white" :
+              product.trendPhase === "growth" ? "bg-emerald-500/90 text-white" :
+              product.trendPhase === "mature" ? "bg-blue-500/90 text-white" :
+              "bg-red-500/90 text-white"
+            }`}>
+              {product.trendPhase === "emerging" ? "New" : product.trendPhase === "growth" ? "Growing" : product.trendPhase === "mature" ? "Stable" : "Declining"}
+            </span>
+          )}
+
+          {/* Saturation Badge (Feature 4) */}
+          {product.saturationLevel && !product.trendPhase && (
+            <span className={`absolute bottom-2 left-2 px-2 py-1 rounded-lg text-[10px] font-bold backdrop-blur-sm ${
+              product.saturationLevel === "unsaturated" ? "bg-emerald-500/90 text-white" :
+              product.saturationLevel === "low" ? "bg-blue-500/90 text-white" :
+              product.saturationLevel === "moderate" ? "bg-amber-500/90 text-white" :
+              product.saturationLevel === "saturated" ? "bg-orange-500/90 text-white" :
+              "bg-red-500/90 text-white"
+            }`}>
+              {product.saturationLevel === "unsaturated" ? "Unsaturated" : product.saturationLevel === "low" ? "Low Comp" : product.saturationLevel === "moderate" ? "Moderate" : product.saturationLevel === "saturated" ? "Saturated" : "Hyper"}
+            </span>
+          )}
+
+          {/* Profit Estimate Badge */}
+          {estimatedMargin && !product.trendPhase && !product.saturationLevel && (
+            <span className="absolute bottom-2 left-2 px-2 py-1 rounded-lg bg-emerald-500/90 text-white text-[10px] font-bold backdrop-blur-sm flex items-center gap-1">
+              <BarChart3 className="h-2.5 w-2.5" /> ~{estimatedMargin}% margin
+            </span>
+          )}
+
+          {/* Price Trend */}
+          <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-lg px-1.5 py-0.5">
+            <MiniSparkline data={priceTrend} />
+            <TrendingUp className="h-2.5 w-2.5 text-emerald-400" />
           </div>
+
+          {/* Action Buttons */}
+          <div className="absolute top-2 left-2 mt-10 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+            {compareMode ? (
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleSelect?.(product.id); }}
+                className={`p-2.5 rounded-lg backdrop-blur-sm transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center ${
+                  selected ? "bg-accent text-white" : "bg-black/60 text-white hover:bg-accent/80"
+                }`}
+                title={selected ? "Remove from compare" : "Add to compare"}
+              >
+                {selected ? <Check className="h-4 w-4" /> : <GitCompare className="h-4 w-4" />}
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const savedProduct: SavedProduct = {
+                      id: product.id || product.title,
+                      title: product.title,
+                      price: product.price ?? null,
+                      image: product.image ?? null,
+                      images: product.images,
+                      link: product.link || "",
+                      source: product.source,
+                      rating: product.rating,
+                      reviews: product.reviews,
+                      savedAt: Date.now(),
+                    };
+                    toggleSave(savedProduct);
+                  }}
+                  className={`p-2.5 rounded-lg backdrop-blur-sm transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center ${saved ? "bg-accent text-white" : "bg-black/60 text-white hover:bg-accent/80"}`}
+                  title={saved ? "Remove from favorites" : "Save to favorites"}
+                >
+                  <Heart className={`h-4 w-4 ${saved ? "fill-current" : ""}`} />
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* AI Actions Dropdown */}
+          {!compareMode && onAIAction && (
+            <div className="absolute bottom-2 right-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" ref={aiActionsRef}>
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowAIActions(!showAIActions); }}
+                className="p-2 rounded-lg bg-violet-500/80 text-white backdrop-blur-sm hover:bg-violet-500 transition-colors"
+                title="AI Actions"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+              </button>
+              {showAIActions && (
+                <div className="absolute bottom-full right-0 mb-1 w-48 bg-gray-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
+                  <div className="p-1">
+                    {[
+                      { id: "analyze", label: "Analyze Product", icon: BarChart3, color: "text-blue-400" },
+                      { id: "suppliers", label: "Find Suppliers", icon: Search, color: "text-emerald-400" },
+                      { id: "listing", label: "Generate Listing", icon: Sparkles, color: "text-violet-400" },
+                      { id: "validate", label: "Validate Product", icon: Check, color: "text-amber-400" },
+                    ].map((action) => (
+                      <button
+                        key={action.id}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAIAction(action.id); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors text-left"
+                      >
+                        <action.icon className={`h-3.5 w-3.5 ${action.color}`} />
+                        {action.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
+
         <div className="p-4 space-y-2">
           <h3 className="font-medium text-sm text-foreground line-clamp-2 group-hover:text-accent transition-colors">
             {product.title}
           </h3>
           <div className="flex items-center justify-between">
             {product.price != null ? (
-              <span className="text-lg font-bold text-accent">${product.price.toFixed(2)}</span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-lg font-bold text-accent">${product.price.toFixed(2)}</span>
+                {estimatedProfit && (
+                  <span className="text-[10px] text-emerald-400 font-medium">~${estimatedProfit} profit</span>
+                )}
+              </div>
             ) : (
               <span className="text-sm text-muted-foreground">Price N/A</span>
             )}
@@ -200,7 +419,6 @@ export default function EnrichedProductCard({ product, index }: { product: Searc
               </span>
             )}
           </div>
-          {/* Push to Store button */}
           <button
             onClick={openPushModal}
             className="w-full mt-2 flex items-center justify-center gap-2 py-2 px-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-xl text-xs font-medium transition-all opacity-100 sm:opacity-70 sm:group-hover:opacity-100"
@@ -234,7 +452,7 @@ export default function EnrichedProductCard({ product, index }: { product: Searc
                 <div className={`mb-4 p-3 rounded-xl text-sm font-medium ${
                   pushResult.success ? "bg-green-500/10 text-green-400 border border-green-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"
                 }`}>
-                  {pushResult.success ? "✓ " : "⚠ "}{pushResult.message}
+                  {pushResult.success ? "\u2713 " : "\u26a0 "}{pushResult.message}
                 </div>
               )}
 

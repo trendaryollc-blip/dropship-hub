@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Copy, Check, Lightbulb, Tag, FileText, DollarSign, ShoppingBag, Sparkles } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { ListingSuggestion } from "@/types/enrichment";
+import SectionEmpty from "./SectionEmpty";
 
 function CopyBtn({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -28,11 +29,7 @@ export default function ListingOptimization({ data, platform }: { data: ListingS
             <p className="text-[10px] text-muted-foreground">AI-powered suggestions for your store</p>
           </div>
         </div>
-        <div className="p-8 text-center">
-          <Lightbulb className="h-8 w-8 text-muted-foreground/20 mx-auto mb-2" />
-          <p className="text-xs text-muted-foreground">Listing suggestions unavailable</p>
-          <p className="text-[10px] text-muted-foreground/60 mt-1">Could not generate listing optimization for this product</p>
-        </div>
+        <SectionEmpty icon={Lightbulb} title="Listing suggestions unavailable" description="Could not generate listing optimization for this product" iconColor="text-muted-foreground/20" />
       </div>
     );
   }

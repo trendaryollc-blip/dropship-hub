@@ -159,6 +159,7 @@ export interface HeatmapCategory {
 export interface TrendingProduct {
   name: string;
   platform: string;
+  image: string;
   price: number;
   sellPrice: number;
   profit: number;
@@ -175,4 +176,30 @@ export interface TrendingProduct {
   sourceUrl: string;
   competitors: { name: string; price: number }[];
   listingSuggestion: { title: string; description: string };
+}
+
+export interface FulfillmentPipelineData {
+  pending: number;
+  processing: number;
+  shipped: number;
+  delivered: number;
+  totalRevenue: number;
+  totalProfit: number;
+  recentOrders: {
+    id: string;
+    customer: string;
+    product: string;
+    status: "pending" | "in_progress" | "shipped" | "delivered";
+    amount: number;
+    time: string;
+  }[];
+}
+
+export interface ContextualAction {
+  id: string;
+  message: string;
+  action: string;
+  href: string;
+  type: "urgent" | "suggestion" | "info";
+  icon: string;
 }

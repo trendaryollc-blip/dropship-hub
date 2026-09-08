@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft, ExternalLink, Star, ShoppingCart, Package,
   Shield, Clock, ChevronLeft, ChevronRight, Images, Barcode, Layers,
-  Search, Truck, DollarSign, BarChart3,
+  Search, Truck, DollarSign, BarChart3, AlertTriangle, RefreshCw,
 } from "lucide-react";
 import Image from "next/image";
 import { useInView } from "@/hooks/useInView";
@@ -18,7 +18,11 @@ import SupplierMatchSection from "@/components/products/SupplierMatch";
 import ListingOptimization from "@/components/products/ListingOptimization";
 import SimilarProducts from "@/components/products/SimilarProducts";
 import ProductActionBar from "@/components/products/ProductActionBar";
+import StickyProductBar from "@/components/products/StickyProductBar";
+import SectionNav from "@/components/products/SectionNav";
+import SectionSkeleton from "@/components/products/SectionSkeleton";
 import { safeFetch } from "@/lib/safe-fetch";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { logger } from "@/lib/logger";
 
 const platformIcons: Record<string, string> = {
@@ -132,6 +136,7 @@ function ImageGallery({ images, title }: { images: string[]; title: string }) {
 
 function ProductDetailContent() {
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const { ref: heroRef, isInView: heroVisible } = useInView({ threshold: 0.1 });
   const [product] = useState<ProductData | null>(() => {
     if (typeof window === "undefined") return null;
@@ -160,9 +165,16 @@ function ProductDetailContent() {
   const [loadingImages, setLoadingImages] = useState(false);
   const [enrichmentData, setEnrichmentData] = useState<Record<string, unknown> | null>(null);
   const [loadingEnrichment, setLoadingEnrichment] = useState(false);
+  const [enrichmentError, setEnrichmentError] = useState(false);
   const [reviewData, setReviewData] = useState<Record<string, unknown> | null>(null);
+  const [reviewError, setReviewError] = useState(false);
+  const [loadingReview, setLoadingReview] = useState(false);
   const [marketIntelData, setMarketIntelData] = useState<Record<string, unknown> | null>(null);
+  const [marketIntelError, setMarketIntelError] = useState(false);
+  const [loadingMarketIntel, setLoadingMarketIntel] = useState(false);
   const [listingData, setListingData] = useState<Record<string, unknown> | null>(null);
+  const [listingError, setListingError] = useState(false);
+  const [loadingListing, setLoadingListing] = useState(false);
 
   const title = product?.title || searchParams.get("t") || "Product";
   const price = product?.price != null ? String(product.price) : searchParams.get("p");
@@ -188,6 +200,16 @@ function ProductDetailContent() {
   const priceNum = hasPrice ? parseFloat(price) : null;
   const ratingNum = hasRating ? parseFloat(rating) : null;
   const reviewsNum = hasReviews ? parseInt(reviews) : null;
+
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    if (!user) return {};
+    try {
+      const token = await user.getIdToken();
+      return { Authorization: `Bearer ${token}` };
+    } catch {
+      return {};
+    }
+  };
 
   useEffect(() => {
     // Only fetch from API if we have 0 or 1 stored images — never overwrite a good multi-image array
@@ -217,9 +239,10 @@ function ProductDetailContent() {
     const fetchImages = async () => {
       setLoadingImages(true);
       try {
+        const authHeaders = await getAuthHeaders();
         const data = await safeFetch<{ images?: string[] }>("/api/platforms/product-images", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({ asin: extractedAsin, url: link, source }),
         });
         if (!cancelled && data.images && data.images.length > storedImages.length) {
@@ -240,16 +263,21 @@ function ProductDetailContent() {
 
     const fetchEnrichment = async () => {
       setLoadingEnrichment(true);
+      setEnrichmentError(false);
       try {
+        const authHeaders = await getAuthHeaders();
         const data = await safeFetch<{ platforms?: { platform: string; price: number; rating: number; reviews: number; inStock: boolean; url: string }[]; [k: string]: unknown }>("/api/products/enrich", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({ title, source, price: priceNum }),
         });
         if (data.platforms) {
           setEnrichmentData(data);
         }
-      } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[ProductDetail] silently caught", e); }
+      } catch (e) {
+        setEnrichmentError(true);
+        if (process.env.NODE_ENV === "development") console.warn("[ProductDetail] silently caught", e);
+      }
       setLoadingEnrichment(false);
     };
 
@@ -260,16 +288,23 @@ function ProductDetailContent() {
     if (!title || title === "Product") return;
 
     const fetchReviews = async () => {
+      setLoadingReview(true);
+      setReviewError(false);
       try {
+        const authHeaders = await getAuthHeaders();
         const data = await safeFetch<{ averageRating?: number; [k: string]: unknown }>("/api/products/reviews", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({ url: link, source, title, rating: ratingNum, reviews: reviewsNum }),
         });
         if (data.averageRating !== undefined) {
           setReviewData(data);
         }
-      } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[ProductDetail] silently caught", e); }
+      } catch (e) {
+        setReviewError(true);
+        if (process.env.NODE_ENV === "development") console.warn("[ProductDetail] silently caught", e);
+      }
+      setLoadingReview(false);
     };
 
     fetchReviews();
@@ -279,16 +314,23 @@ function ProductDetailContent() {
     if (!title || title === "Product") return;
 
     const fetchMarketIntel = async () => {
+      setLoadingMarketIntel(true);
+      setMarketIntelError(false);
       try {
+        const authHeaders = await getAuthHeaders();
         const data = await safeFetch<{ searchVolume?: number; [k: string]: unknown }>("/api/products/market-intel", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({ title, price: priceNum, rating: ratingNum, reviews: reviewsNum }),
         });
         if (data.searchVolume) {
           setMarketIntelData(data);
         }
-      } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[ProductDetail] silently caught", e); }
+      } catch (e) {
+        setMarketIntelError(true);
+        if (process.env.NODE_ENV === "development") console.warn("[ProductDetail] silently caught", e);
+      }
+      setLoadingMarketIntel(false);
     };
 
     fetchMarketIntel();
@@ -298,18 +340,23 @@ function ProductDetailContent() {
     if (!title || title === "Product") return;
 
     const fetchListing = async () => {
-      
+      setLoadingListing(true);
+      setListingError(false);
       try {
+        const authHeaders = await getAuthHeaders();
         const data = await safeFetch<{ title?: string; [k: string]: unknown }>("/api/products/listing", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({ title, category, price: priceNum, platform: source }),
         });
         if (data.title) {
           setListingData(data);
         }
-      } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[ProductDetail] silently caught", e); }
-      
+      } catch (e) {
+        setListingError(true);
+        if (process.env.NODE_ENV === "development") console.warn("[ProductDetail] silently caught", e);
+      }
+      setLoadingListing(false);
     };
 
     fetchListing();
@@ -440,6 +487,21 @@ function ProductDetailContent() {
 
   return (
     <div className="page-atmosphere max-w-5xl mx-auto space-y-6 md:space-y-8 pb-20 md:pb-28 relative z-10">
+      {/* Sticky product summary bar */}
+      <StickyProductBar
+        title={title}
+        price={priceNum}
+        image={image}
+        rating={ratingNum}
+        reviews={reviewsNum}
+        source={source}
+        link={link}
+        heroRef={heroRef}
+      />
+
+      {/* Section navigation */}
+      <SectionNav />
+
       {/* Back navigation */}
       <Link href="/products" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group">
         <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" /> Back to Search
@@ -494,11 +556,43 @@ function ProductDetailContent() {
 
             {/* Price Hero */}
             {hasPrice && (
-              <div className="price-hero">
+              <div className="price-hero animate-card-enter">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-1.5 font-medium">Listed Price</p>
                 <p className="font-display text-4xl sm:text-5xl font-bold gradient-text-blue tracking-tight">${(priceNum ?? 0).toFixed(2)}</p>
               </div>
             )}
+
+            {/* Quick Stats strip */}
+            <div className="flex items-center gap-3 flex-wrap">
+              {hasRating && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-400/8 border border-amber-400/15">
+                  <Star className="h-3 w-3 text-amber-400 fill-current" />
+                  <span className="text-[11px] font-semibold text-amber-400">{(ratingNum ?? 0).toFixed(1)}</span>
+                </div>
+              )}
+              {hasReviews && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-400/8 border border-blue-400/15">
+                  <span className="text-[11px] font-semibold text-blue-400">{(reviewsNum ?? 0).toLocaleString()} reviews</span>
+                </div>
+              )}
+              {enriched.marketIntel && (
+                <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border ${
+                  enriched.marketIntel.riskScore <= 30 ? "bg-emerald-400/8 border-emerald-400/15" :
+                  enriched.marketIntel.riskScore <= 60 ? "bg-amber-400/8 border-amber-400/15" :
+                  "bg-red-400/8 border-red-400/15"
+                }`}>
+                  <Shield className="h-3 w-3 text-muted-foreground" />
+                  <span className={`text-[11px] font-semibold ${
+                    enriched.marketIntel.riskScore <= 30 ? "text-emerald-400" :
+                    enriched.marketIntel.riskScore <= 60 ? "text-amber-400" :
+                    "text-red-400"
+                  }`}>Risk: {enriched.marketIntel.riskScore}/100</span>
+                </div>
+              )}
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border">
+                <span className="text-[11px] text-muted-foreground capitalize">{source.replace("_", " ")}</span>
+              </div>
+            </div>
 
             {/* Rating Badge */}
             {(hasRating || hasReviews) && (
@@ -541,7 +635,7 @@ function ProductDetailContent() {
       <div className="glass rounded-2xl p-4 border border-border">
         <h3 className="font-display text-xs font-semibold text-muted-foreground mb-3">Next Steps</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <Link href={`/suppliers?product=${encodeURIComponent(title)}`} className="flex items-center gap-2 p-3 rounded-xl bg-surface/50 border border-border hover:border-accent/20 hover:bg-surface-hover transition-all group">
+          <Link href={`/suppliers?product=${encodeURIComponent(title)}&category=${encodeURIComponent(category || "")}&source=${encodeURIComponent(source)}&price=${priceNum || ""}`} className="flex items-center gap-2 p-3 rounded-xl bg-surface/50 border border-border hover:border-accent/20 hover:bg-surface-hover transition-all group">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-400/10 shrink-0">
               <Truck className="h-3.5 w-3.5 text-amber-400" />
             </div>
@@ -574,15 +668,19 @@ function ProductDetailContent() {
       {/* === SECTION 2: PRICE COMPARISON === */}
       <section id="price-comparison" className="section-group">
         <p className="section-label mb-2">Pricing</p>
-        {loadingEnrichment && (
-          <div className="glass rounded-2xl p-3 border border-border mb-3">
-            <div className="flex items-center gap-2">
-              <div className="h-4 w-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-              <span className="text-xs text-muted-foreground">Searching platforms for real prices...</span>
-            </div>
+        {loadingEnrichment && <SectionSkeleton rows={2} />}
+        {enrichmentError && !loadingEnrichment && (
+          <div className="glass rounded-2xl p-4 border border-border flex items-center gap-3">
+            <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
+            <p className="text-xs text-muted-foreground flex-1">Failed to load price data</p>
+            <button onClick={() => { setEnrichmentError(false); setLoadingEnrichment(true); window.location.reload(); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition-colors">
+              <RefreshCw className="h-3 w-3" /> Retry
+            </button>
           </div>
         )}
-        <PriceComparison platforms={enriched.platforms} listedPrice={priceNum || 0} productTitle={title} />
+        {!loadingEnrichment && !enrichmentError && (
+          <PriceComparison platforms={enriched.platforms} listedPrice={priceNum || 0} productTitle={title} />
+        )}
       </section>
 
       {/* === SECTION 3: PROFIT CALCULATOR === */}
@@ -592,37 +690,73 @@ function ProductDetailContent() {
       </section>
 
       {/* === SECTION 4: MARKET INTELLIGENCE === */}
-      <section className="section-group">
+      <section id="market-intel" className="section-group">
         <p className="section-label mb-2">Intelligence</p>
-        <MarketIntelligence data={enriched.marketIntel} />
+        {loadingMarketIntel && <SectionSkeleton rows={4} />}
+        {marketIntelError && !loadingMarketIntel && (
+          <div className="intel-card p-4 flex items-center gap-3">
+            <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
+            <p className="text-xs text-muted-foreground flex-1">Failed to load market intelligence</p>
+            <button onClick={() => { setMarketIntelError(false); setLoadingMarketIntel(true); window.location.reload(); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition-colors">
+              <RefreshCw className="h-3 w-3" /> Retry
+            </button>
+          </div>
+        )}
+        {!loadingMarketIntel && !marketIntelError && (
+          <MarketIntelligence data={enriched.marketIntel} />
+        )}
       </section>
 
       {/* === SECTION 5: REVIEW INTELLIGENCE === */}
-      <section className="section-group">
+      <section id="reviews" className="section-group">
         <p className="section-label mb-2">Social Proof</p>
-        <ReviewIntelligence data={enriched.reviewsData} />
+        {loadingReview && <SectionSkeleton rows={3} />}
+        {reviewError && !loadingReview && (
+          <div className="review-card p-4 flex items-center gap-3">
+            <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
+            <p className="text-xs text-muted-foreground flex-1">Failed to load review data</p>
+            <button onClick={() => { setReviewError(false); setLoadingReview(true); window.location.reload(); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition-colors">
+              <RefreshCw className="h-3 w-3" /> Retry
+            </button>
+          </div>
+        )}
+        {!loadingReview && !reviewError && (
+          <ReviewIntelligence data={enriched.reviewsData} />
+        )}
       </section>
 
       {/* === SECTION 6: SOURCING RECOMMENDATIONS === */}
-      <section className="section-group">
+      <section id="suppliers" className="section-group">
         <p className="section-label mb-2">Sourcing</p>
         <SupplierMatchSection suppliers={enriched.supplierMatches} productTitle={title} category={category} />
       </section>
 
       {/* === SECTION 7: LISTING OPTIMIZATION === */}
-      <section className="section-group">
+      <section id="listings" className="section-group">
         <p className="section-label mb-2">Optimization</p>
-        <ListingOptimization data={enriched.listingSuggestion} platform={source} />
+        {loadingListing && <SectionSkeleton rows={3} />}
+        {listingError && !loadingListing && (
+          <div className="listing-card p-4 flex items-center gap-3">
+            <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
+            <p className="text-xs text-muted-foreground flex-1">Failed to load listing suggestions</p>
+            <button onClick={() => { setListingError(false); setLoadingListing(true); window.location.reload(); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition-colors">
+              <RefreshCw className="h-3 w-3" /> Retry
+            </button>
+          </div>
+        )}
+        {!loadingListing && !listingError && (
+          <ListingOptimization data={enriched.listingSuggestion} platform={source} />
+        )}
       </section>
 
       {/* === SECTION 8: SIMILAR & RELATED PRODUCTS === */}
-      <section className="section-group">
+      <section id="similar" className="section-group">
         <p className="section-label mb-2">Discovery</p>
         <SimilarProducts category={category} title={title} currentPrice={priceNum || undefined} />
       </section>
 
       {/* === SECTION 9: SUGGESTED SEARCHES === */}
-      <div className="relative rounded-2xl p-5 border border-border/50 bg-surface/30">
+      <div id="searches" className="relative rounded-2xl p-5 border border-border/50 bg-surface/30">
         <h3 className="font-display text-xs font-semibold text-muted-foreground mb-3 flex items-center gap-2">
           <Clock className="h-3.5 w-3.5" /> Related Searches
         </h3>

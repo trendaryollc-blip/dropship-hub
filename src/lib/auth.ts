@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminAuth } from "@/lib/firebase-admin";
-import { rateLimitByUser, LIMITS } from "@/lib/rate-limit";
+import { getAdminAuth, getAdminDB } from "@/lib/firebase-admin";
+import { rateLimitByUser, LIMITS, type UserTier } from "@/lib/rate-limit";
 
 export async function verifyAuth(request: NextRequest): Promise<string | null> {
   const authHeader = request.headers.get("Authorization");
@@ -24,6 +24,21 @@ export async function requireAuth(request: NextRequest): Promise<{ uid: string }
   return { uid };
 }
 
+export async function getUserTier(uid: string): Promise<UserTier> {
+  try {
+    const db = await getAdminDB();
+    const userDoc = await db.collection("users").doc(uid).collection("settings").doc("subscription").get();
+    if (userDoc.exists) {
+      const data = userDoc.data();
+      const tier = data?.tier as string;
+      if (tier === "enterprise" || tier === "pro") return tier;
+    }
+  } catch {
+    // Fall through to free tier
+  }
+  return "free";
+}
+
 type RateLimitConfig = { windowMs: number; maxRequests: number };
 
 export function withAuth(
@@ -34,8 +49,9 @@ export function withAuth(
     const result = await requireAuth(request);
     if (result instanceof NextResponse) return result;
 
+    const tier = await getUserTier(result.uid);
     const config = rateLimitConfig || LIMITS.DEFAULT;
-    const userRl = rateLimitByUser(request, result.uid, config);
+    const userRl = await rateLimitByUser(request, result.uid, config, tier);
     if (!userRl.allowed) return userRl.response!;
 
     return handler(request, result.uid);
@@ -49,7 +65,7 @@ export function requireOwner(
     const result = await requireAuth(request);
     if (result instanceof NextResponse) return result;
 
-    const ownerRl = rateLimitByUser(request, result.uid, LIMITS.AUTH);
+    const ownerRl = await rateLimitByUser(request, result.uid, LIMITS.AUTH);
     if (!ownerRl.allowed) return ownerRl.response!;
 
     if (!(await isOwner(result.uid))) {
@@ -85,7 +101,6 @@ export async function isOwner(uid: string): Promise<boolean> {
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
 
-  // Resolve owner emails to UIDs via Firebase Admin
   if (ownerEmails.length > 0) {
     const now = Date.now();
     if (!cachedOwnerUids || now - cachedOwnerUidsAt > OWNER_CACHE_TTL_MS) {
@@ -104,7 +119,6 @@ export async function isOwner(uid: string): Promise<boolean> {
     if (cachedOwnerUids.has(directUid)) return true;
   }
 
-  // Fallback: resolve the user's email from Firebase and check against hardcoded owner list
   try {
     const userRecord = await getAdminAuth().getUser(uid);
     if (userRecord.email) {

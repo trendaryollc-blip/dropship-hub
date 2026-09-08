@@ -19,7 +19,7 @@ function getServiceAccount() {
     // restore literal \n inside the private_key value so JSON.parse succeeds.
     try {
       const repaired = json.replace(
-        /("private_key"\s*:\s*")(.*)(",)/g,
+        /("(?:private_key|privateKey)"\s*:\s*")([\s\S]*?)("\s*[,}])/g,
         (_match, prefix: string, key: string, suffix: string) => {
           const fixedKey = key.replace(/\n/g, "\\n");
           return `${prefix}${fixedKey}${suffix}`;

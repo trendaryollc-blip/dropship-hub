@@ -268,6 +268,22 @@ export default function ProfitTrackerPage() {
   const sparkOrders = dailyBreakdown.map((d) => d.orders);
   const sparkMargin = dailyBreakdown.map((d) => d.revenue > 0 ? (d.profit / d.revenue) * 100 : 0);
 
+  const handleExport = () => {
+    if (dailyBreakdown.length === 0) return;
+    const rows = [
+      ["Date", "Revenue", "Profit", "Orders"],
+      ...dailyBreakdown.map((d) => [d.date, d.revenue.toFixed(2), d.profit.toFixed(2), String(d.orders)]),
+    ];
+    const csv = rows.map((r) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `profit-report-${timeframe}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // Calculate real trends from daily data
   const calcTrend = (data: number[]): { change: string; up: boolean } => {
     if (data.length < 2) return { change: "0%", up: true };
@@ -307,7 +323,7 @@ export default function ProfitTrackerPage() {
             <option value="eBay">eBay</option>
             <option value="Etsy">Etsy</option>
           </select>
-          <button className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all">
+          <button onClick={handleExport} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all">
             <Download className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Export</span>
           </button>

@@ -1,46 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { TrendingUp, TrendingDown, Minus, BarChart3, Users, Swords, Shield, AlertTriangle, Clock } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { MarketIntel } from "@/types/enrichment";
-
-function ScoreRing({ score, size = 52 }: { score: number; size?: number }) {
-  const r = (size - 6) / 2;
-  const circ = 2 * Math.PI * r;
-  const offset = circ - (score / 100) * circ;
-  const color = score <= 30 ? "#22c55e" : score <= 60 ? "#f59e0b" : "#ef4444";
-  return (
-    <div className="relative" style={{ width: size, height: size }}>
-      <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full -rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="3" />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth="3" strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round" className="transition-all duration-1000" />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-xs font-bold text-foreground">{score}</span>
-      </div>
-    </div>
-  );
-}
-
-function MiniSparkline({ points, color = "#3b82f6" }: { points: number[]; color?: string }) {
-  const [mounted, setMounted] = useState(false);
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- standard SSR mount guard
-  useEffect(() => { setMounted(true); }, []);
-  if (!mounted) return <div className="w-full h-[32px] shrink-0" />;
-  const max = Math.max(...points);
-  const min = Math.min(...points);
-  const range = max - min || 1;
-  const w = 120, h = 32;
-  const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"} ${(i / (points.length - 1)) * w} ${h - ((p - min) / range) * h}`).join(" ");
-  return (
-    <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} className="shrink-0" preserveAspectRatio="none">
-      <defs><linearGradient id="miGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity="0.2" /><stop offset="100%" stopColor={color} stopOpacity="0" /></linearGradient></defs>
-      <path d={`${pathD} L ${w} ${h} L 0 ${h} Z`} fill="url(#miGrad)" />
-      <path d={pathD} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  );
-}
+import ScoreRing from "./ScoreRing";
+import MiniSparkline from "./MiniSparkline";
+import SectionEmpty from "./SectionEmpty";
 
 export default function MarketIntelligence({ data }: { data: MarketIntel | null }) {
   const { ref, isInView } = useInView({ threshold: 0.1 });
@@ -55,11 +20,7 @@ export default function MarketIntelligence({ data }: { data: MarketIntel | null 
             <p className="text-[10px] text-muted-foreground">Demand, competition & risk analysis</p>
           </div>
         </div>
-        <div className="p-8 text-center">
-          <BarChart3 className="h-8 w-8 text-muted-foreground/20 mx-auto mb-2" />
-          <p className="text-xs text-muted-foreground">Market intelligence unavailable</p>
-          <p className="text-[10px] text-muted-foreground/60 mt-1">Data could not be fetched for this product</p>
-        </div>
+        <SectionEmpty icon={BarChart3} title="Market intelligence unavailable" description="Data could not be fetched for this product" />
       </div>
     );
   }

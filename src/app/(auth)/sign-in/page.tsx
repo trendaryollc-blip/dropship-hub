@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Zap, Mail, Lock, ArrowRight, Eye, EyeOff, Loader2, AlertTriangle } from "lucide-react";
 
@@ -21,7 +21,6 @@ function SignInContent() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { signInWithEmail, signInWithGoogle } = useAuth();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const expired = searchParams.get("expired") === "1";
   const callbackUrl = sanitizeCallbackUrl(searchParams.get("callbackUrl"));

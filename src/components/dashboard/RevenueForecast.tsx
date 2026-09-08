@@ -75,22 +75,22 @@ function AnimatedStatCard({ stat, delay }: { stat: RevenueStat; delay: number })
     >
       <Link
         href={href}
-        className={`block glass rounded-xl p-4 transition-all duration-500 hover:border-accent/20 hover:bg-surface-hover group`}
+        className={`block glass rounded-lg p-3 transition-all duration-500 hover:border-accent/20 hover:bg-surface-hover group`}
       >
-      <div className="flex items-center justify-between mb-2">
-        <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${stat.color}/10 group-hover:scale-110 transition-transform`}>
-          <Icon className={`h-4 w-4 ${stat.color}`} />
+      <div className="flex items-center justify-between mb-1.5">
+        <div className={`flex h-6 w-6 items-center justify-center rounded-md ${stat.color}/10 group-hover:scale-110 transition-transform`}>
+          <Icon className={`h-3 w-3 ${stat.color}`} />
         </div>
-        <span className={`flex items-center gap-0.5 text-[11px] font-semibold ${stat.up ? "text-emerald-400" : "text-red-400"}`}>
-          {stat.up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+        <span className={`flex items-center gap-0.5 text-[10px] font-semibold ${stat.up ? "text-emerald-400" : "text-red-400"}`}>
+          {stat.up ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
           {stat.change}
         </span>
       </div>
-      <p className="font-display text-xl font-bold text-foreground">
+      <p className="font-display text-base font-bold text-foreground">
         {stat.prefix || ""}{count.toLocaleString()}
       </p>
-      <div className="flex items-center justify-between mt-2">
-        <p className="text-[11px] text-muted-foreground">{stat.label}</p>
+      <div className="flex items-center justify-between mt-1.5">
+        <p className="text-[10px] text-muted-foreground">{stat.label}</p>
         <MiniSparkline points={stat.sparkline} color={stat.color} />
       </div>
       </Link>
@@ -107,14 +107,14 @@ function RevenueChart({ actual, predicted }: { actual: { date: string; value: nu
 
   if (allPoints.length === 0) {
     return (
-      <div ref={ref} className="glass rounded-2xl p-5 transition-all duration-700">
-        <div className="flex items-center justify-between mb-4">
+      <div ref={ref} className="glass rounded-2xl p-4 transition-all duration-700">
+        <div className="flex items-center justify-between mb-3">
           <div>
-            <h3 className="font-display text-sm font-semibold text-foreground">Revenue Forecast</h3>
-            <p className="text-[11px] text-muted-foreground">Last 30 days + 14-day projection</p>
+            <h3 className="font-display text-xs font-semibold text-foreground">Revenue Forecast</h3>
+            <p className="text-[10px] text-muted-foreground">Last 30 days + 14-day projection</p>
           </div>
         </div>
-        <div className="h-[200px] flex items-center justify-center text-muted-foreground text-sm">
+        <div className="h-[140px] flex items-center justify-center text-muted-foreground text-xs">
           No revenue data yet. Connect your store to see your forecast.
         </div>
       </div>
@@ -159,13 +159,13 @@ function RevenueChart({ actual, predicted }: { actual: { date: string; value: nu
   };
 
   return (
-    <div ref={ref} className={`glass rounded-2xl p-5 transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
-      <div className="flex items-center justify-between mb-4">
+    <div ref={ref} className={`glass rounded-2xl p-4 transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+      <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="font-display text-sm font-semibold text-foreground">Revenue Forecast</h3>
-          <p className="text-[11px] text-muted-foreground">Last 30 days + 14-day projection</p>
+          <h3 className="font-display text-xs font-semibold text-foreground">Revenue Forecast</h3>
+          <p className="text-[10px] text-muted-foreground">Last 30 days + 14-day projection</p>
         </div>
-        <div className="flex items-center gap-4 text-[11px]">
+        <div className="flex items-center gap-3 text-[10px]">
           <span className="flex items-center gap-1.5">
             <span className="w-3 h-0.5 rounded bg-accent" />
             <span className="text-muted-foreground">Actual</span>
@@ -239,24 +239,20 @@ export default function RevenueForecast({ actual, predicted, stats }: {
   const [timeframe, setTimeframe] = useState<"7d" | "30d" | "90d">("30d");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 max-h-[640px] overflow-y-auto">
       {/* Actions Row */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <Link href="/revenue" className="group">
-          <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-1 group-hover:text-accent transition-colors">
-            Revenue Forecast
-          </h1>
-          <p className="text-sm text-muted-foreground max-w-xl group-hover:text-foreground/70 transition-colors">
-            Your dropshipping command center. Track revenue, analyze trends, and forecast growth.
-          </p>
-        </Link>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center bg-surface rounded-xl border border-border p-0.5">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h3 className="font-display text-sm font-bold text-foreground">Revenue Forecast</h3>
+          <p className="text-[10px] text-muted-foreground">Track revenue, analyze trends, and forecast growth</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center bg-surface rounded-lg border border-border p-0.5">
             {(["7d", "30d", "90d"] as const).map((tf) => (
               <button
                 key={tf}
                 onClick={() => setTimeframe(tf)}
-                className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${timeframe === tf ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-muted-foreground hover:text-foreground"}`}
+                className={`px-2 py-1 rounded-md text-[10px] font-semibold transition-all ${timeframe === tf ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-muted-foreground hover:text-foreground"}`}
               >
                 {tf}
               </button>
@@ -264,16 +260,16 @@ export default function RevenueForecast({ actual, predicted, stats }: {
           </div>
           <Link
             href="/revenue"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-all hover:shadow-[0_0_20px_rgba(var(--glow-color),0.3)] active:scale-[0.97]"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent text-white text-[11px] font-semibold hover:bg-accent-hover transition-all active:scale-[0.97]"
           >
-            View Full Report
-            <ArrowUpRight className="h-4 w-4" />
+            Full
+            <ArrowUpRight className="h-3 w-3" />
           </Link>
         </div>
       </div>
 
       {/* Chart + Stats Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
         <div className="lg:col-span-3">
           <Link href="/revenue" className="block group">
             <div className="transition-all group-hover:opacity-90">
@@ -281,7 +277,7 @@ export default function RevenueForecast({ actual, predicted, stats }: {
             </div>
           </Link>
         </div>
-        <div className="lg:col-span-2 grid grid-cols-2 gap-3">
+        <div className="lg:col-span-2 grid grid-cols-2 gap-2">
           {stats.map((stat, i) => (
             <AnimatedStatCard key={stat.label} stat={stat} delay={i * 100} />
           ))}

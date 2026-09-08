@@ -1,19 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Check, ChevronDown, X, Package } from "lucide-react";
+import { Check, ChevronDown, X, Package, Loader2 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { safeFetch } from "@/lib/safe-fetch";
 import { useAPI } from "@/hooks/useAPI";
-
-const SUPPLIERS = [
-  { id: "cj", name: "CJ Dropshipping", color: "bg-blue-500/20 text-blue-400" },
-  { id: "aliexpress", name: "AliExpress", color: "bg-orange-500/20 text-orange-400" },
-  { id: "alibaba", name: "Alibaba", color: "bg-yellow-500/20 text-yellow-400" },
-  { id: "amazon", name: "Amazon", color: "bg-amber-500/20 text-amber-400" },
-  { id: "temu", name: "Temu", color: "bg-pink-500/20 text-pink-400" },
-  { id: "manual", name: "Manual", color: "bg-gray-500/20 text-gray-400" },
-];
 
 interface SupplierAssignment {
   supplierId: string;
@@ -40,7 +31,14 @@ export function SupplierPicker({ productId, productName, onAssigned }: SupplierP
   const { data: supplierData, isLoading: initialLoading } = useAPI<{ assignment?: SupplierAssignment }>(
     uid ? `/api/fulfillment/suppliers?uid=${uid}&productId=${productId}` : null
   );
+  const { data: suppliersList, isLoading: suppliersLoading } = useAPI<{ suppliers?: { id: string; name: string }[] }>("/api/suppliers");
   const assignment = supplierData?.assignment || null;
+
+  const availableSuppliers = (suppliersList?.suppliers || []).map((s) => ({
+    id: s.id,
+    name: s.name,
+    color: "bg-accent/20 text-accent",
+  }));
 
   useEffect(() => {
     if (assignment) {
@@ -101,17 +99,28 @@ export function SupplierPicker({ productId, productName, onAssigned }: SupplierP
         {showPicker && (
           <div className="absolute top-full left-0 mt-1 w-56 bg-card border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
             <div className="p-1">
-              {SUPPLIERS.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => handleAssign(s.id, s.name)}
-                  disabled={loading}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-foreground hover:bg-white/5 rounded transition-colors text-left disabled:opacity-50"
-                >
-                  <span className={`w-2 h-2 rounded-full ${s.color.split(" ")[0]}`} />
-                  {s.name}
-                </button>
-              ))}
+              {suppliersLoading ? (
+                <div className="flex items-center justify-center gap-2 px-3 py-3 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Loading suppliers...
+                </div>
+              ) : availableSuppliers.length === 0 ? (
+                <div className="px-3 py-3 text-xs text-muted-foreground text-center">
+                  No suppliers available
+                </div>
+              ) : (
+                availableSuppliers.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => handleAssign(s.id, s.name)}
+                    disabled={loading}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-foreground hover:bg-white/5 rounded transition-colors text-left disabled:opacity-50"
+                  >
+                    <span className={`w-2 h-2 rounded-full ${s.color.split(" ")[0]}`} />
+                    {s.name}
+                  </button>
+                ))
+              )}
             </div>
           </div>
         )}
@@ -119,12 +128,12 @@ export function SupplierPicker({ productId, productName, onAssigned }: SupplierP
     );
   }
 
-  const supplier = SUPPLIERS.find((s) => s.id === assignment.supplierId) || SUPPLIERS[0];
+  const supplier = availableSuppliers.find((s) => s.id === assignment.supplierId) || availableSuppliers[0];
 
   return (
-    <div className={`flex items-center gap-2 px-3 py-2 border rounded-lg text-xs ${supplier.color} border-current/20`}>
-      <span className={`w-2 h-2 rounded-full ${supplier.color.split(" ")[0]}`} />
-      <span className="font-medium">{supplier.name}</span>
+    <div className={`flex items-center gap-2 px-3 py-2 border rounded-lg text-xs ${supplier?.color || "bg-surface text-muted-foreground"} border-current/20`}>
+      <span className={`w-2 h-2 rounded-full ${supplier?.color.split(" ")[0] || "bg-muted-foreground"}`} />
+      <span className="font-medium">{supplier?.name || assignment.supplierName}</span>
       <span className="text-muted-foreground">·</span>
       <span>${assignment.unitCost.toFixed(2)}</span>
       <button onClick={handleClear} className="ml-auto text-muted-foreground hover:text-red-400 transition-colors">

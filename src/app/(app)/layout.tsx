@@ -7,9 +7,14 @@ import { AuthProvider, useAuth } from "@/components/auth/AuthProvider";
 import { SavedProductsProvider } from "@/components/saved/SavedProductsProvider";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { AIModeProvider } from "@/contexts/AIModeContext";
+import { SearchTrackingProvider } from "@/contexts/SearchTrackingContext";
+import { trackSearchEvent } from "./actions/tracking";
 import Sidebar from "@/components/dashboard/Sidebar";
 import Topbar from "@/components/dashboard/Topbar";
 import OnboardingWizard from "@/components/onboarding/OnboardingWizard";
+import CommandPalette from "@/components/ui/CommandPalette";
+import MobileNav from "@/components/dashboard/MobileNav";
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -80,15 +85,26 @@ function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="md:pl-[240px] transition-all duration-300">
-        <Topbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-        <main className="p-4 md:p-6">
-          {children}
-        </main>
+    <SearchTrackingProvider
+      userId={user?.uid}
+      trackFn={async (event, data) => {
+        await trackSearchEvent(event, data);
+      }}
+    >
+      <div className="min-h-screen bg-background">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="md:pl-[240px] transition-all duration-300">
+          <Topbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+          <main className="p-4 md:p-6">
+            {children}
+          </main>
+        </div>
+        <CommandPalette />
+        <MobileNav />
+        {/* Bottom padding for mobile nav */}
+        <div className="h-16 md:hidden" />
       </div>
-    </div>
+    </SearchTrackingProvider>
   );
 }
 
@@ -99,13 +115,15 @@ export default function AppLayout({
 }) {
   return (
     <AuthProvider>
-      <SavedProductsProvider>
-        <ToastProvider>
-          <ErrorBoundary>
-            <AuthGuard>{children}</AuthGuard>
-          </ErrorBoundary>
-        </ToastProvider>
-      </SavedProductsProvider>
+      <AIModeProvider>
+        <SavedProductsProvider>
+          <ToastProvider>
+            <ErrorBoundary>
+              <AuthGuard>{children}</AuthGuard>
+            </ErrorBoundary>
+          </ToastProvider>
+        </SavedProductsProvider>
+      </AIModeProvider>
     </AuthProvider>
   );
 }

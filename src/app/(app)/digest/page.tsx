@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
-import { useAuth } from "@/components/auth/AuthProvider";
 import { useAPI } from "@/hooks/useAPI";
 import { safeFetch } from "@/lib/safe-fetch";
 import { logger } from "@/lib/logger";
@@ -147,7 +146,7 @@ function AlertCard({ alert, delay }: { alert: DigestAlert; delay: number }) {
   );
 }
 
-function RecommendationCard({ text, delay }: { text: string; index: number; delay: number }) {
+function RecommendationCard({ text, delay }: { text: string; index?: number; delay: number }) {
   const { ref, isInView } = useInView({ threshold: 0.3 });
   return (
     <div ref={ref} className={`flex items-start gap-2.5 sm:gap-3 p-3 rounded-xl bg-surface border border-border hover:border-accent/20 transition-all duration-500 ${isInView ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4"}`} style={{ transitionDelay: `${delay}ms` }}>
@@ -162,7 +161,6 @@ function RecommendationCard({ text, delay }: { text: string; index: number; dela
 // ─── Main Page ───────────────────────────────────────────────────
 
 export default function DigestPage() {
-  const { user } = useAuth();
   const { data: digestData, mutate: refetchDigest } = useAPI<{ digests?: DigestData[] }>("/api/digest");
   const [selectedDigest, setSelectedDigest] = useState<DigestData | null>(null);
   const digest = selectedDigest || digestData?.digests?.[0] || null;
@@ -182,7 +180,10 @@ export default function DigestPage() {
       if (data?.date) {
         setSelectedDigest(null);
         refetchDigest();
-        if (sendEmail) setEmailSent(true);
+        if (sendEmail) {
+          setEmailSent(true);
+          setTimeout(() => setEmailSent(false), 5000);
+        }
       }
     } catch (err) {
       logger.error("Failed to generate digest", { error: err instanceof Error ? err.message : String(err) });

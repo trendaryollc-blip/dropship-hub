@@ -4,24 +4,8 @@ import Link from "next/link";
 import { Truck, Clock, ArrowRight, Award, MapPin } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { SupplierMatch } from "@/types/enrichment";
-
-function ScoreRing({ score, size = 40 }: { score: number; size?: number }) {
-  const r = (size - 6) / 2;
-  const circ = 2 * Math.PI * r;
-  const offset = circ - (score / 100) * circ;
-  const color = score >= 85 ? "#22c55e" : score >= 70 ? "#f59e0b" : "#ef4444";
-  return (
-    <div className="relative" style={{ width: size, height: size }}>
-      <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full -rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="2.5" />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth="2.5" strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round" />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-[9px] font-bold text-foreground">{score}</span>
-      </div>
-    </div>
-  );
-}
+import ScoreRing from "./ScoreRing";
+import SectionEmpty from "./SectionEmpty";
 
 const rankColors = [
   "bg-amber-400 text-black",
@@ -93,7 +77,7 @@ export default function SupplierMatchSection({ suppliers, productTitle, category
 
               {/* Reliability ring */}
               <div className="shrink-0 flex flex-col items-center gap-1">
-                <ScoreRing score={s.reliabilityScore} size={40} />
+                <ScoreRing score={s.reliabilityScore} size={40} colorScheme="reliability" />
                 <span className="text-[8px] text-muted-foreground font-medium">Reliability</span>
               </div>
             </Link>
@@ -101,13 +85,7 @@ export default function SupplierMatchSection({ suppliers, productTitle, category
         })}
 
         {suppliers.length === 0 && (
-          <div className="text-center py-8">
-            <div className="icon-container-blue mx-auto mb-3">
-              <Truck className="h-5 w-5 text-accent" />
-            </div>
-            <p className="text-xs text-muted-foreground">No supplier matches found yet</p>
-            <p className="text-[10px] text-muted-foreground/60 mt-1">We&apos;re searching for the best suppliers for this product</p>
-          </div>
+          <SectionEmpty icon={Truck} title="No supplier matches found yet" description="We're searching for the best suppliers for this product" iconColor="text-accent" />
         )}
 
         <Link href={`/suppliers?product=${encodeURIComponent(productTitle)}&category=${encodeURIComponent(category || "")}`} className="supplier-cta">

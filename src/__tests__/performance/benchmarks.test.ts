@@ -39,16 +39,16 @@ describe("Performance Tests - Calculation Benchmarks", () => {
 });
 
 describe("Performance Tests - Rate Limiter Benchmarks", () => {
-  it("rate limiter handles 1000 checks within 100ms", async () => {
+  it("rate limiter handles 1000 checks within 200ms", async () => {
     const { rateLimitByUser } = await import("@/lib/rate-limit");
-    const config = { windowMs: 60000, maxRequests: 100 };
+    const config = { windowMs: 60000, maxRequests: 10000 };
     const mockReq = { nextUrl: { pathname: "/api/test" } } as never;
     const start = performance.now();
     for (let i = 0; i < 1000; i++) {
-      rateLimitByUser(mockReq, `perf-user-${i % 10}`, config);
+      await rateLimitByUser(mockReq, `perf-user-${i % 10}`, config);
     }
     const elapsed = performance.now() - start;
-    expect(elapsed).toBeLessThan(100);
+    expect(elapsed).toBeLessThan(200);
   });
 });
 

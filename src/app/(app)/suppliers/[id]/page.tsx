@@ -5,13 +5,18 @@ import Link from "next/link";
 import {
   ArrowLeft, Shield, Star, MapPin, Clock, Truck, Package,
   CheckCircle2, AlertTriangle, TrendingUp, Award, Mail, Globe,
-  MessageSquare,
+  MessageSquare, BarChart3, GitCompare, Sparkles,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { SupplierProfile } from "@/types/supplier";
 import { badgeConfig, ScoreRing, dataSourceConfig } from "@/components/suppliers/supplier-shared";
 import { useAPI } from "@/hooks/useAPI";
-import { logger } from "@/lib/logger";
+import SupplierContactSlideOver from "@/components/suppliers/SupplierContactSlideOver";
+import SupplierPerformanceTab from "@/components/suppliers/SupplierPerformanceTab";
+import SupplierScorecardTab from "@/components/suppliers/SupplierScorecardTab";
+import SupplierSRMTab from "@/components/suppliers/SupplierSRMTab";
+import SupplierAITab from "@/components/suppliers/SupplierAITab";
+import DueDiligencePanel from "@/components/suppliers/DueDiligencePanel";
 
 function StarRating({ rating, size = 16 }: { rating: number; size?: number }) {
   return (
@@ -32,122 +37,6 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function ContactForm({ supplierName }: { supplierName: string }) {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    company: "",
-    subject: "",
-    message: "",
-    quantity: "",
-  });
-  const [submitted, setSubmitted] = useState(false);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // In production, this would send to an API endpoint
-    logger.info("Contact form submitted:", { supplierName, ...formData });
-    setSubmitted(true);
-  };
-
-  if (submitted) {
-    return (
-      <div className="text-center py-8">
-        <CheckCircle2 className="h-12 w-12 text-emerald-400 mx-auto mb-4" />
-        <h4 className="font-display text-lg font-semibold text-foreground mb-2">Message Sent!</h4>
-        <p className="text-sm text-muted-foreground mb-4">
-          Your inquiry has been sent to {supplierName}. They typically respond within their stated response time.
-        </p>
-        <button
-          onClick={() => { setSubmitted(false); setFormData({ name: "", email: "", company: "", subject: "", message: "", quantity: "" }); }}
-          className="text-sm text-accent hover:text-accent/80"
-        >
-          Send another message
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-xs text-muted-foreground mb-1.5">Your Name *</label>
-          <input
-            type="text"
-            required
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50"
-            placeholder="John Smith"
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-muted-foreground mb-1.5">Email *</label>
-          <input
-            type="email"
-            required
-            value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50"
-            placeholder="john@company.com"
-          />
-        </div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-xs text-muted-foreground mb-1.5">Company</label>
-          <input
-            type="text"
-            value={formData.company}
-            onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-            className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50"
-            placeholder="Your Company LLC"
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-muted-foreground mb-1.5">Quantity Needed</label>
-          <input
-            type="text"
-            value={formData.quantity}
-            onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-            className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50"
-            placeholder="e.g., 100-500 units/month"
-          />
-        </div>
-      </div>
-      <div>
-        <label className="block text-xs text-muted-foreground mb-1.5">Subject *</label>
-        <input
-          type="text"
-          required
-          value={formData.subject}
-          onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-          className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50"
-          placeholder="Product sourcing inquiry"
-        />
-      </div>
-      <div>
-        <label className="block text-xs text-muted-foreground mb-1.5">Message *</label>
-        <textarea
-          required
-          rows={4}
-          value={formData.message}
-          onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-          className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 resize-none"
-          placeholder="Describe what products you're looking for, your target price, and any specific requirements..."
-        />
-      </div>
-      <button
-        type="submit"
-        className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-all active:scale-[0.98]"
-      >
-        <Mail className="h-4 w-4" /> Send Inquiry
-      </button>
-    </form>
-  );
-}
-
 function ProgressBar({ value, max = 100 }: { value: number; max?: number }) {
   const pct = Math.min((value / max) * 100, 100);
   const color = pct >= 90 ? "bg-emerald-500" : pct >= 75 ? "bg-blue-500" : "bg-amber-500";
@@ -158,22 +47,23 @@ function ProgressBar({ value, max = 100 }: { value: number; max?: number }) {
   );
 }
 
-function SectionCard({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
-  const { ref, isInView } = useInView({ threshold: 0.1 });
-  return (
-    <div ref={ref} className={`glass rounded-2xl border border-border p-4 sm:p-5 transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transitionDelay: `${delay}ms` }}>
-      {children}
-    </div>
-  );
-}
+type TabId = "overview" | "performance" | "scorecard" | "srm" | "ai";
+
+const TABS: { id: TabId; label: string; icon: typeof Shield }[] = [
+  { id: "overview", label: "Overview", icon: Globe },
+  { id: "performance", label: "Performance", icon: BarChart3 },
+  { id: "scorecard", label: "Scorecard", icon: Award },
+  { id: "srm", label: "SRM", icon: GitCompare },
+  { id: "ai", label: "AI Assistant", icon: Sparkles },
+];
 
 function SupplierDetailContent({ id }: { id: string }) {
   const { data: supplierData, error: supplierError, isLoading } = useAPI<{ supplier?: SupplierProfile; error?: string }>(`/api/suppliers?id=${encodeURIComponent(id)}`);
   const supplier = supplierData?.supplier || null;
   const error = supplierError?.message || supplierData?.error || null;
   const loading = isLoading;
-  const { ref: heroRef, isInView: heroVisible } = useInView({ threshold: 0.1 });
-  const { ref: ctaRef, isInView: ctaVisible } = useInView({ threshold: 0.1 });
+  const [activeTab, setActiveTab] = useState<TabId>("overview");
+  const [contactOpen, setContactOpen] = useState(false);
 
   if (loading) {
     return (
@@ -205,12 +95,14 @@ function SupplierDetailContent({ id }: { id: string }) {
   const badge = badgeConfig[supplier.trustBadge] || badgeConfig.bronze;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-16 md:pb-24">
+    <div className="max-w-5xl mx-auto space-y-5 pb-16 md:pb-24">
+      {/* Back Link */}
       <Link href="/suppliers" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Suppliers
       </Link>
 
-      <div ref={heroRef} className={`glass rounded-2xl border border-border p-6 md:p-8 transition-all duration-700 ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+      {/* Hero Section */}
+      <div className="glass rounded-2xl border border-border p-6 md:p-8 animate-slide-up">
         <div className="flex flex-col md:flex-row md:items-start gap-6">
           <div className="flex items-start gap-4 flex-1">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-accent/20 to-purple-400/20 border border-border flex items-center justify-center font-display text-lg font-bold text-foreground shrink-0">
@@ -238,7 +130,9 @@ function SupplierDetailContent({ id }: { id: string }) {
             <span className="text-[10px] text-muted-foreground">Reliability Score</span>
           </div>
         </div>
-        <div ref={ctaRef} className={`mt-6 pt-5 border-t border-border/50 transition-all duration-700 ${ctaVisible ? "opacity-100" : "opacity-0"}`}>
+
+        {/* CTA Buttons */}
+        <div className="mt-6 pt-5 border-t border-border/50">
           <div className="flex flex-col sm:flex-row gap-3">
             <a href={supplier.sourceUrl || "#"} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-all hover:shadow-[0_0_20px_rgba(var(--glow-color),0.3)] active:scale-[0.97]">
               <Mail className="h-4 w-4" /> Visit Supplier
@@ -248,39 +142,95 @@ function SupplierDetailContent({ id }: { id: string }) {
                 <Package className="h-4 w-4" /> Browse Products
               </Link>
             )}
+            <button
+              onClick={() => setContactOpen(true)}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl border border-violet-500/20 text-sm font-semibold text-violet-400 hover:bg-violet-500/5 hover:border-violet-500/40 transition-all"
+            >
+              <MessageSquare className="h-4 w-4" /> Contact Supplier
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Contact / RFQ Form */}
-      <SectionCard delay={75}>
-        <h3 className="font-display text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-          <Mail className="h-4 w-4 text-accent" /> Contact Supplier
-        </h3>
-        <ContactForm supplierName={supplier.name} />
-      </SectionCard>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      {/* Quick Stats Bar */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
         {([
           { label: "Rating", value: supplier.stats.rating.toFixed(1), icon: Star, color: "text-amber-400" },
           { label: "Reliability", value: `${supplier.stats.reliabilityScore}%`, icon: Shield, color: "text-emerald-400" },
-          { label: "Response Time", value: supplier.stats.responseTime, icon: Clock, color: "text-blue-400" },
-          { label: "Order Completion", value: `${supplier.stats.orderCompletionRate}%`, icon: CheckCircle2, color: "text-emerald-400" },
-          { label: "Dispute Rate", value: `${supplier.stats.disputeRate}%`, icon: AlertTriangle, color: "text-amber-400" },
-          { label: "Monthly Orders", value: supplier.stats.monthlyOrders.toLocaleString(), icon: TrendingUp, color: "text-blue-400" },
-        ] as const).map((stat, i) => (
-          <SectionCard key={stat.label} delay={i * 50}>
-            <div className="space-y-2">
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
-              <p className="font-display text-lg font-bold text-foreground">{stat.value}</p>
-              <p className="text-[10px] text-muted-foreground">{stat.label}</p>
-            </div>
-          </SectionCard>
+          { label: "Response", value: supplier.stats.responseTime, icon: Clock, color: "text-blue-400" },
+          { label: "Completion", value: `${supplier.stats.orderCompletionRate}%`, icon: CheckCircle2, color: "text-emerald-400" },
+          { label: "Disputes", value: `${supplier.stats.disputeRate}%`, icon: AlertTriangle, color: "text-amber-400" },
+          { label: "Orders/mo", value: supplier.stats.monthlyOrders.toLocaleString(), icon: TrendingUp, color: "text-blue-400" },
+        ] as const).map((stat) => (
+          <div key={stat.label} className="glass rounded-xl border border-border p-3 text-center">
+            <stat.icon className={`h-3.5 w-3.5 mx-auto mb-1 ${stat.color}`} />
+            <p className="font-display text-sm font-bold text-foreground">{stat.value}</p>
+            <p className="text-[9px] text-muted-foreground">{stat.label}</p>
+          </div>
         ))}
       </div>
 
+      {/* Tab Navigation */}
+      <div className="sticky top-0 z-30 glass rounded-2xl border border-border p-1.5">
+        <div className="flex gap-1">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[11px] font-medium transition-all ${
+                activeTab === tab.id
+                  ? "bg-accent/15 text-accent"
+                  : "text-muted-foreground hover:text-foreground hover:bg-surface/50"
+              }`}
+            >
+              <tab.icon className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{tab.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      <div className="min-h-[400px]">
+        {activeTab === "overview" && (
+          <OverviewTab supplier={supplier} />
+        )}
+        {activeTab === "performance" && (
+          <SupplierPerformanceTab supplierId={supplier.id} supplierName={supplier.name} />
+        )}
+        {activeTab === "scorecard" && (
+          <SupplierScorecardTab supplierId={supplier.id} supplierName={supplier.name} />
+        )}
+        {activeTab === "srm" && (
+          <SupplierSRMTab supplierId={supplier.id} supplierName={supplier.name} />
+        )}
+        {activeTab === "ai" && (
+          <SupplierAITab supplierId={supplier.id} supplierName={supplier.name} />
+        )}
+      </div>
+
+      {/* Contact Slide-Over */}
+      <SupplierContactSlideOver
+        isOpen={contactOpen}
+        onClose={() => setContactOpen(false)}
+        supplierId={supplier.id}
+        supplierName={supplier.name}
+      />
+    </div>
+  );
+}
+
+function OverviewTab({ supplier }: { supplier: SupplierProfile }) {
+  const { ref, isInView } = useInView({ threshold: 0.05 });
+
+  return (
+    <div ref={ref} className={`space-y-4 transition-all duration-500 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}>
+      {/* Due Diligence Report */}
+      <DueDiligencePanel supplierId={supplier.id} supplierName={supplier.name} />
+
+      {/* About & Shipping */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <SectionCard delay={100}>
+        <div className="glass rounded-2xl border border-border p-5">
           <h3 className="font-display text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
             <Shield className="h-4 w-4 text-accent" /> About
           </h3>
@@ -291,9 +241,9 @@ function SupplierDetailContent({ id }: { id: string }) {
             <Row label="Categories" value={supplier.catalog.categories.length} />
           </div>
           <p className="text-xs text-muted-foreground mt-4 leading-relaxed">{supplier.description}</p>
-        </SectionCard>
+        </div>
 
-        <SectionCard delay={150}>
+        <div className="glass rounded-2xl border border-border p-5">
           <h3 className="font-display text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
             <Truck className="h-4 w-4 text-blue-400" /> Shipping & Fulfillment
           </h3>
@@ -305,9 +255,12 @@ function SupplierDetailContent({ id }: { id: string }) {
             <Row label="Free Shipping Threshold" value={supplier.shipping.freeShippingThreshold ? `$${supplier.shipping.freeShippingThreshold}+` : "N/A"} />
             <Row label="Packaging Quality" value={<span className="text-emerald-400 capitalize">{supplier.shipping.packagingQuality}</span>} />
           </div>
-        </SectionCard>
+        </div>
+      </div>
 
-        <SectionCard delay={200}>
+      {/* Quality & Catalog */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="glass rounded-2xl border border-border p-5">
           <h3 className="font-display text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
             <Award className="h-4 w-4 text-amber-400" /> Quality & Trust
           </h3>
@@ -320,9 +273,9 @@ function SupplierDetailContent({ id }: { id: string }) {
             <Row label="Dispute Resolution" value={supplier.quality.disputeResolution} />
             <Row label="Certifications" value={supplier.quality.certifications.join(", ") || "None"} />
           </div>
-        </SectionCard>
+        </div>
 
-        <SectionCard delay={250}>
+        <div className="glass rounded-2xl border border-border p-5">
           <h3 className="font-display text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
             <Package className="h-4 w-4 text-purple-400" /> Product Catalog
           </h3>
@@ -333,10 +286,11 @@ function SupplierDetailContent({ id }: { id: string }) {
             <Row label="MOQ" value={`${supplier.catalog.moq} unit${supplier.catalog.moq > 1 ? "s" : ""}`} />
             <Row label="Samples" value={supplier.catalog.samplesAvailable ? <span className="text-emerald-400">Available{supplier.catalog.samplePrice ? ` - $${supplier.catalog.samplePrice}` : ""}</span> : "Not available"} />
           </div>
-        </SectionCard>
+        </div>
       </div>
 
-      <SectionCard delay={300}>
+      {/* Communication */}
+      <div className="glass rounded-2xl border border-border p-5">
         <h3 className="font-display text-sm font-semibold text-foreground mb-5 flex items-center gap-2">
           <MessageSquare className="h-4 w-4 text-blue-400" /> Communication
         </h3>
@@ -368,7 +322,7 @@ function SupplierDetailContent({ id }: { id: string }) {
             </div>
           </div>
         </div>
-      </SectionCard>
+      </div>
     </div>
   );
 }

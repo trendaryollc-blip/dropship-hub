@@ -78,8 +78,8 @@ describe("Input Validation Security Tests", () => {
     const mockReq = { nextUrl: { pathname: "/api/test" } } as any;
     const config = { windowMs: 60000, maxRequests: 2 };
 
-    expect(rateLimitByUser(mockReq, "sec-user-1", config).allowed).toBe(true);
-    expect(rateLimitByUser(mockReq, "sec-user-1", config).allowed).toBe(true);
-    expect(rateLimitByUser(mockReq, "sec-user-1", config).allowed).toBe(false);
+    expect((await rateLimitByUser(mockReq, "sec-user-1", config)).allowed).toBe(true);
+    expect((await rateLimitByUser(mockReq, "sec-user-1", config)).allowed).toBe(true);
+    expect((await rateLimitByUser(mockReq, "sec-user-1", config)).allowed).toBe(false);
   });
 });

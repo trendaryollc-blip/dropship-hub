@@ -9,7 +9,6 @@ export const badgeConfig: Record<string, { label: string; color: string; border:
 export const dataSourceConfig: Record<string, { label: string; color: string; description: string }> = {
   live: { label: "LIVE DATA", color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20", description: "Real-time data from API" },
   estimated: { label: "ESTIMATED", color: "text-amber-400 bg-amber-400/10 border-amber-400/20", description: "Based on public information" },
-  sample: { label: "SAMPLE DATA", color: "text-muted-foreground bg-surface border-border", description: "For demonstration purposes" },
 };
 
 export function ScoreRing({ score, size = 36 }: { score: number; size?: number }) {

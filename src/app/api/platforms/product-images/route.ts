@@ -345,7 +345,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
       }
     }
 
-    return NextResponse.json({ images: [], error: "Unable to fetch images" }, { status: 400 });
+    return NextResponse.json({ images: [] });
   } catch {
     return NextResponse.json({ images: [], error: "Failed to fetch product images" }, { status: 500 });
   }

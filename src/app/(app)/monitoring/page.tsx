@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useAPI } from "@/hooks/useAPI";
 import { safeFetch } from "@/lib/safe-fetch";
+import { useToast } from "@/components/ui/Toast";
 
 interface PriceAlert {
   id: string;
@@ -107,6 +108,7 @@ function MiniSparkline({ data }: { data: number[] }) {
 }
 
 export default function MonitoringPage() {
+  const { error: toastError } = useToast();
   const { data: productsData, isLoading: loading, mutate: mutateProducts } = useAPI<{ products: MonitoredProduct[] }>("/api/monitoring?type=list");
   const { data: alertsData, mutate: mutateAlerts } = useAPI<{ alerts: (PriceAlert & { productTitle: string; productId: string })[] }>("/api/monitoring?type=alerts");
   const { data: metricsData, mutate: mutateMetrics } = useAPI<{ metrics: MonitoringMetrics; health: MonitoringHealth }>("/api/monitoring?type=metrics");
@@ -131,11 +133,11 @@ export default function MonitoringPage() {
       });
       mutateProducts();
     } catch {
-      // Silently fail
+      toastError("Failed to remove product");
     } finally {
       setRemovingId(null);
     }
-  }, [mutateProducts]);
+  }, [mutateProducts, toastError]);
 
   const handleMarkAlertRead = useCallback(async (monitoredId: string, alertIds: string[]) => {
     try {
@@ -146,9 +148,9 @@ export default function MonitoringPage() {
       });
       mutateAlerts();
     } catch {
-      // Silently fail
+      toastError("Failed to mark alerts as read");
     }
-  }, [mutateAlerts]);
+  }, [mutateAlerts, toastError]);
 
   const handleRunCheck = useCallback(async () => {
     setChecking(true);
@@ -158,11 +160,11 @@ export default function MonitoringPage() {
       mutateAlerts();
       mutateMetrics();
     } catch {
-      // Silently fail
+      toastError("Failed to run price check");
     } finally {
       setChecking(false);
     }
-  }, [mutateProducts, mutateAlerts, mutateMetrics]);
+  }, [mutateProducts, mutateAlerts, mutateMetrics, toastError]);
 
   const handleUpdateThreshold = useCallback(async (monitoredId: string) => {
     try {
@@ -179,9 +181,9 @@ export default function MonitoringPage() {
       setEditingProduct(null);
       mutateProducts();
     } catch {
-      // Silently fail
+      toastError("Failed to update threshold");
     }
-  }, [thresholdValue, autoDelistValue, mutateProducts]);
+  }, [thresholdValue, autoDelistValue, mutateProducts, toastError]);
 
   const unreadAlertCount = products.reduce((sum, p) => sum + p.alerts.filter((a) => !a.read).length, 0);
 

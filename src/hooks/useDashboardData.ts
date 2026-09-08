@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { TickerItem, AIDailyPick, SmartAlert, NicheCard, SupplierStatus, DailyMission, HeatmapCategory, TrendingProduct } from "@/types/dashboard";
+import type { TickerItem, AIDailyPick, SmartAlert, NicheCard, SupplierStatus, DailyMission, HeatmapCategory, TrendingProduct, FulfillmentPipelineData, ContextualAction } from "@/types/dashboard";
 import { useAPI } from "@/hooks/useAPI";
 
 interface AIBriefing {
@@ -55,6 +55,8 @@ export interface DashboardData {
   briefing: AIBriefing;
   pulse: MarketPulseCard[];
   actionStats: QuickActionStat[];
+  fulfillmentPipeline: FulfillmentPipelineData;
+  contextualActions: ContextualAction[];
 }
 
 const defaults = {
@@ -80,6 +82,16 @@ const defaults = {
   } as AIBriefing,
   pulse: [] as MarketPulseCard[],
   actionStats: [] as QuickActionStat[],
+  fulfillmentPipeline: {
+    pending: 0,
+    processing: 0,
+    shipped: 0,
+    delivered: 0,
+    totalRevenue: 0,
+    totalProfit: 0,
+    recentOrders: [],
+  } as FulfillmentPipelineData,
+  contextualActions: [] as ContextualAction[],
 };
 
 export function useDashboardData() {
@@ -95,6 +107,8 @@ export function useDashboardData() {
     briefing?: AIBriefing;
     pulse?: MarketPulseCard[];
     actionStats?: QuickActionStat[];
+    fulfillmentPipeline?: FulfillmentPipelineData;
+    contextualActions?: ContextualAction[];
   }>("/api/dashboard", {
     refreshInterval: 60000,
   });
@@ -119,6 +133,8 @@ export function useDashboardData() {
     briefing: apiData?.briefing ?? defaults.briefing,
     pulse: apiData?.pulse?.length ? apiData.pulse : defaults.pulse,
     actionStats: apiData?.actionStats?.length ? apiData.actionStats : defaults.actionStats,
+    fulfillmentPipeline: apiData?.fulfillmentPipeline ?? defaults.fulfillmentPipeline,
+    contextualActions: apiData?.contextualActions ?? defaults.contextualActions,
   };
 
   const [compareItems, setCompareItems] = useState<DashboardData["compareItems"]>([]);

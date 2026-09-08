@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { saveCalcHistory, getCalcHistory, type CalcHistoryEntry } from "@/lib/data";
-import { CheckCircle2, Save, Clock, Trash2 } from "lucide-react";
+import {
+  CheckCircle2, Save, Clock, Sparkles, ArrowRight, LayoutGrid,
+} from "lucide-react";
 import {
   DollarSign, Truck, Globe, Percent,
   Calculator, Info, AlertTriangle, ShoppingBag,
@@ -14,6 +16,11 @@ import {
   calculateMargin,
   ProfitCalc, ShippingCalc, LandedCostCalc, MarginCalc,
 } from "@/lib/calculations";
+import CalculatorPresets from "@/components/calculator/CalculatorPresets";
+import CalculatorTemplates from "@/components/calculator/CalculatorTemplates";
+import CalculatorAIAnalysis from "@/components/calculator/CalculatorAIAnalysis";
+import CalculatorComparison from "@/components/calculator/CalculatorComparison";
+import CalculatorBulk from "@/components/calculator/CalculatorBulk";
 
 type Tab = "profit" | "shipping" | "landed" | "margin";
 
@@ -24,6 +31,69 @@ const tabs: { id: Tab; label: string; icon: typeof DollarSign; description: stri
   { id: "margin", label: "Margin", icon: Percent, description: "Find the right price for your desired profit margin" },
 ];
 
+function ProfitGauge({ margin }: { margin: number }) {
+  const normalizedMargin = Math.min(100, Math.max(-50, margin));
+  const rotation = ((normalizedMargin + 50) / 150) * 180 - 90;
+  const color = margin >= 40 ? "#10b981" : margin >= 20 ? "#f59e0b" : margin >= 0 ? "#f97316" : "#ef4444";
+
+  return (
+    <div className="relative w-32 h-16 mx-auto mb-3 overflow-hidden">
+      <svg viewBox="0 0 100 50" className="w-full h-full">
+        <defs>
+          <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#ef4444" />
+            <stop offset="33%" stopColor="#f97316" />
+            <stop offset="66%" stopColor="#f59e0b" />
+            <stop offset="100%" stopColor="#10b981" />
+          </linearGradient>
+        </defs>
+        <path d="M 10 45 A 40 40 0 0 1 90 45" fill="none" stroke="url(#gaugeGrad)" strokeWidth="6" strokeLinecap="round" opacity={0.3} />
+        <line
+          x1="50"
+          y1="45"
+          x2={50 + 30 * Math.cos((rotation * Math.PI) / 180)}
+          y2={45 - 30 * Math.sin((rotation * Math.PI) / 180)}
+          stroke={color}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+        />
+        <circle cx="50" cy="45" r="3" fill={color} />
+      </svg>
+    </div>
+  );
+}
+
+function RevenueProjection({ profitPerUnit }: { profitPerUnit: number }) {
+  const quantities = [10, 50, 100, 500, 1000];
+  const maxProfit = Math.max(...quantities.map((q) => q * profitPerUnit), 1);
+
+  return (
+    <div className="mt-4">
+      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-2">Revenue Projection</p>
+      <div className="space-y-1.5">
+        {quantities.map((qty) => {
+          const profit = qty * profitPerUnit;
+          const width = maxProfit > 0 ? Math.max(5, (Math.abs(profit) / maxProfit) * 100) : 5;
+          return (
+            <div key={qty} className="flex items-center gap-2">
+              <span className="text-[9px] text-muted-foreground w-12 text-right">{qty} units</span>
+              <div className="flex-1 h-2.5 rounded-full bg-surface/50 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${profit >= 0 ? "bg-emerald-400" : "bg-red-400"}`}
+                  style={{ width: `${width}%` }}
+                />
+              </div>
+              <span className={`text-[9px] font-mono w-16 ${profit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                ${profit.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function CalculatorContent() {
   const searchParams = useSearchParams();
   const productTitle = searchParams.get("title");
@@ -32,7 +102,6 @@ function CalculatorContent() {
   const { user } = useAuth();
   const [saved, setSaved] = useState(false);
   const [history, setHistory] = useState<CalcHistoryEntry[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
 
   const [activeTab, setActiveTab] = useState<Tab>("profit");
 
@@ -73,12 +142,10 @@ function CalculatorContent() {
 
   const fetchHistory = async () => {
     if (!user) return;
-    setHistoryLoading(true);
     try {
       const entries = await getCalcHistory(user.uid, activeTab);
       setHistory(entries.slice(0, 5));
     } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[CalculatorPage] silently caught", e); }
-    setHistoryLoading(false);
   };
 
   useEffect(() => {
@@ -102,6 +169,80 @@ function CalculatorContent() {
       fetchHistory();
     }
   };
+
+  const handleAskAI = useCallback((prompt: string) => {
+    window.open(`/ai?q=${encodeURIComponent(prompt)}`, "_blank");
+  }, []);
+
+  const handleApplyPlatformFee = useCallback((fee: number) => {
+    setPlatformFee(fee);
+    setLcPlatformFee(fee);
+  }, []);
+
+  const handleApplyCategory = useCallback((cost: number, price: number, shipping: number) => {
+    setProductCost(cost);
+    setSellingPrice(price);
+    setShippingCost(shipping);
+    setMarginCost(cost);
+    setLcCost(cost);
+  }, []);
+
+  const handleApplyShipping = useCallback((shipCost: number, shipWeight: number) => {
+    setShippingCost(shipCost);
+    setWeight(shipWeight);
+  }, []);
+
+  const handleApplyTemplate = useCallback((templateId: string) => {
+    switch (templateId) {
+      case "new-product":
+        setActiveTab("profit");
+        setProductCost(8);
+        setSellingPrice(34.99);
+        setShippingCost(5);
+        setPlatformFee(15);
+        setAdSpend(3);
+        break;
+      case "competitor-match":
+        setActiveTab("margin");
+        setMarginCost(8);
+        setDesiredMargin(30);
+        break;
+      case "bulk-order":
+        setActiveTab("profit");
+        setUnits(500);
+        setProductCost(5);
+        setSellingPrice(29.99);
+        break;
+      case "subscription":
+        setActiveTab("profit");
+        setProductCost(6);
+        setSellingPrice(29.99);
+        setShippingCost(4);
+        setAdSpend(0);
+        break;
+    }
+  }, []);
+
+  const profitInputs = useMemo(() => ({
+    productCost, sellingPrice, shippingCost, platformFee, adSpend, units,
+  }), [productCost, sellingPrice, shippingCost, platformFee, adSpend, units]);
+
+  const profitResults = useMemo(() => ({
+    netProfit: profitResult.netProfit,
+    profitMargin: profitResult.profitMargin,
+    roi: profitResult.roi,
+  }), [profitResult]);
+
+  const currentScenario = useMemo(() => ({
+    cost: productCost,
+    price: sellingPrice,
+    shipping: shippingCost,
+    fee: platformFee,
+    adSpend,
+    netProfit: profitResult.netProfit,
+    margin: profitResult.profitMargin,
+    roi: profitResult.roi,
+  }), [productCost, sellingPrice, shippingCost, platformFee, adSpend, profitResult]);
 
   const inputClass = "w-full px-4 py-3 rounded-xl bg-surface border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all text-sm font-mono";
   const labelClass = "block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2";
@@ -169,7 +310,6 @@ function CalculatorContent() {
                 key={entry.id}
                 className="flex items-center justify-between p-3 rounded-xl bg-surface/50 border border-border hover:border-accent/20 transition-all cursor-pointer"
                 onClick={() => {
-                  // Load saved values back into the calculator
                   if (activeTab === "profit" && entry.inputs.productCost != null) {
                     setProductCost(entry.inputs.productCost);
                     setSellingPrice(entry.inputs.sellingPrice);
@@ -230,94 +370,126 @@ function CalculatorContent() {
 
       {/* PROFIT CALCULATOR */}
       {activeTab === "profit" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-slide-up">
-          <div className={cardClass}>
-            <h3 className="font-display text-lg font-semibold text-foreground mb-6">Input Values</h3>
-            <div className="space-y-4">
-              <div>
-                <label className={labelClass}>Product Cost ($)</label>
-                <input type="number" step="0.01" value={productCost} onChange={(e) => setProductCost(+e.target.value)} className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Selling Price ($)</label>
-                <input type="number" step="0.01" value={sellingPrice} onChange={(e) => setSellingPrice(+e.target.value)} className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Shipping Cost ($)</label>
-                <input type="number" step="0.01" value={shippingCost} onChange={(e) => setShippingCost(+e.target.value)} className={inputClass} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={labelClass}>Platform Fee (%)</label>
-                  <input type="number" step="0.1" value={platformFee} onChange={(e) => setPlatformFee(+e.target.value)} className={inputClass} />
-                </div>
-                <div>
-                  <label className={labelClass}>Ad Spend/Unit ($)</label>
-                  <input type="number" step="0.01" value={adSpend} onChange={(e) => setAdSpend(+e.target.value)} className={inputClass} />
-                </div>
-              </div>
-              <div>
-                <label className={labelClass}>Units Sold</label>
-                <input type="number" min="1" value={units} onChange={(e) => setUnits(+e.target.value)} className={inputClass} />
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className={cardClass}>
-              <h3 className="font-display text-lg font-semibold text-foreground mb-4">Results</h3>
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="p-4 rounded-xl bg-emerald-400/5 border border-emerald-400/20 text-center">
-                  <p className="text-xs text-emerald-400 uppercase tracking-wider mb-1">Net Profit</p>
-                  <p className={`font-display text-3xl font-bold ${profitResult.netProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                    ${profitResult.netProfit.toFixed(2)}
-                  </p>
-                </div>
-                <div className="p-4 rounded-xl bg-accent/5 border border-accent/20 text-center">
-                  <p className="text-xs text-accent uppercase tracking-wider mb-1">Profit Margin</p>
-                  <p className="font-display text-3xl font-bold text-accent">{profitResult.profitMargin.toFixed(1)}%</p>
-                </div>
-                <div className="p-4 rounded-xl bg-surface border border-border text-center">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">ROI</p>
-                  <p className="font-display text-2xl font-bold text-foreground">{profitResult.roi.toFixed(1)}%</p>
-                </div>
-                <div className="p-4 rounded-xl bg-surface border border-border text-center">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Break-Even</p>
-                  <p className="font-display text-2xl font-bold text-foreground">{profitResult.breakEvenUnits} units</p>
-                </div>
-              </div>
-
-              {/* Cost breakdown */}
-              <h4 className="text-sm font-semibold text-foreground mb-3">Cost Breakdown</h4>
-              <div className="space-y-2">
-                {profitResult.costBreakdown.map((item) => (
-                  <div key={item.name} className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                    <span className="text-sm text-muted-foreground flex-1">{item.name}</span>
-                    <span className="text-sm font-mono text-foreground">${item.value.toFixed(2)}</span>
-                    <span className="text-xs text-muted-foreground w-12 text-right">{item.pct.toFixed(0)}%</span>
+        <div className="space-y-6 animate-slide-up">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1 space-y-4">
+              <div className={cardClass}>
+                <h3 className="font-display text-lg font-semibold text-foreground mb-6">Input Values</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className={labelClass}>Product Cost ($)</label>
+                    <input type="number" step="0.01" value={productCost} onChange={(e) => setProductCost(+e.target.value)} className={inputClass} />
                   </div>
-                ))}
-              </div>
-
-              {/* Visual bar */}
-              <div className="mt-4 h-3 rounded-full overflow-hidden flex bg-surface">
-                {profitResult.costBreakdown.map((item) => (
-                  <div key={item.name} style={{ width: `${item.pct}%`, backgroundColor: item.color }} className="h-full transition-all duration-500" />
-                ))}
-              </div>
-            </div>
-
-            {profitResult.netProfit < 0 && (
-              <div className="p-4 rounded-xl bg-red-400/5 border border-red-400/20 flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-red-400">Negative margin detected</p>
-                  <p className="text-xs text-muted-foreground mt-1">You&apos;re losing ${Math.abs(profitResult.netProfit).toFixed(2)} per unit. Increase your price or reduce costs.</p>
+                  <div>
+                    <label className={labelClass}>Selling Price ($)</label>
+                    <input type="number" step="0.01" value={sellingPrice} onChange={(e) => setSellingPrice(+e.target.value)} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Shipping Cost ($)</label>
+                    <input type="number" step="0.01" value={shippingCost} onChange={(e) => setShippingCost(+e.target.value)} className={inputClass} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={labelClass}>Platform Fee (%)</label>
+                      <input type="number" step="0.1" value={platformFee} onChange={(e) => setPlatformFee(+e.target.value)} className={inputClass} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Ad Spend/Unit ($)</label>
+                      <input type="number" step="0.01" value={adSpend} onChange={(e) => setAdSpend(+e.target.value)} className={inputClass} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Units Sold</label>
+                    <input type="number" min="1" value={units} onChange={(e) => setUnits(+e.target.value)} className={inputClass} />
+                  </div>
                 </div>
               </div>
-            )}
+              <CalculatorPresets
+                activeTab={activeTab}
+                onApplyPlatformFee={handleApplyPlatformFee}
+                onApplyCategory={handleApplyCategory}
+                onApplyShipping={handleApplyShipping}
+              />
+            </div>
+
+            <div className="lg:col-span-1 space-y-4">
+              <div className={cardClass}>
+                <h3 className="font-display text-lg font-semibold text-foreground mb-4">Results</h3>
+
+                <ProfitGauge margin={profitResult.profitMargin} />
+
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="p-4 rounded-xl bg-emerald-400/5 border border-emerald-400/20 text-center">
+                    <p className="text-xs text-emerald-400 uppercase tracking-wider mb-1">Net Profit</p>
+                    <p className={`font-display text-3xl font-bold ${profitResult.netProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                      ${profitResult.netProfit.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-accent/5 border border-accent/20 text-center">
+                    <p className="text-xs text-accent uppercase tracking-wider mb-1">Profit Margin</p>
+                    <p className="font-display text-3xl font-bold text-accent">{profitResult.profitMargin.toFixed(1)}%</p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-surface border border-border text-center">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">ROI</p>
+                    <p className="font-display text-2xl font-bold text-foreground">{profitResult.roi.toFixed(1)}%</p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-surface border border-border text-center">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Break-Even</p>
+                    <p className="font-display text-2xl font-bold text-foreground">{profitResult.breakEvenUnits} units</p>
+                  </div>
+                </div>
+
+                <RevenueProjection profitPerUnit={profitResult.netProfit} />
+              </div>
+
+              {profitResult.netProfit < 0 && (
+                <div className="p-4 rounded-xl bg-red-400/5 border border-red-400/20 flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-red-400">Negative margin detected</p>
+                    <p className="text-xs text-muted-foreground mt-1">You&apos;re losing ${Math.abs(profitResult.netProfit).toFixed(2)} per unit. Increase your price or reduce costs.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="lg:col-span-1 space-y-4">
+              <div className={cardClass}>
+                <h4 className="text-sm font-semibold text-foreground mb-3">Cost Breakdown</h4>
+                <div className="space-y-2">
+                  {profitResult.costBreakdown.map((item) => (
+                    <div key={item.name} className="flex items-center gap-3">
+                      <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                      <span className="text-sm text-muted-foreground flex-1">{item.name}</span>
+                      <span className="text-sm font-mono text-foreground">${item.value.toFixed(2)}</span>
+                      <span className="text-xs text-muted-foreground w-12 text-right">{item.pct.toFixed(0)}%</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 h-3 rounded-full overflow-hidden flex bg-surface">
+                  {profitResult.costBreakdown.map((item) => (
+                    <div key={item.name} style={{ width: `${item.pct}%`, backgroundColor: item.color }} className="h-full transition-all duration-500" />
+                  ))}
+                </div>
+              </div>
+
+              <CalculatorAIAnalysis
+                activeTab={activeTab}
+                inputs={profitInputs}
+                results={profitResults}
+                onAskAI={handleAskAI}
+              />
+            </div>
           </div>
+
+          <CalculatorComparison
+            currentScenario={currentScenario}
+            onAskAI={handleAskAI}
+          />
+
+          <CalculatorTemplates onApplyTemplate={handleApplyTemplate} />
+
+          <CalculatorBulk defaultFee={platformFee} onAskAI={handleAskAI} />
         </div>
       )}
 

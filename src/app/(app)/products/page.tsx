@@ -6,17 +6,27 @@ import { useSearchParams, useRouter } from "next/navigation";
 import {
   Search, Loader2, Compass, Zap, ArrowRight,
   Flame, TrendingUp, Sparkles, ShoppingCart, Package, Heart,
+  GitCompare, Bell,
 } from "lucide-react";
 import Image from "next/image";
 import { useInView } from "@/hooks/useInView";
 import SearchHeader from "@/components/products/SearchHeader";
 import FilterPanel, { Filters } from "@/components/products/FilterPanel";
-import ViewToggle from "@/components/ui/ViewToggle";
 import EnrichedProductCard from "@/components/products/EnrichedProductCard";
 import ListItemCard from "@/components/products/ListItemCard";
 import ResultsHeader from "@/components/products/ResultsHeader";
+import ComparePanel from "@/components/products/ComparePanel";
+import PlatformProgress from "@/components/products/PlatformProgress";
+import QuickActionChips from "@/components/products/QuickActionChips";
+import AICollections from "@/components/products/AICollections";
+import PersonalizedRecommendations from "@/components/products/PersonalizedRecommendations";
+import SearchAlertModal, { type SearchAlertData } from "@/components/products/SearchAlertModal";
+import VisualSearchButton from "@/components/products/VisualSearchButton";
 import { useSavedProducts } from "@/components/saved/SavedProductsProvider";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { useSearchTracking } from "@/contexts/SearchTrackingContext";
 import { useAPI } from "@/hooks/useAPI";
+import { useSearchStream } from "@/hooks/useSearchStream";
 import { safeFetch } from "@/lib/safe-fetch";
 import { PageErrorBoundary } from "@/components/ui/PageErrorBoundary";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
@@ -32,6 +42,28 @@ interface SearchResult {
   brand?: string;
   rating?: number;
   reviews?: number;
+  // Enrichment fields
+  estimatedMargin?: number;
+  goldenScore?: number;
+  goldenRank?: "S" | "A" | "B" | "C" | "D";
+  trendPhase?: "emerging" | "growth" | "mature" | "declining";
+  saturationLevel?: "unsaturated" | "low" | "moderate" | "saturated" | "hyper-saturated";
+  competitionScore?: number;
+  reviewVelocity?: number;
+  priceStability?: number;
+  supplyChainScore?: number;
+  // Dedup fields
+  platformCount?: number;
+  platforms?: Array<{ platform: string; price: number | null; link: string; originalTitle: string; rating?: number; reviews?: number }>;
+  bestPrice?: number | null;
+  worstPrice?: number | null;
+  priceSpread?: number;
+  avgPrice?: number | null;
+  bestPlatform?: string;
+  // Rank fields
+  relevanceScore?: number;
+  rankReason?: string;
+  [key: string]: unknown;
 }
 
 interface PlatformResult {
@@ -193,13 +225,22 @@ function HowItWorksSection() {
   );
 }
 
-function EmptyState() {
+function EmptyState({ onAskAI }: { onAskAI?: (q: string) => void }) {
   const suggestions = ["wireless earbuds", "phone accessories", "pet supplies", "kitchen gadgets", "led strip lights"];
   return (
     <div className="glass rounded-2xl p-4 sm:p-8 md:p-16 text-center">
       <Compass className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground/30 mx-auto mb-4" />
       <h3 className="font-display text-lg font-semibold text-foreground mb-2">No products found</h3>
       <p className="text-sm text-muted-foreground mb-4">Try a different search query or enable more platforms</p>
+      {onAskAI && (
+        <button
+          onClick={() => onAskAI("Help me find winning products for my store")}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-500/15 to-purple-500/15 text-violet-400 border border-violet-500/20 text-sm font-medium hover:border-violet-500/40 transition-all mb-4"
+        >
+          <Sparkles className="h-4 w-4" />
+          Ask AI to find products for me
+        </button>
+      )}
       <div className="flex items-center justify-center gap-2 flex-wrap">
         <span className="text-xs text-muted-foreground">Try:</span>
         {suggestions.map((s) => (
@@ -555,13 +596,12 @@ export default function ProductsPage() {
   );
 }
 
-// Module-level cache — survives component remounts (e.g., back navigation)
+// Module-level cache
 let _lastQuery = "";
 let _lastResults: SearchResult[] = [];
 let _lastPlatformResults: PlatformResult[] = [];
 let _lastPlatformErrors: PlatformError[] = [];
 
-// Static fallback platform list — used only until the backend platform list loads.
 const DEFAULT_PLATFORMS: PlatformInfo[] = [
   { id: "amazon", name: "Amazon", enabled: true, configured: true },
   { id: "ebay", name: "Ebay", enabled: true, configured: true },
@@ -589,18 +629,60 @@ function ProductsContent() {
   const [searched, setSearched] = useState(() => _lastResults.length > 0 || _lastQuery !== "");
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [availablePlatforms, setAvailablePlatforms] = useState<PlatformInfo[]>(DEFAULT_PLATFORMS);
-  const [sortBy, setSortBy] = useState<"relevance" | "price-asc" | "price-desc" | "rating" | "reviews">("relevance");
+  const [sortBy, setSortBy] = useState<"relevance" | "price-asc" | "price-desc" | "rating" | "reviews" | "margin" | "golden">("relevance");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showFilters, setShowFilters] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
-  const [filters, setFilters] = useState<Filters>({ brands: [], priceMin: "", priceMax: "", minRating: 0 });
+  const [filters, setFilters] = useState<Filters>({
+    brands: [], priceMin: "", priceMax: "", minRating: 0,
+    minMargin: 0, competitionLevel: [], trendingDirection: [], platformFilter: [],
+  });
   const { savedProducts } = useSavedProducts();
+  const { user } = useAuth();
+  const { trackSearch, trackClick } = useSearchTracking();
   const searchAbortRef = useRef<AbortController | null>(null);
+  const { 
+    results: streamResults, 
+    completedPlatforms, 
+    loadingPlatforms, 
+    errorPlatforms, 
+    isStreaming, 
+    totalExpected, 
+    totalResults: streamTotalResults,
+    startStream, 
+    abort: abortStream, 
+    reset: resetStream 
+  } = useSearchStream();
+
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    if (!user) return {};
+    try {
+      const token = await user.getIdToken();
+      return { Authorization: `Bearer ${token}` };
+    } catch {
+      return {};
+    }
+  };
+
+  // Compare mode
+  const [compareMode, setCompareMode] = useState(false);
+  const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
+
+  // Platform progress tracking
+  const [platformProgress, setPlatformProgress] = useState<{
+    platforms: { platform: string; name: string; status: "pending" | "loading" | "success" | "error"; resultCount?: number; error?: string }[];
+  }>({ platforms: [] });
+
+  // AI response panel
+  const [aiResponse, setAiResponse] = useState<{ query: string; response: string; loading: boolean }>({ query: "", response: "", loading: false });
+
+  // Search Alert modal (Feature 10)
+  const [showAlertModal, setShowAlertModal] = useState(false);
 
   useEffect(() => {
     try {
       const stored = JSON.parse(localStorage.getItem("recentSearches") || "[]");
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe localStorage hydration
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (Array.isArray(stored)) setRecentSearches(stored);
     } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[Products] silently caught", e); }
   }, []);
@@ -611,13 +693,10 @@ function ProductsContent() {
     localStorage.setItem("recentSearches", JSON.stringify(updated));
   };
 
-  // Single search function — the ONLY place API calls are made.
-  // No useEffect auto-trigger: eliminates stale closures, race conditions, and cache key mismatches.
-  const handleSearch = useCallback(async (searchQuery?: string, platformsOverride?: string[]) => {
+  const handleSearch = useCallback(async (searchQuery?: string, platformsOverride?: string[], parsedIntent?: import("@/lib/search/intent-parser").ParsedIntent) => {
     const q = (searchQuery || query).trim();
     if (!q) return;
 
-    // Abort any in-flight search
     searchAbortRef.current?.abort();
     const controller = new AbortController();
     searchAbortRef.current = controller;
@@ -626,7 +705,6 @@ function ProductsContent() {
     const platformKey = [...platforms].sort().join(",") || "all";
     const cacheKey = `search_${platformKey}_${q}`;
 
-    // Check sessionStorage cache first
     try {
       const cached = JSON.parse(sessionStorage.getItem(cacheKey) || "null");
       if (cached && cached.query === q && cached.results?.length > 0) {
@@ -641,7 +719,6 @@ function ProductsContent() {
         setSearched(true);
         setLoading(false);
         setQuery(q);
-        // Update module-level cache
         _lastQuery = q;
         _lastResults = cleanResults;
         _lastPlatformResults = cached.platformResults || [];
@@ -659,26 +736,82 @@ function ProductsContent() {
     setQuery(q);
     saveRecentSearch(q);
 
+    // Initialize platform progress
+    const activePlatforms = platforms.length > 0
+      ? platforms.map((p) => ({ platform: p, name: p, status: "loading" as const }))
+      : DEFAULT_PLATFORMS.map((p) => ({ platform: p.id, name: p.name, status: "loading" as const }));
+    setPlatformProgress({ platforms: activePlatforms });
+
     try {
-      const data = await safeFetch<{ platforms?: PlatformResult[]; platformErrors?: PlatformError[] }>("/api/platforms/search-all", {
+      const authHeaders = await getAuthHeaders();
+      const requestBody: Record<string, unknown> = {
+        query: q,
+        platforms: platforms.length > 0 ? platforms : undefined,
+        stream: true, // Enable streaming mode
+      };
+      if (parsedIntent) requestBody.intent = parsedIntent;
+
+      // Use streaming for real-time results
+      startStream(q, platforms.length > 0 ? platforms : undefined);
+      
+      // Also fetch the full enriched results for the enhancement pipeline
+      const data = await safeFetch<{
+        platforms?: PlatformResult[];
+        platformErrors?: PlatformError[];
+        mergedProducts?: SearchResult[];
+        intent?: Record<string, unknown>;
+        filters?: Record<string, unknown>;
+      }>("/api/platforms/search-all", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query: q,
-          platforms: platforms.length > 0 ? platforms : undefined,
-        }),
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify({ ...requestBody, stream: false }), // Get full results without streaming
         signal: controller.signal,
       });
-      const allResults: SearchResult[] = [];
-      const platformData: PlatformResult[] = data.platforms || [];
-      platformData.forEach((p: PlatformResult) => {
-        allResults.push(...normalizeResults(p.platform, p.data));
-      });
+
+      // Use merged/enriched products if available (Features 1-4)
+      let allResults: SearchResult[];
+      if (data.mergedProducts && data.mergedProducts.length > 0) {
+        allResults = data.mergedProducts;
+      } else {
+        // Fallback: normalize from raw platform results
+        allResults = [];
+        const platformData = data.platforms || [];
+        platformData.forEach((p: PlatformResult) => {
+          allResults.push(...normalizeResults(p.platform, p.data));
+        });
+      }
+
       const errs = data.platformErrors || [];
+
+      // Apply intent-based filters if available (Feature 2)
+      if (data.filters) {
+        const f = data.filters as Record<string, unknown>;
+        setFilters((prev) => ({
+          ...prev,
+          brands: Array.isArray(f.brands) && f.brands.length > 0 ? f.brands as string[] : prev.brands,
+          priceMin: f.priceMin ? String(f.priceMin) : prev.priceMin,
+          priceMax: f.priceMax ? String(f.priceMax) : prev.priceMax,
+          minRating: typeof f.minRating === "number" ? f.minRating : prev.minRating,
+          platformFilter: Array.isArray(f.platformFilter) && f.platformFilter.length > 0 ? f.platformFilter as string[] : prev.platformFilter,
+          trendingDirection: Array.isArray(f.trendingDirection) && f.trendingDirection.length > 0 ? f.trendingDirection as ("rising" | "stable" | "declining")[] : prev.trendingDirection,
+        }));
+      }
+
+      // Update platform progress
+      const platformData = data.platforms || [];
+      setPlatformProgress({
+        platforms: DEFAULT_PLATFORMS.map((p) => {
+          const pd = platformData.find((pr: PlatformResult) => pr.platform === p.id);
+          const err = errs.find((e: PlatformError) => e.platform === p.id);
+          if (pd) return { platform: p.id, name: p.name, status: "success" as const, resultCount: pd.resultCount };
+          if (err) return { platform: p.id, name: p.name, status: "error" as const, error: err.error };
+          return { platform: p.id, name: p.name, status: "success" as const, resultCount: 0 };
+        }),
+      });
+
       setPlatformResults(platformData);
       setPlatformErrors(errs);
       setResults(allResults);
-      // Save to module-level cache for back-button persistence
       _lastQuery = q;
       _lastResults = allResults;
       _lastPlatformResults = platformData;
@@ -687,13 +820,29 @@ function ProductsContent() {
         sessionStorage.setItem(cacheKey, JSON.stringify({ query: q, results: allResults, platformResults: platformData }));
       } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[Products] silently caught", e); }
 
-      // Background: fetch missing images from product URLs
+      // Feature 6: Save search to Firestore for personalization
+      if (user) {
+        try {
+          const token = await user.getIdToken();
+          await safeFetch("/api/search-history", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ query: q, source: "products", resultCount: allResults.length }),
+          });
+        } catch { /* silently ignore */ }
+      }
+
+      // Feature 6: Track search event
+      trackSearch(q, allResults.length);
+
+      // Background image fetching
       const missingImages = allResults.filter((r) => !r.image && r.link && r.link !== "#");
       if (missingImages.length > 0) {
         const urlsToFetch = missingImages.map((r) => r.link);
+        const authHeaders2 = await getAuthHeaders();
         safeFetch<{ images?: (string | undefined)[] }>("/api/platforms/batch-images", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders2 },
           body: JSON.stringify({ urls: urlsToFetch }),
         })
           .then((imgData) => {
@@ -724,22 +873,16 @@ function ProductsContent() {
     }
   }, [query, selectedPlatforms]);
 
-  // On mount: if URL has ?q=, trigger a search using current platform selection
-  // If we already have cached results for this query, skip re-fetching
   const initialSearchDone = useRef(false);
   const lastSearchParam = useRef<string | null>(null);
   useEffect(() => {
     const q = searchParams.get("q");
     if (!q) return;
-    
-    // Skip if this is the same query we already processed
     if (q === lastSearchParam.current && initialSearchDone.current) return;
     lastSearchParam.current = q;
     initialSearchDone.current = true;
-    
-    // If we already have results for this query (from module-level cache), skip fetch
     if (_lastQuery === q && _lastResults.length > 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- cache hit guard, not a data sync
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSearched(true);
       setQuery(q);
       return;
@@ -774,6 +917,12 @@ function ProductsContent() {
         return sorted.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
       case "reviews":
         return sorted.sort((a, b) => (b.reviews ?? 0) - (a.reviews ?? 0));
+      case "margin":
+        return sorted.sort((a, b) => (b.estimatedMargin ?? 0) - (a.estimatedMargin ?? 0));
+      case "golden": {
+        const rankOrder: Record<string, number> = { S: 5, A: 4, B: 3, C: 2, D: 1 };
+        return sorted.sort((a, b) => (rankOrder[b.goldenRank || "D"] ?? 0) - (rankOrder[a.goldenRank || "D"] ?? 0));
+      }
       default:
         return sorted;
     }
@@ -787,18 +936,127 @@ function ProductsContent() {
     return Array.from(brandSet);
   }, [results]);
 
+  const availableResultPlatforms = useMemo(() => {
+    const platformSet = new Set<string>();
+    results.forEach((r) => platformSet.add(r.source));
+    return Array.from(platformSet);
+  }, [results]);
+
   const filteredResults = useMemo(() => {
     return sortedResults.filter((r) => {
       if (filters.brands.length > 0 && (!r.brand || !filters.brands.includes(r.brand))) return false;
       if (filters.priceMin && (r.price == null || r.price < Number(filters.priceMin))) return false;
       if (filters.priceMax && (r.price == null || r.price > Number(filters.priceMax))) return false;
       if (filters.minRating > 0 && (r.rating == null || r.rating < filters.minRating)) return false;
+      if (filters.platformFilter.length > 0 && !filters.platformFilter.includes(r.source)) return false;
+      // Enrichment-based filters (Feature 7)
+      if (filters.minMargin > 0 && (r.estimatedMargin == null || r.estimatedMargin < filters.minMargin)) return false;
+      if (filters.competitionLevel.length > 0) {
+        const compScore = r.competitionScore ?? 50;
+        const compLevel: "low" | "medium" | "high" = compScore < 40 ? "low" : compScore > 70 ? "high" : "medium";
+        if (!filters.competitionLevel.includes(compLevel)) return false;
+      }
+      if (filters.trendingDirection.length > 0) {
+        const phase = r.trendPhase || "growth";
+        const dirMap: Record<string, string> = { emerging: "rising", growth: "rising", mature: "stable", declining: "declining" };
+        const dir = dirMap[phase] || "stable";
+        if (!filters.trendingDirection.includes(dir as "rising" | "stable" | "declining")) return false;
+      }
       return true;
     });
   }, [sortedResults, filters]);
 
+  // Compare mode handlers
+  const toggleCompareMode = () => {
+    setCompareMode(!compareMode);
+    if (compareMode) setSelectedForCompare([]);
+  };
+
+  const toggleProductSelect = (id: string) => {
+    setSelectedForCompare((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : prev.length < 4 ? [...prev, id] : prev
+    );
+  };
+
+  const getSelectedProducts = () => results.filter((r) => selectedForCompare.includes(r.id));
+
+  // AI action handler
+  const handleAIAction = useCallback((action: string, product: SearchResult) => {
+    const prompts: Record<string, string> = {
+      analyze: `Analyze this product for dropshipping viability: "${product.title}" priced at $${product.price || "unknown"} on ${product.source}. Check market demand, competition, profit potential, and give recommendations.`,
+      suppliers: `Find the best suppliers for "${product.title}" - compare pricing, shipping times, and reliability across CJ Dropshipping, AliExpress, and other platforms.`,
+      listing: `Generate an optimized product listing for "${product.title}" - include title, description, bullet points, and SEO tags for my dropshipping store.`,
+      validate: `Validate this product for my dropshipping store: "${product.title}" on ${product.source}. Give it a Golden Score based on demand, competition, margins, and trend.`,
+    };
+
+    const prompt = prompts[action] || `Analyze "${product.title}" for my dropshipping store.`;
+    window.open(`/ai?q=${encodeURIComponent(prompt)}`, "_blank");
+  }, []);
+
+  // AI Ask handler (Feature 2: LLM-powered intent parsing)
+  const handleAskAI = useCallback(async (naturalLanguageQuery: string) => {
+    setAiResponse({ query: naturalLanguageQuery, response: "", loading: true });
+    try {
+      // Use local intent parser for instant structured extraction
+      const { parseIntentLocally, buildSearchKeywords, applyIntentToFilters } = await import("@/lib/search/intent-parser");
+      const intent = parseIntentLocally(naturalLanguageQuery);
+      const searchQ = buildSearchKeywords(intent).join(" ") || naturalLanguageQuery;
+
+      // Apply parsed intent as filters
+      const parsedFilters = applyIntentToFilters(intent);
+      setFilters((prev) => ({
+        ...prev,
+        brands: parsedFilters.brands.length > 0 ? parsedFilters.brands : prev.brands,
+        priceMin: parsedFilters.priceMin || prev.priceMin,
+        priceMax: parsedFilters.priceMax || prev.priceMax,
+        minRating: parsedFilters.minRating > 0 ? parsedFilters.minRating : prev.minRating,
+        platformFilter: parsedFilters.platformFilter.length > 0 ? parsedFilters.platformFilter : prev.platformFilter,
+        trendingDirection: parsedFilters.trendingDirection.length > 0 ? parsedFilters.trendingDirection : prev.trendingDirection,
+      }));
+
+      setQuery(searchQ);
+      await handleSearch(searchQ, undefined, intent);
+    } catch {
+      // Fallback to simple regex parsing
+      const parsedQuery = naturalLanguageQuery
+        .replace(/under\s*\$?\d+/gi, "")
+        .replace(/\d+\s*\+?\s*stars?/gi, "")
+        .replace(/on\s+(amazon|ebay|aliexpress|walmart|etsy)/gi, "")
+        .replace(/trending|popular|best|good|great|high|low|cheap|expensive/gi, "")
+        .trim()
+        .replace(/\s+/g, " ");
+      const searchQ = parsedQuery.length > 3 ? parsedQuery : naturalLanguageQuery;
+      setQuery(searchQ);
+      await handleSearch(searchQ);
+    }
+    setAiResponse({ query: "", response: "", loading: false });
+  }, [handleSearch]);
+
+  // Quick action handler
+  const handleQuickAction = useCallback(async (prompt: string) => {
+    window.open(`/ai?q=${encodeURIComponent(prompt)}`, "_blank");
+  }, []);
+
+  // Search Alert handler (Feature 10)
+  const handleCreateAlert = useCallback(async (alertData: SearchAlertData) => {
+    if (!user) return;
+    const token = await user.getIdToken();
+    const res = await safeFetch<{ success?: boolean; error?: string }>("/api/search/alerts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ uid: user.uid, ...alertData }),
+    });
+    if (!res.success && res.error) throw new Error(res.error);
+  }, [user]);
+
+  // Visual search handler (Feature 8)
+  const handleVisualSearch = useCallback(async (query: string) => {
+    setQuery(query);
+    await handleSearch(query);
+  }, [handleSearch]);
+
   return (
-    <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 pb-16 md:pb-24">
+    <div className="max-w-7xl mx-auto space-y-5 md:space-y-6 pb-16 md:pb-24">
       <SearchHeader
         query={query}
         setQuery={setQuery}
@@ -811,14 +1069,15 @@ function ProductsContent() {
         setShowFilters={setShowFilters}
         recentSearches={recentSearches}
         onRecentClick={(q) => handleSearch(q)}
+        onAskAI={handleAskAI}
       />
 
       {savedProducts.length > 0 && (
         <Link
           href="/saved"
-          className="flex items-center gap-2.5 p-3 rounded-2xl bg-accent/8 border border-accent/15 hover:bg-accent/15 transition-all"
+          className="flex items-center gap-3 p-3.5 rounded-2xl glass border border-accent/10 hover:border-accent/25 hover:bg-accent/5 transition-all group"
         >
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/15">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/10 group-hover:bg-accent/15 transition-colors">
             <Heart className="h-4 w-4 text-accent fill-current" />
           </div>
           <div className="flex-1 min-w-0">
@@ -837,6 +1096,16 @@ function ProductsContent() {
         </div>
       )}
 
+      {/* Search Alert Modal (Feature 10) */}
+      {query && (
+        <SearchAlertModal
+          query={query}
+          isOpen={showAlertModal}
+          onClose={() => setShowAlertModal(false)}
+          onCreateAlert={handleCreateAlert}
+        />
+      )}
+
       {showFilters && searched && results.length > 0 && (
         <FilterPanel
           filters={filters}
@@ -844,48 +1113,106 @@ function ProductsContent() {
           availableBrands={availableBrands}
           resultCount={results.length}
           filteredCount={filteredResults.length}
+          availablePlatforms={availableResultPlatforms}
         />
       )}
 
-      {loading && (
-        <div className="glass rounded-2xl p-6 md:p-8 lg:p-16 text-center">
-          <Loader2 className="h-12 w-12 text-accent mx-auto mb-4 animate-spin" />
-          <h3 className="font-display text-lg font-semibold text-foreground mb-2">Searching...</h3>
-          <p className="text-sm text-muted-foreground">
-            Querying {selectedPlatforms.length > 0 ? selectedPlatforms.length : "all"} platform{selectedPlatforms.length !== 1 ? "s" : ""} in parallel
-          </p>
+      {/* Compare mode toggle + Alert + Visual Search */}
+      {searched && results.length > 0 && (
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={toggleCompareMode}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              compareMode
+                ? "bg-accent text-white"
+                : "bg-surface border border-border text-muted-foreground hover:text-foreground hover:border-accent/20"
+            }`}
+          >
+            <GitCompare className="h-4 w-4" />
+            {compareMode ? "Exit Compare" : "Compare Products"}
+          </button>
+          {compareMode && selectedForCompare.length > 0 && (
+            <span className="text-xs text-muted-foreground">
+              {selectedForCompare.length}/4 selected
+            </span>
+          )}
+          {/* Feature 10: Create Alert button */}
+          <button
+            onClick={() => setShowAlertModal(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-surface border border-border text-muted-foreground hover:text-amber-400 hover:border-amber-400/20 transition-all"
+          >
+            <Bell className="h-4 w-4" />
+            Create Alert
+          </button>
+          {/* Feature 8: Visual Search button */}
+          <VisualSearchButton onSearch={handleVisualSearch} />
         </div>
+      )}
+
+      {/* Compare panel */}
+      {compareMode && selectedForCompare.length > 0 && (
+        <ComparePanel
+          selectedProducts={getSelectedProducts()}
+          onRemove={toggleProductSelect}
+          onClearAll={() => setSelectedForCompare([])}
+          onAICompare={(products) => {
+            const prompt = `Compare these products for dropshipping: ${products.map((p) => `"${p.title}" ($${p.price || "N/A"} on ${p.source})`).join(", ")}. Which is the best to sell and why?`;
+            window.open(`/ai?q=${encodeURIComponent(prompt)}`, "_blank");
+          }}
+        />
+      )}
+
+      {/* Platform progress */}
+      {loading && platformProgress.platforms.length > 0 && (
+        <PlatformProgress platforms={platformProgress.platforms} />
+      )}
+
+      {!loading && (
+        <ResultsHeader
+          resultCount={filteredResults.length}
+          platformCount={platformResults.length}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+        />
+      )}
+
+      {platformErrors.length > 0 && (
+        <div className="glass rounded-2xl p-3 border border-amber-400/20 bg-amber-400/5">
+          <p className="text-xs font-medium text-amber-400 mb-1.5">
+            {platformErrors.length} platform{platformErrors.length !== 1 ? "s" : ""} returned no results:
+          </p>
+          <div className="space-y-1">
+            {platformErrors.map((pe) => (
+              <div key={pe.platform} className="flex items-center gap-2 text-[10px] text-amber-400/80">
+                <span className="font-medium">{pe.name}</span>
+                {pe.error && <span className="text-amber-400/50">— {pe.error}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Quick action chips */}
+      {!loading && searched && results.length > 0 && (
+        <QuickActionChips query={query} onAction={handleQuickAction} />
       )}
 
       {!loading && searched && results.length > 0 && (
         <>
-          <ResultsHeader
-            resultCount={filteredResults.length}
-            platformCount={platformResults.length}
-            sortBy={sortBy}
-            setSortBy={setSortBy}
-            viewMode={viewMode}
-            setViewMode={setViewMode}
-          />
-          {platformErrors.length > 0 && (
-            <div className="glass rounded-2xl p-3 border border-amber-400/20 bg-amber-400/5">
-              <p className="text-xs font-medium text-amber-400 mb-1.5">
-                {platformErrors.length} platform{platformErrors.length !== 1 ? "s" : ""} returned no results:
-              </p>
-              <div className="space-y-1">
-                {platformErrors.map((pe) => (
-                  <div key={pe.platform} className="flex items-center gap-2 text-[10px] text-amber-400/80">
-                    <span className="font-medium">{pe.name}</span>
-                    {pe.error && <span className="text-amber-400/50">— {pe.error}</span>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
           {viewMode === "grid" ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredResults.map((product, i) => (
-                <EnrichedProductCard key={product.id} product={product} index={i} />
+                <EnrichedProductCard
+                  key={product.id}
+                  product={product}
+                  index={i}
+                  compareMode={compareMode}
+                  selected={selectedForCompare.includes(product.id)}
+                  onToggleSelect={toggleProductSelect}
+                  onAIAction={handleAIAction}
+                />
               ))}
             </div>
           ) : (
@@ -904,7 +1231,10 @@ function ProductsContent() {
           <h3 className="font-display text-lg font-semibold text-foreground mb-2">No products match your filters</h3>
           <p className="text-sm text-muted-foreground mb-4">Try adjusting or clearing some filters</p>
           <button
-            onClick={() => setFilters({ brands: [], priceMin: "", priceMax: "", minRating: 0 })}
+            onClick={() => setFilters({
+              brands: [], priceMin: "", priceMax: "", minRating: 0,
+              minMargin: 0, competitionLevel: [], trendingDirection: [], platformFilter: [],
+            })}
             className="text-xs px-4 py-2 rounded-lg bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 transition-colors"
           >
             Clear all filters
@@ -913,15 +1243,17 @@ function ProductsContent() {
       )}
 
       {!loading && searched && results.length === 0 && !error && (
-        <EmptyState />
+        <EmptyState onAskAI={handleAskAI} />
       )}
 
       {!loading && !searched && (
         <>
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 mb-2 pt-2">
+            <div className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
             <span className="text-sm font-semibold text-foreground">Discovery</span>
-            <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
           </div>
+          <PersonalizedRecommendations />
+          <AICollections />
           <TrendingSection />
           <NichesSection />
           <CategoriesSection />

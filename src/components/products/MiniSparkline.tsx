@@ -1,29 +1,39 @@
 "use client";
 
-export default function MiniSparkline({ points, color = "#3b82f6", id }: { points: number[]; color?: string; id: string }) {
-  if (!points || points.length < 2) return null;
+import { useState, useEffect } from "react";
+
+interface MiniSparklineProps {
+  points: number[];
+  color?: string;
+  id?: string;
+  width?: number;
+  height?: number;
+}
+
+export default function MiniSparkline({ points, color = "#3b82f6", id = "spark", width, height }: MiniSparklineProps) {
+  const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- standard SSR mount guard
+  useEffect(() => { setMounted(true); }, []);
+
+  if (!mounted) return <div className="shrink-0" style={{ width: width || 120, height: height || 32 }} />;
+
+  const w = width || 120;
+  const h = height || 32;
   const max = Math.max(...points);
   const min = Math.min(...points);
   const range = max - min || 1;
-  const w = 80;
-  const h = 28;
-  const pts = points.map((p, i) => ({
-    x: (i / (points.length - 1)) * w,
-    y: h - ((p - min) / range) * h,
-  }));
-  const linePath = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-  const areaPath = `${linePath} L ${w} ${h} L 0 ${h} Z`;
+  const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"} ${(i / (points.length - 1)) * w} ${h - ((p - min) / range) * h}`).join(" ");
+
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="shrink-0">
+    <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} className="shrink-0" preserveAspectRatio="none">
       <defs>
-        <linearGradient id={`ps-${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+        <linearGradient id={`ms-${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.2" />
           <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
-      <path d={areaPath} fill={`url(#ps-${id})`} />
-      <path d={linePath} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
-      <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="2.5" fill={color} />
+      <path d={`${pathD} L ${w} ${h} L 0 ${h} Z`} fill={`url(#ms-${id})`} />
+      <path d={pathD} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }

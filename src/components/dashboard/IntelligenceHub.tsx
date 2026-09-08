@@ -336,8 +336,9 @@ function AIMonitoringPanel({ briefing, alerts }: { briefing: AIBriefing; alerts:
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
           {marketSignals.map((signal) => {
             const Icon = signal.icon;
+            const href = signal.type === "opportunity" ? "/products" : signal.type === "risk" ? "/monitoring" : signal.type === "warning" ? "/intelligence" : "/trends";
             return (
-              <div key={signal.id} className={`p-3 rounded-xl border border-border/50 hover:border-accent/20 transition-all cursor-pointer group ${signal.type === "opportunity" ? "bg-emerald-400/5" : signal.type === "risk" ? "bg-red-400/5" : signal.type === "info" ? "bg-blue-400/5" : "bg-amber-400/5"}`}>
+              <Link key={signal.id} href={href} className={`block p-3 rounded-xl border border-border/50 hover:border-accent/20 transition-all cursor-pointer group ${signal.type === "opportunity" ? "bg-emerald-400/5" : signal.type === "risk" ? "bg-red-400/5" : signal.type === "info" ? "bg-blue-400/5" : "bg-amber-400/5"}`}>
                 <div className="flex items-center justify-between mb-2">
                   <div className={`flex h-6 w-6 items-center justify-center rounded-lg ${signal.bg}`}>
                     <Icon className={`h-3 w-3 ${signal.color}`} />
@@ -353,7 +354,7 @@ function AIMonitoringPanel({ briefing, alerts }: { briefing: AIBriefing; alerts:
                   </div>
                   <span className="text-[9px] text-muted-foreground/50">{signal.time}</span>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>
@@ -422,33 +423,36 @@ function LiveIntelligenceFeed({ alerts, onRead, onReadAll }: { alerts: SmartAler
     { key: "info" as const, label: "Trends", count: alerts.filter((a) => a.type === "info").length },
   ];
   return (
-    <div ref={ref} className={`glass rounded-2xl p-5 transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
-      <div className="flex items-center justify-between mb-4">
+    <div ref={ref} className={`transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-purple-400/10">
-            <Brain className="h-3.5 w-3.5 text-purple-400" />
-            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <div className="relative flex h-6 w-6 items-center justify-center rounded-md bg-purple-400/10">
+            <Brain className="h-3 w-3 text-purple-400" />
+            <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           </div>
           <div>
-            <h3 className="font-display text-sm font-semibold text-foreground">Live Intelligence Feed</h3>
-            {unread > 0 && <p className="text-[10px] text-accent">{unread} new alert{unread > 1 ? "s" : ""}</p>}
+            <h3 className="font-display text-xs font-semibold text-foreground">Live Intelligence Feed</h3>
+            {unread > 0 && <p className="text-[9px] text-accent">{unread} new</p>}
           </div>
         </div>
         {unread > 0 && (
-          <button onClick={onReadAll} className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors">
-            <CheckCheck className="h-3.5 w-3.5" /> Mark all read
+          <button onClick={onReadAll} className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <CheckCheck className="h-3 w-3" /> Mark all read
           </button>
         )}
       </div>
-      <div className="flex items-center gap-1 mb-4 p-0.5 bg-surface rounded-xl border border-border">
+      <div className="flex items-center gap-1 mb-3 p-0.5 bg-surface rounded-lg border border-border">
         {tabs.map((tab) => (
-          <button key={tab.key} onClick={() => setFilter(tab.key)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${filter === tab.key ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-muted-foreground hover:text-foreground"}`}>
+          <button key={tab.key} onClick={() => setFilter(tab.key)} className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold transition-all ${filter === tab.key ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-muted-foreground hover:text-foreground"}`}>
             {tab.label}
-            <span className={`text-[9px] px-1 py-0.5 rounded ${filter === tab.key ? "bg-white/20" : "bg-surface"}`}>{tab.count}</span>
+            <span className={`text-[8px] px-1 py-0.5 rounded ${filter === tab.key ? "bg-white/20" : "bg-surface"}`}>{tab.count}</span>
           </button>
         ))}
       </div>
-      <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+      <div className="space-y-1.5 max-h-[200px] overflow-y-auto pr-1">
+        {filtered.length === 0 && (
+          <p className="text-[10px] text-muted-foreground text-center py-4">No alerts yet</p>
+        )}
         {filtered.map((alert, i) => (
           <AlertCard key={alert.id} alert={alert} index={i} onRead={onRead} />
         ))}
@@ -467,30 +471,30 @@ const pulseCardLinks: Record<string, string> = {
 function MarketPulseGrid({ cards }: { cards: MarketPulseCard[] }) {
   const { ref, isInView } = useInView({ threshold: 0.1 });
   return (
-    <div ref={ref} className={`glass rounded-2xl p-5 transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
-      <div className="flex items-center gap-2 mb-4">
-        <Activity className="h-4 w-4 text-accent" />
-        <h3 className="font-display text-sm font-semibold text-foreground">Market Pulse</h3>
-        <span className="ml-auto flex items-center gap-1 text-[10px] text-emerald-400">
+    <div ref={ref} className={`transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+      <div className="flex items-center gap-2 mb-3">
+        <Activity className="h-3 w-3 text-accent" />
+        <h3 className="font-display text-xs font-semibold text-foreground">Market Pulse</h3>
+        <span className="ml-auto flex items-center gap-1 text-[9px] text-emerald-400">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live
         </span>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2">
         {cards.map((card, i) => {
           const PIcon = pulseIconMap[card.icon] || Flame;
           const href = pulseCardLinks[card.label] || "/products";
           return (
-            <Link key={card.label} href={href} className={`block p-3 rounded-xl bg-surface/50 border border-border hover:border-accent/20 transition-all duration-500 group hover:bg-surface-hover ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transitionDelay: `${i * 80}ms` }}>
-              <div className="flex items-center justify-between mb-2">
-                <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${card.color}/10 group-hover:scale-110 transition-transform`}>
-                  <PIcon className={`h-3.5 w-3.5 ${card.color}`} />
+            <Link key={card.label} href={href} className={`block p-2.5 rounded-lg bg-surface/50 border border-border hover:border-accent/20 transition-all duration-500 group hover:bg-surface-hover ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transitionDelay: `${i * 80}ms` }}>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className={`flex h-6 w-6 items-center justify-center rounded-md ${card.color}/10 group-hover:scale-110 transition-transform`}>
+                  <PIcon className={`h-3 w-3 ${card.color}`} />
                 </div>
                 <MiniSparkline points={card.sparkline} color={card.color} />
               </div>
-              <p className="font-display text-lg font-bold text-foreground">{card.value}</p>
+              <p className="font-display text-sm font-bold text-foreground">{card.value}</p>
               <div className="flex items-center justify-between mt-0.5">
-                <p className="text-[10px] text-muted-foreground">{card.label}</p>
-                <span className={`text-[10px] font-semibold ${card.up ? "text-emerald-400" : "text-amber-400"}`}>{card.change}</span>
+                <p className="text-[9px] text-muted-foreground">{card.label}</p>
+                <span className={`text-[9px] font-semibold ${card.up ? "text-emerald-400" : "text-amber-400"}`}>{card.change}</span>
               </div>
             </Link>
           );
@@ -541,6 +545,24 @@ function QuickActionsStrip({ actions }: { actions: QuickActionStat[] }) {
   );
 }
 
+export function AIMonitoringPanelWrapper({
+  briefing,
+  alerts,
+}: {
+  briefing: AIBriefing;
+  alerts: SmartAlert[];
+}) {
+  return <AIMonitoringPanel briefing={briefing} alerts={alerts} />;
+}
+
+export function MarketPulseGridWrapper({
+  cards,
+}: {
+  cards: MarketPulseCard[];
+}) {
+  return <MarketPulseGrid cards={cards} />;
+}
+
 export default function IntelligenceHub({
   alerts, onRead, onReadAll, briefing, pulse, actionStats,
 }: {
@@ -552,9 +574,10 @@ export default function IntelligenceHub({
   actionStats: QuickActionStat[];
 }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <AIMonitoringPanel briefing={briefing} alerts={alerts} />
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="h-px bg-border/50" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
           <LiveIntelligenceFeed alerts={alerts} onRead={onRead} onReadAll={onReadAll} />
         </div>
@@ -562,7 +585,6 @@ export default function IntelligenceHub({
           <MarketPulseGrid cards={pulse} />
         </div>
       </div>
-      <QuickActionsStrip actions={actionStats} />
     </div>
   );
 }

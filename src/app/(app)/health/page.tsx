@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   Zap, CheckCircle2, ArrowUpRight, Target, Shield, DollarSign,
   BarChart3, Package, RotateCcw, ExternalLink, TrendingUp,
-  Store, ShoppingCart,
+  Store, ShoppingCart, Sparkles, LayoutGrid,
 } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
@@ -12,6 +12,11 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useHealthData } from "@/hooks/useHealthData";
 import { logger } from "@/lib/logger";
+import HealthAIAnalysis from "@/components/health/HealthAIAnalysis";
+import HealthPresets from "@/components/health/HealthPresets";
+import HealthAchievements from "@/components/health/HealthAchievements";
+import HealthScoreChart from "@/components/health/HealthScoreChart";
+import HealthAlerts from "@/components/health/HealthAlerts";
 
 interface HealthItem {
   label: string;
@@ -272,6 +277,42 @@ export default function HealthPage() {
     }
   }, [user]);
 
+  const handleApplyPreset = useCallback((presetId: string, _focusCategory: string) => {
+    const presetActions: Record<string, () => void> = {
+      beginner: () => {
+        setCategories((prev) => prev.map((cat) => {
+          if (cat.id === "product") {
+            return { ...cat, items: cat.items.map((item, i) => i < 2 ? { ...item, done: true } : item) };
+          }
+          return cat;
+        }));
+      },
+      intermediate: () => {
+        setCategories((prev) => prev.map((cat) => {
+          if (cat.id === "product") {
+            return { ...cat, items: cat.items.map((item) => ({ ...item, done: true })) };
+          }
+          if (cat.id === "supplier" || cat.id === "financial") {
+            return { ...cat, items: cat.items.map((item, i) => i < 2 ? { ...item, done: true } : item) };
+          }
+          return cat;
+        }));
+      },
+      advanced: () => {
+        setCategories((prev) => prev.map((cat) => ({
+          ...cat,
+          items: cat.items.map((item, i) => i < 3 ? { ...item, done: true } : item),
+        })));
+      },
+    };
+
+    presetActions[presetId]?.();
+  }, []);
+
+  const handleAskAI = useCallback((prompt: string) => {
+    window.open(`/ai?q=${encodeURIComponent(prompt)}`, "_blank");
+  }, []);
+
   const dynamicRecommendations = useMemo<DynamicRecommendation[]>(() => {
     const recs: DynamicRecommendation[] = [];
 
@@ -367,6 +408,23 @@ export default function HealthPage() {
 
   const circumference = 2 * Math.PI * 88;
 
+  const chartCategories = autoDetectedCategories.map((cat, i) => ({
+    id: cat.id,
+    label: cat.label,
+    score: catScores[i],
+    maxScore: 25,
+    color: cat.color,
+  }));
+
+  const achievementCategories = autoDetectedCategories.map((cat, i) => ({
+    id: cat.id,
+    label: cat.label,
+    score: catScores[i],
+    maxScore: 25,
+    done: cat.items.filter((item) => item.done).length,
+    total: cat.items.length,
+  }));
+
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       <div className="flex items-start justify-between gap-4">
@@ -433,6 +491,9 @@ export default function HealthPage() {
         </div>
       </div>
 
+      {/* Quick Start Templates */}
+      <HealthPresets onApplyPreset={handleApplyPreset} />
+
       {/* Business Overview */}
       {!healthData.loading && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -466,6 +527,21 @@ export default function HealthPage() {
           </div>
         </div>
       )}
+
+      {/* Score Chart + AI Analysis */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <HealthScoreChart categories={chartCategories} />
+        <HealthAIAnalysis
+          score={percentage}
+          totalDone={totalDone}
+          totalItems={totalItems}
+          categories={chartCategories}
+          onAskAI={handleAskAI}
+        />
+      </div>
+
+      {/* Priority Alerts */}
+      <HealthAlerts score={percentage} healthData={healthData} />
 
       {/* Category Breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -543,6 +619,9 @@ export default function HealthPage() {
           );
         })}
       </div>
+
+      {/* Achievements */}
+      <HealthAchievements score={percentage} totalDone={totalDone} categories={achievementCategories} />
 
       {/* Dynamic Recommendations */}
       {dynamicRecommendations.length > 0 && (

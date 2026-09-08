@@ -243,14 +243,12 @@ export default function OrderRouterPage() {
   const analytics = aData?.analytics || null;
   const history = hData?.history || [];
   const loading = !user || (!dData && !pData);
-  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"queue" | "analytics" | "history" | "settings">("queue");
 
   const pendingCount = decisions.filter((d) => d.status === "pending").length;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 px-3 sm:px-4 lg:px-6 pb-24">
-      {error && (<div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-red-400 text-sm flex items-center gap-2"><Route className="h-4 w-4 shrink-0" />{error}<button onClick={() => { setError(null); window.location.reload(); }} className="ml-auto text-xs underline">Retry</button></div>)}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>

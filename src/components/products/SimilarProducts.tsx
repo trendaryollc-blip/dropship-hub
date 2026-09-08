@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Package, Sparkles, ExternalLink, Star } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { safeFetch } from "@/lib/safe-fetch";
+import SectionEmpty from "./SectionEmpty";
 
 interface SimilarProduct {
   title: string;
@@ -164,13 +165,7 @@ export default function SimilarProducts({ category, title, currentPrice }: { cat
         )}
 
         {!loading && similar.length === 0 && boughtTogether.length === 0 && (
-          <div className="text-center py-8">
-            <div className="icon-container-pink mx-auto mb-3">
-              <Package className="h-5 w-5 text-pink-400" />
-            </div>
-            <p className="text-xs text-muted-foreground">No similar products found for this category</p>
-            <p className="text-[10px] text-muted-foreground/60 mt-1">Try browsing related categories</p>
-          </div>
+          <SectionEmpty icon={Package} title="No similar products found for this category" description="Try browsing related categories" iconColor="text-pink-400" />
         )}
       </div>
     </div>

@@ -8,7 +8,7 @@ export default function ResultsHeader({
   resultCount: number;
   platformCount: number;
   sortBy: string;
-  setSortBy: (v: "relevance" | "price-asc" | "price-desc" | "rating" | "reviews") => void;
+  setSortBy: (v: "relevance" | "price-asc" | "price-desc" | "rating" | "reviews" | "margin" | "golden") => void;
   viewMode: "grid" | "list";
   setViewMode: (v: "grid" | "list") => void;
 }) {
@@ -30,7 +30,7 @@ export default function ResultsHeader({
           <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as "relevance" | "price-asc" | "price-desc" | "rating" | "reviews")}
+            onChange={(e) => setSortBy(e.target.value as "relevance" | "price-asc" | "price-desc" | "rating" | "reviews" | "margin" | "golden")}
             className="text-xs bg-surface border border-border rounded-lg px-2.5 py-2.5 text-foreground focus:outline-none focus:border-accent/50 min-h-[36px]"
           >
             <option value="relevance">Relevance</option>
@@ -38,6 +38,8 @@ export default function ResultsHeader({
             <option value="price-desc">Price: High to Low</option>
             <option value="rating">Top Rated</option>
             <option value="reviews">Most Reviews</option>
+            <option value="margin">Highest Margin</option>
+            <option value="golden">Golden Score</option>
           </select>
         </div>
 

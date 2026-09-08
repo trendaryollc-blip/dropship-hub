@@ -1,35 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { TrendingUp, Star, ShieldCheck, BadgeCheck, ArrowDownRight } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { PlatformPrice } from "@/types/enrichment";
-
-function MiniSparkline({ points, id }: { points: number[]; id: string }) {
-  const [mounted, setMounted] = useState(false);
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- standard SSR mount guard
-  useEffect(() => { setMounted(true); }, []);
-  if (!mounted) return <div className="w-[72px] h-[24px] shrink-0" />;
-  const max = Math.max(...points);
-  const min = Math.min(...points);
-  const range = max - min || 1;
-  const w = 72, h = 24;
-  const pts = points.map((p, i) => ({ x: (i / (points.length - 1)) * w, y: h - ((p - min) / range) * h }));
-  const linePath = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-  const areaPath = `${linePath} L ${w} ${h} L 0 ${h} Z`;
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="shrink-0">
-      <defs>
-        <linearGradient id={`pc-${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={areaPath} fill={`url(#pc-${id})`} />
-      <path d={linePath} fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  );
-}
+import MiniSparkline from "./MiniSparkline";
 
 export default function PriceComparison({ platforms, listedPrice, productTitle }: { platforms: PlatformPrice[]; listedPrice: number; productTitle?: string }) {
   const { ref, isInView } = useInView({ threshold: 0.1 });
@@ -172,7 +146,7 @@ export default function PriceComparison({ platforms, listedPrice, productTitle }
                   </td>
                   <td className="px-4 py-3.5 hidden md:table-cell">
                     {p.sparkline && p.sparkline.length > 1 ? (
-                      <MiniSparkline points={p.sparkline} id={p.platform} />
+                      <MiniSparkline points={p.sparkline} id={p.platform} width={72} height={24} />
                     ) : (
                       <div className="w-[72px] h-[24px] shrink-0 rounded-lg bg-surface/50 border border-border/30" />
                     )}

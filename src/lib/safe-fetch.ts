@@ -28,12 +28,18 @@ export async function safeFetch<T = unknown>(
       }
     }
 
-    const message =
+    let message =
       typeof body === "object" && body !== null && "error" in body
         ? String((body as { error: unknown }).error)
         : typeof body === "object" && body !== null && "message" in body
         ? String((body as { message: unknown }).message)
         : `HTTP ${res.status}: ${res.statusText}`;
+
+    // Include provider-specific error details when available
+    if (typeof body === "object" && body !== null && "details" in body) {
+      const details = String((body as { details: unknown }).details);
+      if (details) message = `${message} — ${details}`;
+    }
 
     throw new FetchError(message, res.status, res.statusText, body);
   }

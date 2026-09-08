@@ -65,6 +65,37 @@ function applyThemeToDOM(name: ThemeName) {
   root.style.setProperty("--gradient-mid", theme.gradientMid);
   root.style.setProperty("--gradient-end", theme.gradientEnd);
   root.style.setProperty("--glow-color", theme.glowColor);
+
+  // Surface hierarchy
+  root.style.setProperty("--surface-base", theme.surfaceBase);
+  root.style.setProperty("--surface-raised", theme.surfaceRaised);
+  root.style.setProperty("--surface-elevated", theme.surfaceElevated);
+  root.style.setProperty("--surface-floating", theme.surfaceFloating);
+  root.style.setProperty("--surface-raised-border", theme.surfaceRaisedBorder);
+  root.style.setProperty("--surface-elevated-border", theme.surfaceElevatedBorder);
+  root.style.setProperty("--surface-floating-border", theme.surfaceFloatingBorder);
+  root.style.setProperty("--surface-raised-shadow", theme.surfaceRaisedShadow);
+  root.style.setProperty("--surface-elevated-shadow", theme.surfaceElevatedShadow);
+  root.style.setProperty("--surface-floating-shadow", theme.surfaceFloatingShadow);
+
+  // Semantic colors
+  root.style.setProperty("--color-confidence-high", theme.colorConfidenceHigh);
+  root.style.setProperty("--color-confidence-medium", theme.colorConfidenceMedium);
+  root.style.setProperty("--color-confidence-low", theme.colorConfidenceLow);
+  root.style.setProperty("--color-trend-up", theme.colorTrendUp);
+  root.style.setProperty("--color-trend-down", theme.colorTrendDown);
+  root.style.setProperty("--color-trend-neutral", theme.colorTrendNeutral);
+  root.style.setProperty("--color-demand-high", theme.colorDemandHigh);
+  root.style.setProperty("--color-demand-medium", theme.colorDemandMedium);
+  root.style.setProperty("--color-demand-low", theme.colorDemandLow);
+  root.style.setProperty("--color-status-online", theme.colorStatusOnline);
+  root.style.setProperty("--color-status-busy", theme.colorStatusBusy);
+  root.style.setProperty("--color-status-offline", theme.colorStatusOffline);
+  root.style.setProperty("--color-heat-1", theme.colorHeat1);
+  root.style.setProperty("--color-heat-2", theme.colorHeat2);
+  root.style.setProperty("--color-heat-3", theme.colorHeat3);
+  root.style.setProperty("--color-heat-4", theme.colorHeat4);
+  root.style.setProperty("--color-heat-5", theme.colorHeat5);
 }
 
 function applyTheme(name: ThemeName) {

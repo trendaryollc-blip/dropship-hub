@@ -31,6 +31,8 @@ import {
   Globe,
   FileText,
   Heart,
+  RotateCcw,
+  Shield,
 } from "lucide-react";
 
 const navItems = [
@@ -83,6 +85,12 @@ const navItems = [
     section: "tools",
   },
   {
+    label: "Multi-Store",
+    href: "/multi-store",
+    icon: Globe,
+    section: "tools",
+  },
+  {
     label: "Fulfillment",
     href: "/fulfillment",
     icon: Package,
@@ -98,6 +106,12 @@ const navItems = [
     label: "Customer Service",
     href: "/customer-service",
     icon: MessageSquare,
+    section: "tools",
+  },
+  {
+    label: "Returns & Refunds",
+    href: "/returns",
+    icon: RotateCcw,
     section: "tools",
   },
   {
@@ -125,6 +139,12 @@ const navItems = [
     section: "analytics",
   },
   {
+    label: "Supplier SRM",
+    href: "/srm",
+    icon: Shield,
+    section: "analytics",
+  },
+  {
     label: "Product Validation",
     href: "/product-validation",
     icon: Target,
@@ -133,6 +153,9 @@ const navItems = [
 ];
 
 const moreItems = [
+  { label: "AI Listings", href: "/product-listings", icon: FileText },
+  { label: "Price War Bot", href: "/price-war", icon: DollarSign },
+  { label: "Trend Predictor", href: "/trends", icon: TrendingUp },
   { label: "Niches", href: "/products/niches", icon: Search },
   { label: "Lifecycle", href: "/product-lifecycle", icon: Activity },
   { label: "Order Router", href: "/order-router", icon: Route },
@@ -142,6 +165,7 @@ const moreItems = [
   { label: "Financial Reports", href: "/reports", icon: BarChart3 },
   { label: "Platforms", href: "/platforms", icon: Globe },
   { label: "Daily Digest", href: "/digest", icon: FileText },
+  { label: "Shipping Optimizer", href: "/shipping-optimizer", icon: Truck },
 ];
 
 interface SidebarProps {

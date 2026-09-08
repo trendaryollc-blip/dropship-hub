@@ -1,6 +1,19 @@
 import { vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 
+// Mock ResizeObserver for Recharts
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
+
+// Mock SVG methods for Recharts
+if (typeof SVGElement !== "undefined") {
+  SVGElement.prototype.getComputedTextLength = vi.fn(() => 0);
+}
+
 vi.mock("@/lib/firebase", () => ({
   auth: {
     currentUser: null,

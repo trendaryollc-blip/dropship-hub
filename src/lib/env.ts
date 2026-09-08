@@ -43,6 +43,17 @@ const envSchema = z.object({
   FIREWORKS_API_KEY: z.string().optional(),
   OPENROUTER_API_KEY: z.string().optional(),
   HPC_API_KEY: z.string().optional(),
+  UPSTASH_REDIS_REST_URL: z.string().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+  INNGEST_EVENT_KEY: z.string().optional(),
+  INNGEST_SIGNING_KEY: z.string().optional(),
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  NEXT_PUBLIC_APP_URL: z.string().optional(),
+  STRIPE_PRO_MONTHLY_PRICE_ID: z.string().optional(),
+  STRIPE_PRO_YEARLY_PRICE_ID: z.string().optional(),
+  STRIPE_ENTERPRISE_MONTHLY_PRICE_ID: z.string().optional(),
+  STRIPE_ENTERPRISE_YEARLY_PRICE_ID: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

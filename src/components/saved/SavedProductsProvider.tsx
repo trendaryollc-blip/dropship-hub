@@ -26,6 +26,13 @@ interface SavedProductsContextType {
   toggleSave: (product: SavedProduct) => void;
   removeSaved: (id: string) => void;
   clearSaved: () => void;
+  selectedIds: Set<string>;
+  toggleSelect: (id: string) => void;
+  selectAll: () => void;
+  clearSelection: () => void;
+  removeSelected: () => void;
+  isSelectMode: boolean;
+  setSelectMode: (v: boolean) => void;
 }
 
 const SavedProductsContext = createContext<SavedProductsContextType | null>(null);
@@ -51,6 +58,8 @@ function saveLocal(products: SavedProduct[]) {
 export function SavedProductsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [products, setProducts] = useState<SavedProduct[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isSelectMode, setSelectMode] = useState(false);
 
   useEffect(() => {
     const local = loadLocal();
@@ -160,9 +169,38 @@ export function SavedProductsProvider({ children }: { children: ReactNode }) {
 
   const isSaved = useCallback((id: string) => products.some((p) => p.id === id), [products]);
 
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const selectAll = useCallback(() => {
+    setSelectedIds(new Set(products.map((p) => p.id)));
+  }, [products]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const removeSelected = useCallback(() => {
+    const ids = Array.from(selectedIds);
+    for (const id of ids) {
+      removeSaved(id);
+    }
+    setSelectedIds(new Set());
+  }, [selectedIds, removeSaved]);
+
   return (
     <SavedProductsContext.Provider
-      value={{ savedProducts: products, isSaved, toggleSave, removeSaved, clearSaved }}
+      value={{
+        savedProducts: products, isSaved, toggleSave, removeSaved, clearSaved,
+        selectedIds, toggleSelect, selectAll, clearSelection, removeSelected,
+        isSelectMode, setSelectMode,
+      }}
     >
       {children}
     </SavedProductsContext.Provider>

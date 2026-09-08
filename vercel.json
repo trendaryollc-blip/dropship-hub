@@ -7,6 +7,10 @@
     {
       "path": "/api/monitoring/cron?job=metrics",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/ad-campaigns/sync?job=sync-all",
+      "schedule": "0 */6 * * *"
     }
   ]
 }
