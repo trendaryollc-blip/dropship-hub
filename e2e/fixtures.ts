@@ -83,6 +83,7 @@ export const test = base.extend<TestFixtures>({
     await setupFirebaseAuthInterception(page);
     await injectAuthenticatedState(page);
     await page.close();
+     
     await use(context);
   },
 
@@ -91,6 +92,7 @@ export const test = base.extend<TestFixtures>({
     const page = await context.newPage();
     await setupFirebaseAuthInterception(page);
     await injectAuthenticatedState(page);
+     
     await use(page);
     await context.close();
   },

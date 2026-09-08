@@ -42,13 +42,16 @@ function TestConsumer() {
 }
 
 function NoProviderConsumer() {
+  let content;
   try {
     useAuth();
-    return <div>No error</div>;
+    content = "No error";
   } catch (e: any) {
-    return <div>{e.message}</div>;
+    content = e.message;
   }
+  return <div>{content}</div>;
 }
+
 
 describe("AuthProvider", () => {
   beforeEach(() => {
