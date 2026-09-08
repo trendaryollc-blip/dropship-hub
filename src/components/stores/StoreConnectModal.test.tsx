@@ -2,9 +2,11 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import StoreConnectModal from "./StoreConnectModal";
 
+const mockGetIdToken = vi.fn().mockResolvedValue("mock_id_token");
+
 vi.mock("@/components/auth/AuthProvider", () => ({
   useAuth: () => ({
-    user: { uid: "test-uid", email: "test@test.com" },
+    user: { uid: "test-uid", email: "test@test.com", getIdToken: mockGetIdToken },
   }),
 }));
 
@@ -39,6 +41,14 @@ const mockPlatform = {
   setupGuide: [{ text: "Go to Shopify Admin" }],
 };
 
+const mockOAuthPlatform = {
+  ...mockPlatform,
+  authType: "oauth" as const,
+  oauthFields: [
+    { key: "shop", label: "Shop URL", placeholder: "your-store.myshopify.com", type: "url" as const, required: true },
+  ],
+};
+
 describe("StoreConnectModal", () => {
   it("renders form fields", () => {
     render(<StoreConnectModal platform={mockPlatform} onClose={vi.fn()} onConnected={vi.fn()} />);
@@ -59,5 +69,32 @@ describe("StoreConnectModal", () => {
     render(<StoreConnectModal platform={mockPlatform} onClose={vi.fn()} onConnected={vi.fn()} />);
     const connectBtn = screen.getByText("Connect Store").closest("button");
     expect(connectBtn).toBeDisabled();
+  });
+
+  it("shows One-Click Connect card for OAuth platforms", () => {
+    render(<StoreConnectModal platform={mockOAuthPlatform} onClose={vi.fn()} onConnected={vi.fn()} />);
+    expect(screen.getByText("Recommended: One-Click Connect")).toBeDefined();
+    expect(screen.getByText(/securely connect via Shopify OAuth/)).toBeDefined();
+  });
+
+  it("shows Connect with Shopify button for OAuth platforms", () => {
+    render(<StoreConnectModal platform={mockOAuthPlatform} onClose={vi.fn()} onConnected={vi.fn()} />);
+    expect(screen.getByText(/Connect with Shopify/)).toBeDefined();
+  });
+
+  it("does not show Store Name field in OAuth mode", () => {
+    render(<StoreConnectModal platform={mockOAuthPlatform} onClose={vi.fn()} onConnected={vi.fn()} />);
+    expect(screen.queryByText("Store Name")).toBeNull();
+  });
+
+  it("shows Shop URL field from oauthFields in OAuth mode", () => {
+    render(<StoreConnectModal platform={mockOAuthPlatform} onClose={vi.fn()} onConnected={vi.fn()} />);
+    expect(screen.getByText("Shop URL")).toBeDefined();
+  });
+
+  it("OAuth connect button disabled until shop field filled", () => {
+    render(<StoreConnectModal platform={mockOAuthPlatform} onClose={vi.fn()} onConnected={vi.fn()} />);
+    const oauthBtn = screen.getByText(/Connect with Shopify/).closest("button");
+    expect(oauthBtn).toBeDisabled();
   });
 });
