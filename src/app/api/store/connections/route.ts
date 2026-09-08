@@ -3,6 +3,7 @@ import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { StoreConnectionSchema, StoreConnectionUpdateSchema, validateBody } from "@/lib/validation";
 import { LIMITS } from "@/lib/rate-limit";
+import { unregisterShopifyWebhooks } from "@/lib/shopify/webhooks";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -41,6 +42,17 @@ export const DELETE = withAuth(async (req: NextRequest, uid: string) => {
     if (!storeId) return NextResponse.json({ error: "storeId required" }, { status: 400 });
 
     const db = await getAdminDB();
+    const storeDoc = await db.collection("users").doc(uid).collection("storeConnections").doc(storeId).get();
+
+    if (storeDoc.exists) {
+      const store = storeDoc.data();
+      if (store?.platform === "shopify" && store?.storeDomain && store?.accessToken) {
+        unregisterShopifyWebhooks(store.storeDomain, store.accessToken).catch((err) => {
+          console.error("Failed to unregister Shopify webhooks:", err);
+        });
+      }
+    }
+
     await db.collection("users").doc(uid).collection("storeConnections").doc(storeId).delete();
     return NextResponse.json({ success: true });
   } catch (error) {

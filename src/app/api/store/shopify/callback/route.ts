@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { getAdminDB, getAdminAuth } from "@/lib/firebase-admin";
+import { registerShopifyWebhooks } from "@/lib/shopify/webhooks";
 
 const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY || process.env.SHOPIFY_CLIENT_ID;
 const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET || process.env.SHOPIFY_CLIENT_SECRET;
@@ -144,6 +145,11 @@ export async function GET(req: NextRequest) {
         .collection("storeConnections")
         .add(connectionData);
     }
+
+    const webhookBaseUrl = req.nextUrl.origin;
+    registerShopifyWebhooks(shop, accessToken, webhookBaseUrl).catch((err) => {
+      console.error("Failed to register Shopify webhooks:", err);
+    });
 
     const response = NextResponse.redirect(`${successRedirect}${encodeURIComponent(shopName)}`);
 
