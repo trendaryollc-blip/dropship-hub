@@ -109,13 +109,12 @@ export async function createPlatform(input: PlatformInput): Promise<PlatformFire
       ]
     : [];
 
-  const platform = {
+  const platform: Omit<PlatformFirestoreConfig, "connector"> & { connector?: PlatformConnector } = {
     id,
     name: input.name,
     method: input.method,
     enabled: input.enabled ?? true,
     keys,
-    connector: input.connector,
     lastHealth: "untested",
     lastSearched: null,
     lastError: null,
@@ -123,6 +122,10 @@ export async function createPlatform(input: PlatformInput): Promise<PlatformFire
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   };
+
+  if (input.connector) {
+    platform.connector = input.connector;
+  }
 
   await firestore.collection(COLLECTION).doc(id).set(platform);
   return platform as PlatformFirestoreConfig;
