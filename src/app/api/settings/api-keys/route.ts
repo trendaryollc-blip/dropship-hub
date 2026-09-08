@@ -11,7 +11,7 @@ function maskKey(key: string): string {
 function ensureKeyArray(value: unknown): string[] {
   if (!value) return [];
   if (Array.isArray(value)) {
-    return value.filter((v): v is string => typeof v === "string" && v.trim().length > 0);
+    return value.map((v) => (typeof v === "string" ? v : ""));
   }
   if (typeof value === "string") {
     return [value];

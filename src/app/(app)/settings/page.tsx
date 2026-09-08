@@ -8,7 +8,7 @@ import {
   BarChart3, ArrowUpRight, LayoutDashboard, Search, Sparkles,
   TrendingUp, Bell, User, Download, Upload, Trash2, Loader2, Save,
 } from "lucide-react";
-import { safeFetch } from "@/lib/safe-fetch";
+import { safeFetch, FetchError } from "@/lib/safe-fetch";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -147,8 +147,9 @@ export default function AISettingsPage() {
       });
       await refreshSavedSlots(authHeaders);
       toast.success(`${provider} key ${index + 1} saved`);
-    } catch {
-      toast.error(`Failed to save ${provider} API key`);
+    } catch (err) {
+      const msg = err instanceof FetchError ? err.message : "Failed to save API key";
+      toast.error(msg);
     } finally { setSavingSlot(null); }
   };
 
@@ -167,8 +168,9 @@ export default function AISettingsPage() {
         });
         toast.success(`Added new key slot for ${provider}`);
       }
-    } catch {
-      toast.error(`Failed to add key slot for ${provider}`);
+    } catch (err) {
+      const msg = err instanceof FetchError ? err.message : "Failed to add key slot";
+      toast.error(msg);
     }
   };
 
