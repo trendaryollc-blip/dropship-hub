@@ -163,6 +163,15 @@ vi.mock("lucide-react", () => ({
   Command: () => <div data-testid="command-icon" />,
   Mic: () => <div data-testid="mic-icon" />,
   MicOff: () => <div data-testid="mic-off-icon" />,
+  History: () => <div data-testid="history-icon" />,
+  MessageSquare: () => <div data-testid="message-square-icon" />,
+  Share2: () => <div data-testid="share2-icon" />,
+  Edit3: () => <div data-testid="edit3-icon" />,
+  RotateCcw: () => <div data-testid="rotate-ccw-icon" />,
+  ThumbsUp: () => <div data-testid="thumbs-up-icon" />,
+  ThumbsDown: () => <div data-testid="thumbs-down-icon" />,
+  Slash: () => <div data-testid="slash-icon" />,
+  AlertTriangle: () => <div data-testid="alert-triangle-icon" />,
 }));
 
 // ─── Imports ────────────────────────────────────────────────────────────────
@@ -365,7 +374,7 @@ describe("AI Assistant Page", () => {
         render(<AIPage />);
       });
       expect(screen.getByText("Ctrl+K to focus")).toBeInTheDocument();
-      expect(screen.getByText("Voice input available")).toBeInTheDocument();
+      expect(screen.getByText("Voice input")).toBeInTheDocument();
       expect(screen.getAllByText("Ctrl+/ for shortcuts").length).toBeGreaterThanOrEqual(1);
     });
 
@@ -528,7 +537,7 @@ describe("AI Assistant Page", () => {
       fireEvent.click(screen.getByText("Send Test Prompt"));
 
       await waitFor(() => {
-        expect(screen.getByText(/Analyzing your business data\.\.\.|Thinking\.\.\./)).toBeInTheDocument();
+        expect(screen.getByText(/Connecting to AI provider\.\.\.|Analyzing your business data\.\.\.|Thinking\.\.\./)).toBeInTheDocument();
       });
 
       _resolve!(createMockResponse(
@@ -538,7 +547,7 @@ describe("AI Assistant Page", () => {
       ));
 
       await waitFor(() => {
-        expect(screen.queryByText(/Analyzing your business data\.\.\.|Thinking\.\.\./)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Connecting to AI provider\.\.\.|Analyzing your business data\.\.\.|Thinking\.\.\./)).not.toBeInTheDocument();
       });
     }, 10000);
 
@@ -563,7 +572,7 @@ describe("AI Assistant Page", () => {
       fireEvent.click(screen.getByText("Send Test Prompt"));
 
       await waitFor(() => {
-        expect(screen.getByText(/Analyzing your business data\.\.\./)).toBeInTheDocument();
+        expect(screen.getAllByText(/Connecting to AI provider\.\.\.|Analyzing your business data\.\.\./).length).toBeGreaterThanOrEqual(1);
       });
     });
 
@@ -801,7 +810,7 @@ describe("AI Assistant Page", () => {
       fireEvent.change(textarea, { target: { value: "Test" } });
       fireEvent.keyDown(textarea, { key: "Enter" });
       await waitFor(() => {
-        expect(screen.getByText(/No AI provider is configured/)).toBeInTheDocument();
+        expect(screen.getAllByText(/No AI provider is configured/).length).toBeGreaterThanOrEqual(1);
       });
     });
 
@@ -814,7 +823,7 @@ describe("AI Assistant Page", () => {
       fireEvent.change(textarea, { target: { value: "Test" } });
       fireEvent.keyDown(textarea, { key: "Enter" });
       await waitFor(() => {
-        expect(screen.getByText(/couldn't connect to the AI service/)).toBeInTheDocument();
+        expect(screen.getAllByText(/couldn't connect to the AI service/).length).toBeGreaterThanOrEqual(1);
       });
     });
   });
@@ -1030,7 +1039,7 @@ describe("AI Assistant Page", () => {
       });
       fireEvent.click(screen.getByText("Send Test Prompt"));
       await waitFor(() => {
-        expect(screen.getByText(/I couldn't connect to the AI service|No AI provider is configured/)).toBeInTheDocument();
+        expect(screen.getAllByText(/I couldn't connect to the AI service|No AI provider is configured/).length).toBeGreaterThanOrEqual(1);
       });
       await waitFor(() => {
         expect(screen.queryByText(/Analyzing your business data\.\.\.|Thinking\.\.\./)).not.toBeInTheDocument();

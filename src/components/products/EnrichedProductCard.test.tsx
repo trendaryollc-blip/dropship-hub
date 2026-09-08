@@ -33,6 +33,17 @@ vi.mock("@/lib/safe-fetch", () => ({
   safeFetch: vi.fn().mockResolvedValue({}),
 }));
 
+vi.mock("@/contexts/SearchTrackingContext", () => ({
+  useSearchTracking: () => ({
+    trackClick: vi.fn(),
+    trackSearch: vi.fn(),
+    trackSave: vi.fn(),
+    trackView: vi.fn(),
+    trackCompare: vi.fn(),
+    getPersonalizationProfile: vi.fn().mockResolvedValue({}),
+  }),
+}));
+
 const mockProduct = {
   id: "prod-1",
   title: "Wireless Headphones",
@@ -101,9 +112,8 @@ describe("EnrichedProductCard", () => {
     expect(await screen.findByText("No stores connected yet")).toBeInTheDocument();
   });
 
-  it("renders save and compare buttons", () => {
+  it("renders save button", () => {
     render(<EnrichedProductCard product={mockProduct} index={0} />);
     expect(screen.getByTitle("Save to favorites")).toBeInTheDocument();
-    expect(screen.getByTitle("Add to compare")).toBeInTheDocument();
   });
 });

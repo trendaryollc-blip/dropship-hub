@@ -73,6 +73,7 @@ vi.mock("lucide-react", () => ({
   Globe: (p: any) => <div data-testid="icon-globe" />,
   ExternalLink: (p: any) => <div data-testid="icon-external" />,
   Zap: (p: any) => <div data-testid="icon-zap" />,
+  Target: (p: any) => <div data-testid="icon-target" />,
 }));
 
 import SuppliersContent from "../suppliers/page";

@@ -47,7 +47,11 @@ describe("InsightsPanel", () => {
 
   it("copies text to clipboard on click and shows check icon", () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.assign(navigator, { clipboard: { writeText } });
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      writable: true,
+      configurable: true,
+    });
     render(<InsightsPanel insights={mockInsights} />);
     fireEvent.click(screen.getByText("Prices are trending downward this week"));
     expect(writeText).toHaveBeenCalledWith("Prices are trending downward this week");

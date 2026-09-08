@@ -81,6 +81,6 @@ describe("ProductActionBar", () => {
   it("suppliers link has correct href", () => {
     render(<ProductActionBar {...defaultProps} />);
     const suppliersLink = screen.getByText("Suppliers").closest("a");
-    expect(suppliersLink).toHaveAttribute("href", "/suppliers?product=Test%20Product&category=Electronics");
+    expect(suppliersLink).toHaveAttribute("href", "/suppliers?product=Test%20Product&category=Electronics&source=Amazon&price=29.99");
   });
 });

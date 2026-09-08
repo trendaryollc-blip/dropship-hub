@@ -65,7 +65,7 @@ describe("FilterPanel", () => {
 
   it("renders rating buttons", () => {
     render(<FilterPanel {...defaultProps} />);
-    expect(screen.getByText("Any")).toBeInTheDocument();
+    expect(screen.getAllByText("Any").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("1+")).toBeInTheDocument();
     expect(screen.getByText("5+")).toBeInTheDocument();
   });

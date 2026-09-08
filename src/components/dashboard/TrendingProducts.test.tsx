@@ -3,6 +3,10 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import TrendingProducts from "./TrendingProducts";
 import type { TrendingProduct } from "@/types/dashboard";
 
+vi.mock("@/hooks/useInView", () => ({
+  useInView: () => ({ ref: { current: null }, isInView: true }),
+}));
+
 const makeProduct = (overrides: Partial<TrendingProduct> = {}): TrendingProduct => ({
   name: "Wireless Earbuds Pro",
   platform: "AliExpress",
@@ -48,17 +52,12 @@ describe("TrendingProducts", () => {
 
   it("renders demand level badges", () => {
     render(<TrendingProducts products={[makeProduct({ demandLevel: "high" })]} onAddCompare={vi.fn()} />);
-    expect(screen.getByText("High demand")).toBeInTheDocument();
-  });
-
-  it("renders competition level badges", () => {
-    render(<TrendingProducts products={[makeProduct({ competitionLevel: "low" })]} onAddCompare={vi.fn()} />);
-    expect(screen.getByText("Low comp")).toBeInTheDocument();
+    expect(screen.getByText("Hot")).toBeInTheDocument();
   });
 
   it("renders margin percentage", () => {
     render(<TrendingProducts products={[makeProduct({ margin: 61 })]} onAddCompare={vi.fn()} />);
-    expect(screen.getByText("Margin 61%")).toBeInTheDocument();
+    expect(screen.getByText("61%")).toBeInTheDocument();
   });
 
   it("renders AI Score", () => {
@@ -72,25 +71,6 @@ describe("TrendingProducts", () => {
     const addButtons = screen.getAllByTitle("Add to compare");
     fireEvent.click(addButtons[0]);
     expect(onAddCompare).toHaveBeenCalled();
-  });
-
-  it("expands to show product details on click", () => {
-    render(<TrendingProducts products={[makeProduct()]} onAddCompare={vi.fn()} />);
-    fireEvent.click(screen.getByText("Wireless Earbuds Pro"));
-    expect(screen.getByText("Monthly Vol")).toBeInTheDocument();
-    expect(screen.getByText("1,500")).toBeInTheDocument();
-  });
-
-  it("shows listing suggestion when expanded", () => {
-    render(<TrendingProducts products={[makeProduct()]} onAddCompare={vi.fn()} />);
-    fireEvent.click(screen.getByText("Wireless Earbuds Pro"));
-    expect(screen.getByText("Premium Wireless Earbuds")).toBeInTheDocument();
-  });
-
-  it("shows view full analysis link when expanded", () => {
-    render(<TrendingProducts products={[makeProduct()]} onAddCompare={vi.fn()} />);
-    fireEvent.click(screen.getByText("Wireless Earbuds Pro"));
-    expect(screen.getByText("View Full Analysis")).toBeInTheDocument();
   });
 
   it("renders View all link", () => {

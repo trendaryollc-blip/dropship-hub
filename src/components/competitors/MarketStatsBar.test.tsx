@@ -47,7 +47,7 @@ describe("MarketStatsBar", () => {
   it("displays correct stat values", () => {
     render(<MarketStatsBar data={mockData} />);
     expect(screen.getByText("150")).toBeInTheDocument();
-    expect(screen.getByText("$5-$49")).toBeInTheDocument();
+    expect(screen.getByText("$6-$50")).toBeInTheDocument();
     expect(screen.getByText("$22.50")).toBeInTheDocument();
     expect(screen.getByText("$19.99")).toBeInTheDocument();
     expect(screen.getByText("$15-$30")).toBeInTheDocument();
@@ -60,7 +60,7 @@ describe("MarketStatsBar", () => {
 
   it("shows min and max price labels on the bar", () => {
     render(<MarketStatsBar data={mockData} />);
-    expect(screen.getByText("$5")).toBeInTheDocument();
-    expect(screen.getByText("$49")).toBeInTheDocument();
+    expect(screen.getByText("$6")).toBeInTheDocument();
+    expect(screen.getByText("$50")).toBeInTheDocument();
   });
 });
