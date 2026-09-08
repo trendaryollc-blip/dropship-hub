@@ -56,6 +56,11 @@ const defaultProps = {
   onApiKeyChange: vi.fn(),
 };
 
+function expandAll() {
+  fireEvent.click(screen.getByText("OpenAI").closest("[role='button']")!);
+  fireEvent.click(screen.getByText("Groq").closest("[role='button']")!);
+}
+
 describe("ProvidersTab", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -63,11 +68,6 @@ describe("ProvidersTab", () => {
 
   it("renders all providers sorted by priority", () => {
     render(<ProvidersTab {...defaultProps} />);
-    const openai = screen.getByText("OpenAI");
-    const groq = screen.getByText("Groq");
-    expect(openai).toBeDefined();
-    expect(groq).toBeDefined();
-
     const headings = screen.getAllByRole("heading", { level: 3 });
     expect(headings[0].textContent).toBe("OpenAI");
     expect(headings[1].textContent).toBe("Groq");
@@ -81,12 +81,14 @@ describe("ProvidersTab", () => {
 
   it("renders API key input and save button", () => {
     render(<ProvidersTab {...defaultProps} apiKeys={{ groq: [""], openai: [""] }} />);
+    expandAll();
     const saveButtons = screen.getAllByText("Save");
     expect(saveButtons.length).toBe(2);
   });
 
   it("calls onSaveApiKey with correct index when save button is clicked", () => {
     render(<ProvidersTab {...defaultProps} apiKeys={{ openai: ["test-key"] }} />);
+    expandAll();
     const saveButtons = screen.getAllByText("Save");
     fireEvent.click(saveButtons[0]);
     expect(defaultProps.onSaveApiKey).toHaveBeenCalledWith("openai", "test-key", 0);
@@ -94,6 +96,7 @@ describe("ProvidersTab", () => {
 
   it("test connection button calls onTestConnection with index", () => {
     render(<ProvidersTab {...defaultProps} apiKeys={{ openai: ["test-key"] }} />);
+    expandAll();
     const testButtons = screen.getAllByText("Test");
     expect(testButtons.length).toBeGreaterThanOrEqual(1);
     fireEvent.click(testButtons[0]);
@@ -102,6 +105,7 @@ describe("ProvidersTab", () => {
 
   it("delete key button appears when slot is saved", () => {
     render(<ProvidersTab {...defaultProps} apiKeys={{ openai: ["some-key"] }} savedSlots={{ "openai:0": { masked: "xxxx1234" } }} />);
+    expandAll();
     const trashButtons = screen.getAllByRole("button").filter(
       (btn) => btn.querySelector("svg")?.classList.contains("lucide-trash-2")
     );
@@ -138,6 +142,7 @@ describe("ProvidersTab", () => {
         showKeys={{ "openai:0": true, "openai:1": false }}
       />
     );
+    expandAll();
     const inputs = container.querySelectorAll("input");
     const openaiInputs = Array.from(inputs).filter((i) => {
       const ph = i.getAttribute("placeholder") || "";
@@ -149,6 +154,7 @@ describe("ProvidersTab", () => {
 
   it("shows features for each provider", () => {
     render(<ProvidersTab {...defaultProps} />);
+    expandAll();
     expect(screen.getByText("Quick analysis")).toBeDefined();
     expect(screen.getAllByText("Advanced reasoning").length).toBeGreaterThanOrEqual(1);
   });

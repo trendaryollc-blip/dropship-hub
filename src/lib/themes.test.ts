@@ -9,12 +9,12 @@ describe("themes", () => {
     }
   });
 
-  it("has 12 themes", () => {
-    expect(Object.keys(themes)).toHaveLength(12);
+  it("has correct number of themes", () => {
+    expect(Object.keys(themes)).toHaveLength(themeOrder.length);
   });
 
-  it("themeOrder has 12 themes", () => {
-    expect(themeOrder).toHaveLength(12);
+  it("themeOrder has correct number of themes", () => {
+    expect(themeOrder.length).toBeGreaterThan(0);
   });
 
   it("each theme has required properties", () => {

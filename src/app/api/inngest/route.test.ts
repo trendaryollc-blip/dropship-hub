@@ -16,6 +16,7 @@ vi.mock("@/lib/jobs/functions", () => ({
   scheduledDigestJob: {},
   autoModeExecutionJob: {},
   autoOrderFulfillmentJob: {},
+  supplierDueDiligenceJob: {},
 }));
 
 describe("/api/inngest", () => {
