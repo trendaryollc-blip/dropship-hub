@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Loader2, MousePointer2, Eye, ArrowRight } from "lucide-react";
-import { safeFetch } from "@/lib/safe-fetch";
+import { safeFetch, FetchError } from "@/lib/safe-fetch";
 
 interface Props {
   onCreated: () => void;
@@ -60,8 +60,15 @@ export default function NoCodeConnectorTab({ onCreated }: Props) {
       setPriceSelector("");
       setImageSelector("");
       onCreated();
-    } catch {
-      setResult({ ok: false, msg: "Network error — try again." });
+    } catch (err) {
+      let msg = "Connection failed — try again.";
+      if (err instanceof FetchError) {
+        if (err.status === 401) msg = "Not signed in. Please refresh and sign in again.";
+        else if (err.status === 403) msg = "Access denied — you need owner permissions.";
+        else if (err.status >= 500) msg = `Server error (${err.status}) — try again later.`;
+        else msg = err.message || msg;
+      }
+      setResult({ ok: false, msg });
     } finally {
       setSaving(false);
     }

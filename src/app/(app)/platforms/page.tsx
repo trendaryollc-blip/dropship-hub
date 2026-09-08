@@ -11,7 +11,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import CuratedListTab from "@/components/platforms/CuratedListTab";
 import NoCodeConnectorTab from "@/components/platforms/NoCodeConnectorTab";
 import AiAutosetupTab from "@/components/platforms/AiAutosetupTab";
-import { safeFetch } from "@/lib/safe-fetch";
+import { safeFetch, FetchError } from "@/lib/safe-fetch";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 interface ApiKeyEntry {

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { CheckCircle2, Loader2, Zap, Brain, AlertCircle } from "lucide-react";
-import { safeFetch } from "@/lib/safe-fetch";
+import { safeFetch, FetchError } from "@/lib/safe-fetch";
 
 interface Props {
   onCreated: () => void;
@@ -111,8 +111,15 @@ Always include searchUrlTemplate with {{query}} placeholder for scraper-based me
       });
       setPrompt("");
       onCreated();
-    } catch {
-      setResult({ ok: false, msg: "AI request failed. Check your AI provider configuration." });
+    } catch (err) {
+      let msg = "AI request failed. Check your AI provider configuration.";
+      if (err instanceof FetchError) {
+        if (err.status === 401) msg = "Not signed in. Please refresh and sign in again.";
+        else if (err.status === 403) msg = "Access denied — you need owner permissions.";
+        else if (err.status >= 500) msg = `Server error (${err.status}) — try again later.`;
+        else msg = err.message || msg;
+      }
+      setResult({ ok: false, msg });
     } finally {
       setProcessing(false);
     }

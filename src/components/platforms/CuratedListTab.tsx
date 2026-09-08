@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { PLATFORM_CATALOG, CATALOG_METHOD_LABELS, type CatalogPlatform } from "@/lib/platform-catalog";
 import { Loader2, Key, Globe, ExternalLink } from "lucide-react";
-import { safeFetch } from "@/lib/safe-fetch";
+import { safeFetch, FetchError } from "@/lib/safe-fetch";
 
 interface Props {
   onCreated: () => void;
@@ -50,8 +50,15 @@ export default function CuratedListTab({ onCreated }: Props) {
       });
       setResult({ id: catalog.id, ok: true, msg: `${catalog.name} connected! Go to the Platforms tab to add an API key and enable it.` });
       onCreated();
-    } catch {
-      setResult({ id: catalog.id, ok: false, msg: "Network error — try again." });
+    } catch (err) {
+      let msg = "Connection failed — try again.";
+      if (err instanceof FetchError) {
+        if (err.status === 401) msg = "Not signed in. Please refresh and sign in again.";
+        else if (err.status === 403) msg = "Access denied — you need owner permissions.";
+        else if (err.status >= 500) msg = `Server error (${err.status}) — try again later.`;
+        else msg = err.message || msg;
+      }
+      setResult({ id: catalog.id, ok: false, msg });
     } finally {
       setConnecting(null);
     }
