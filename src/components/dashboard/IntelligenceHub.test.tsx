@@ -90,14 +90,7 @@ describe("IntelligenceHub", () => {
     expect(screen.getByText("Market Pulse")).toBeInTheDocument();
   });
 
-  it("renders Quick Actions section", () => {
-    render(
-      <IntelligenceHub alerts={[makeAlert()]} onRead={vi.fn()} onReadAll={vi.fn()} briefing={briefing} pulse={pulse} actionStats={actionStats} />
-    );
-    expect(screen.getByText("Quick Actions")).toBeInTheDocument();
-    expect(screen.getByText("Search Products")).toBeInTheDocument();
-    expect(screen.getByText("Find Suppliers")).toBeInTheDocument();
-  });
+
 
   it("renders Live Market Signals", () => {
     render(

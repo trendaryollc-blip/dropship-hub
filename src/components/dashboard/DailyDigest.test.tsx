@@ -58,7 +58,7 @@ describe("DailyDigest", () => {
   it("renders loading state", () => {
     mockUseDigest.mockReturnValue({ digest: null, loading: true, error: null, generateDigest: vi.fn().mockResolvedValue(undefined) });
     render(<DailyDigest />);
-    expect(screen.getByText("Generating...")).toBeInTheDocument();
+    expect(screen.getByText("...")).toBeInTheDocument();
   });
 
   it("renders error message", () => {
@@ -104,7 +104,7 @@ describe("DailyDigest", () => {
     expect(screen.getByText("Revenue")).toBeInTheDocument();
     expect(screen.getByText("Profit")).toBeInTheDocument();
     expect(screen.getByText("Stock Alerts")).toBeInTheDocument();
-    expect(screen.getByText("Supplier Delays")).toBeInTheDocument();
+    expect(screen.getByText("Delays")).toBeInTheDocument();
   });
 
   it("renders weekly trend section", () => {
@@ -142,7 +142,7 @@ describe("DailyDigest", () => {
     });
     render(<DailyDigest />);
     expect(screen.getByText("Low stock")).toBeInTheDocument();
-    expect(screen.getByText("Proactive Alerts")).toBeInTheDocument();
+    expect(screen.getByText("Alerts")).toBeInTheDocument();
   });
 
   it("renders recommendations", () => {

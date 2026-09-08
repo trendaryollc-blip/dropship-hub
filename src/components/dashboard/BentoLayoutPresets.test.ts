@@ -4,9 +4,8 @@ import { defaultLayout, layoutPresets } from "./BentoLayoutPresets";
 describe("BentoLayoutPresets", () => {
   it("has a default layout with all section IDs", () => {
     const sectionIds = [
-      "hero", "kpi", "daily-pick", "intelligence", "revenue",
-      "niches", "trending", "heatmap", "calculator", "suppliers",
-      "digest", "mission",
+      "hero", "kpi", "fulfillment", "daily-pick", "intelligence",
+      "niches", "trending", "heatmap", "suppliers", "mission",
     ];
     expect(defaultLayout.length).toBe(sectionIds.length);
     sectionIds.forEach((id) => {

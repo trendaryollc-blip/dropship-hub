@@ -30,14 +30,14 @@ describe("AIDailyPick", () => {
     expect(screen.getAllByText("Wireless Earbuds Pro").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders AI Product of the Day heading", () => {
+  it("renders AI Pick of the Day heading", () => {
     render(<AIDailyPick pick={makePick()} />);
-    expect(screen.getByText("AI Product of the Day")).toBeInTheDocument();
+    expect(screen.getByText("AI Pick of the Day")).toBeInTheDocument();
   });
 
-  it("renders Curated badge", () => {
+  it("renders AI Pick badge on image", () => {
     render(<AIDailyPick pick={makePick()} />);
-    expect(screen.getByText("Curated")).toBeInTheDocument();
+    expect(screen.getByText("AI Pick")).toBeInTheDocument();
   });
 
   it("renders description", () => {
@@ -57,7 +57,7 @@ describe("AIDailyPick", () => {
 
   it("renders medium risk badge", () => {
     render(<AIDailyPick pick={makePick({ risk: "medium" })} />);
-    expect(screen.getByText("Medium Risk")).toBeInTheDocument();
+    expect(screen.getByText("Med Risk")).toBeInTheDocument();
   });
 
   it("renders high risk badge", () => {
@@ -106,9 +106,9 @@ describe("AIDailyPick", () => {
     expect(screen.getByText("Why AI picked this")).toBeInTheDocument();
   });
 
-  it("renders Start Selling This button", () => {
+  it("renders Start Selling button", () => {
     render(<AIDailyPick pick={makePick()} />);
-    expect(screen.getByText("Start Selling This")).toBeInTheDocument();
+    expect(screen.getByText("Start Selling")).toBeInTheDocument();
   });
 
   it("renders Watchlist button", () => {
@@ -123,15 +123,10 @@ describe("AIDailyPick", () => {
 
   it("renders earnings breakdown", () => {
     render(<AIDailyPick pick={makePick()} />);
-    expect(screen.getByText("What you would earn")).toBeInTheDocument();
-    expect(screen.getByText("Buy at (source)")).toBeInTheDocument();
+    expect(screen.getByText("Earnings")).toBeInTheDocument();
+    expect(screen.getByText("Source")).toBeInTheDocument();
     expect(screen.getByText("Sell at")).toBeInTheDocument();
-    expect(screen.getByText("Profit per order")).toBeInTheDocument();
-  });
-
-  it("renders AI Pick badge on image", () => {
-    render(<AIDailyPick pick={makePick()} />);
-    expect(screen.getByText("AI Pick")).toBeInTheDocument();
+    expect(screen.getByText("Monthly est.")).toBeInTheDocument();
   });
 
   it("renders yesterday pick result", () => {

@@ -35,7 +35,7 @@ describe("RevenueForecast", () => {
 
   it("renders View Full Report button", () => {
     render(<RevenueForecast actual={actual} predicted={predicted} stats={makeStats()} />);
-    expect(screen.getByText("View Full Report")).toBeInTheDocument();
+    expect(screen.getByText("Full")).toBeInTheDocument();
   });
 
   it("renders timeframe buttons", () => {
