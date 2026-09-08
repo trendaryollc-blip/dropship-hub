@@ -30,6 +30,8 @@ export interface StorePlatform {
   keyUrlLabel?: string; // label for the link (default: "Get API Key")
   setupGuide: SetupStep[];
   apiDocsUrl?: string;
+  authType?: "manual" | "oauth";
+  oauthFields?: StoreField[];
 }
 
 export const STORE_CATALOG: StorePlatform[] = [
@@ -66,6 +68,10 @@ export const STORE_CATALOG: StorePlatform[] = [
     color: "#5e8e3e",
     bg: "#f0f7e8",
     keyUrl: "https://admin.shopify.com/settings/apps",
+    authType: "oauth",
+    oauthFields: [
+      { key: "shop", label: "Your Shopify Store URL", placeholder: "your-store.myshopify.com", type: "url", required: true, helpText: "Enter your .myshopify.com domain (e.g., mystore.myshopify.com)" },
+    ],
     fields: [
       { key: "storeDomain", label: "Store Domain", placeholder: "your-store.myshopify.com", type: "url", required: true },
       { key: "accessToken", label: "Access Token", placeholder: "shpat_xxxxxxxxxxxxx", type: "password", required: true },

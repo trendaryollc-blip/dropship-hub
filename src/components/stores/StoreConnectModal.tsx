@@ -25,9 +25,15 @@ export default function StoreConnectModal({ platform, onClose, onConnected }: Pr
   const [error, setError] = useState("");
   const [showGuide, setShowGuide] = useState(true);
 
+  const isOAuth = platform.authType === "oauth";
+
   const canSubmit =
     platform.fields.filter((f) => f.required).every((f) => formData[f.key]?.trim()) &&
     !connecting;
+
+  const canOAuth =
+    platform.oauthFields?.filter((f) => f.required).every((f) => formData[f.key]?.trim()) &&
+    !!user;
 
   const handleConnect = async () => {
     if (!user) return;
@@ -57,6 +63,22 @@ export default function StoreConnectModal({ platform, onClose, onConnected }: Pr
     } catch (e) {
       setError(e instanceof Error ? e.message : "Connection failed");
     } finally {
+      setConnecting(false);
+    }
+  };
+
+  const handleOAuthConnect = async () => {
+    if (!user || !canOAuth) return;
+    setConnecting(true);
+    setError("");
+
+    try {
+      const idToken = await user.getIdToken();
+      const shopValue = formData.shop || "";
+      const authUrl = `/api/store/shopify/auth?shop=${encodeURIComponent(shopValue)}&idToken=${encodeURIComponent(idToken)}`;
+      window.location.href = authUrl;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to initiate OAuth");
       setConnecting(false);
     }
   };
@@ -157,40 +179,73 @@ export default function StoreConnectModal({ platform, onClose, onConnected }: Pr
             </div>
           )}
 
-          {/* Store Name */}
-          <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Store Name</label>
-            <input
-              type="text"
-              value={storeName}
-              onChange={(e) => setStoreName(e.target.value)}
-              placeholder={`My ${platform.name} Store`}
-              className="w-full mt-1.5 px-4 py-3 rounded-xl bg-surface border border-border text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-accent/50 transition-all text-sm"
-            />
-          </div>
+          {/* OAuth Mode */}
+          {isOAuth ? (
+            <>
+              <div className="rounded-xl bg-accent/5 border border-accent/20 p-4">
+                <p className="text-sm text-foreground font-medium">Recommended: One-Click Connect</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Enter your Shopify store URL below and we&apos;ll securely connect via Shopify OAuth. No API keys needed.
+                </p>
+              </div>
 
-          {/* Platform Fields */}
-          {platform.fields.map((field) => (
-            <div key={field.key}>
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                {field.label}
-                {field.required && <span className="text-accent ml-1">*</span>}
-              </label>
-              <input
-                type={field.type === "password" ? "password" : field.type === "url" ? "url" : "text"}
-                value={formData[field.key] || ""}
-                onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
-                placeholder={field.placeholder}
-                className="w-full mt-1.5 px-4 py-3 rounded-xl bg-surface border border-border text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-accent/50 transition-all text-sm"
-              />
-              {field.helpText && (
-                <p className="text-[10px] text-muted-foreground mt-1">{field.helpText}</p>
-              )}
-            </div>
-          ))}
+              {platform.oauthFields?.map((field) => (
+                <div key={field.key}>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    {field.label}
+                    {field.required && <span className="text-accent ml-1">*</span>}
+                  </label>
+                  <input
+                    type={field.type === "password" ? "password" : field.type === "url" ? "url" : "text"}
+                    value={formData[field.key] || ""}
+                    onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
+                    placeholder={field.placeholder}
+                    className="w-full mt-1.5 px-4 py-3 rounded-xl bg-surface border border-border text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-accent/50 transition-all text-sm"
+                  />
+                  {field.helpText && (
+                    <p className="text-[10px] text-muted-foreground mt-1">{field.helpText}</p>
+                  )}
+                </div>
+              ))}
+            </>
+          ) : (
+            <>
+              {/* Store Name */}
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Store Name</label>
+                <input
+                  type="text"
+                  value={storeName}
+                  onChange={(e) => setStoreName(e.target.value)}
+                  placeholder={`My ${platform.name} Store`}
+                  className="w-full mt-1.5 px-4 py-3 rounded-xl bg-surface border border-border text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-accent/50 transition-all text-sm"
+                />
+              </div>
+
+              {/* Platform Fields */}
+              {platform.fields.map((field) => (
+                <div key={field.key}>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    {field.label}
+                    {field.required && <span className="text-accent ml-1">*</span>}
+                  </label>
+                  <input
+                    type={field.type === "password" ? "password" : field.type === "url" ? "url" : "text"}
+                    value={formData[field.key] || ""}
+                    onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
+                    placeholder={field.placeholder}
+                    className="w-full mt-1.5 px-4 py-3 rounded-xl bg-surface border border-border text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-accent/50 transition-all text-sm"
+                  />
+                  {field.helpText && (
+                    <p className="text-[10px] text-muted-foreground mt-1">{field.helpText}</p>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
 
           {/* Get API Key Link */}
-          {platform.keyUrl && (
+          {!isOAuth && platform.keyUrl && (
             <a
               href={platform.keyUrl}
               target="_blank"
@@ -210,23 +265,44 @@ export default function StoreConnectModal({ platform, onClose, onConnected }: Pr
           >
             Cancel
           </button>
-          <button
-            onClick={handleConnect}
-            disabled={!canSubmit}
-            className="flex-1 py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {connecting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Connecting...
-              </>
-            ) : (
-              <>
-                <Store className="h-4 w-4" />
-                Connect Store
-              </>
-            )}
-          </button>
+          {isOAuth ? (
+            <button
+              onClick={handleOAuthConnect}
+              disabled={!canOAuth || connecting}
+              className="flex-1 py-3 rounded-xl text-white font-semibold text-sm hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              style={{ background: platform.color }}
+            >
+              {connecting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <Store className="h-4 w-4" />
+                  Connect with {platform.name}
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={handleConnect}
+              disabled={!canSubmit}
+              className="flex-1 py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {connecting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <Store className="h-4 w-4" />
+                  Connect Store
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>
