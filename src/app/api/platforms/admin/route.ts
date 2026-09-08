@@ -116,8 +116,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "name and method are required" }, { status: 400 });
     }
 
-    const platform = await createPlatform(input);
-    return NextResponse.json({ platform });
+    await createPlatform(input);
+    return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to create platform" },
