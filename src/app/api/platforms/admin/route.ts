@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAuth, isOwner } from "@/lib/auth";
+import { verifyAuth, isOwner, extractEmailFromRequest } from "@/lib/auth";
 import {
   getAllPlatforms,
   createPlatform,
@@ -17,7 +17,7 @@ import {
 export async function GET(request: NextRequest) {
   const uid = await verifyAuth(request);
   if (!uid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!(await isOwner(uid))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!(await isOwner(uid, extractEmailFromRequest(request)))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
     const platforms = await getAllPlatforms();
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const uid = await verifyAuth(request);
   if (!uid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!(await isOwner(uid))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!(await isOwner(uid, extractEmailFromRequest(request)))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
     const body = await request.json();
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   const uid = await verifyAuth(request);
   if (!uid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!(await isOwner(uid))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!(await isOwner(uid, extractEmailFromRequest(request)))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
     const body = await request.json();
@@ -154,7 +154,7 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const uid = await verifyAuth(request);
   if (!uid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!(await isOwner(uid))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!(await isOwner(uid, extractEmailFromRequest(request)))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
     const { searchParams } = new URL(request.url);

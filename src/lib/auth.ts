@@ -46,6 +46,31 @@ export async function requireAuth(request: NextRequest): Promise<{ uid: string }
   return { uid };
 }
 
+/**
+ * Extract the verified-or-unverified `email` claim from the Bearer ID token in
+ * the request. Firebase ID tokens include the user's email in the payload, so we
+ * can identify the app owner without depending on the Firestore/Admin SDK being
+ * healthy. Returns null if the token is missing, malformed, or has no email.
+ */
+export function extractEmailFromRequest(request: NextRequest): string | null {
+  const authHeader = request.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  const token = authHeader.split("Bearer ")[1];
+  if (!token) return null;
+  try {
+    const parts = token.split(".");
+    if (parts.length === 3) {
+      const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
+      if (typeof payload.email === "string" && payload.email.trim()) {
+        return payload.email.trim().toLowerCase();
+      }
+    }
+  } catch {
+    // Malformed token
+  }
+  return null;
+}
+
 export async function getUserTier(uid: string): Promise<UserTier> {
   const db = await getAdminDB();
   if (!db) return "free";
@@ -91,7 +116,7 @@ export function requireOwner(
     const ownerRl = await rateLimitByUser(request, result.uid, LIMITS.AUTH);
     if (!ownerRl.allowed) return ownerRl.response!;
 
-    if (!(await isOwner(result.uid))) {
+    if (!(await isOwner(result.uid, extractEmailFromRequest(request)))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     return handler(request, result.uid);
@@ -102,7 +127,14 @@ function normalizeUid(uid: string): string {
   return uid.trim().toLowerCase();
 }
 
-export async function isOwner(uid: string): Promise<boolean> {
+/**
+ * Determine whether the given user is the app owner.
+ *
+ * @param uid   Firebase Auth UID of the signed-in user.
+ * @param email Optional email resolved from the request's ID token. When present
+ *              it lets us confirm an owner match without needing the Admin SDK.
+ */
+export async function isOwner(uid: string, email: string | null = null): Promise<boolean> {
   if (!uid) return false;
 
   const directUid = normalizeUid(uid);
@@ -120,6 +152,9 @@ export async function isOwner(uid: string): Promise<boolean> {
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
 
+  // Hardcoded known owner email(s) — fallback used when env vars are missing.
+  const knownOwnerEmails = ["trendaryo206@gmail.com"];
+
   // If no OWNER_UID or OWNER_EMAIL is configured at all, grant owner access
   // to any authenticated user as a dev/fallback mode.
   const hasOwnerConfig = ownerUids.length > 0 || ownerEmails.length > 0;
@@ -128,28 +163,31 @@ export async function isOwner(uid: string): Promise<boolean> {
     return true;
   }
 
-  // Hardcoded fallback: if the user's email matches the known owner email,
-  // grant owner access. This matches the client-side check in the Sidebar.
-  const adminAuth = getAdminAuth();
-  if (adminAuth) {
-    try {
+  const emailMatches = (candidate: string | null | undefined): boolean => {
+    if (!candidate) return false;
+    const normalized = candidate.toLowerCase();
+    return ownerEmails.includes(normalized) || knownOwnerEmails.includes(normalized);
+  };
+
+  // 1) Match against the email claim embedded in the ID token. This works even
+  //    when the Admin SDK is unavailable or misconfigured.
+  if (emailMatches(email)) return true;
+
+  // 2) Fallback: resolve the uid → email via the Admin SDK. Guarded so a failure
+  //    here never throws out of isOwner (which would 500 the caller).
+  try {
+    const adminAuth = getAdminAuth();
+    if (adminAuth) {
       const userRecord = await adminAuth.getUser(uid);
-      if (userRecord.email) {
-        const normalizedEmail = userRecord.email.toLowerCase();
-        if (ownerEmails.includes(normalizedEmail)) return true;
-        // Also check against hardcoded known owner emails
-        const knownOwnerEmails = ["trendaryo206@gmail.com"];
-        if (knownOwnerEmails.includes(normalizedEmail)) return true;
-      }
-    } catch (err) {
-      console.warn("[auth] Admin SDK getUser failed for uid:", uid, ":", err instanceof Error ? err.message : err);
+      if (emailMatches(userRecord.email)) return true;
     }
-  } else {
-    console.warn("[auth] Admin SDK unavailable for uid:", uid, "— falling back to env-var/email checks only");
+  } catch (err) {
+    console.warn(
+      "[auth] Admin SDK email lookup failed for uid:",
+      uid,
+      err instanceof Error ? err.message : err
+    );
   }
 
-  // If env vars are configured but Admin SDK is unavailable, we can't verify
-  // the email via Admin SDK, so rely on what we've already checked (direct UID match).
-  // If no env config exists, grant access as dev fallback (handled above).
   return false;
 }
