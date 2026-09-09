@@ -101,6 +101,14 @@ export async function isOwner(uid: string): Promise<boolean> {
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
 
+  // If no OWNER_UID or OWNER_EMAIL is configured at all, grant owner access
+  // to any authenticated user as a dev/fallback mode.
+  const hasOwnerConfig = ownerUids.length > 0 || ownerEmails.length > 0;
+  if (!hasOwnerConfig) {
+    console.warn("[auth] No OWNER_UID or OWNER_EMAIL configured — granting owner access to uid:", uid);
+    return true;
+  }
+
   if (ownerEmails.length > 0) {
     const now = Date.now();
     if (!cachedOwnerUids || now - cachedOwnerUidsAt > OWNER_CACHE_TTL_MS) {
@@ -119,20 +127,16 @@ export async function isOwner(uid: string): Promise<boolean> {
     if (cachedOwnerUids.has(directUid)) return true;
   }
 
+  // If Firebase Admin SDK is available, try email lookup as last resort
   try {
     const userRecord = await getAdminAuth().getUser(uid);
     if (userRecord.email) {
-      // Check if this email is in the OWNER_EMAIL env var list (already checked above)
-      // Also check if OWNER_UID/OWNER_EMAIL are not configured at all — if so,
-      // allow the first user who signs up to be owner (dev/fallback mode)
-      const hasOwnerConfig = ownerUids.length > 0 || ownerEmails.length > 0;
-      if (!hasOwnerConfig) {
-        console.warn("[auth] No OWNER_UID or OWNER_EMAIL configured — granting owner access to uid:", uid);
-        return true;
-      }
+      const normalizedEmail = userRecord.email.toLowerCase();
+      if (ownerEmails.includes(normalizedEmail)) return true;
     }
   } catch {
-    // ignore
+    // Firebase Admin SDK may not be available — don't block access
+    console.warn("[auth] Could not verify user via Admin SDK for uid:", uid);
   }
 
   return false;
