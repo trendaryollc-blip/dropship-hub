@@ -111,19 +111,26 @@ export default function PlatformsPage() {
   const fetchPlatforms = useCallback(async () => {
     if (!user) return;
     try {
-      let authorized = false;
-      try {
-        const token = await user.getIdToken();
-        const meData = await safeFetch<{ isOwner: boolean }>("/api/auth/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (typeof meData.isOwner === "boolean" && meData.isOwner) authorized = true;
-      } catch {
-        // server check failed
+      // Client-side owner check: if the signed-in user's email matches the
+      // known owner email, grant owner access immediately without an API call.
+      // This mirrors the check in Sidebar.tsx and acts as a fallback when the
+      // /api/auth/me endpoint is unavailable (e.g., Admin SDK misconfiguration).
+      if (user.email && user.email.toLowerCase() === "trendaryo206@gmail.com") {
+        setIsOwner(true);
+      } else {
+        let authorized = false;
+        try {
+          const token = await user.getIdToken();
+          const meData = await safeFetch<{ isOwner: boolean }>("/api/auth/me", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (typeof meData.isOwner === "boolean" && meData.isOwner) authorized = true;
+        } catch {
+          // server check failed — isOwner stays false
+        }
+        setIsOwner(authorized);
+        if (!authorized) return;
       }
-
-      setIsOwner(authorized);
-      if (!authorized) return;
 
       const token = await user.getIdToken();
       const data = await safeFetch<{ platforms?: PlatformData[] }>("/api/platforms/admin", {
