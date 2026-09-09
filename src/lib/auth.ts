@@ -123,7 +123,13 @@ export async function isOwner(uid: string): Promise<boolean> {
     const userRecord = await getAdminAuth().getUser(uid);
     if (userRecord.email) {
       // Check if this email is in the OWNER_EMAIL env var list (already checked above)
-      // No hardcoded fallback — owner access is ONLY granted via OWNER_UID or OWNER_EMAIL env vars
+      // Also check if OWNER_UID/OWNER_EMAIL are not configured at all — if so,
+      // allow the first user who signs up to be owner (dev/fallback mode)
+      const hasOwnerConfig = ownerUids.length > 0 || ownerEmails.length > 0;
+      if (!hasOwnerConfig) {
+        console.warn("[auth] No OWNER_UID or OWNER_EMAIL configured — granting owner access to uid:", uid);
+        return true;
+      }
     }
   } catch {
     // ignore
