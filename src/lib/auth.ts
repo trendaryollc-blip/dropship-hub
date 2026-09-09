@@ -72,9 +72,9 @@ export function extractEmailFromRequest(request: NextRequest): string | null {
 }
 
 export async function getUserTier(uid: string): Promise<UserTier> {
-  const db = await getAdminDB();
-  if (!db) return "free";
   try {
+    const db = await getAdminDB();
+    if (!db) return "free";
     const userDoc = await db.collection("users").doc(uid).collection("settings").doc("subscription").get();
     if (userDoc.exists) {
       const data = userDoc.data();
@@ -82,7 +82,7 @@ export async function getUserTier(uid: string): Promise<UserTier> {
       if (tier === "enterprise" || tier === "pro") return tier;
     }
   } catch {
-    // Fall through to free tier
+    // Fall through to free tier (incl. when the Admin SDK is unavailable)
   }
   return "free";
 }

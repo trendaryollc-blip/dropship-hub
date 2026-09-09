@@ -65,7 +65,7 @@ export default function NoCodeConnectorTab({ onCreated }: Props) {
       if (err instanceof FetchError) {
         if (err.status === 401) msg = "Not signed in. Please refresh and sign in again.";
         else if (err.status === 403) msg = "Access denied — you need owner permissions.";
-        else if (err.status >= 500) msg = `Server error (${err.status}) — try again later.`;
+        else if (err.status >= 500) msg = err.message || `Server error (${err.status}) — try again later.`;
         else msg = err.message || msg;
       }
       setResult({ ok: false, msg });
