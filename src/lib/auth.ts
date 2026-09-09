@@ -75,10 +75,6 @@ export function requireOwner(
   };
 }
 
-let cachedOwnerUids: Set<string> | null = null;
-let cachedOwnerUidsAt = 0;
-const OWNER_CACHE_TTL_MS = 5 * 60 * 1000;
-
 function normalizeUid(uid: string): string {
   return uid.trim().toLowerCase();
 }
@@ -109,33 +105,19 @@ export async function isOwner(uid: string): Promise<boolean> {
     return true;
   }
 
-  if (ownerEmails.length > 0) {
-    const now = Date.now();
-    if (!cachedOwnerUids || now - cachedOwnerUidsAt > OWNER_CACHE_TTL_MS) {
-      cachedOwnerUids = new Set<string>();
-      cachedOwnerUidsAt = now;
-      try {
-        for (const email of ownerEmails) {
-          const user = await getAdminAuth().getUserByEmail(email).catch(() => null);
-          if (user) cachedOwnerUids.add(normalizeUid(user.uid));
-        }
-      } catch {
-        // Leave cache empty — owner check falls through to false.
-      }
-    }
-
-    if (cachedOwnerUids.has(directUid)) return true;
-  }
-
-  // If Firebase Admin SDK is available, try email lookup as last resort
+  // Hardcoded fallback: if the user's email matches the known owner email,
+  // grant owner access. This matches the client-side check in the Sidebar.
   try {
     const userRecord = await getAdminAuth().getUser(uid);
     if (userRecord.email) {
       const normalizedEmail = userRecord.email.toLowerCase();
       if (ownerEmails.includes(normalizedEmail)) return true;
+      // Also check against hardcoded known owner emails
+      const knownOwnerEmails = ["trendaryo206@gmail.com"];
+      if (knownOwnerEmails.includes(normalizedEmail)) return true;
     }
   } catch {
-    // Firebase Admin SDK may not be available — don't block access
+    // Firebase Admin SDK may not be available
     console.warn("[auth] Could not verify user via Admin SDK for uid:", uid);
   }
 
