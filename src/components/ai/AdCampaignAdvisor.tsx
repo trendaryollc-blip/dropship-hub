@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Megaphone, TrendingUp, TrendingDown, AlertTriangle, Zap, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { Megaphone, TrendingUp, Zap, ChevronDown, ChevronUp } from "lucide-react";
 import { safeFetch } from "@/lib/safe-fetch";
 
 interface CampaignAnalysis {
@@ -44,7 +44,7 @@ export default function AdCampaignAdvisor({ uid }: { uid: string }) {
         body: JSON.stringify({ uid }),
       });
       setData(json);
-    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[AdCampaignAdvisor] silently caught", e); }
+    } catch (e) { console.warn("[AdCampaignAdvisor] Error:", e instanceof Error ? e.message : e); }
     setLoading(false);
   };
 

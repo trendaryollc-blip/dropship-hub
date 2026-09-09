@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Sparkles, ArrowRight, Shield, Loader2, RefreshCw } from "lucide-react";
+import { Sparkles, ArrowRight, Loader2, RefreshCw } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { safeFetch } from "@/lib/safe-fetch";
@@ -24,7 +24,7 @@ export default function SupplierAISuggestions() {
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
 
-  const fetchSuggestions = async () => {
+  const fetchSuggestions = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
@@ -39,13 +39,13 @@ export default function SupplierAISuggestions() {
       // Silently fail
     }
     setLoading(false);
-  };
+  }, [user]);
 
   useEffect(() => {
     if (user && !hasLoaded) {
       fetchSuggestions();
     }
-  }, [user, hasLoaded]);
+  }, [user, hasLoaded, fetchSuggestions]);
 
   if (!user || (hasLoaded && suggestions.length === 0)) return null;
 

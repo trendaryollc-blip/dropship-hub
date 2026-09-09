@@ -532,7 +532,7 @@ export async function detectReturnsFromOrders(uid: string): Promise<
   { orderId: string; orderNumber: string; customerName: string; customerEmail: string; items: ReturnRequest["items"]; supplierId: string; supplierName: string; platform: string; storePlatform: string }[]
 > {
   try {
-    const db2 = await import("firebase/firestore").then((m) => m);
+    const _db2 = await import("firebase/firestore").then((m) => m);
     const q = query(
       collection(db, "users", uid, "fulfillmentOrders"),
       where("status", "in", ["cancelled", "refunded"]),

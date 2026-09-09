@@ -8,7 +8,7 @@ export const GET = withAuth(async (request: NextRequest) => {
     const { searchParams } = new URL(request.url);
     const product = searchParams.get("product") || "";
     const category = searchParams.get("category") || "";
-    const source = searchParams.get("source") || "";
+    const _source = searchParams.get("source") || "";
     const price = searchParams.get("price") ? parseFloat(searchParams.get("price")!) : 0;
 
     const suppliers = await getSuppliers();

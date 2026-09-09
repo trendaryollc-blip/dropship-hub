@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, TrendingUp, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { Sparkles, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 
 interface Recommendation {
   id: string;

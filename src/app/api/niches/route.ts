@@ -151,7 +151,7 @@ function buildNicheFromCategory(
   cat: CJCategory,
   products: CJProduct[],
   index: number,
-  allCategoryNames: string[]
+  _allCategoryNames: string[]
 ): NicheData {
   const validProducts = products.filter((p) => Number(p.sellPrice) > 0 && Number(p.productPrice) > 0);
   const productCount = validProducts.length || 1;

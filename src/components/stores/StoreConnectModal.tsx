@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { type StorePlatform } from "@/lib/store-catalog";
 import { safeFetch } from "@/lib/safe-fetch";
@@ -17,11 +18,12 @@ interface Props {
 
 export default function StoreConnectModal({ platform, onClose, onConnected }: Props) {
   const { user } = useAuth();
+  const router = useRouter();
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [storeName, setStoreName] = useState("");
   const [connecting, setConnecting] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [_testing, _setTesting] = useState(false);
+  const [testResult, _setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [error, setError] = useState("");
   const [showGuide, setShowGuide] = useState(true);
 
@@ -76,7 +78,7 @@ export default function StoreConnectModal({ platform, onClose, onConnected }: Pr
       const idToken = await user.getIdToken();
       const shopValue = formData.shop || "";
       const authUrl = `/api/store/shopify/auth?shop=${encodeURIComponent(shopValue)}&idToken=${encodeURIComponent(idToken)}`;
-      window.location.href = authUrl;
+      router.push(authUrl);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to initiate OAuth");
       setConnecting(false);

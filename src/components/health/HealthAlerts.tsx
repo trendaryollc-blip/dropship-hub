@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Clock, TrendingUp, ShoppingCart, Shield, DollarSign, BarChart3, ArrowRight } from "lucide-react";
+import { AlertTriangle, TrendingUp, ShoppingCart, Shield, DollarSign, BarChart3, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 interface Alert {

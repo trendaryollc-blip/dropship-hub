@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
-import { getWebhookLogs, getWebhookLogStats, deleteOldWebhookLogs } from "@/lib/webhooks/event-log";
+import { getWebhookLogs, deleteOldWebhookLogs } from "@/lib/webhooks/event-log";
 import { logger } from "@/lib/logger";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {

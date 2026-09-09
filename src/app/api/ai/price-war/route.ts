@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { validateBody, PriceRuleInputSchema } from "@/lib/validation";
-import { addPriceRule, getPriceRules, updatePriceRule, deletePriceRule, getPriceWarStats } from "@/lib/data/price-war";
+import { addPriceRule, getPriceRules, deletePriceRule, getPriceWarStats } from "@/lib/data/price-war";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {

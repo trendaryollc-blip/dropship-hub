@@ -22,7 +22,7 @@ type SortKey = typeof sortOptions[number]["value"];
 export default function NichesPage() {
   const { ref: heroRef, isInView: heroVisible } = useInView({ threshold: 0.1 });
   const { data: nicheData, error: nicheError, isLoading, mutate: refetchNiches } = useAPI<{ niches?: NicheData[]; error?: string }>("/api/niches");
-  const niches = nicheData?.niches || [];
+  const niches = useMemo(() => nicheData?.niches || [], [nicheData]);
   const error = nicheError?.message || nicheData?.error || null;
   const loading = isLoading;
   const [query, setQuery] = useState("");

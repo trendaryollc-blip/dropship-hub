@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import {
   Brain, TrendingUp, AlertTriangle, Info, AlertOctagon,
-  CheckCheck, ArrowUpRight, Sparkles, Eye, Zap,
+  CheckCheck, ArrowUpRight, Sparkles,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { SmartAlert } from "@/types/dashboard";

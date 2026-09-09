@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAPI } from "@/hooks/useAPI";
 import {
-  Settings, Loader2, Package, Store as StoreIcon, Link2, Sparkles,
+  Settings, Loader2, Package, Store as StoreIcon, Link2,
 } from "lucide-react";
 import ConnectedStoresList, { type ConnectedStore } from "@/components/stores/ConnectedStoresList";
 import PushedProductsList, { type PushedProduct } from "@/components/stores/PushedProductsList";
@@ -20,7 +20,7 @@ export default function StorePage() {
   const { user } = useAuth();
   const uid = user?.uid || "";
   const { data: connData, mutate: refetchConnections } = useAPI<{ connections?: ConnectedStore[] }>(uid ? `/api/store/connections?uid=${uid}` : null);
-  const { data: pushData, mutate: refetchPushed } = useAPI<{ products?: PushedProduct[] }>(uid ? `/api/store/push?uid=${uid}` : null);
+  const { data: pushData, mutate: _refetchPushed } = useAPI<{ products?: PushedProduct[] }>(uid ? `/api/store/push?uid=${uid}` : null);
   const connections = connData?.connections || [];
   const pushedProducts = pushData?.products || [];
   const loading = !user || (!connData && !pushData);

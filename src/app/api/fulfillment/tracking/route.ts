@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { getShipmentStatus, syncTrackingToStore, pollAllShipments } from "@/lib/fulfillment/shipment-tracker";
 
-export const GET = withAuth(async (request: NextRequest, uid: string) => {
+export const GET = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get("action") || "status";
@@ -37,7 +37,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
   }
 });
 
-export const POST = withAuth(async (request: NextRequest, uid: string) => {
+export const POST = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const body = await request.json();
     const { action, storeId, storePlatform, platformOrderId, trackingNumber, carrier, estimatedDelivery } = body;

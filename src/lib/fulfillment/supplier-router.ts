@@ -1,4 +1,4 @@
-import type { RoutingResult, RoutingSupplierChoice, AutomationTrigger } from "@/types/automation";
+import type { RoutingResult, RoutingSupplierChoice } from "@/types/automation";
 import type { FulfillmentOrder } from "@/types/fulfillment";
 import { DEFAULT_FULFILLMENT_SETTINGS } from "@/types/fulfillment";
 

@@ -35,13 +35,10 @@ export {
 
 // ─── Tool Registration Helper Types ─────────────────────────────────────────
 
-import type { z } from "zod";
 import type {
   ToolDefinition,
   ToolExecutionContext,
   ToolResult,
-  ToolCategory,
-  ToolSafetyLevel,
 } from "@/lib/ai/types";
 
 export type ToolExecuteFn = (

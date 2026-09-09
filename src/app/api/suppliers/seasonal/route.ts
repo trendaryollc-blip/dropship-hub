@@ -38,11 +38,20 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
       .limit(100)
       .get();
 
-    const supplierMap = new Map<string, any>();
+    interface SupplierPerf {
+      supplierId: string;
+      supplierName: string;
+      reliabilityScore?: number;
+      totalOrders?: number;
+      avgShippingDays?: number;
+      refundRate?: number;
+    }
+
+    const supplierMap = new Map<string, SupplierPerf>();
     for (const doc of perfSnap.docs) {
       const data = doc.data();
       if (!supplierMap.has(data.supplierId)) {
-        supplierMap.set(data.supplierId, data);
+        supplierMap.set(data.supplierId, data as SupplierPerf);
       }
     }
 

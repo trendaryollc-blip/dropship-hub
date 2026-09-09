@@ -3,7 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { validateBody } from "@/lib/validation";
 import { z } from "zod";
-import { runTool, confirmExecution, cancelExecution } from "@/lib/ai/engine/runner";
+import { runTool } from "@/lib/ai/engine/runner";
 import { getRecentExecutions, getPendingConfirmations } from "@/lib/ai/engine/executor";
 import { executeToolCalls, parseToolCalls } from "@/lib/ai/engine/executor";
 import { getAutonomyLevel } from "@/lib/ai/modes/user-prefs";

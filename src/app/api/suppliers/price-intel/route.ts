@@ -13,7 +13,7 @@ function normalizeProductName(name: string): string {
     .trim();
 }
 
-function calculateTotalCost(offer: SupplierOffer): number {
+function _calculateTotalCost(offer: SupplierOffer): number {
   return offer.unitPrice + (offer.shippingCost / Math.max(offer.moq, 1));
 }
 

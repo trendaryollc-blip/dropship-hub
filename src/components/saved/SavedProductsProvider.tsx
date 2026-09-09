@@ -52,7 +52,7 @@ function saveLocal(products: SavedProduct[]) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
-  } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[SavedProductsProvider] silently caught", e); }
+  } catch (e) { console.warn("[SavedProductsProvider] Error:", e instanceof Error ? e.message : e); }
 }
 
 export function SavedProductsProvider({ children }: { children: ReactNode }) {
@@ -95,7 +95,7 @@ export function SavedProductsProvider({ children }: { children: ReactNode }) {
         })
         .catch((e) => {
           if (!cancelled) {
-            if (process.env.NODE_ENV === "development") console.warn("[SavedProductsProvider] silently caught", e);
+            console.warn("[SavedProductsProvider] Error:", e instanceof Error ? e.message : e);
             setProducts(local);
           }
         });
@@ -104,7 +104,7 @@ export function SavedProductsProvider({ children }: { children: ReactNode }) {
     }
 
     return () => { cancelled = true; };
-  }, [user?.uid]);
+  }, [user, user?.uid]);
 
   const toggleSave = useCallback(
     (product: SavedProduct) => {
@@ -114,7 +114,7 @@ export function SavedProductsProvider({ children }: { children: ReactNode }) {
         if (exists) {
           next = prev.filter((p) => p.id !== product.id);
           if (user) {
-            void deleteDoc(doc(db, "users", user.uid, "savedProducts", product.id)).catch((e) => { if (process.env.NODE_ENV === "development") console.warn("[SavedProductsProvider] silently caught", e); });
+            void deleteDoc(doc(db, "users", user.uid, "savedProducts", product.id)).catch((e) => { console.warn("[SavedProductsProvider] Error:", e instanceof Error ? e.message : e); });
           }
         } else {
           next = [{ ...product, savedAt: Date.now() }, ...prev];
@@ -129,7 +129,7 @@ export function SavedProductsProvider({ children }: { children: ReactNode }) {
               rating: product.rating ?? null,
               reviews: product.reviews ?? null,
               savedAt: Date.now(),
-            }).catch((e) => { if (process.env.NODE_ENV === "development") console.warn("[SavedProductsProvider] silently caught", e); });
+            }).catch((e) => { console.warn("[SavedProductsProvider] Error:", e instanceof Error ? e.message : e); });
           }
         }
         saveLocal(next);
@@ -147,7 +147,7 @@ export function SavedProductsProvider({ children }: { children: ReactNode }) {
         return next;
       });
       if (user) {
-        void deleteDoc(doc(db, "users", user.uid, "savedProducts", id)).catch((e) => { if (process.env.NODE_ENV === "development") console.warn("[SavedProductsProvider] silently caught", e); });
+        void deleteDoc(doc(db, "users", user.uid, "savedProducts", id)).catch((e) => { console.warn("[SavedProductsProvider] Error:", e instanceof Error ? e.message : e); });
       }
     },
     [user]
@@ -160,10 +160,10 @@ export function SavedProductsProvider({ children }: { children: ReactNode }) {
       void getDocs(collection(db, "users", user.uid, "savedProducts"))
         .then((snap) => {
           for (const d of snap.docs) {
-            void deleteDoc(doc(db, "users", user.uid, "savedProducts", d.id)).catch((e) => { if (process.env.NODE_ENV === "development") console.warn("[SavedProductsProvider] silently caught", e); });
+            void deleteDoc(doc(db, "users", user.uid, "savedProducts", d.id)).catch((e) => { console.warn("[SavedProductsProvider] Error:", e instanceof Error ? e.message : e); });
           }
         })
-        .catch((e) => { if (process.env.NODE_ENV === "development") console.warn("[SavedProductsProvider] silently caught", e); });
+        .catch((e) => { console.warn("[SavedProductsProvider] Error:", e instanceof Error ? e.message : e); });
     }
   }, [user]);
 

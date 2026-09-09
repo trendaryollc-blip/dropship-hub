@@ -57,7 +57,7 @@ export function useDashboardLayout(): UseDashboardLayoutResult {
         body: JSON.stringify({ layout: defaultLayout }),
       }).catch(console.error);
     }
-  }, [user]);
+  }, [user, setLayout]);
 
   return { layout, setLayout, resetToDefault, isLoading };
 }

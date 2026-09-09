@@ -41,11 +41,11 @@ class ToolRegistryImpl {
   }
 
   getDefinitions(): ToolDefinition[] {
-    return this.getAll().map(({ execute, ...def }) => def);
+    return this.getAll().map(({ execute: _execute, ...def }) => def);
   }
 
   getDefinitionsForCategory(category: ToolCategory): ToolDefinition[] {
-    return this.getByCategory(category).map(({ execute, ...def }) => def);
+    return this.getByCategory(category).map(({ execute: _execute, ...def }) => def);
   }
 
   has(id: string): boolean {

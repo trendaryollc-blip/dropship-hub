@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Loader2, X, AlertCircle } from "lucide-react";
+import { Check, Loader2, AlertCircle } from "lucide-react";
 
 interface PlatformStatus {
   platform: string;

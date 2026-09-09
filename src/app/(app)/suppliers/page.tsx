@@ -2,16 +2,15 @@
 
 import { useState, useMemo, Suspense, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   Search, Shield, MapPin, Clock, Star, Filter, Truck,
   Package, ArrowRight, RefreshCw, CheckSquare, Square, X,
   Sparkles, TrendingUp, BarChart3, MessageSquare, FileText,
-  Layers, Loader2, Globe, ExternalLink, Zap, Target,
+  Loader2, Target,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { SupplierProfile } from "@/types/supplier";
-import SupplierListItem from "@/components/suppliers/SupplierListItem";
 import { badgeConfig, ScoreRing, dataSourceConfig } from "@/components/suppliers/supplier-shared";
 import SupplierFilterPanel, { type SupplierFilters } from "@/components/suppliers/SupplierFilterPanel";
 import SupplierComparePanel from "@/components/suppliers/SupplierComparePanel";
@@ -302,6 +301,7 @@ function SupplierCard({
 
 function SuppliersContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const initialProduct = searchParams.get("product") || "";
   const initialCategory = searchParams.get("category") || "";
   const initialSource = searchParams.get("source") || "";
@@ -317,7 +317,7 @@ function SuppliersContent() {
   const { data: findData, isLoading: findLoading } = useAPI<{ suppliers?: (SupplierProfile & { relevanceScore?: number })[]; error?: string }>(findUrl);
   const { data: listData, error: apiError, isLoading: listLoading, mutate } = useAPI<{ suppliers?: SupplierProfile[]; error?: string }>(listUrl);
 
-  const suppliers = (hasProductContext ? findData?.suppliers : listData?.suppliers) ?? [];
+  const suppliers = useMemo(() => (hasProductContext ? findData?.suppliers : listData?.suppliers) ?? [], [hasProductContext, findData, listData]);
   const loading = hasProductContext ? findLoading : listLoading;
   const error = apiError ? "Failed to load suppliers" : (findData?.error || listData?.error) ?? null;
 
@@ -471,7 +471,7 @@ function SuppliersContent() {
             </div>
           </div>
           <button
-            onClick={() => { window.location.href = "/suppliers"; }}
+            onClick={() => { router.push("/suppliers"); }}
             className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
           >
             Clear context

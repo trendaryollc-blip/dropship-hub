@@ -29,7 +29,7 @@ export default function BudgetDashboard() {
   const recommendations = data?.recommendations || [];
   const pending = recommendations.filter((r) => r.status === "pending");
   const accepted = recommendations.filter((r) => r.status === "accepted");
-  const rejected = recommendations.filter((r) => r.status === "rejected");
+  const _rejected = recommendations.filter((r) => r.status === "rejected");
 
   const totalRevenueImpact = accepted.reduce((sum, r) => sum + r.expectedImpact.revenueChange, 0);
   const avgConfidence = accepted.length > 0

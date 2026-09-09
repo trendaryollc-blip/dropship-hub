@@ -9,7 +9,10 @@ let adminAuth: ReturnType<typeof getAuth> | null = null;
 function getServiceAccount() {
   const json = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!json) {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT environment variable is not set");
+    throw new Error(
+      "FIREBASE_SERVICE_ACCOUNT environment variable is not set. " +
+      "Go to Vercel Dashboard → Settings → Environment Variables and add the full service-account JSON."
+    );
   }
   try {
     return JSON.parse(json);
@@ -26,16 +29,31 @@ function getServiceAccount() {
         }
       );
       return JSON.parse(repaired);
-    } catch {
-      throw new Error("FIREBASE_SERVICE_ACCOUNT contains invalid JSON — please re-paste the raw service-account JSON into your Vercel env vars");
+    } catch (repairErr) {
+      const snippet = json.slice(0, 120);
+      console.error(
+        "[firebase-admin] FIREBASE_SERVICE_ACCOUNT JSON parse failed.",
+        "First 120 chars:", snippet,
+        "Repair attempt error:", repairErr instanceof Error ? repairErr.message : repairErr
+      );
+      throw new Error(
+        "FIREBASE_SERVICE_ACCOUNT contains invalid JSON. " +
+        "In Vercel, paste the ENTIRE service-account JSON as a single-line value. " +
+        "Make sure there are no stray line breaks outside the private_key field."
+      );
     }
   }
 }
 
 function ensureApp() {
   if (getApps().length === 0) {
-    const serviceAccount = getServiceAccount();
-    initializeApp({ credential: cert(serviceAccount) });
+    try {
+      const serviceAccount = getServiceAccount();
+      initializeApp({ credential: cert(serviceAccount) });
+    } catch (err) {
+      console.error("[firebase-admin] Failed to initialize Firebase Admin SDK:", err instanceof Error ? err.message : err);
+      throw err;
+    }
   }
 }
 
@@ -51,4 +69,28 @@ export function getAdminAuth() {
   ensureApp();
   adminAuth = getAuth();
   return adminAuth;
+}
+
+/**
+ * Check if Firebase Admin SDK is properly configured.
+ * Returns a descriptive error string if misconfigured, or null if healthy.
+ */
+export function checkAdminHealth(): string | null {
+  const json = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (!json) return "FIREBASE_SERVICE_ACCOUNT is not set";
+  try {
+    JSON.parse(json);
+    return null;
+  } catch {
+    try {
+      const repaired = json.replace(
+        /("(?:private_key|privateKey)"\s*:\s*")([\s\S]*?)("\s*[,}])/g,
+        (_m, p: string, k: string, s: string) => `${p}${k.replace(/\n/g, "\\n")}${s}`
+      );
+      JSON.parse(repaired);
+      return null;
+    } catch {
+      return "FIREBASE_SERVICE_ACCOUNT contains invalid JSON";
+    }
+  }
 }

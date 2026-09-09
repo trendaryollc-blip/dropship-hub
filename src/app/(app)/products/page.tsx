@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, Suspense, useRef, useCallback } from "rea
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
-  Search, Loader2, Compass, Zap, ArrowRight,
+  Search, Compass, Zap, ArrowRight,
   Flame, TrendingUp, Sparkles, ShoppingCart, Package, Heart,
   GitCompare, Bell,
 } from "lucide-react";
@@ -639,22 +639,22 @@ function ProductsContent() {
   });
   const { savedProducts } = useSavedProducts();
   const { user } = useAuth();
-  const { trackSearch, trackClick } = useSearchTracking();
+  const { trackSearch, trackClick: _trackClick } = useSearchTracking();
   const searchAbortRef = useRef<AbortController | null>(null);
   const { 
-    results: streamResults, 
-    completedPlatforms, 
-    loadingPlatforms, 
-    errorPlatforms, 
-    isStreaming, 
-    totalExpected, 
-    totalResults: streamTotalResults,
+    results: _streamResults, 
+    completedPlatforms: _completedPlatforms, 
+    loadingPlatforms: _loadingPlatforms, 
+    errorPlatforms: _errorPlatforms, 
+    isStreaming: _isStreaming, 
+    totalExpected: _totalExpected, 
+    totalResults: _streamTotalResults,
     startStream, 
-    abort: abortStream, 
-    reset: resetStream 
+    abort: _abortStream, 
+    reset: _resetStream 
   } = useSearchStream();
 
-  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
     if (!user) return {};
     try {
       const token = await user.getIdToken();
@@ -662,7 +662,7 @@ function ProductsContent() {
     } catch {
       return {};
     }
-  };
+  }, [user]);
 
   // Compare mode
   const [compareMode, setCompareMode] = useState(false);
@@ -674,7 +674,7 @@ function ProductsContent() {
   }>({ platforms: [] });
 
   // AI response panel
-  const [aiResponse, setAiResponse] = useState<{ query: string; response: string; loading: boolean }>({ query: "", response: "", loading: false });
+  const [_aiResponse, setAiResponse] = useState<{ query: string; response: string; loading: boolean }>({ query: "", response: "", loading: false });
 
   // Search Alert modal (Feature 10)
   const [showAlertModal, setShowAlertModal] = useState(false);
@@ -682,16 +682,15 @@ function ProductsContent() {
   useEffect(() => {
     try {
       const stored = JSON.parse(localStorage.getItem("recentSearches") || "[]");
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (Array.isArray(stored)) setRecentSearches(stored);
-    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[Products] silently caught", e); }
+    } catch (e) { console.warn("[Products] Error:", e instanceof Error ? e.message : e); }
   }, []);
 
-  const saveRecentSearch = (q: string) => {
+  const saveRecentSearch = useCallback((q: string) => {
     const updated = [q, ...recentSearches.filter((s) => s !== q)].slice(0, 5);
     setRecentSearches(updated);
     localStorage.setItem("recentSearches", JSON.stringify(updated));
-  };
+  }, [recentSearches]);
 
   const handleSearch = useCallback(async (searchQuery?: string, platformsOverride?: string[], parsedIntent?: import("@/lib/search/intent-parser").ParsedIntent) => {
     const q = (searchQuery || query).trim();
@@ -725,7 +724,7 @@ function ProductsContent() {
         _lastPlatformErrors = [];
         return;
       }
-    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[Products] silently caught", e); }
+    } catch (e) { console.warn("[Products] Error:", e instanceof Error ? e.message : e); }
 
     setLoading(true);
     setError(null);
@@ -818,7 +817,7 @@ function ProductsContent() {
       _lastPlatformErrors = errs;
       try {
         sessionStorage.setItem(cacheKey, JSON.stringify({ query: q, results: allResults, platformResults: platformData }));
-      } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[Products] silently caught", e); }
+      } catch (e) { console.warn("[Products] Error:", e instanceof Error ? e.message : e); }
 
       // Feature 6: Save search to Firestore for personalization
       if (user) {
@@ -859,11 +858,11 @@ function ProductsContent() {
               _lastResults = updated;
               try {
                 sessionStorage.setItem(cacheKey, JSON.stringify({ query: q, results: updated, platformResults: platformData }));
-              } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[Products] silently caught", e); }
+              } catch (e) { console.warn("[Products] Error:", e instanceof Error ? e.message : e); }
               return updated;
             });
           })
-          .catch((e) => { if (process.env.NODE_ENV === "development") console.warn("[ProductsPage] silently caught", e); });
+          .catch((e) => { console.warn("[ProductsPage] Error:", e instanceof Error ? e.message : e); });
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
@@ -871,7 +870,7 @@ function ProductsContent() {
     } finally {
       setLoading(false);
     }
-  }, [query, selectedPlatforms]);
+  }, [query, selectedPlatforms, getAuthHeaders, saveRecentSearch, startStream, trackSearch, user]);
 
   const initialSearchDone = useRef(false);
   const lastSearchParam = useRef<string | null>(null);
@@ -882,7 +881,6 @@ function ProductsContent() {
     lastSearchParam.current = q;
     initialSearchDone.current = true;
     if (_lastQuery === q && _lastResults.length > 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSearched(true);
       setQuery(q);
       return;

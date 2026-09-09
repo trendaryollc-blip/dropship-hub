@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { getIncomingWebhooks } from "@/lib/webhooks/incoming";
 import { logger } from "@/lib/logger";
+import type { WebhookStatus } from "@/lib/webhooks/types";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const { searchParams } = request.nextUrl;
-    const status = searchParams.get("status") as any;
+    const status = (searchParams.get("status") as WebhookStatus) ?? undefined;
     const limit = parseInt(searchParams.get("limit") || "50", 10);
     const offset = parseInt(searchParams.get("offset") || "0", 10);
 

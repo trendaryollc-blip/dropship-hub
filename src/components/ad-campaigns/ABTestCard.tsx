@@ -1,7 +1,6 @@
 "use client";
 
 import { GitBranch, Trophy, Clock, BarChart3 } from "lucide-react";
-import { useAPI } from "@/hooks/useAPI";
 
 interface ABTest {
   id: string;

@@ -245,7 +245,7 @@ async function updateWooCommerceInventory(storeId: string, productId: string, st
   }
 }
 
-async function getStoreSettings(storeId: string): Promise<Record<string, string> | null> {
+async function getStoreSettings(_storeId: string): Promise<Record<string, string> | null> {
   return null;
 }
 

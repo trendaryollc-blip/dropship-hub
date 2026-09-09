@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { safeFetch } from "@/lib/safe-fetch";
-import type { AutoModeRule, ToolCategory } from "@/lib/ai/types";
+import type { AutoModeRule } from "@/lib/ai/types";
 
 // ─── Auto Rules Panel ────────────────────────────────────────────────────────
 
 export function AutoRulesPanel() {
   const [rules, setRules] = useState<AutoModeRule[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
+  const [_showCreate, _setShowCreate] = useState(false);
 
   const fetchRules = useCallback(async () => {
     try {

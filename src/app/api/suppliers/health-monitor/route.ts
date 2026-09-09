@@ -3,7 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { LIMITS } from "@/lib/rate-limit";
 
-function calculateOverallHealth(metrics: {
+function _calculateOverallHealth(metrics: {
   shippingSpeed: number;
   stockLevel: number;
   priceStability: number;

@@ -34,7 +34,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
 
     const profitEntries = profitSnap.docs.map((d) => d.data() as DocumentData);
     const costProfiles = costSnap.docs.map((d) => d.data() as DocumentData);
-    const lifecycle = lifecycleSnap.docs.map((d) => d.data() as DocumentData);
+    const _lifecycle = lifecycleSnap.docs.map((d) => d.data() as DocumentData);
 
     // Group profit entries by product
     const productMap = new Map<string, { revenues: number[]; margins: number[]; orders: number }>();

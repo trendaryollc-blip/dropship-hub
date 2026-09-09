@@ -5,11 +5,6 @@ import {
   Brain,
   Zap,
   DollarSign,
-  Search,
-  TrendingUp,
-  Sparkles,
-  Shield,
-  BarChart3,
   ArrowUpRight,
   ExternalLink,
 } from "lucide-react";

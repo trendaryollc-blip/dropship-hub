@@ -3,7 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { LIMITS } from "@/lib/rate-limit";
 
-function calculateNicheScore(supplier: {
+function _calculateNicheScore(supplier: {
   uniqueProducts: number;
   trendingProducts: number;
   totalProducts: number;
@@ -19,7 +19,7 @@ function calculateNicheScore(supplier: {
   return Math.max(0, Math.min(100, Math.round(score)));
 }
 
-function getSaturationLevel(density: number): "low" | "medium" | "high" | "saturated" {
+function _getSaturationLevel(density: number): "low" | "medium" | "high" | "saturated" {
   if (density < 20) return "low";
   if (density < 50) return "medium";
   if (density < 80) return "high";
@@ -43,8 +43,8 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     let scores = scoresSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
     if (category) {
-      scores = scores.filter((s: any) =>
-        s.categoryBreakdown?.some((c: any) => c.category === category)
+      scores = scores.filter((s: Record<string, unknown>) =>
+        (s.categoryBreakdown as Record<string, unknown>[])?.some((c: Record<string, unknown>) => c.category === category)
       );
     }
 

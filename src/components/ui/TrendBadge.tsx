@@ -19,7 +19,7 @@ export default function TrendBadge({
 }: TrendBadgeProps) {
   const isUp = value > 0;
   const isDown = value < 0;
-  const isNeutral = value === 0;
+  const _isNeutral = value === 0;
 
   const sizeClasses = {
     sm: "text-[10px] gap-0.5",

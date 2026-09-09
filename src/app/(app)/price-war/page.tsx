@@ -5,7 +5,7 @@ import { DollarSign, Plus, Trash2, Play, Pause, Loader2, TrendingDown, TrendingU
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAPI } from "@/hooks/useAPI";
 import { useToast } from "@/components/ui/Toast";
-import type { PriceRule, PriceAdjustmentLog } from "@/types/price-war";
+import type { PriceRule, PriceAdjustmentLog, PriceWarStats } from "@/types/price-war";
 
 const STRATEGIES = [
   { id: "match_lowest", label: "Match Lowest", desc: "Match the lowest competitor price" },
@@ -29,7 +29,7 @@ export default function PriceWarPage() {
   const { error: toastError } = useToast();
 
   const { data: rulesData, mutate: mutateRules } = useAPI<{ rules?: PriceRule[] }>(uid ? `/api/ai/price-war?uid=${uid}` : null);
-  const { data: statsData } = useAPI<{ stats?: any }>(uid ? `/api/ai/price-war?type=stats&uid=${uid}` : null);
+  const { data: statsData } = useAPI<{ stats?: PriceWarStats }>(uid ? `/api/ai/price-war?type=stats&uid=${uid}` : null);
   const { data: logsData } = useAPI<{ logs?: PriceAdjustmentLog[] }>(uid ? `/api/ai/price-war/history?uid=${uid}` : null);
 
   const rules = rulesData?.rules || [];
@@ -72,7 +72,7 @@ export default function PriceWarPage() {
         setShowAdd(false);
         setForm({ productTitle: "", myPrice: "", cost: "", floorPrice: "", minMargin: "20", strategy: "match_lowest", undercutPercent: "3", belowPercent: "5", targetMargin: "25", platforms: "amazon", competitorUrls: "" });
       }
-    } catch (e) { if (process.env.NODE_ENV === "development") console.error(e); toastError("Failed to add price rule"); }
+    } catch (e) { console.error("[PriceWar] Failed to add price rule:", e instanceof Error ? e.message : e); toastError("Failed to add price rule"); }
   };
 
   const handleExecute = async (dryRun: boolean = false) => {
@@ -84,7 +84,7 @@ export default function PriceWarPage() {
         body: JSON.stringify({ dryRun }),
       });
       mutateRules();
-    } catch (e) { if (process.env.NODE_ENV === "development") console.error(e); toastError("Failed to run price check"); }
+    } catch (e) { console.error("[PriceWar] Failed to run price check:", e instanceof Error ? e.message : e); toastError("Failed to run price check"); }
     finally { setExecuting(false); }
   };
 
@@ -97,14 +97,14 @@ export default function PriceWarPage() {
         body: JSON.stringify({ ...rule, status: newStatus }),
       });
       mutateRules();
-    } catch (e) { if (process.env.NODE_ENV === "development") console.error(e); toastError("Failed to update rule status"); }
+    } catch (e) { console.error("[PriceWar] Failed to update rule status:", e instanceof Error ? e.message : e); toastError("Failed to update rule status"); }
   };
 
   const handleDelete = async (id: string) => {
     try {
       await fetch(`/api/ai/price-war?id=${id}`, { method: "DELETE" });
       mutateRules();
-    } catch (e) { if (process.env.NODE_ENV === "development") console.error(e); toastError("Failed to delete price rule"); }
+    } catch (e) { console.error("[PriceWar] Failed to delete price rule:", e instanceof Error ? e.message : e); toastError("Failed to delete price rule"); }
   };
 
   const getMargin = (price: number, cost: number) => price > 0 ? Math.round(((price - cost) / price) * 100) : 0;

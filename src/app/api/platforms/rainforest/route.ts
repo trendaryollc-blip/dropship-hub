@@ -46,7 +46,7 @@ async function searchAmazonByCategory(category: string) {
   return res.json();
 }
 
-export const POST = withAuth(async (request: NextRequest, uid: string) => {
+export const POST = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const { query, action, asin } = await request.json();
     if (!RAINFOREST_API_KEY) {
@@ -72,7 +72,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
   }
 });
 
-export const GET = withAuth(async (request: NextRequest, uid: string) => {
+export const GET = withAuth(async (_request: NextRequest, _uid: string) => {
   return NextResponse.json({
     platform: "Rainforest API (Amazon)",
     configured: !!RAINFOREST_API_KEY,

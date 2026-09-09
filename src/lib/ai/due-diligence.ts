@@ -248,7 +248,7 @@ export async function generateDueDiligenceReport(
       const parsed = parseAIResponse(response);
 
       const now = new Date();
-      const expires = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days
+      const _expires = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
       return {
         report: {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar, Clock, AlertTriangle, CheckCircle, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Calendar, Clock, Loader2 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { useAPI } from "@/hooks/useAPI";
 import type { SeasonalInsight } from "@/types/supplier";
@@ -108,8 +108,8 @@ export default function SeasonalCalendar() {
           <option value="q4">Q4 Holiday</option>
           <option value="back_to_school">Back to School</option>
           <option value="summer">Summer</option>
-          <option value="valentines">Valentine's Day</option>
-          <option value="mothers_day">Mother's Day</option>
+          <option value="valentines">Valentine&apos;s Day</option>
+          <option value="mothers_day">Mother&apos;s Day</option>
         </select>
       </div>
 

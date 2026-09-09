@@ -13,7 +13,7 @@ import type {
 // Orchestrates single and multi-tool executions.
 // Handles tool-call parsing from LLM output and workflow chaining.
 
-interface ExecutionPlan {
+interface _ExecutionPlan {
   toolCalls: ToolCall[];
   requiresConfirmation: string[];
 }

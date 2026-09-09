@@ -50,6 +50,8 @@ const envSchema = z.object({
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   NEXT_PUBLIC_APP_URL: z.string().optional(),
+  NEXT_PUBLIC_FACEBOOK_APP_ID: z.string().optional(),
+  NEXT_PUBLIC_GOOGLE_ADS_CLIENT_ID: z.string().optional(),
   STRIPE_PRO_MONTHLY_PRICE_ID: z.string().optional(),
   STRIPE_PRO_YEARLY_PRICE_ID: z.string().optional(),
   STRIPE_ENTERPRISE_MONTHLY_PRICE_ID: z.string().optional(),

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { Sparkles, TrendingUp, DollarSign, Zap, Target, ArrowRight, Flame, Star } from "lucide-react";
 import { useInView } from "@/hooks/useInView";

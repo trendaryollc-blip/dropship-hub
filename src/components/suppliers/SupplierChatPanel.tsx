@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { MessageCircle, Send, FileText, Loader2 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { useAPI, useMutation } from "@/hooks/useAPI";
@@ -51,7 +51,7 @@ export default function SupplierChatPanel() {
   });
 
   const conversations = convosData?.conversations || [];
-  const messages = messagesData?.messages || [];
+  const messages = useMemo(() => messagesData?.messages || [], [messagesData]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

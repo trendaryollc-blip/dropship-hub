@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { X, Mail, Send, CheckCircle2, Loader2, AlertCircle, Minus, Square } from "lucide-react";
+import { X, Mail, Send, CheckCircle2, Loader2, AlertCircle, Minus } from "lucide-react";
 import { auth } from "@/lib/firebase";
 
 interface SupplierContactSlideOverProps {

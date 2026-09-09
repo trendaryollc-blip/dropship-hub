@@ -58,7 +58,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     const searches = competitorSearchSnap.docs.map((d) => d.data() as DocumentData);
 
     // Extract product names from searches
-    const watchedProducts = searches.map((s) => safeStr(s.query)).filter(Boolean);
+    const _watchedProducts = searches.map((s) => safeStr(s.query)).filter(Boolean);
 
     // Analyze real competitor data from Firestore
     const changes: CompetitorChange[] = [];

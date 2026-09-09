@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Loader2, Copy, Check, ExternalLink, Sparkles, AlertTriangle, RefreshCw } from "lucide-react";
+import { X, Copy, Check, ExternalLink, Sparkles, AlertTriangle, RefreshCw } from "lucide-react";
 import { safeFetch } from "@/lib/safe-fetch";
 import { auth } from "@/lib/firebase";
 
@@ -113,9 +113,9 @@ export default function QuickActionResult({ actionId, actionLabel, prompt, onClo
             setResponse(result.response || "No response generated.");
           }
         }
-      } catch (err: any) {
-        if (!cancelled && err.name !== "AbortError") {
-          setError(err.message || "Failed to get AI response");
+      } catch (err: unknown) {
+        if (!cancelled && (err as Error).name !== "AbortError") {
+          setError((err as Error).message || "Failed to get AI response");
         }
       } finally {
         if (!cancelled) setIsLoading(false);

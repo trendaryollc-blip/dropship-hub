@@ -150,7 +150,7 @@ export const POST = withAuth(async (request: NextRequest) => {
           reliabilityScore: s.stats.reliabilityScore,
           responseTime: s.stats.responseTime,
         }));
-    } catch (err) {
+    } catch (_err) {
       // Supplier matching is optional — log and continue
     }
 

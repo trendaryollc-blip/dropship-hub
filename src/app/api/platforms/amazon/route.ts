@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { searchAmazon } from "@/lib/platform-search";
 import { withAuth } from "@/lib/auth";
 
-export const POST = withAuth(async (request: NextRequest, uid: string) => {
+export const POST = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const { query, asin } = await request.json();
 
@@ -33,6 +33,6 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
   }
 });
 
-export const GET = withAuth(async (request: NextRequest, uid: string) => {
+export const GET = withAuth(async (_request: NextRequest, _uid: string) => {
   return NextResponse.json({ platform: "Amazon", configured: !!process.env.RAINFOREST_API_KEY });
 });

@@ -22,7 +22,7 @@ interface StorePerformance {
   issues: string[];
 }
 
-interface MultiStoreResult {
+interface _MultiStoreResult {
   stores: StorePerformance[];
   comparison: {
     bestStore: string;

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
-import { generateMockSignals, detectRisingStars, predictTrend } from "@/lib/trend-analyzer";
+import { generateMockSignals, detectRisingStars } from "@/lib/trend-analyzer";
 
-export const GET = withAuth(async (request: NextRequest, uid: string) => {
+export const GET = withAuth(async (_request: NextRequest, _uid: string) => {
   try {
     const trendingKeywords = [
       "wireless earbuds", "smart home devices", "pet accessories",

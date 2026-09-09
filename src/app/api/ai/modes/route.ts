@@ -5,7 +5,6 @@ import { validateBody } from "@/lib/validation";
 import { z } from "zod";
 import {
   getModePreferences,
-  updateModePreferences,
   setGlobalMode,
   setFeatureMode,
   setAutonomyLevel,
@@ -16,7 +15,7 @@ import {
 } from "@/lib/ai/modes/user-prefs";
 import { getGuardrailStatus } from "@/lib/ai/safety/guardrails";
 import { ToolRegistry } from "@/lib/ai/tools/registry";
-import type { ExecutionMode, AutonomyLevel } from "@/lib/ai/types";
+import type { AutonomyLevel } from "@/lib/ai/types";
 
 // ─── GET /api/ai/modes ──────────────────────────────────────────────────────
 // Get current mode preferences, available tools, and guardrail status

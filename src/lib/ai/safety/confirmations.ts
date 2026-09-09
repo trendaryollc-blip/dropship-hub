@@ -17,7 +17,7 @@ export function needsConfirmation(
   toolId: string,
   input: Record<string, unknown>,
   autonomyLevel: AutonomyLevel,
-  dollarThreshold: number = 100
+  _dollarThreshold: number = 100
 ): ConfirmationDecision {
   const tool = ToolRegistry.get(toolId);
   if (!tool) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
 import {
   DollarSign,
@@ -422,7 +422,7 @@ export default function RevenuePage() {
 
   const loading = loading7d || loading30d || loading90d;
 
-  const buildKpiForTimeframe = (data: ProfitResponse | undefined) => {
+  const buildKpiForTimeframe = useCallback((data: ProfitResponse | undefined) => {
     if (!data?.summary) return { revenue: 0, profit: 0, orders: 0, margin: 0, revenueChange: "0%", profitChange: "0%", ordersChange: "0%", marginChange: "0%", revenueSparkline: [] as number[], profitSparkline: [] as number[], ordersSparkline: [] as number[], marginSparkline: [] as number[] };
     const summary = data.summary;
     const daily: Array<{ date: string; revenue: number; profit: number; orders: number }> = data.dailyBreakdown ?? [];
@@ -440,13 +440,13 @@ export default function RevenuePage() {
       ordersSparkline: daily.slice(-7).map((d: { orders: number }) => d.orders),
       marginSparkline: daily.slice(-7).map((d: { revenue: number; profit: number }) => d.revenue > 0 ? +((d.profit / d.revenue) * 100).toFixed(1) : 0),
     };
-  };
+  }, []);
 
   const kpiData = useMemo<Record<Timeframe, ReturnType<typeof buildKpiForTimeframe>>>(() => ({
     "7d": buildKpiForTimeframe(data7d),
     "30d": buildKpiForTimeframe(data30d),
     "90d": buildKpiForTimeframe(data90d),
-  }), [data7d, data30d, data90d]);
+  }), [data7d, data30d, data90d, buildKpiForTimeframe]);
 
   const kpi = kpiData[timeframe];
 

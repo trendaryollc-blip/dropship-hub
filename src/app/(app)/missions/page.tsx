@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import {
   Trophy,
   Flame,
@@ -9,7 +8,6 @@ import {
   CheckCircle2,
   Target,
   Crown,
-  ArrowUpRight,
   Sparkles,
   RefreshCw,
 } from "lucide-react";

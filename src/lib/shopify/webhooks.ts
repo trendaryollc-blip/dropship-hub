@@ -154,7 +154,12 @@ export function verifyShopifyWebhook(
   secret?: string
 ): boolean {
   const webhookSecret = secret || process.env.SHOPIFY_WEBHOOK_SECRET || "";
-  if (!webhookSecret) return true;
+  if (!webhookSecret) {
+    console.warn("[shopify/webhooks] SHOPIFY_WEBHOOK_SECRET is not set — webhook verification is DISABLED. This is a security risk in production.");
+    // In production, reject unverified webhooks. In development, allow for testing.
+    if (process.env.NODE_ENV === "production") return false;
+    return true;
+  }
 
   const hash = crypto
     .createHmac("sha256", webhookSecret)

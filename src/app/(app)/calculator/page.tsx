@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { saveCalcHistory, getCalcHistory, type CalcHistoryEntry } from "@/lib/data";
 import {
-  CheckCircle2, Save, Clock, Sparkles, ArrowRight, LayoutGrid,
+  CheckCircle2, Save, Clock,
 } from "lucide-react";
 import {
   DollarSign, Truck, Globe, Percent,
@@ -145,7 +145,7 @@ function CalculatorContent() {
     try {
       const entries = await getCalcHistory(user.uid, activeTab);
       setHistory(entries.slice(0, 5));
-    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[CalculatorPage] silently caught", e); }
+    } catch (e) { console.warn("[CalculatorPage] Error:", e instanceof Error ? e.message : e); }
   };
 
   useEffect(() => {

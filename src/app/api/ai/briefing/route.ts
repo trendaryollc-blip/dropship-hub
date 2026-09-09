@@ -36,7 +36,7 @@ interface DailyBriefing {
   recommendations: string[];
 }
 
-function calculateOpportunityScore(product: {
+function _calculateOpportunityScore(product: {
   price: number;
   margin?: number;
   trend?: number;
@@ -101,7 +101,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     const monitoredProducts = monitoredSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Record<string, unknown>));
     const watchlistItems = watchlistSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Record<string, unknown>));
     const profitEntries = profitSnap.docs.map((d) => d.data() as Record<string, unknown>);
-    const unreadAlerts = alertsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Record<string, unknown>));
+    const _unreadAlerts = alertsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Record<string, unknown>));
 
     // Analyze price changes
     const priceAlerts: BriefingAlert[] = [];

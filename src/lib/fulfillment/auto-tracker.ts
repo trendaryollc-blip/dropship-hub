@@ -10,7 +10,7 @@ interface TrackingResult {
   estimatedDelivery: string | null;
 }
 
-interface TrackingSyncResult {
+interface _TrackingSyncResult {
   orderId: string;
   synced: boolean;
   error?: string;
@@ -38,7 +38,7 @@ export function getPollingOrders(): Array<{ orderId: string; cjOrderNumber: stri
 export async function pollCJStatus(cjOrderNumber: string): Promise<TrackingResult> {
   try {
     const status = await getCJOrderStatus(cjOrderNumber);
-    const hasTracking = status.trackingNumber !== null && status.trackingNumber !== "";
+    const _hasTracking = status.trackingNumber !== null && status.trackingNumber !== "";
 
     return {
       orderId: "",

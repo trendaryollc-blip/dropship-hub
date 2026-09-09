@@ -1,5 +1,4 @@
 import type { AutomationPipelineState, AutomationStep, AutomationTrigger, FulfillmentRule } from "@/types/automation";
-import { DEFAULT_SLA_CONFIG, DEFAULT_PROFIT_GUARD_CONFIG } from "@/types/automation";
 import type { FulfillmentOrder } from "@/types/fulfillment";
 import { routeOrder, createRoutingInput } from "./supplier-router";
 import { matchRules, shouldAutoApprove, shouldRequireManual, getRouteToSupplierAction } from "./rules-engine";

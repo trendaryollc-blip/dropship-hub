@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import {
   Copy, Check, Globe, Send, CheckCircle2, X, Zap,
 } from "lucide-react";
@@ -59,7 +60,7 @@ export default function OrderCard({ order, onAction, storeName }: { order: Fulfi
         {order.items.map((item, i) => (
           <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-surface/50">
             {item.imageUrl && (
-              <img src={item.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover" />
+              <Image src={item.imageUrl} alt="" width={40} height={40} className="w-10 h-10 rounded-lg object-cover" />
             )}
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-foreground truncate">{item.name}</p>

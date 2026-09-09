@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, ArrowRight, Loader2, TrendingUp, AlertTriangle, CheckCircle, Lightbulb } from "lucide-react";
+import { Sparkles, AlertTriangle, CheckCircle, Lightbulb, TrendingUp } from "lucide-react";
 
 interface AIInsight {
   type: "good" | "warning" | "tip" | "action";
@@ -55,7 +55,7 @@ function generateInsights(activeTab: string, inputs: Record<string, number>, res
   if (activeTab === "landed") {
     const landed = results.landedCost || 0;
     const qty = inputs.lcQty || 1;
-    const perUnit = landed / qty;
+    const _perUnit = landed / qty;
 
     if ((inputs.tariff || 0) > 15) {
       insights.push({ type: "warning", title: "High Tariff", description: "Tariffs over 15% significantly impact margins. Consider sourcing from tariff-free countries." });

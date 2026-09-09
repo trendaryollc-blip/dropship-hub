@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   Zap, CheckCircle2, ArrowUpRight, Target, Shield, DollarSign,
   BarChart3, Package, RotateCcw, ExternalLink, TrendingUp,
-  Store, ShoppingCart, Sparkles, LayoutGrid,
+  Store, ShoppingCart,
 } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
@@ -99,14 +99,14 @@ function loadStateLocal(): Record<string, boolean[]> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw);
-  } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[HealthPage] silently caught", e); }
+  } catch (e) { console.warn("[HealthPage] Error:", e instanceof Error ? e.message : e); }
   return {};
 }
 
 function saveStateLocal(state: Record<string, boolean[]>) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[HealthPage] silently caught", e); }
+  } catch (e) { console.warn("[HealthPage] Error:", e instanceof Error ? e.message : e); }
 }
 
 async function loadStateFirestore(uid: string): Promise<Record<string, boolean[]> | null> {

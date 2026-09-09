@@ -122,8 +122,8 @@ export async function isOwner(uid: string): Promise<boolean> {
   try {
     const userRecord = await getAdminAuth().getUser(uid);
     if (userRecord.email) {
-      const hardcodedOwnerEmails = ["trendaryo206@gmail.com"];
-      if (hardcodedOwnerEmails.includes(userRecord.email.toLowerCase())) return true;
+      // Check if this email is in the OWNER_EMAIL env var list (already checked above)
+      // No hardcoded fallback — owner access is ONLY granted via OWNER_UID or OWNER_EMAIL env vars
     }
   } catch {
     // ignore

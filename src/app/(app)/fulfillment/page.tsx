@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import Link from "next/link";
 import {
-  Package, Clock, Truck, CheckCircle2, Settings, Loader2,
-  Search, Globe, RefreshCw, X,
+  Package, Settings, Loader2,
+  Search, Globe, RefreshCw,
   FileText, Shield, LayoutTemplate,
   AlertCircle,
 } from "lucide-react";

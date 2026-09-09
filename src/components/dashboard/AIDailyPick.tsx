@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
-  Sparkles, ArrowUpRight, Shield, TrendingUp, DollarSign,
+  Sparkles, ArrowUpRight, Shield, DollarSign,
   Target, ShoppingCart, Layers, Clock, CheckCircle2,
   BookmarkPlus, BookmarkCheck, Star, Package, ChevronRight,
 } from "lucide-react";
@@ -110,8 +111,9 @@ export default function AIDailyPick({ pick }: { pick: AIDailyPickType }) {
           {/* Left: Large Product Image */}
           <Link href="/products" className="group relative block w-[45%] shrink-0 rounded-xl overflow-hidden bg-gradient-to-br from-accent/10 via-purple-500/5 to-accent/10">
             {showImage && (
-              <img src={pick.image} alt={pick.title}
-                className={`w-full h-full object-cover group-hover:scale-105 transition-all duration-500 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+              <Image src={pick.image} alt={pick.title}
+                fill
+                className={`object-cover group-hover:scale-105 transition-all duration-500 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
                 onLoad={() => setImgLoaded(true)} onError={() => setImgFailed(true)} loading="eager" />
             )}
             {(!showImage || !imgLoaded) && (

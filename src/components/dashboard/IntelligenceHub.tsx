@@ -504,6 +504,7 @@ function MarketPulseGrid({ cards }: { cards: MarketPulseCard[] }) {
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function QuickActionsStrip({ actions }: { actions: QuickActionStat[] }) {
   const { ref, isInView } = useInView({ threshold: 0.1 });
   const colorMap: Record<string, { icon: typeof Search; gradient: string; bg: string; color: string }> = {
@@ -564,7 +565,7 @@ export function MarketPulseGridWrapper({
 }
 
 export default function IntelligenceHub({
-  alerts, onRead, onReadAll, briefing, pulse, actionStats,
+  alerts, onRead, onReadAll, briefing, pulse, actionStats: _actionStats,
 }: {
   alerts: SmartAlert[];
   onRead: (id: string) => void;

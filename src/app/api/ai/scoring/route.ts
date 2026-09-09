@@ -83,7 +83,7 @@ function getGrade(score: number): ProductScore["grade"] {
   return "D";
 }
 
-export const POST = withAuth(async (request: NextRequest, uid: string) => {
+export const POST = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const body = await request.json();
     const { products } = body as {
@@ -164,7 +164,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
 
     const profitEntries = profitSnap.docs.map((d) => d.data() as Record<string, unknown>);
     const monitoredProducts = monitoredSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Record<string, unknown>));
-    const watchlistItems = watchlistSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Record<string, unknown>));
+    const _watchlistItems = watchlistSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Record<string, unknown>));
 
     // Build product scores from real data
     const productMap = new Map<string, {
@@ -216,7 +216,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     // Score each product
     const scored: ProductScore[] = products.map((product) => {
       const prices = product.priceHistory;
-      const avgPrice = prices.length > 0 ? prices.reduce((a, b) => a + b, 0) / prices.length : product.price;
+      const _avgPrice = prices.length > 0 ? prices.reduce((a, b) => a + b, 0) / prices.length : product.price;
 
       const marginScore = calculateMarginScore(product.margin);
       const trendScore = calculateTrendScore(prices);

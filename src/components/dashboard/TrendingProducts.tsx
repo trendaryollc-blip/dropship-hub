@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowUpRight, Package, Plus, ChevronLeft, ChevronRight,
@@ -36,10 +37,11 @@ function TrendingProductCard({ product, rank, onAddCompare, onToggleSave, isSave
         {/* Product Image */}
         <div className="relative h-44 bg-gradient-to-br from-accent/10 via-purple-500/5 to-accent/10 overflow-hidden">
           {product.image ? (
-            <img
+            <Image
               src={product.image}
               alt={product.name}
-              className="absolute inset-0 w-full h-full object-cover"
+              fill
+              className="object-cover"
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">

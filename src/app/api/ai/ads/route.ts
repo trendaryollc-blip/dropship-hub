@@ -39,7 +39,7 @@ function rateCampaign(roas: number, profit: number): CampaignAnalysis["rating"] 
   return "stop";
 }
 
-function getRecommendation(name: string, roas: number, profit: number, spend: number): string {
+function getRecommendation(name: string, roas: number, _profit: number, _spend: number): string {
   if (roas >= 4) return `${name} is performing exceptionally. Consider scaling budget by 20-30% to maximize returns.`;
   if (roas >= 2) return `${name} is profitable. Test new creatives and audiences to improve ROAS further.`;
   if (roas >= 1) return `${name} is breaking even. Optimize targeting, test new ad copy, or reduce bid amounts.`;

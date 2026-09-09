@@ -4,7 +4,7 @@ import { useState } from "react";
 import {
   ShieldAlert, ShieldCheck, ShieldX, AlertTriangle, CheckCircle2,
   TrendingUp, TrendingDown, Minus, Loader2, RefreshCw, ChevronDown,
-  ChevronUp, Star, Clock, Package, DollarSign, Sparkles, X,
+  ChevronUp, Package, Sparkles, X,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { SupplierDueDiligence, RedFlag } from "@/types/supplier";
@@ -117,7 +117,7 @@ export default function DueDiligencePanel({ supplierId, supplierName }: { suppli
 
   // Collapsed state - show summary
   if (!expanded && report) {
-    const risk = riskColors[report.riskLevel];
+  const _risk = riskColors[report.riskLevel];
     return (
       <div ref={ref} className={`glass rounded-2xl border border-border p-4 transition-all duration-500 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}>
         <button onClick={() => setExpanded(true)} className="w-full flex items-center gap-4 text-left">
@@ -126,7 +126,7 @@ export default function DueDiligencePanel({ supplierId, supplierName }: { suppli
             <div className="flex items-center gap-2 mb-1">
               <ShieldAlert className="h-4 w-4 text-accent" />
               <span className="text-sm font-semibold text-foreground">Due Diligence</span>
-              <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-bold uppercase ${risk.bg} ${risk.border} ${risk.text}`}>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-bold uppercase ${_risk.bg} ${_risk.border} ${_risk.text}`}>
                 {report.riskLevel}
               </span>
             </div>
@@ -199,7 +199,7 @@ export default function DueDiligencePanel({ supplierId, supplierName }: { suppli
 
   if (!report) return null;
 
-  const risk = riskColors[report.riskLevel];
+  const _risk = riskColors[report.riskLevel];
   const verdict = verdictConfig[report.recommendation.verdict];
   const VerdictIcon = verdict.icon;
 

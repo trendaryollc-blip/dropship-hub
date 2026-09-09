@@ -11,7 +11,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import CuratedListTab from "@/components/platforms/CuratedListTab";
 import NoCodeConnectorTab from "@/components/platforms/NoCodeConnectorTab";
 import AiAutosetupTab from "@/components/platforms/AiAutosetupTab";
-import { safeFetch, FetchError } from "@/lib/safe-fetch";
+import { safeFetch } from "@/lib/safe-fetch";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 interface ApiKeyEntry {
@@ -111,9 +111,6 @@ export default function PlatformsPage() {
   const fetchPlatforms = useCallback(async () => {
     if (!user) return;
     try {
-      const ownerEmails = ["trendaryo206@gmail.com"];
-      const emailOwned = user.email && ownerEmails.includes(user.email.toLowerCase());
-
       let authorized = false;
       try {
         const token = await user.getIdToken();
@@ -122,10 +119,8 @@ export default function PlatformsPage() {
         });
         if (typeof meData.isOwner === "boolean" && meData.isOwner) authorized = true;
       } catch {
-        // server check failed, fall through to client check
+        // server check failed
       }
-
-      if (!authorized && emailOwned) authorized = true;
 
       setIsOwner(authorized);
       if (!authorized) return;
@@ -135,8 +130,8 @@ export default function PlatformsPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       setPlatforms(data.platforms || []);
-    } catch {
-      // silent
+    } catch (err) {
+      console.error("[PlatformsPage] Failed to fetch platforms:", err instanceof Error ? err.message : err);
     } finally {
       setLoading(false);
     }
@@ -425,8 +420,8 @@ export default function PlatformsPage() {
         }),
       });
       await fetchPlatforms();
-    } catch {
-      // silent
+    } catch (err) {
+      console.error("[PlatformsPage] Failed to reorder keys:", err instanceof Error ? err.message : err);
     }
   };
 
@@ -501,14 +496,16 @@ export default function PlatformsPage() {
           )}
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={handleSeed}
-            disabled={seeding}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-muted-foreground hover:text-foreground hover:border-accent/30 transition-all disabled:opacity-50"
-          >
-            {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            Import from .env
-          </button>
+          {process.env.NODE_ENV === "development" && (
+            <button
+              onClick={handleSeed}
+              disabled={seeding}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-muted-foreground hover:text-foreground hover:border-accent/30 transition-all disabled:opacity-50"
+            >
+              {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              Import from .env
+            </button>
+          )}
           {errorCount > 0 && (
             <button
               onClick={handleClearCooldowns}

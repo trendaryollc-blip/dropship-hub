@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Target, TrendingUp, AlertCircle, ChevronRight, Filter } from "lucide-react";
+import { Target, Filter } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { useAPI } from "@/hooks/useAPI";
 import type { NicheSupplierScore } from "@/types/supplier";

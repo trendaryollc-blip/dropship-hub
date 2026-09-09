@@ -5,7 +5,7 @@ import { getCJAccessToken } from "@/lib/cj-auth";
 
 const CJ_API_KEY = process.env.CJ_API_KEY;
 
-export const POST = withAuth(async (request: NextRequest, uid: string) => {
+export const POST = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const { query, action, productId } = await request.json();
     if (!CJ_API_KEY) {
@@ -46,7 +46,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
   }
 });
 
-export const GET = withAuth(async (request: NextRequest, uid: string) => {
+export const GET = withAuth(async (_request: NextRequest, _uid: string) => {
   return NextResponse.json({
     platform: "CJ Dropshipping",
     configured: !!CJ_API_KEY,

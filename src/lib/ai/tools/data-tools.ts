@@ -3,15 +3,15 @@ import { createTool } from "./registry";
 import { getRoutingDecisions } from "@/lib/data/order-routing";
 import { getRevenueEntries } from "@/lib/data/revenue";
 import { getAlerts, markAlertRead, markAllAlertsRead } from "@/lib/data/alerts";
-import { getDigests, getLatestDigest } from "@/lib/data/digest";
+import { getLatestDigest } from "@/lib/data/digest";
 import { getMissions, toggleMission } from "@/lib/data/missions";
-import { getWatchlist, addToWatchlist, removeFromWatchlist } from "@/lib/data/watchlist";
+import { getWatchlist, addToWatchlist } from "@/lib/data/watchlist";
 import { getStoreConnections } from "@/lib/data/store-connections";
 import { getPushedProducts } from "@/lib/data/pushed-products";
 import { getProfitEntries } from "@/lib/data/profit";
 import { getPriceRules, getPriceWarStats } from "@/lib/data/price-war";
-import { getReturnRequests, getDefectAnalytics } from "@/lib/data/returns";
-import { getTrendDashboard, getTrendPredictions } from "@/lib/data/trend-predictor";
+import { getReturnRequests } from "@/lib/data/returns";
+import { getTrendDashboard } from "@/lib/data/trend-predictor";
 import { getAdCampaigns } from "@/lib/data/ad-campaigns";
 
 // ─── Get Orders / Routing Decisions ─────────────────────────────────────────

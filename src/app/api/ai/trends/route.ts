@@ -58,7 +58,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
   }
 }, LIMITS.AI_CHAT);
 
-export const GET = withAuth(async (request: NextRequest, uid: string) => {
+export const GET = withAuth(async (_request: NextRequest, _uid: string) => {
   try {
     const trendingKeywords = [
       "wireless earbuds", "smart home devices", "pet accessories",

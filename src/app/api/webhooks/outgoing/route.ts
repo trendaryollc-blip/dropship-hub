@@ -3,7 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { logger } from "@/lib/logger";
 import crypto from "crypto";
-import type { OutgoingWebhook, WEBHOOK_EVENTS } from "@/lib/webhooks/types";
+import type { OutgoingWebhook } from "@/lib/webhooks/types";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {

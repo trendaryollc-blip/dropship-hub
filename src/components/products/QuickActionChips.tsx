@@ -1,6 +1,6 @@
 "use client";
 
-import { Sparkles, Search, Check, FileText, BarChart3, TrendingUp, Target, Truck } from "lucide-react";
+import { Sparkles, Search, Check, FileText, BarChart3, TrendingUp, Truck } from "lucide-react";
 
 interface QuickAction {
   id: string;

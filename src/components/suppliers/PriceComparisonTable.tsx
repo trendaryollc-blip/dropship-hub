@@ -2,8 +2,8 @@
 
 import { useState, useMemo } from "react";
 import {
-  DollarSign, TrendingUp, Truck, Star, Shield, Crown, Package,
-  Loader2, RefreshCw, Calculator, ArrowUpDown, Search,
+  DollarSign, Star, Shield, Crown, Package,
+  Loader2, Calculator, Search,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { PriceIntelligenceProduct, SupplierOffer } from "@/types/supplier";
@@ -110,7 +110,7 @@ export default function PriceComparisonTable({ productQuery }: { productQuery?: 
     ? `/api/suppliers/price-intel?product=${encodeURIComponent(activeQuery)}${sellingPrice ? `&sellingPrice=${sellingPrice}` : ""}`
     : null;
 
-  const { data, isLoading, mutate } = useAPI<{ result?: PriceIntelligenceProduct; cached?: boolean; error?: string }>(apiUrl);
+  const { data, isLoading, mutate: _mutate } = useAPI<{ result?: PriceIntelligenceProduct; cached?: boolean; error?: string }>(apiUrl);
   const result = data?.result;
 
   const handleSearch = () => {

@@ -27,8 +27,8 @@ import {
   Brain, Send, Sparkles, Copy, Check,
   ArrowUpRight, RefreshCw, ChevronDown, ChevronRight,
   Scan, PanelRightClose, PanelRightOpen,
-  FileText, Plus, Keyboard, Command, Mic,
-  History, MessageSquare, Share2, Edit3, RotateCcw,
+  FileText, Plus, Keyboard, Mic,
+  History, Share2, Edit3, RotateCcw,
   ThumbsUp, ThumbsDown, Slash, AlertTriangle,
 } from "lucide-react";
 import { safeFetch } from "@/lib/safe-fetch";
@@ -344,13 +344,13 @@ export default function AIPage() {
   const [showHistory, setShowHistory] = useState(false);
   const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
-  const [showSlashMenu, setShowSlashMenu] = useState(false);
+  const [_showSlashMenu, setShowSlashMenu] = useState(false);
   const [slashFilter, setSlashFilter] = useState("");
   const [smartReplies, setSmartReplies] = useState<string[]>([]);
   const [streamingStatus, setStreamingStatus] = useState<"idle" | "connecting" | "streaming" | "retrying">("idle");
   const [lastError, setLastError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
-  const [pinnedProvider, setPinnedProvider] = useState<string | null>(null);
+  const [_retryCount, setRetryCount] = useState(0);
+  const [_pinnedProvider, _setPinnedProvider] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -718,7 +718,7 @@ export default function AIPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uid: user.uid, role: "user", content }),
-      }).catch((e) => { if (process.env.NODE_ENV === "development") console.warn("[AI] silently caught", e); });
+      }).catch((e) => { console.warn("[AI] Error:", e instanceof Error ? e.message : e); });
     }
 
     try {
@@ -764,11 +764,11 @@ export default function AIPage() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ uid: user.uid, role: "assistant", content: retryData.response, provider: retryData.provider }),
-              }).catch((e) => { if (process.env.NODE_ENV === "development") console.warn("[AI] silently caught", e); });
+              }).catch((e) => { console.warn("[AI] Error:", e instanceof Error ? e.message : e); });
             }
             return;
           }
-        } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[AI] silently caught", e); }
+        } catch (e) { console.warn("[AI] Error:", e instanceof Error ? e.message : e); }
         throw new Error("Failed to get response");
       }
 
@@ -854,7 +854,7 @@ export default function AIPage() {
             fullResponse = retryData.response;
             providerName = retryData.provider || "AI";
           }
-        } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[AI] silently caught", e); }
+        } catch (e) { console.warn("[AI] Error:", e instanceof Error ? e.message : e); }
       }
 
       // Finalize: add actions to the streamed message
@@ -883,7 +883,7 @@ export default function AIPage() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ uid: user.uid, role: "assistant", content: fullResponse, provider: providerName }),
-          }).catch((e) => { if (process.env.NODE_ENV === "development") console.warn("[AI] silently caught", e); });
+          }).catch((e) => { console.warn("[AI] Error:", e instanceof Error ? e.message : e); });
         }
       } else {
         // Stream + fallback both produced nothing — show error, remove empty bubble

@@ -28,7 +28,7 @@ export async function getWebhookLogs(
 ): Promise<{ logs: WebhookLogEntry[]; total: number }> {
   try {
     const db = await getAdminDB();
-    let query: any = db.collection("users").doc(uid).collection("webhookLogs");
+    let query: FirebaseFirestore.Query = db.collection("users").doc(uid).collection("webhookLogs");
 
     if (options.direction) {
       query = query.where("direction", "==", options.direction);
@@ -53,7 +53,7 @@ export async function getWebhookLogs(
     const limit = options.limit || 50;
     const snap = await query.limit(limit).get();
 
-    const logs: WebhookLogEntry[] = snap.docs.map((doc: any) => ({
+    const logs: WebhookLogEntry[] = snap.docs.map((doc: FirebaseFirestore.QueryDocumentSnapshot) => ({
       id: doc.id,
       ...doc.data(),
     })) as WebhookLogEntry[];

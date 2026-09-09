@@ -32,7 +32,7 @@ export function calculateTrendScore(signal: TrendSignal): TrendScore {
 
 export function predictTrend(
   signals: TrendSignal[],
-  historicalData?: { date: string; volume: number }[]
+  _historicalData?: { date: string; volume: number }[]
 ): TrendPrediction {
   const primarySignal = signals[0];
   const trendScore = calculateTrendScore(primarySignal);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Check, Loader2, X, AlertCircle, Zap } from "lucide-react";
+import { Check, Loader2, AlertCircle, Zap } from "lucide-react";
 
 interface StreamingPlatformStatus {
   platform: string;

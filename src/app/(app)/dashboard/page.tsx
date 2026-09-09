@@ -1,21 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useState } from "react";
 import {
   DollarSign, ShoppingCart, Package, TrendingUp,
-  LayoutGrid, Crown, Search, Truck,
+  LayoutGrid, Crown, Search,
 } from "lucide-react";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useAuth } from "@/components/auth/AuthProvider";
 import MetricCard from "@/components/ui/MetricCard";
 import { useDashboardLayout } from "@/hooks/useDashboardLayout";
-import { layoutPresets, type BentoLayout } from "@/components/dashboard/BentoLayoutPresets";
+import { layoutPresets } from "@/components/dashboard/BentoLayoutPresets";
 import BentoGrid, { BentoGridItem } from "@/components/dashboard/BentoGrid";
 
 import MarketPulseTicker from "@/components/dashboard/MarketPulseTicker";
 import AIDailyPick from "@/components/dashboard/AIDailyPick";
-import { AIMonitoringPanelWrapper, MarketPulseGridWrapper } from "@/components/dashboard/IntelligenceHub";
+import { AIMonitoringPanelWrapper } from "@/components/dashboard/IntelligenceHub";
 import LiveIntelligenceFeedCard from "@/components/dashboard/LiveIntelligenceFeedCard";
 import NicheRadarCards from "@/components/dashboard/NicheRadarCards";
 import SupplierStatusCards from "@/components/dashboard/SupplierStatusCards";
@@ -38,7 +37,7 @@ const presetIcons: Record<string, typeof Crown> = {
 export default function DashboardHome() {
   const { data, markAlertRead, markAllAlertsRead, addToCompare, removeFromCompare, clearCompare, loading } = useDashboardData();
   const { user } = useAuth();
-  const { layout, setLayout, resetToDefault, isLoading: layoutLoading } = useDashboardLayout();
+  const { layout, setLayout, isLoading: _layoutLoading } = useDashboardLayout();
   const [activePreset, setActivePreset] = useState("command-center");
   const [editMode, setEditMode] = useState(false);
 

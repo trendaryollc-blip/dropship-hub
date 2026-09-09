@@ -679,14 +679,10 @@ async function getUserApiKeys(uid: string): Promise<Record<string, string[]>> {
         keys[provider] = [rawValue.trim()];
       }
     }
-    if (process.env.NODE_ENV === "development") {
-      console.log("[getUserApiKeys] uid:", uid, "keys found:", Object.keys(keys));
-    }
+    console.log("[getUserApiKeys] uid:", uid, "providers with keys:", Object.keys(keys));
     return keys;
   } catch (e) {
-    if (process.env.NODE_ENV === "development") {
-      console.error("[getUserApiKeys] FAILED:", e instanceof Error ? e.message : e);
-    }
+    console.error("[getUserApiKeys] FAILED to load user API keys:", e instanceof Error ? e.message : e);
     return {};
   }
 }
@@ -727,23 +723,17 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     }
 
     // Helper: resolve API key for a provider with multi-key fallback
-    const resolveApiKey = (envKey: string, providerId: string): string | undefined => {
-      // Map envKey to provider ID for user key lookup
+    const _resolveApiKey = (envKey: string, providerId: string): string | undefined => {
       const userKeys = userApiKeys[providerId];
       if (userKeys && userKeys.length > 0) {
-        // Return first available key (will try next key on rate limit)
         return userKeys[0];
       }
-      // Fall back to environment variable
       return process.env[envKey];
     };
 
-    // Helper: get next key index for a provider (for fallback)
-    const getNextKeyIndex = (providerId: string): number => {
+    const _getNextKeyIndex = (providerId: string): number => {
       const userKeys = userApiKeys[providerId];
       if (!userKeys || userKeys.length <= 1) return 0;
-      // For now, we'll track active key index in provider state
-      // This will be enhanced with proper state management
       return 0;
     };
 
@@ -767,7 +757,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
         const envKey = process.env[provider.envKey];
         
         // Try each key in sequence
-        let keysToTry = [...userKeys];
+        const keysToTry = [...userKeys];
         if (envKey) keysToTry.push(envKey);
         
         if (keysToTry.length === 0) {
@@ -872,7 +862,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
       const envKey = process.env[provider.envKey];
       
       // Try each key in sequence
-      let keysToTry = [...userKeys];
+      const keysToTry = [...userKeys];
       if (envKey) keysToTry.push(envKey);
       
       if (keysToTry.length === 0) {

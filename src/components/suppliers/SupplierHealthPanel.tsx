@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Activity, AlertTriangle, TrendingUp, TrendingDown, Minus, Bell, ChevronDown } from "lucide-react";
+import { Activity, TrendingUp, TrendingDown, Minus, Bell } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { useAPI } from "@/hooks/useAPI";
 import type { SupplierHealthSnapshot, SupplierHealthAlert } from "@/types/supplier";
@@ -74,7 +74,7 @@ function AlertItem({ alert }: { alert: SupplierHealthAlert }) {
 
 export default function SupplierHealthPanel() {
   const { ref, isInView } = useInView();
-  const [expandedAlert, setExpandedAlert] = useState<string | null>(null);
+  const [_expandedAlert, _setExpandedAlert] = useState<string | null>(null);
 
   const { data, isLoading } = useAPI<{ snapshots: (SupplierHealthSnapshot & { id: string })[]; alerts: SupplierHealthAlert[] }>(
     isInView ? "/api/suppliers/health-monitor?view=dashboard" : null
@@ -84,7 +84,7 @@ export default function SupplierHealthPanel() {
     isInView ? "/api/suppliers/health-monitor?view=alerts" : null
   );
 
-  const snapshots = data?.snapshots || [];
+  const snapshots = useMemo(() => data?.snapshots || [], [data]);
   const alerts = alertsData?.alerts || [];
 
   const overallHealth = useMemo(() => {

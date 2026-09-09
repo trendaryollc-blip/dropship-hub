@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { addCashFlowEntry, getAllCashFlowEntries, getCashFlowEntriesByDateRange, updateCashFlowEntry, deleteCashFlowEntry, generateCashFlowProjection, getCashFlowSummary, getUpcomingPayments, validateCashFlowInput } from "@/lib/finance/cashflow-projection";
 
-export const GET = withAuth(async (request: NextRequest, uid: string) => {
+export const GET = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get("action") || "list";
@@ -36,7 +36,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
   }
 });
 
-export const POST = withAuth(async (request: NextRequest, uid: string) => {
+export const POST = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const body = await request.json();
     const { action, entry, entryId, updates, projectionInput } = body;

@@ -67,8 +67,8 @@ describe("HowItWorksSection", () => {
     expect(screen.getByText("4")).toBeDefined();
   });
 
-  it("renders the .env.local reference", () => {
+  it("renders the security info about environment variables", () => {
     render(<HowItWorksSection />);
-    expect(screen.getByText(".env.local")).toBeDefined();
+    expect(screen.getByText(/environment variables/)).toBeDefined();
   });
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Package, ExternalLink } from "lucide-react";
 
 export interface PushedProduct {
@@ -47,9 +48,11 @@ export default function PushedProductsList({ products }: Props) {
           className="glass rounded-2xl border border-border p-4 flex items-center gap-4 hover:border-accent/30 transition-all"
         >
           {product.productImage && (
-            <img
+            <Image
               src={product.productImage}
               alt=""
+              width={56}
+              height={56}
               className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
             />
           )}

@@ -2,9 +2,9 @@ import { z } from "zod";
 import { createTool } from "./registry";
 import { searchAllPlatforms } from "@/lib/platform-search";
 import { addFavorite, removeFavorite, getFavorites, isFavorited } from "@/lib/data/favorites";
-import { getProductLifecycles, addProductLifecycle } from "@/lib/data/product-lifecycle";
-import { addSearchHistory, getSearchHistory } from "@/lib/data/search-history";
-import { addProductValidation, getProductValidations } from "@/lib/data/product-validations";
+import { getProductLifecycles } from "@/lib/data/product-lifecycle";
+import { getSearchHistory } from "@/lib/data/search-history";
+import { getProductValidations } from "@/lib/data/product-validations";
 
 // ─── Search Products ────────────────────────────────────────────────────────
 
@@ -18,7 +18,7 @@ export const searchProductsTool = createTool({
     query: z.string().min(1).max(500),
     platforms: z.array(z.string()).optional(),
   }),
-  execute: async (input, ctx) => {
+  execute: async (input, _ctx) => {
     const results = await searchAllPlatforms(
       input.query as string,
       input.platforms as string[] | undefined

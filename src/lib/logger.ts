@@ -16,6 +16,7 @@ function formatLog(level: LogLevel, message: string, context?: LogContext): stri
 export function createLogger(defaultContext?: LogContext) {
   return {
     debug(message: string, context?: LogContext) {
+      // Debug logs are only shown in development to reduce noise
       if (process.env.NODE_ENV === "development") {
         console.debug(formatLog("debug", message, { ...defaultContext, ...context }));
       }
@@ -34,8 +35,10 @@ export function createLogger(defaultContext?: LogContext) {
 
 export const logger = createLogger();
 
+/**
+ * Log a caught error. Always logs in production for visibility.
+ * Use this in catch blocks instead of silently swallowing errors.
+ */
 export function silentCatch(context: string, error: unknown): void {
-  if (process.env.NODE_ENV === "development") {
-    logger.warn(`[${context}] silently caught`, { error: error instanceof Error ? error.message : String(error) });
-  }
+  logger.warn(`[${context}] caught error`, { error: error instanceof Error ? error.message : String(error) });
 }

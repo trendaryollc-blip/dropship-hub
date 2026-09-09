@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { updateBudgetRecommendation } from "@/lib/data/budget-recommendations";
-import { updateAdCampaign } from "@/lib/data/ad-campaigns";
 
 export const PATCH = withAuth(async (request: NextRequest, uid: string) => {
   try {

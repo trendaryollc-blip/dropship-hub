@@ -45,7 +45,7 @@ export const inventorySyncJob = inngest.createFunction(
         ? await db.collection("users").doc(uid).collection("storeConnections").doc(storeId).get()
         : await db.collection("users").doc(uid).collection("storeConnections").where("status", "==", "connected").get();
 
-      const stores = storeId ? ((storesSnap as any).exists ? [storesSnap] : []) : ((storesSnap as any).docs || []);
+      const stores: Array<{ id: string }> = storeId ? ((storesSnap as unknown as { exists: boolean }).exists ? [storesSnap as unknown as { id: string }] : []) : ((storesSnap as unknown as { docs: Array<{ id: string }> }).docs || []);
 
       let synced = 0;
       let errors = 0;
@@ -55,7 +55,7 @@ export const inventorySyncJob = inngest.createFunction(
           const monitoredSnap = await db.collection("users").doc(uid).collection("monitoredProducts").get();
           for (const prod of monitoredSnap.docs) {
             const product = prod.data();
-            if (product.storeConnections?.some((sc: any) => sc.storeId === storeDoc.id)) {
+            if (product.storeConnections?.some((sc: Record<string, unknown>) => sc.storeId === storeDoc.id)) {
               synced++;
             }
           }
@@ -124,7 +124,7 @@ export const digestEmailJob = inngest.createFunction(
 
     const result = await step.run("generate-digest", async () => {
       const emailDigest = await import("@/lib/email-digest");
-      const generateFn = (emailDigest as any).generateDigest || (emailDigest as any).default;
+      const generateFn = (emailDigest as Record<string, unknown>).generateDigest || (emailDigest as Record<string, unknown>).default;
       if (typeof generateFn === "function") {
         return generateFn(uid, frequency);
       }
@@ -151,7 +151,7 @@ export const digestEmailJob = inngest.createFunction(
           from: "DropShip Hub <digest@dropshiphub.app>",
           to: email,
           subject: `${frequency === "weekly" ? "Weekly" : "Daily"} DropShip Digest`,
-          html: (result as any).html || "Digest content",
+          html: (result as Record<string, unknown>)?.html || "Digest content",
         }),
       });
 
@@ -337,7 +337,7 @@ export const autoOrderFulfillmentJob = inngest.createFunction(
 
             const input = createOrchestrationInput(
               uid,
-              order as any,
+              order as import("@/types/fulfillment").FulfillmentOrder,
               "scheduled",
               [],
               [],

@@ -89,7 +89,7 @@ async function handleWebhookEvent(
   event: WebhookEvent,
   payload: Record<string, unknown>
 ): Promise<void> {
-  const db = await getAdminDB();
+  const _db = await getAdminDB();
 
   switch (event) {
     case "order.created":
@@ -270,7 +270,7 @@ export async function getIncomingWebhooks(
 ): Promise<{ webhooks: IncomingWebhook[]; total: number }> {
   try {
     const db = await getAdminDB();
-    let query: any = db.collection("users").doc(uid).collection("incomingWebhooks");
+    let query: FirebaseFirestore.Query = db.collection("users").doc(uid).collection("incomingWebhooks");
 
     if (options.status) {
       query = query.where("status", "==", options.status);
@@ -288,7 +288,7 @@ export async function getIncomingWebhooks(
     }
 
     const snap = await query.limit(options.limit || 50).get();
-    const webhooks: IncomingWebhook[] = snap.docs.map((doc: any) => ({
+    const webhooks: IncomingWebhook[] = snap.docs.map((doc: FirebaseFirestore.QueryDocumentSnapshot) => ({
       id: doc.id,
       ...doc.data(),
     })) as IncomingWebhook[];

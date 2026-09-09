@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, ArrowRight, Loader2, TrendingUp, AlertTriangle, CheckCircle, Lightbulb, Target, Zap } from "lucide-react";
+import { Sparkles, AlertTriangle, CheckCircle, Lightbulb, Target, Zap } from "lucide-react";
 
 interface AIInsight {
   type: "good" | "warning" | "tip" | "action" | "milestone";

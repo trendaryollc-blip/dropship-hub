@@ -21,7 +21,7 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
 export default function StoreCuratedTab({ onConnected }: Props) {
   const [filter, setFilter] = useState<"all" | string>("all");
   const [expandedGuide, setExpandedGuide] = useState<string | null>(null);
-  const [connecting, setConnecting] = useState<string | null>(null);
+  const [connecting, _setConnecting] = useState<string | null>(null);
   const [showModal, setShowModal] = useState<StorePlatform | null>(null);
 
   const filtered = filter === "all"

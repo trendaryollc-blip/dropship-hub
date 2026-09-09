@@ -1,5 +1,5 @@
 import { getAdminDB } from "@/lib/firebase-admin";
-import type { GuardrailConfig, ToolExecutionContext } from "../types";
+import type { GuardrailConfig } from "../types";
 import { DEFAULT_GUARDRAILS } from "../types";
 
 // ─── Guardrails ─────────────────────────────────────────────────────────────

@@ -86,7 +86,7 @@ export default function CalculatorComparison({
   ];
 
   const bestProfit = Math.max(...allScenarios.map((s) => s.netProfit));
-  const bestMargin = Math.max(...allScenarios.map((s) => s.margin));
+  const _bestMargin = Math.max(...allScenarios.map((s) => s.margin));
 
   return (
     <div className="glass rounded-2xl p-4">

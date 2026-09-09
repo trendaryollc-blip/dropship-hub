@@ -70,7 +70,7 @@ function MetricCard({ icon: Icon, label, value, prefix, color }: { icon: typeof 
 }
 
 function AlertItem({ alert, index }: { alert: DigestAlert; index: number }) {
-  const [expanded, setExpanded] = useState(false);
+  const [_expanded, _setExpanded] = useState(false);
   const { ref, isInView } = useInView({ threshold: 0.2 });
   const cfg = alertConfig[alert.type];
   const Icon = cfg.icon;

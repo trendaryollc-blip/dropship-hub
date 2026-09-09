@@ -1,5 +1,4 @@
-import type { FulfillmentRule, RuleCondition, RuleAction, FulfillmentRuleSchema } from "@/types/automation";
-import { FulfillmentRuleSchema as RuleSchema } from "@/types/automation";
+import type { FulfillmentRule, RuleCondition, RuleAction } from "@/types/automation";
 
 interface RuleContext {
   supplierId?: string;

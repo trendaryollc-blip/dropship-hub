@@ -3,15 +3,11 @@ import { createTool } from "./registry";
 import { searchSuppliers, getSuppliers } from "@/lib/supplier-service";
 import {
   getSupplierPerformanceHistory,
-  addSupplierPerformance,
   getSupplierAlerts,
-  addSupplierAlert,
 } from "@/lib/data/supplier-performance";
 import {
   getSupplierScorecards,
-  saveSupplierScorecard,
   getNegotiations,
-  addNegotiation,
 } from "@/lib/data/srm";
 
 // ─── Search Suppliers ───────────────────────────────────────────────────────

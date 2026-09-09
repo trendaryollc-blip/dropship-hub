@@ -60,7 +60,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     // 2. Push product to store (reuse existing push logic)
     let pushResult: { success: boolean; platformProductId?: number | string; error?: unknown };
 
-    const pushBody = {
+    const _pushBody = {
       productTitle,
       productImage,
       productPrice,

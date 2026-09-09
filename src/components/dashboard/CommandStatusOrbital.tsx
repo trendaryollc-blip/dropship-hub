@@ -185,7 +185,7 @@ export default function CommandStatusOrbital({
   storesConnected,
   suppliersActive,
   pendingOrders,
-  contextualActions,
+  contextualActions: _contextualActions,
 }: CommandStatusOrbitalProps) {
   const { ref, isInView } = useInView({ threshold: 0.1 });
   const [timeOfDay, setTimeOfDay] = useState(() => getTimeOfDay());

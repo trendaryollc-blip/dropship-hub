@@ -59,7 +59,7 @@ const FILLER_WORDS = new Set([
 export function normalizeTitle(title: string): string {
   if (!title) return "";
 
-  let normalized = title
+  const normalized = title
     .toLowerCase()
     .replace(/([a-zA-Z])[-](\d)/g, "$1$2")
     .replace(/(\d)[-]([a-zA-Z])/g, "$1$2")

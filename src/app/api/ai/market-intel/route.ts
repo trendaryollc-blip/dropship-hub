@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 
-export const GET = withAuth(async (req: NextRequest, uid: string) => {
+export const GET = withAuth(async (_req: NextRequest, _uid: string) => {
   try {
     // In production, this would fetch real market data from external APIs
     // For now, return contextual mock data

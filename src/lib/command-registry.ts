@@ -1,9 +1,9 @@
 import {
   Search, Truck, Calculator, Sparkles, TrendingUp,
   ShoppingCart, BarChart3, DollarSign, Package,
-  Globe, Zap, RotateCcw, Settings, LayoutGrid,
-  Target, Heart, FileText, Users, Brain,
-  Shield, Bell, Store, Layers, Rocket,
+  Globe, Zap, Settings, LayoutGrid,
+  Target, Heart, FileText, Users,
+  Shield, Bell, Store, Layers,
 } from "lucide-react";
 
 export interface Command {

@@ -3,7 +3,7 @@
 // Adds computed intelligence fields to merged search results:
 // estimated margin, golden score, trend phase, saturation, competition, etc.
 
-import type { MergedProduct, PlatformOffer } from "./dedup";
+import type { MergedProduct } from "./dedup";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -75,7 +75,7 @@ export function estimateMargin(
     }
   }
 
-  const sourcingPlatforms = ["cj", "aliexpress", "alibaba", "1688"];
+  const _sourcingPlatforms = ["cj", "aliexpress", "alibaba", "1688"];
   let bestCostRatio = 0.55;
   for (const platform of product.platforms) {
     const ratio = PLATFORM_COST_RATIOS[platform.platform];

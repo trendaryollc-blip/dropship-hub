@@ -361,7 +361,7 @@ export const GET = withAuth(async (_request: Request) => {
     const avgProductRating = allProducts.length > 0
       ? Number((allProducts.reduce((s, p) => s + (p.rating ?? 4), 0) / allProducts.length).toFixed(1))
       : 4.0;
-    const totalReviews = allProducts.reduce((s, p) => s + (p.reviews ?? 0), 0);
+    const _totalReviews = allProducts.reduce((s, p) => s + (p.reviews ?? 0), 0);
     const supplierStatus: SupplierStatus = {
       name: "CJ Dropshipping",
       productCount: totalProducts,
@@ -408,7 +408,7 @@ export const GET = withAuth(async (_request: Request) => {
       };
     });
 
-    const trendingProducts: TrendingProduct[] = allProducts.slice(0, 6).map((p, idx) => {
+    const trendingProducts: TrendingProduct[] = allProducts.slice(0, 6).map((p, _idx) => {
       const sourcePrice = p.price ?? 0;
       const categoryProducts = allProducts.filter((ap) => ap.category === p.category && ap.title !== p.title);
       const competitors = categoryProducts.slice(0, 3).map((cp) => ({
@@ -427,7 +427,7 @@ export const GET = withAuth(async (_request: Request) => {
       const trend = Math.round(Math.max(-20, Math.min(20, priceChange)));
 
       // Confidence based on review count and rating
-      const avgConfidence = allProducts.length > 0
+      const _avgConfidence = allProducts.length > 0
         ? allProducts.reduce((s, ap) => s + (ap.rating ?? 5), 0) / allProducts.length
         : 70;
       const confidence = Math.round(60 + ((p.reviews ?? 0) / Math.max(1, allProducts.length)) * 20 + (p.rating ?? 4) * 3.5);
@@ -544,7 +544,7 @@ export const GET = withAuth(async (_request: Request) => {
       { id: "a3", message: `CJ Dropshipping has competitive pricing on ${supplierCount} products`, action: "Learn More", href: "/suppliers", type: "info" as const, icon: "Truck" },
     ];
 
-    const now = Date.now();
+    const _now = Date.now();
     const ts = (mins: number) => `${mins}m ago`;
     const alerts: SmartAlert[] = [
       ...trendingProducts.filter((p) => p.margin > 50).slice(0, 2).map((p, i) => ({

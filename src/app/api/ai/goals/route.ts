@@ -18,7 +18,7 @@ interface BusinessGoal {
   aiInsight: string;
 }
 
-interface GoalsResult {
+interface _GoalsResult {
   goals: BusinessGoal[];
   summary: {
     totalGoals: number;

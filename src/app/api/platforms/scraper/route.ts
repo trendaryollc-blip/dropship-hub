@@ -101,7 +101,7 @@ async function scrapePlatform(platformId: string, query: string) {
   return { products, source: platformId, query, total: products.length };
 }
 
-export const POST = withAuth(async (request: NextRequest, uid: string) => {
+export const POST = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const parseResult = validateBody(ScraperSchema, await request.json());
     if (!parseResult.success) return parseResult.response;
@@ -122,7 +122,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
   }
 });
 
-export const GET = withAuth(async (request: NextRequest, uid: string) => {
+export const GET = withAuth(async (_request: NextRequest, _uid: string) => {
   return NextResponse.json({
     platform: "Scraper-Based Platforms",
     configured: !!(SCRAPER_API_KEY || ZENROWS_API_KEY),

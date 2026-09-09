@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Link2, Unlink, RefreshCw, Trash2, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { Link2, Unlink, RefreshCw, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { useAPI, useMutation, revalidate } from "@/hooks/useAPI";
 
 interface AdConnection {

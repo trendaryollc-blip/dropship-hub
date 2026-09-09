@@ -1,6 +1,6 @@
 "use client";
 
-import { RefreshCw, BarChart3, Zap, GitCompare, Sparkles } from "lucide-react";
+import { RefreshCw, Zap, GitCompare, Sparkles } from "lucide-react";
 
 interface MultiStoreAIBarProps {
   onAction: (action: string) => void;
@@ -10,7 +10,7 @@ interface MultiStoreAIBarProps {
   totalRevenue: number;
 }
 
-export default function MultiStoreAIBar({ onAction, loading, storeCount, totalOrders, totalRevenue }: MultiStoreAIBarProps) {
+export default function MultiStoreAIBar({ onAction, loading, storeCount, totalOrders: _totalOrders, totalRevenue }: MultiStoreAIBarProps) {
   if (storeCount === 0) return null;
 
   const actions = [

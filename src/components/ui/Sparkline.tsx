@@ -34,7 +34,7 @@ export default function Sparkline({
     []
   );
 
-  const { path, areaPath, min, max } = useMemo(() => {
+  const { path, areaPath, min: _min, max: _max } = useMemo(() => {
     if (!data.length) return { path: "", areaPath: "", min: 0, max: 0 };
 
     const minVal = Math.min(...data);

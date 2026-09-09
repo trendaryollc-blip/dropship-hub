@@ -76,9 +76,8 @@ export async function setGuardrails(uid: string, guards: Partial<GuardrailConfig
 // ─── Auto Mode Rules ────────────────────────────────────────────────────────
 
 export async function addAutoRule(uid: string, rule: Omit<AutoModeRule, "id" | "uid" | "createdAt" | "updatedAt">): Promise<AutoModeRule> {
-  const db = await getAdminDB();
+  const _db = await getAdminDB();
   const prefs = await getModePreferences(uid);
-
   const newRule: AutoModeRule = {
     ...rule,
     id: `rule_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,

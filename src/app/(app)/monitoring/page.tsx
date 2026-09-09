@@ -21,6 +21,7 @@ import {
   CheckCircle,
   XCircle,
 } from "lucide-react";
+import Image from "next/image";
 import { useAPI } from "@/hooks/useAPI";
 import { safeFetch } from "@/lib/safe-fetch";
 import { useToast } from "@/components/ui/Toast";
@@ -311,9 +312,11 @@ export default function MonitoringPage() {
                 <div key={product.id} className="glass rounded-xl p-4 hover:border-accent/20 transition-all">
                   <div className="flex items-start gap-4">
                     {product.productImage && (
-                      <img
+                      <Image
                         src={product.productImage}
                         alt={product.productTitle}
+                        width={56}
+                        height={56}
                         className="h-14 w-14 rounded-lg object-cover border border-border shrink-0"
                       />
                     )}

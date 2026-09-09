@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
   FileText, Calendar, TrendingUp, TrendingDown,
-  Minus, ChevronDown, ChevronUp, Download,
+  Minus, ChevronDown, ChevronUp,
 } from "lucide-react";
 
 interface ReportSection {

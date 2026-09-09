@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { X, GitCompare, Loader2, Sparkles, Star, Package, ArrowRight, Check, ChevronDown } from "lucide-react";
+import { X, GitCompare, Loader2, Sparkles, Star, Package, ChevronDown } from "lucide-react";
 
 interface SearchResult {
   id: string;

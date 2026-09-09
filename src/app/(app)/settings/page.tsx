@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
-  Brain, Key, Shield, Zap, CheckCircle2, AlertTriangle, Eye, EyeOff,
-  ExternalLink, Globe, Package, ShoppingCart, Store, DollarSign,
-  BarChart3, ArrowUpRight, LayoutDashboard, Search, Sparkles,
-  TrendingUp, Bell, User, Download, Upload, Trash2, Loader2, Save,
+  Brain, Key, Shield, Zap,
+  Globe, Package, Store, DollarSign,
+  BarChart3, LayoutDashboard, Search, Sparkles,
+  TrendingUp, Bell, User, Download,
 } from "lucide-react";
 import { safeFetch, FetchError } from "@/lib/safe-fetch";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -34,6 +35,7 @@ function slotId(provider: string, index: number): SlotKey {
 export default function AISettingsPage() {
   const { user } = useAuth();
   const toast = useToast();
+  const router = useRouter();
   const [providers, setProviders] = useState<AIProvider[]>(allProviders);
   const [showKeys, setShowKeys] = useState<Record<SlotKey, boolean>>({});
   const [activeTab, setActiveTab] = useState<"providers" | "features" | "platforms" | "stores" | "notifications" | "account" | "data">("providers");
@@ -51,6 +53,7 @@ export default function AISettingsPage() {
   const [savingSlot, setSavingSlot] = useState<{ provider: string; index: number } | null>(null);
 
   const [stores, setStores] = useState<Array<{ id: string; name: string; platform: string; status: string; url: string }>>([]);
+  const [platformStatus, setPlatformStatus] = useState<Record<string, boolean>>({});
 
   const [notifPrefs, setNotifPrefs] = useState({
     priceAlerts: true, stockAlerts: true, orderUpdates: true,
@@ -66,13 +69,13 @@ export default function AISettingsPage() {
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
     if (!user) return {};
     try {
       const token = await user.getIdToken();
       return { Authorization: `Bearer ${token}` };
     } catch { return {}; }
-  };
+  }, [user]);
 
   useEffect(() => {
     getAuthHeaders().then((authHeaders) => {
@@ -81,7 +84,8 @@ export default function AISettingsPage() {
         safeFetch<{ connections?: Array<{ id: string; name: string; platform: string; status: string; url: string }> }>("/api/store/connections", { headers: authHeaders }),
         safeFetch<{ preferences?: typeof notifPrefs }>("/api/settings/notifications", { headers: authHeaders }),
         safeFetch<{ keys?: Record<string, { keys: Array<{ masked: string; index: number }>; configured: boolean }> }>("/api/settings/api-keys", { headers: authHeaders }),
-      ]).then(([aiData, storeData, notifData, keyData]) => {
+        safeFetch<{ platforms?: Array<{ id: string; enabled: boolean; keys: Array<{ id: string }>; lastHealth: string }> }>("/api/platforms/admin", { headers: authHeaders }).catch(() => null),
+      ]).then(([aiData, storeData, notifData, keyData, platformData]) => {
         if (aiData?.providers) {
           setProviders((prev) => prev.map((p) => ({ ...p, configured: aiData.providers![p.id]?.configured ?? false })));
         }
@@ -103,9 +107,17 @@ export default function AISettingsPage() {
             configured: keyData.keys![p.id]?.configured ?? p.configured,
           })));
         }
-      }).catch((e) => { if (process.env.NODE_ENV === "development") console.warn("[SettingsPage] silently caught", e); });
+        // Build platform configured status from Firestore platform data
+        if (platformData?.platforms) {
+          const status: Record<string, boolean> = {};
+          for (const p of platformData.platforms) {
+            status[p.id] = p.enabled && p.keys.length > 0;
+          }
+          setPlatformStatus(status);
+        }
+      }).catch((e) => { console.warn("[SettingsPage] data fetch error:", e); });
     });
-  }, []);
+  }, [getAuthHeaders]);
 
   const handleToggleActive = (id: string) => {
     setProviders((prev) => prev.map((p) => (p.id === id ? { ...p, active: !p.active } : p)));
@@ -309,11 +321,11 @@ export default function AISettingsPage() {
       const authHeaders = await getAuthHeaders();
       await safeFetch("/api/settings/delete-account", { method: "POST", headers: authHeaders });
       toast.success("Account deleted");
-      window.location.href = "/";
+      router.push("/");
     } catch { toast.error("Failed to delete account"); }
   };
 
-  const configuredCount = providers.filter((p) => p.configured).length;
+  const _configuredCount = providers.filter((p) => p.configured).length;
 
   const aiFeatures = [
     { name: "Price Optimization", description: "AI-powered pricing recommendations based on market data", icon: DollarSign, color: "text-emerald-400", bgColor: "bg-emerald-400/10", href: "/calculator", hrefLabel: "Open Calculator" },
@@ -323,6 +335,12 @@ export default function AISettingsPage() {
     { name: "Supplier Verification", description: "AI-powered supplier risk assessment", icon: Shield, color: "text-emerald-400", bgColor: "bg-emerald-400/10", href: "/suppliers", hrefLabel: "Verify Suppliers" },
     { name: "Competitor Intelligence", description: "Automated competitor analysis and insights", icon: BarChart3, color: "text-pink-400", bgColor: "bg-pink-400/10", href: "/competitors", hrefLabel: "Spy Competitors" },
   ];
+
+  // Build dynamic platform connectors with actual configured status from Firestore
+  const dynamicPlatformConnectors = platformConnectors.map((pc) => ({
+    ...pc,
+    configured: platformStatus[pc.id] ?? pc.configured,
+  }));
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -350,7 +368,7 @@ export default function AISettingsPage() {
         ))}
       </div>
 
-      <SystemHealthPanel providers={providers} stores={stores} platformConnectors={platformConnectors} />
+      <SystemHealthPanel providers={providers} stores={stores} platformConnectors={dynamicPlatformConnectors} />
 
       <div className="flex gap-2 border-b border-border pb-2 overflow-x-auto">
         {[
@@ -384,7 +402,7 @@ export default function AISettingsPage() {
 
       {activeTab === "features" && <FeaturesTab aiFeatures={aiFeatures} />}
 
-      {activeTab === "platforms" && <PlatformsTab platformConnectors={platformConnectors} />}
+      {activeTab === "platforms" && <PlatformsTab platformConnectors={dynamicPlatformConnectors} />}
 
       {activeTab === "stores" && <StoresTab stores={stores} />}
 

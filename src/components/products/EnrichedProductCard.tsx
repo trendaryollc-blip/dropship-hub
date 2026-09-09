@@ -4,8 +4,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
-  Package, Heart, Plus, Star, Images, Check, Send, Loader2, Store, X, ExternalLink,
-  Sparkles, TrendingUp, BarChart3, Search, ChevronDown, GitCompare,
+  Package, Heart, Star, Images, Check, Send, Loader2, Store, X, ExternalLink,
+  Sparkles, TrendingUp, BarChart3, Search, GitCompare,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -20,32 +20,6 @@ const platformIcons: Record<string, string> = {
   walmart: "\ud83c\udfea", temu: "\ud83d\udd25", shein: "\ud83d\udc57",
   etsy: "\ud83c\udfa8", alibaba: "\ud83c\udfed", banggood: "\u26a1", dhgate: "\ud83d\udd17",
 };
-
-interface SearchResult {
-  id: string;
-  title: string;
-  price: number | null;
-  image: string | null;
-  images?: string[];
-  link: string;
-  source: string;
-  brand?: string;
-  rating?: number;
-  reviews?: number;
-  asin?: string;
-  // Enrichment fields
-  estimatedMargin?: number;
-  goldenScore?: number;
-  goldenRank?: "S" | "A" | "B" | "C" | "D";
-  trendPhase?: "emerging" | "growth" | "mature" | "declining";
-  saturationLevel?: "unsaturated" | "low" | "moderate" | "saturated" | "hyper-saturated";
-  competitionScore?: number;
-  // Dedup fields
-  platformCount?: number;
-  platforms?: Array<{ platform: string; price: number | null; link: string }>;
-  bestPrice?: number | null;
-  bestPlatform?: string;
-}
 
 interface ConnectedStore {
   id: string;
@@ -129,7 +103,7 @@ export default function EnrichedProductCard({
   const aiActionsRef = useRef<HTMLDivElement>(null);
   const [priceTrend] = useState(() => {
     const base = product.price || 10;
-    return Array.from({ length: 7 }, (_, i) => base + (Math.random() - 0.5) * base * 0.2);
+    return Array.from({ length: 7 }, () => base + (Math.random() - 0.5) * base * 0.2);
   });
 
   // Use real enrichment data when available (Feature 4)

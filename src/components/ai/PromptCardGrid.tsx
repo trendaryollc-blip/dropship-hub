@@ -4,7 +4,7 @@ import { type BusinessContext } from "@/app/api/ai/context/route";
 import {
   Sun, Heart, AlertTriangle, ClipboardList,
   DollarSign, Truck, Package, MessageSquare,
-  Eye, Store, Scan, TrendingUp, BarChart3, Target,
+  Eye, Store, Scan, BarChart3, Target,
 } from "lucide-react";
 import PromptCard from "./PromptCard";
 

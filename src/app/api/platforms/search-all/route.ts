@@ -190,7 +190,7 @@ function normalizeForDedup(platform: string, data: unknown): DedupSearchResult[]
     ? data
     : (sourceData?.search_results as unknown[]) ?? (sourceData?.data as unknown[]) ?? (sourceData?.products as unknown[]) ?? [];
   if (!Array.isArray(items)) return results;
-  items.forEach((item, i) => {
+  items.forEach((item, _i) => {
     if (!item || typeof item !== "object") return;
     const product = item as Record<string, unknown>;
     if ("code" in product && "message" in product && Object.keys(product).length <= 3) return;
@@ -235,7 +235,7 @@ function normalizeForDedup(platform: string, data: unknown): DedupSearchResult[]
   return results;
 }
 
-export const POST = withAuth(async (request: NextRequest, uid: string) => {
+export const POST = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const { query, platforms: selectedPlatforms, intent: requestIntent, stream } = await request.json();
 
@@ -381,7 +381,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
   }
 }, LIMITS.PLATFORM_SEARCH);
 
-export const GET = withAuth(async (request: NextRequest, uid: string) => {
+export const GET = withAuth(async (_request: NextRequest, _uid: string) => {
   // Try to get platforms from Firestore
   try {
     const firestorePlatforms = await getAllPlatforms();

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Zap, Flame, Trophy, Star } from "lucide-react";
+import { Flame, Trophy, Star } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import ScoreRing from "@/components/ui/ScoreRing";
 
@@ -27,7 +27,7 @@ export default function GamificationPanel() {
     if (!user) return;
     const stored = localStorage.getItem(`gamification_${user.uid}`);
     if (stored) {
-      try { setData(JSON.parse(stored)); } catch (e) { /* ignore */ }
+      try { setData(JSON.parse(stored)); } catch (_e) { /* ignore */ }
     }
   }, [user]);
 

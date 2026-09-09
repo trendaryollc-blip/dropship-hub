@@ -142,7 +142,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
       try {
         const { getAdminAuth } = await import("@/lib/firebase-admin");
         const auth = getAdminAuth();
-        const projectId = process.env.FIREBASE_PROJECT_ID || "";
+        const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "";
 
         const messagePayload = {
           notification: {
@@ -166,8 +166,11 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
         });
 
         pushSent = fcmRes.ok;
-      } catch {
-        // FCM send failed — notifications are still saved to Firestore
+        if (!fcmRes.ok) {
+          console.error("[notifications] FCM send failed:", fcmRes.status, await fcmRes.text().catch(() => ""));
+        }
+      } catch (err) {
+        console.error("[notifications] FCM push error:", err instanceof Error ? err.message : err);
       }
     }
 

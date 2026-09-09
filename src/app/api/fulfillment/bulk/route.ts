@@ -148,7 +148,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
   }
 }, LIMITS.FULFILLMENT);
 
-export const GET = withAuth(async (req: NextRequest, uid: string) => {
+export const GET = withAuth(async (req: NextRequest, _uid: string) => {
   try {
     const operationId = req.nextUrl.searchParams.get("operationId");
     if (operationId) {

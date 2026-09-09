@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { createTemplate, getTemplate, getAllTemplates, updateTemplate, deleteTemplate, duplicateTemplate, executeTemplate, getBatch, getAllBatches, validateTemplate, getTemplateStats } from "@/lib/fulfillment/sample-templates";
 
-export const GET = withAuth(async (request: NextRequest, uid: string) => {
+export const GET = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get("action") || "list";
@@ -51,7 +51,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
   }
 });
 
-export const POST = withAuth(async (request: NextRequest, uid: string) => {
+export const POST = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const body = await request.json();
     const { action, templateId, template: templateData, updates } = body;
@@ -113,7 +113,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
   }
 });
 
-export const DELETE = withAuth(async (request: NextRequest, uid: string) => {
+export const DELETE = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const { searchParams } = new URL(request.url);
     const templateId = searchParams.get("templateId");

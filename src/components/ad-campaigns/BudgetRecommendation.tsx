@@ -1,7 +1,7 @@
 "use client";
 
-import { Zap, CheckCircle, XCircle, ArrowUp, ArrowDown, Pause, RotateCcw, FlaskConical } from "lucide-react";
-import { useAPI, useMutation, revalidate } from "@/hooks/useAPI";
+import { CheckCircle, XCircle, ArrowUp, ArrowDown, Pause, RotateCcw, FlaskConical } from "lucide-react";
+import { useMutation, revalidate } from "@/hooks/useAPI";
 
 interface Recommendation {
   id: string;

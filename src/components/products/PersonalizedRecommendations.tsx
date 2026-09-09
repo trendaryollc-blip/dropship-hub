@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Sparkles, ArrowRight, Package, Loader2, RefreshCw } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
@@ -23,7 +23,7 @@ export default function PersonalizedRecommendations() {
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
 
-  const fetchRecommendations = async () => {
+  const fetchRecommendations = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
@@ -38,13 +38,13 @@ export default function PersonalizedRecommendations() {
       // Silently fail - recommendations are optional
     }
     setLoading(false);
-  };
+  }, [user]);
 
   useEffect(() => {
     if (user && !hasLoaded) {
       fetchRecommendations();
     }
-  }, [user, hasLoaded]);
+  }, [user, hasLoaded, fetchRecommendations]);
 
   if (!user || (hasLoaded && recommendations.length === 0)) return null;
 

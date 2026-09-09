@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { X, Shield, MapPin, Star, Truck, Tag, DollarSign, Search, Package, Award } from "lucide-react";
+import { X, Shield, MapPin, Star, Truck, Tag, DollarSign, Search, Award } from "lucide-react";
 import { badgeConfig } from "./supplier-shared";
 
 export interface SupplierFilters {

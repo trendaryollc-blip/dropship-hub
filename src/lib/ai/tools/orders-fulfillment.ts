@@ -77,7 +77,7 @@ export const bulkRouteOrdersTool = createTool({
     })).min(1).max(50),
     optimization: z.enum(["speed", "cost", "balanced"]).default("balanced"),
   }),
-  execute: async (input, ctx) => {
+  execute: async (input, _ctx) => {
     const orders = input.orders as Array<{
       orderId: string;
       items: Array<{ productId: string; name: string; quantity: number; unitCost: number }>;

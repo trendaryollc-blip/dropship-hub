@@ -41,6 +41,6 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
   }
 });
 
-export const GET = withAuth(async (request: NextRequest, uid: string) => {
+export const GET = withAuth(async (_request: NextRequest, _uid: string) => {
   return NextResponse.json({ plans: BILLING_PLANS });
 });

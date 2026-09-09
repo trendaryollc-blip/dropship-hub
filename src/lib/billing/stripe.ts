@@ -1,7 +1,7 @@
 import Stripe from "stripe";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { logger } from "@/lib/logger";
-import type { BillingTier, Subscription, UsageRecord, Invoice, UsageMetric } from "./types";
+import type { BillingTier, Subscription, Invoice, UsageMetric } from "./types";
 
 let stripeInstance: Stripe | null = null;
 
@@ -9,7 +9,7 @@ export function getStripe(): Stripe {
   if (stripeInstance) return stripeInstance;
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("STRIPE_SECRET_KEY not configured");
-  stripeInstance = new Stripe(key, { apiVersion: "2024-12-18.acacia" as any });
+  stripeInstance = new Stripe(key, { apiVersion: "2024-12-18.acacia" as Stripe.LatestApiVersion });
   return stripeInstance;
 }
 
@@ -92,10 +92,10 @@ export async function handleCheckoutCompleted(checkoutSession: Stripe.Checkout.S
     stripeCustomerId: checkoutSession.customer as string,
     stripeSubscriptionId: subscription.id,
     tier,
-    status: subscription.status as any,
-    currentPeriodStart: new Date((subscription as any).current_period_start * 1000).toISOString(),
-    currentPeriodEnd: new Date((subscription as any).current_period_end * 1000).toISOString(),
-    cancelAtPeriodEnd: (subscription as any).cancel_at_period_end,
+    status: subscription.status as string,
+    currentPeriodStart: new Date(((subscription as unknown as Record<string, unknown>).current_period_start as number) * 1000).toISOString(),
+    currentPeriodEnd: new Date(((subscription as unknown as Record<string, unknown>).current_period_end as number) * 1000).toISOString(),
+    cancelAtPeriodEnd: (subscription as unknown as Record<string, unknown>).cancel_at_period_end as boolean,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }, { merge: true });
@@ -110,9 +110,9 @@ export async function handleSubscriptionUpdated(subscription: Stripe.Subscriptio
   const db = await getAdminDB();
   await db.collection("users").doc(uid).collection("settings").doc("subscription").update({
     status: subscription.status,
-    currentPeriodStart: new Date((subscription as any).current_period_start * 1000).toISOString(),
-    currentPeriodEnd: new Date((subscription as any).current_period_end * 1000).toISOString(),
-    cancelAtPeriodEnd: (subscription as any).cancel_at_period_end,
+    currentPeriodStart: new Date(((subscription as unknown as Record<string, unknown>).current_period_start as number) * 1000).toISOString(),
+    currentPeriodEnd: new Date(((subscription as unknown as Record<string, unknown>).current_period_end as number) * 1000).toISOString(),
+    cancelAtPeriodEnd: (subscription as unknown as Record<string, unknown>).cancel_at_period_end as boolean,
     updatedAt: new Date().toISOString(),
   });
 

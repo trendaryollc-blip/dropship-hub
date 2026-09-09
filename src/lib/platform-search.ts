@@ -874,10 +874,9 @@ export async function searchAllPlatformsFromFirestore(
 
 // ── Legacy Env-Based Search (kept as fallback) ──────────────────────────────
 
-const RAINFOREST_API_KEY = process.env.RAINFOREST_API_KEY;
-const SERP_API_KEY = process.env.SERP_API_KEY;
-const CJ_API_KEY = process.env.CJ_API_KEY;
-const KEEPA_API_KEY = process.env.KEEPA_API_KEY;
+// NOTE: We read process.env directly in each search function instead of caching
+// at module level, because Vercel serverless functions may have env vars available
+// after module load. Caching "" at module load time causes silent failures.
 
 export interface PlatformSearchConfig {
   id: string;
@@ -887,10 +886,10 @@ export interface PlatformSearchConfig {
 }
 
 export const platforms: PlatformSearchConfig[] = [
-  { id: "amazon", name: "Amazon", envKey: "RAINFOREST_API_KEY", searchFn: (q) => searchAmazonWithKey(RAINFOREST_API_KEY || "", q) },
-  { id: "google_shopping", name: "Google Shopping", envKey: "SERP_API_KEY", searchFn: (q) => searchGoogleShoppingWithKey(SERP_API_KEY || "", q) },
-  { id: "cj", name: "CJ Dropshipping", envKey: "CJ_API_KEY", searchFn: (q) => searchCJProductsWithKey(CJ_API_KEY || "", q) },
-  { id: "keepa", name: "Keepa", envKey: "KEEPA_API_KEY", searchFn: (q) => searchKeepaProductsWithKey(KEEPA_API_KEY || "", q) },
+  { id: "amazon", name: "Amazon", envKey: "RAINFOREST_API_KEY", searchFn: (q) => searchAmazonWithKey(process.env.RAINFOREST_API_KEY || "", q) },
+  { id: "google_shopping", name: "Google Shopping", envKey: "SERP_API_KEY", searchFn: (q) => searchGoogleShoppingWithKey(process.env.SERP_API_KEY || "", q) },
+  { id: "cj", name: "CJ Dropshipping", envKey: "CJ_API_KEY", searchFn: (q) => searchCJProductsWithKey(process.env.CJ_API_KEY || "", q) },
+  { id: "keepa", name: "Keepa", envKey: "KEEPA_API_KEY", searchFn: (q) => searchKeepaProductsWithKey(process.env.KEEPA_API_KEY || "", q) },
   { id: "aliexpress", name: "AliExpress", envKey: "SCRAPER_API_KEY", searchFn: (q) => searchAliExpressWithKey(process.env.SCRAPER_API_KEY || "", q) },
   { id: "walmart", name: "Walmart", envKey: "SCRAPER_API_KEY", searchFn: (q) => searchViaScraperWithKey(process.env.SCRAPER_API_KEY || "", "walmart", q) },
   { id: "etsy", name: "Etsy", envKey: "SCRAPER_API_KEY", searchFn: (q) => searchViaScraperWithKey(process.env.SCRAPER_API_KEY || "", "etsy", q) },

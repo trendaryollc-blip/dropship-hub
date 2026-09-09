@@ -5,7 +5,6 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import {
   Activity, CheckCircle2, AlertTriangle, XCircle, RefreshCw, Loader2,
 } from "lucide-react";
-import { safeFetch } from "@/lib/safe-fetch";
 import type { ConnectedStore } from "./ConnectedStoresList";
 
 interface StoreHealthPanelProps {

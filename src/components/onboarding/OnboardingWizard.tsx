@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  Zap, ArrowRight, ArrowLeft, CheckCircle2,
+  Zap, ArrowRight, ArrowLeft,
   Search, DollarSign, Store, Target, Rocket,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";

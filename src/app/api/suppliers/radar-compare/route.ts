@@ -5,7 +5,21 @@ import { LIMITS } from "@/lib/rate-limit";
 
 const COLORS = ["#3b82f6", "#ef4444", "#22c55e", "#f59e0b", "#8b5cf6"];
 
-function generateInsights(suppliers: any[]): string[] {
+interface SupplierData {
+  supplierId: string;
+  supplierName: string;
+  color: string;
+  scores: {
+    price: number;
+    speed: number;
+    quality: number;
+    reliability: number;
+    communication: number;
+  };
+  overallScore: number;
+}
+
+function generateInsights(suppliers: SupplierData[]): string[] {
   const insights: string[] = [];
   if (suppliers.length < 2) {
     insights.push("Add at least 2 suppliers for meaningful comparison");

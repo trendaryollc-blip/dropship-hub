@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { executeBulkOrderPlacement, getBulkOrderResult, validateBulkOrderPlacementInput, getBulkOrderStats, getActiveBulkOperations, getBulkOperationHistory } from "@/lib/fulfillment/bulk-processor";
 
-export const GET = withAuth(async (request: NextRequest, uid: string) => {
+export const GET = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get("action") || "stats";
@@ -41,7 +41,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
   }
 });
 
-export const POST = withAuth(async (request: NextRequest, uid: string) => {
+export const POST = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const body = await request.json();
     const { orders, supplierId, autoApprove } = body;

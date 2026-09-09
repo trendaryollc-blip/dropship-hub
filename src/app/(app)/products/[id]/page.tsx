@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense, useMemo } from "react";
+import { useState, useEffect, Suspense, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -144,7 +144,7 @@ function ProductDetailContent() {
     try {
       const stored = sessionStorage.getItem("selectedProduct");
       if (stored) return JSON.parse(stored);
-    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[ProductDetail] silently caught", e); }
+    } catch (e) { console.warn("[ProductDetail] Error:", e instanceof Error ? e.message : e); }
     // Fall back to URL params (works for shared/bookmarked links)
     const t = searchParams.get("t");
     if (t) {
@@ -201,7 +201,7 @@ function ProductDetailContent() {
   const ratingNum = hasRating ? parseFloat(rating) : null;
   const reviewsNum = hasReviews ? parseInt(reviews) : null;
 
-  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
     if (!user) return {};
     try {
       const token = await user.getIdToken();
@@ -209,7 +209,7 @@ function ProductDetailContent() {
     } catch {
       return {};
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     // Only fetch from API if we have 0 or 1 stored images — never overwrite a good multi-image array
@@ -256,7 +256,7 @@ function ProductDetailContent() {
 
     fetchImages();
     return () => { cancelled = true; };
-  }, [asin, link, source, fetchedImages.length, storedImages.length]);
+  }, [asin, link, source, fetchedImages.length, storedImages.length, getAuthHeaders]);
 
   useEffect(() => {
     if (!title || title === "Product") return;
@@ -276,13 +276,13 @@ function ProductDetailContent() {
         }
       } catch (e) {
         setEnrichmentError(true);
-        if (process.env.NODE_ENV === "development") console.warn("[ProductDetail] silently caught", e);
+        console.warn("[ProductDetail] Error:", e instanceof Error ? e.message : e);
       }
       setLoadingEnrichment(false);
     };
 
     fetchEnrichment();
-  }, [title, source, priceNum]);
+  }, [title, source, priceNum, getAuthHeaders]);
 
   useEffect(() => {
     if (!title || title === "Product") return;
@@ -302,13 +302,13 @@ function ProductDetailContent() {
         }
       } catch (e) {
         setReviewError(true);
-        if (process.env.NODE_ENV === "development") console.warn("[ProductDetail] silently caught", e);
+        console.warn("[ProductDetail] Error:", e instanceof Error ? e.message : e);
       }
       setLoadingReview(false);
     };
 
     fetchReviews();
-  }, [title, link, source, ratingNum, reviewsNum]);
+  }, [title, link, source, ratingNum, reviewsNum, getAuthHeaders]);
 
   useEffect(() => {
     if (!title || title === "Product") return;
@@ -328,13 +328,13 @@ function ProductDetailContent() {
         }
       } catch (e) {
         setMarketIntelError(true);
-        if (process.env.NODE_ENV === "development") console.warn("[ProductDetail] silently caught", e);
+        console.warn("[ProductDetail] Error:", e instanceof Error ? e.message : e);
       }
       setLoadingMarketIntel(false);
     };
 
     fetchMarketIntel();
-  }, [title, priceNum, ratingNum, reviewsNum]);
+  }, [title, priceNum, ratingNum, reviewsNum, getAuthHeaders]);
 
   useEffect(() => {
     if (!title || title === "Product") return;
@@ -354,13 +354,13 @@ function ProductDetailContent() {
         }
       } catch (e) {
         setListingError(true);
-        if (process.env.NODE_ENV === "development") console.warn("[ProductDetail] silently caught", e);
+        console.warn("[ProductDetail] Error:", e instanceof Error ? e.message : e);
       }
       setLoadingListing(false);
     };
 
     fetchListing();
-  }, [title, category, priceNum, source]);
+  }, [title, category, priceNum, source, getAuthHeaders]);
 
   const enriched = useMemo(() => {
     if (enrichmentData?.platforms) {

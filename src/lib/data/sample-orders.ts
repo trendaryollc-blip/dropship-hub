@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, collection, query, where, orderBy, limit, getDocs, serverTimestamp, Timestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, query, orderBy, limit, getDocs, serverTimestamp, Timestamp } from "firebase/firestore";
 import { db } from "../firebase";
 import { handleFirestoreError } from "./utils";
 import type { SampleOrder, SupplierQualityScore } from "@/types/supplier";

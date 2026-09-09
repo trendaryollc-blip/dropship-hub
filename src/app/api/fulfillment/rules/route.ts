@@ -3,7 +3,6 @@ import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { validateRule, createDefaultRules } from "@/lib/fulfillment/rules-engine";
-import { FulfillmentRuleSchema } from "@/types/automation";
 import type { FulfillmentRule } from "@/types/automation";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {

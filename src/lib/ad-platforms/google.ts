@@ -116,9 +116,9 @@ export const googleAdapter: AdPlatformAdapter = {
     targeting?: Record<string, unknown>;
   }): Promise<string> {
     const customerId = accountId.replace("-", "");
-    const budgetAmountMicros = Math.round(config.dailyBudget * 1_000_000);
+    const _budgetAmountMicros = Math.round(config.dailyBudget * 1_000_000);
 
-    const operations = [
+    const _operations = [
       {
         create: {
           name: config.name,

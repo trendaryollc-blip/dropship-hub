@@ -39,7 +39,7 @@ export default function StoreComparator({ uid }: { uid: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uid }),
       }));
-    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[StoreComparator] silently caught", e); }
+    } catch (e) { console.warn("[StoreComparator] Error:", e instanceof Error ? e.message : e); }
     setLoading(false);
   };
 

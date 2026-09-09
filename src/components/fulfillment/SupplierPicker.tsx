@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Check, ChevronDown, X, Package, Loader2 } from "lucide-react";
+import { X, Package, Loader2 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { safeFetch } from "@/lib/safe-fetch";
 import { useAPI } from "@/hooks/useAPI";
@@ -20,7 +20,7 @@ interface SupplierPickerProps {
   onAssigned?: (assignment: SupplierAssignment) => void;
 }
 
-export function SupplierPicker({ productId, productName, onAssigned }: SupplierPickerProps) {
+export function SupplierPicker({ productId, productName: _productName, onAssigned }: SupplierPickerProps) {
   const { user } = useAuth();
   const [showPicker, setShowPicker] = useState(false);
   const [unitCost, setUnitCost] = useState("0");
@@ -66,7 +66,7 @@ export function SupplierPicker({ productId, productName, onAssigned }: SupplierP
       const newAssignment = { supplierId, supplierName, unitCost: parseFloat(unitCost) || 0, shippingCost: parseFloat(shippingCost) || 0, source: "manual" };
       setShowPicker(false);
       onAssigned?.(newAssignment);
-    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[SupplierPicker] silently caught", e); }
+    } catch (e) { console.warn("[SupplierPicker] Error:", e instanceof Error ? e.message : e); }
     setLoading(false);
   };
 
@@ -74,7 +74,7 @@ export function SupplierPicker({ productId, productName, onAssigned }: SupplierP
     if (!user) return;
     try {
       await safeFetch(`/api/fulfillment/suppliers?uid=${user.uid}&productId=${productId}`, { method: "DELETE" });
-    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[SupplierPicker] silently caught", e); }
+    } catch (e) { console.warn("[SupplierPicker] Error:", e instanceof Error ? e.message : e); }
   };
 
   if (initialLoading) {

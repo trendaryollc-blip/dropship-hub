@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Play, Pause, Trash2, RefreshCw, ExternalLink, DollarSign, MousePointer, ShoppingCart, TrendingUp, Loader2 } from "lucide-react";
-import { useAPI, useMutation, revalidate } from "@/hooks/useAPI";
+import { Play, Pause, RefreshCw, DollarSign, MousePointer, ShoppingCart, TrendingUp, Loader2 } from "lucide-react";
+import { useMutation, revalidate } from "@/hooks/useAPI";
 
 interface Campaign {
   id: string;

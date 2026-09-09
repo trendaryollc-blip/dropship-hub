@@ -30,7 +30,7 @@ interface Props {
   onDisconnect: (storeId: string) => void;
 }
 
-export default function ConnectedStoresList({ stores, syncing, onRefresh, onSync, onDisconnect }: Props) {
+export default function ConnectedStoresList({ stores, syncing, onRefresh: _onRefresh, onSync, onDisconnect }: Props) {
   useAuth();
 
   if (stores.length === 0) return null;

@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
-import { pollAllTrackedOrders, getPollingOrders, shouldContinuePolling } from "@/lib/fulfillment/auto-tracker";
-import { getOrdersNeedingPoll, updateOrderPollingStatus } from "@/lib/fulfillment/cj-poller";
+import { pollAllTrackedOrders, getPollingOrders } from "@/lib/fulfillment/auto-tracker";
 import { logAuditEvent } from "@/lib/fulfillment/audit-logger";
 import { pushTrackingToStore } from "@/lib/fulfillment/store-adapters";
 
@@ -110,7 +109,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
   }
 }, LIMITS.FULFILLMENT);
 
-export const GET = withAuth(async (req: NextRequest, uid: string) => {
+export const GET = withAuth(async (_req: NextRequest, _uid: string) => {
   try {
     const orders = getPollingOrders();
     return NextResponse.json({

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import {
-  Brain,
   Globe,
   CheckCircle2,
   AlertTriangle,

@@ -5,7 +5,7 @@ import { createLogger } from "@/lib/logger";
 
 const logger = createLogger({ route: "api/search/visual" });
 
-export const POST = withAuth(async (request: NextRequest, uid: string) => {
+export const POST = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const { image } = await request.json();
 

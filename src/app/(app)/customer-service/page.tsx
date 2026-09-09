@@ -146,7 +146,7 @@ function EscalationPanel({ escalations }: { escalations: Escalation[] }) {
 
 function KnowledgeBasePanel({ entries, onAdd, onDelete }: { entries: KnowledgeBaseEntry[]; onAdd: (e: Omit<KnowledgeBaseEntry, "id" | "createdAt">) => void; onDelete: (id: string) => void }) {
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ category: "faq" as const, title: "", content: "", keywords: "" });
+  const [form, setForm] = useState<{ category: KnowledgeBaseEntry["category"]; title: string; content: string; keywords: string }>({ category: "faq", title: "", content: "", keywords: "" });
 
   const catColors: Record<string, string> = { product: "text-emerald-400 bg-emerald-400/10", shipping: "text-blue-400 bg-blue-400/10", returns: "text-red-400 bg-red-400/10", faq: "text-purple-400 bg-purple-400/10", policy: "text-amber-400 bg-amber-400/10" };
 
@@ -168,7 +168,7 @@ function KnowledgeBasePanel({ entries, onAdd, onDelete }: { entries: KnowledgeBa
 
       {showAdd && (
         <div className="p-3 rounded-xl bg-surface border border-border space-y-2">
-          <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as any })} className="w-full px-2.5 py-1.5 rounded-lg bg-surface border border-border text-[11px] text-foreground focus:outline-none focus:border-accent/40">
+          <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as "faq" | "product" | "shipping" | "returns" | "policy" })} className="w-full px-2.5 py-1.5 rounded-lg bg-surface border border-border text-[11px] text-foreground focus:outline-none focus:border-accent/40">
             <option value="faq">FAQ</option>
             <option value="product">Product</option>
             <option value="shipping">Shipping</option>
@@ -342,8 +342,8 @@ export default function CustomerServicePage() {
     try {
       const res = await fetch(`/api/customer-service?type=messages&conversationId=${convId}&uid=${uid}`);
       const data = await res.json();
-      if (data.messages) mutateMessages((prev) => ({ messages: data.messages }), false);
-    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[CS]", e); }
+      if (data.messages) mutateMessages((_prev) => ({ messages: data.messages }), false);
+    } catch (e) { console.warn("[CS] Error:", e instanceof Error ? e.message : e); }
   };
 
   const handleSend = async (content: string) => {
@@ -367,7 +367,7 @@ export default function CustomerServicePage() {
           }), false);
         }
       }
-    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[CS]", e); }
+    } catch (e) { console.warn("[CS] Error:", e instanceof Error ? e.message : e); }
   };
 
   const handleAddKB = async (entry: Omit<KnowledgeBaseEntry, "id" | "createdAt">) => {
@@ -378,14 +378,14 @@ export default function CustomerServicePage() {
         body: JSON.stringify(entry),
       });
       mutateKB();
-    } catch (e) { if (process.env.NODE_ENV === "development") console.error(e); toastError("Failed to add knowledge base entry"); }
+    } catch (e) { console.error("[CS] Failed to add knowledge base entry:", e instanceof Error ? e.message : e); toastError("Failed to add knowledge base entry"); }
   };
 
   const handleDeleteKB = async (id: string) => {
     try {
       await fetch(`/api/customer-service/knowledge-base?id=${id}`, { method: "DELETE" });
       mutateKB();
-    } catch (e) { if (process.env.NODE_ENV === "development") console.error(e); toastError("Failed to delete knowledge base entry"); }
+    } catch (e) { console.error("[CS] Failed to delete knowledge base entry:", e instanceof Error ? e.message : e); toastError("Failed to delete knowledge base entry"); }
   };
 
   const handleAddRule = async (rule: Omit<EscalationRule, "id" | "createdAt">) => {
@@ -396,14 +396,14 @@ export default function CustomerServicePage() {
         body: JSON.stringify(rule),
       });
       mutateRules();
-    } catch (e) { if (process.env.NODE_ENV === "development") console.error(e); toastError("Failed to add escalation rule"); }
+    } catch (e) { console.error("[CS] Failed to add escalation rule:", e instanceof Error ? e.message : e); toastError("Failed to add escalation rule"); }
   };
 
   const handleDeleteRule = async (id: string) => {
     try {
       await fetch(`/api/customer-service/escalation-rules?id=${id}`, { method: "DELETE" });
       mutateRules();
-    } catch (e) { if (process.env.NODE_ENV === "development") console.error(e); toastError("Failed to delete escalation rule"); }
+    } catch (e) { console.error("[CS] Failed to delete escalation rule:", e instanceof Error ? e.message : e); toastError("Failed to delete escalation rule"); }
   };
 
   const handleToggleRule = async (id: string, enabled: boolean) => {
@@ -414,7 +414,7 @@ export default function CustomerServicePage() {
         body: JSON.stringify({ ruleId: id, enabled }),
       });
       mutateRules();
-    } catch (e) { if (process.env.NODE_ENV === "development") console.error(e); toastError("Failed to update escalation rule"); }
+    } catch (e) { console.error("[CS] Failed to update escalation rule:", e instanceof Error ? e.message : e); toastError("Failed to update escalation rule"); }
   };
 
   return (

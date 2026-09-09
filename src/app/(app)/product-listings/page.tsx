@@ -5,7 +5,7 @@ import { FileText, Copy, Check, Trash2, Loader2, Sparkles } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAPI } from "@/hooks/useAPI";
 import { useToast } from "@/components/ui/Toast";
-import type { PlatformType } from "@/types/product-listing";
+import type { PlatformType, ListingGenerationResponse, SavedListing, ListingStats } from "@/types/product-listing";
 
 const PLATFORMS: { id: PlatformType; label: string; icon: string }[] = [
   { id: "amazon", label: "Amazon", icon: "📦" },
@@ -22,8 +22,8 @@ export default function ProductListingsPage() {
   const { error: toastError } = useToast();
   const uid = user?.uid || "";
 
-  const { data: listingsData, mutate: mutateListings } = useAPI<{ listings?: any[] }>(uid ? `/api/ai/listings?uid=${uid}` : null);
-  const { data: statsData } = useAPI<{ stats?: any }>(uid ? `/api/ai/listings?type=stats&uid=${uid}` : null);
+  const { data: listingsData, mutate: mutateListings } = useAPI<{ listings?: SavedListing[] }>(uid ? `/api/ai/listings?uid=${uid}` : null);
+  const { data: statsData } = useAPI<{ stats?: ListingStats }>(uid ? `/api/ai/listings?type=stats&uid=${uid}` : null);
 
   const [platform, setPlatform] = useState<PlatformType>("amazon");
   const [tone, setTone] = useState<string>("professional");
@@ -34,7 +34,7 @@ export default function ProductListingsPage() {
   const [specKeys, setSpecKeys] = useState<string[]>([""]);
   const [specVals, setSpecVals] = useState<string[]>([""]);
   const [generating, setGenerating] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<ListingGenerationResponse | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"generate" | "saved">("generate");
 
@@ -69,7 +69,7 @@ export default function ProductListingsPage() {
       const data = await res.json();
       if (data.listing) setResult(data);
     } catch (e) {
-      if (process.env.NODE_ENV === "development") console.error("Generation failed", e);
+      console.error("[ProductListings] Generation failed:", e instanceof Error ? e.message : e);
       toastError("Failed to generate listing");
     } finally {
       setGenerating(false);
@@ -90,7 +90,7 @@ export default function ProductListingsPage() {
       await fetch(`/api/ai/listings?id=${id}`, { method: "DELETE" });
       mutateListings();
     } catch (e) {
-      if (process.env.NODE_ENV === "development") console.error("Delete failed", e);
+      console.error("[ProductListings] Delete failed:", e instanceof Error ? e.message : e);
       toastError("Failed to delete listing");
     }
   };
@@ -245,7 +245,7 @@ export default function ProductListingsPage() {
                   <div>
                     <label className="text-[10px] text-muted-foreground mb-1 block">Keyword Suggestions</label>
                     <div className="space-y-1">
-                      {result.keywordSuggestions.map((kw: any, i: number) => (
+                      {result.keywordSuggestions.map((kw: { keyword: string; volume: string; competition: string }, i: number) => (
                         <div key={i} className="flex items-center justify-between text-[10px] bg-surface rounded-lg px-2.5 py-1.5">
                           <span className="text-foreground">{kw.keyword}</span>
                           <div className="flex items-center gap-2">
@@ -290,7 +290,7 @@ export default function ProductListingsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {listings.map((l: any) => (
+              {listings.map((l) => (
                 <div key={l.id} className="glass rounded-xl p-4 space-y-2 hover:border-accent/20 transition-all">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-semibold text-accent uppercase">{l.platform}</span>

@@ -160,7 +160,7 @@ async function updateShopifyTracking(
   orderId: string,
   trackingNumber: string,
   carrier: string,
-  estimatedDelivery: string | null
+  _estimatedDelivery: string | null
 ): Promise<void> {
   const storeSettings = await getStoreSettings(storeId);
   if (!storeSettings?.accessToken || !storeSettings?.storeDomain) {
@@ -221,7 +221,7 @@ async function updateWooCommerceTracking(
   }
 }
 
-async function getStoreSettings(storeId: string): Promise<Record<string, string> | null> {
+async function getStoreSettings(_storeId: string): Promise<Record<string, string> | null> {
   return null;
 }
 

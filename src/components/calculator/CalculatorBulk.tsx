@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Package, Plus, X, Download, Sparkles, Loader2, ArrowRight } from "lucide-react";
+import { Package, Plus, X, Download, Sparkles, Loader2 } from "lucide-react";
 
 interface BulkProduct {
   id: string;

@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { Radar, Loader2 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { useAPI } from "@/hooks/useAPI";
@@ -53,7 +52,7 @@ function SpiderChart({ suppliers, size = 240 }: { suppliers: RadarComparisonSupp
         );
       })}
 
-      {suppliers.map((supplier, si) => {
+      {suppliers.map((supplier, _si) => {
         const points = DIMENSIONS.map((dim, i) => {
           const p = getPoint(angles[i], supplier.scores[dim]);
           return `${p.x},${p.y}`;

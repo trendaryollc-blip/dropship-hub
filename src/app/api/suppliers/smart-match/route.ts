@@ -4,7 +4,7 @@ import { getAdminDB } from "@/lib/firebase-admin";
 import { LIMITS } from "@/lib/rate-limit";
 
 function calculateMatchScore(
-  supplier: any,
+  supplier: Record<string, unknown>,
   preferences: {
     speed: number;
     price: number;
@@ -14,10 +14,11 @@ function calculateMatchScore(
 ): number {
   let score = 0;
   if (supplier.stats) {
-    score += (100 - supplier.stats.shippingDays * 3) * (preferences.speed / 100) * 0.25;
-    score += supplier.stats.reliabilityScore * (preferences.reliability / 100) * 0.3;
-    score += supplier.stats.qualityScore * (preferences.quality / 100) * 0.25;
-    score += supplier.stats.priceCompetitiveness * (preferences.price / 100) * 0.2;
+    const stats = supplier.stats as Record<string, unknown>;
+    score += (100 - (stats.shippingDays as number) * 3) * (preferences.speed / 100) * 0.25;
+    score += (stats.reliabilityScore as number) * (preferences.reliability / 100) * 0.3;
+    score += (stats.qualityScore as number) * (preferences.quality / 100) * 0.25;
+    score += (stats.priceCompetitiveness as number) * (preferences.price / 100) * 0.2;
   }
   return Math.max(0, Math.min(100, Math.round(score)));
 }
@@ -42,7 +43,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     const suppliersSnap = await db.collectionGroup("suppliers").limit(100).get();
     const suppliers = suppliersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-    const recommendations = suppliers.map((supplier: any) => {
+    const recommendations = suppliers.map((supplier: Record<string, unknown>) => {
       const matchScore = calculateMatchScore(supplier, priorities);
       const role = getRole(matchScore);
       return {
@@ -58,7 +59,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
       };
     });
 
-    recommendations.sort((a: any, b: any) => b.matchScore - a.matchScore);
+    recommendations.sort((a: Record<string, unknown>, b: Record<string, unknown>) => (b.matchScore as number) - (a.matchScore as number));
 
     const result = {
       id: `match-${Date.now()}`,

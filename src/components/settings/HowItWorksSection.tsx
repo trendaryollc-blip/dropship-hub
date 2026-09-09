@@ -34,7 +34,7 @@ export default function HowItWorksSection() {
           <div className="flex items-start gap-3">
             <Shield className="w-4 h-4 mt-0.5 text-emerald-400 shrink-0" />
             <span>
-              <strong className="text-foreground">Security:</strong> API keys are stored securely in Firestore under your account. You can also use environment variables in <code className="px-1 py-0.5 rounded bg-surface text-[11px] text-foreground font-mono">.env.local</code>.
+              <strong className="text-foreground">Security:</strong> API keys are stored securely in Firestore under your account. In development, you can also use environment variables.
             </span>
           </div>
         </div>

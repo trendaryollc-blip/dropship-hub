@@ -3,7 +3,7 @@ import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { DocumentData } from "firebase-admin/firestore";
-import { safeNum, safeStr } from "@/lib/utils-helpers";
+import { safeStr } from "@/lib/utils-helpers";
 
 interface IntegrationStatus {
   id: string;
@@ -15,7 +15,7 @@ interface IntegrationStatus {
   healthScore: number;
 }
 
-interface IntegrationsResult {
+interface _IntegrationsResult {
   integrations: IntegrationStatus[];
   summary: {
     total: number;
@@ -28,22 +28,24 @@ interface IntegrationsResult {
   generatedAt: string;
 }
 
-function checkProviderStatus(envKeys: string[]): { configured: number; total: number; names: string[] } {
+function checkProviderStatus(userKeys: Record<string, string[]>): { configured: number; total: number; names: string[]; configuredNames: string[] } {
   const providers = [
-    { name: "Groq", key: "GROQ_API_KEY" },
-    { name: "Gemini", key: "GOOGLE_AI_API_KEY" },
-    { name: "OpenAI", key: "OPENAI_API_KEY" },
-    { name: "Mistral", key: "MISTRAL_API_KEY" },
-    { name: "DeepSeek", key: "DEEPSEEK_API_KEY" },
+    { name: "Groq", key: "GROQ_API_KEY", id: "groq" },
+    { name: "Gemini", key: "GOOGLE_AI_API_KEY", id: "gemini" },
+    { name: "OpenAI", key: "OPENAI_API_KEY", id: "openai" },
+    { name: "Mistral", key: "MISTRAL_API_KEY", id: "mistral" },
+    { name: "DeepSeek", key: "DEEPSEEK_API_KEY", id: "deepseek" },
   ];
 
-  const configured = providers.filter((p) => !!process.env[p.key]);
-  const missing = providers.filter((p) => !process.env[p.key]).map((p) => p.name);
+  // A provider is "configured" if it has EITHER an env var OR a user-saved key in Firestore
+  const configured = providers.filter((p) => !!process.env[p.key] || (userKeys[p.id] && userKeys[p.id].length > 0));
+  const missing = providers.filter((p) => !process.env[p.key] && !(userKeys[p.id] && userKeys[p.id].length > 0)).map((p) => p.name);
 
   return {
     configured: configured.length,
     total: providers.length,
     names: missing,
+    configuredNames: configured.map((p) => p.name),
   };
 }
 
@@ -60,7 +62,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
 
     const stores = storeSnap.docs.map((d) => ({ id: d.id, ...d.data() } as DocumentData));
     const pushed = pushedSnap.docs.map((d) => d.data() as DocumentData);
-    const userData = userDoc.data() as DocumentData | undefined;
+    const _userData = userDoc.data() as DocumentData | undefined;
 
     const integrations: IntegrationStatus[] = [];
 
@@ -108,8 +110,26 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
       });
     }
 
-    // AI Provider integration
-    const aiProviders = checkProviderStatus([]);
+    // AI Provider integration - check BOTH env vars AND user-saved Firestore keys
+    const userApiKeys: Record<string, string[]> = {};
+    try {
+      const apiKeysSnap = await db.collection("users").doc(uid).collection("settings").doc("apiKeys").get();
+      const apiKeysData = apiKeysSnap.exists ? apiKeysSnap.data() : {};
+      const providerIds = ["groq", "gemini", "openai", "deepseek", "mistral", "cohere", "together", "fireworks", "openrouter", "huggingface", "hpc"];
+      for (const pid of providerIds) {
+        const raw = (apiKeysData as Record<string, unknown>)[pid];
+        if (Array.isArray(raw)) {
+          const valid = raw.filter((v): v is string => typeof v === "string" && v.trim().length > 0);
+          if (valid.length > 0) userApiKeys[pid] = valid;
+        } else if (typeof raw === "string" && raw.trim()) {
+          userApiKeys[pid] = [raw.trim()];
+        }
+      }
+    } catch {
+      // If we can't read user keys, fall back to env-var-only check
+    }
+
+    const aiProviders = checkProviderStatus(userApiKeys);
     integrations.push({
       id: "ai-providers",
       name: `AI Providers (${aiProviders.configured}/${aiProviders.total})`,

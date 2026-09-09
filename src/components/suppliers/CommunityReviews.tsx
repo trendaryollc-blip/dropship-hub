@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Star, ThumbsUp, Filter, Plus, Loader2, Shield } from "lucide-react";
+import { Star, ThumbsUp, Plus, Loader2, Shield } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { useAPI, useMutation, revalidate } from "@/hooks/useAPI";
 import type { SupplierReview, SupplierCommunityScore } from "@/types/supplier";

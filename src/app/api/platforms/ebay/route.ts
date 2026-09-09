@@ -7,7 +7,7 @@ function isPlaceholderKey(key: string | undefined): boolean {
   return !key || key.startsWith("Your") || key === "placeholder";
 }
 
-export const POST = withAuth(async (request: NextRequest, uid: string) => {
+export const POST = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const { query } = await request.json();
 
@@ -53,6 +53,6 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
   }
 });
 
-export const GET = withAuth(async (request: NextRequest, uid: string) => {
+export const GET = withAuth(async (_request: NextRequest, _uid: string) => {
   return NextResponse.json({ platform: "eBay", configured: !isPlaceholderKey(EBAY_APP_ID) });
 });

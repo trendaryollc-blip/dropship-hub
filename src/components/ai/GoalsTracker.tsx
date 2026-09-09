@@ -37,7 +37,7 @@ export default function GoalsTracker({ uid }: { uid: string }) {
         body: JSON.stringify({ uid }),
       });
       setData(data);
-    } catch (e) { if (process.env.NODE_ENV === "development") console.warn("[GoalsTracker] silently caught", e); }
+    } catch (e) { console.warn("[GoalsTracker] Error:", e instanceof Error ? e.message : e); }
     setLoading(false);
   };
 

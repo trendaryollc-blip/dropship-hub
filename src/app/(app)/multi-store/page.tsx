@@ -32,7 +32,7 @@ export default function MultiStorePage() {
   const { data: pushData } = useAPI<{ jobs?: BulkPushJob[] }>(uid ? `/api/multi-store/bulk-push?uid=${uid}` : null);
 
   const stores = connData?.connections || [];
-  const orders = orderData?.orders || [];
+  const orders = useMemo(() => orderData?.orders || [], [orderData]);
   const inventory = invData?.inventory || [];
   const performances = perfData?.performances || [];
   const bulkJobs = pushData?.jobs || [];

@@ -71,7 +71,7 @@ export function calculateRealTimeProfit(order: {
   otherCosts?: number;
   taxRate?: number;
 }): OrderProfitData["netProfit"] {
-  const { revenue, quantity, cogs, shippingCost, platformFeePercent, paymentProcessingPercent, refunds = 0, adSpend = 0, otherCosts = 0, taxRate = 0 } = order;
+  const { revenue, quantity: _quantity, cogs, shippingCost, platformFeePercent, paymentProcessingPercent, refunds = 0, adSpend = 0, otherCosts = 0, taxRate = 0 } = order;
 
   if (!revenue || revenue <= 0) {
     return 0;
@@ -120,7 +120,7 @@ export function generateProfitSummary(orders: OrderProfitData[]): RealTimeProfit
   let totalRevenue = 0;
   let totalCosts = 0;
   let totalProfit = 0;
-  let totalOrders = orders.length;
+  const totalOrders = orders.length;
   let refundCount = 0;
   let todayRevenue = 0;
   let todayProfit = 0;

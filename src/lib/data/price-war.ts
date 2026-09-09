@@ -1,7 +1,7 @@
 import { doc, setDoc, deleteDoc, collection, query, orderBy, limit, getDocs, serverTimestamp, Timestamp, where, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { handleFirestoreError } from "./utils";
-import { PriceRuleSchema, AddPriceRuleInputSchema, AddPriceAdjustmentLogInputSchema } from "./schemas";
+import { AddPriceRuleInputSchema, AddPriceAdjustmentLogInputSchema } from "./schemas";
 
 export interface PriceRuleDoc {
   id: string;

@@ -129,7 +129,7 @@ function checkScheduleTrigger(rule: AutoModeRule, now: Date): boolean {
 async function checkThresholdTrigger(rule: AutoModeRule): Promise<boolean> {
   if (!rule.threshold) return false;
 
-  const { field, operator, value } = rule.threshold;
+  const { field: _field, operator: _operator, value: _value } = rule.threshold;
 
   // Get the current value from the tool's data
   // This is a simplified check - in production, you'd fetch the actual data

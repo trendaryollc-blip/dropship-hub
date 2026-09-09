@@ -1,4 +1,4 @@
-import type { BulkOperation, BulkOperationError } from "@/types/automation";
+import type { BulkOperation } from "@/types/automation";
 import type { FulfillmentOrder } from "@/types/fulfillment";
 
 interface BulkOrderInput {
@@ -174,7 +174,7 @@ export function validateBulkInput(input: BulkOrderInput): { valid: boolean; erro
 }
 
 export async function executeBulkOrderPlacement(input: BulkOrderPlacementInput): Promise<BulkOrderPlacementResult> {
-  const operationId = `bulk_orders_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const _operationId = `bulk_orders_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const operation = createBulkOperation({
     orderIds: input.orders.map((o) => o.id),
     action: "place_orders",

@@ -48,7 +48,7 @@ async function fetchOgImage(url: string): Promise<string | null> {
   }
 }
 
-export const POST = withAuth(async (request: NextRequest, uid: string) => {
+export const POST = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const { urls } = await request.json();
     if (!Array.isArray(urls) || urls.length === 0) {

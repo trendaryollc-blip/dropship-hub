@@ -94,7 +94,7 @@ export async function runTool(
   const startTime = Date.now();
   try {
     const result = await ToolRegistry.executeTool(toolId, input, context);
-    const duration = Date.now() - startTime;
+    const _duration = Date.now() - startTime;
 
     // 7. Log success
     await logToolExecuted(uid, toolId, executionId, input, result, context.mode, autonomyLevel as AutonomyLevel);

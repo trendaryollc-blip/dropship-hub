@@ -141,7 +141,7 @@ export function deleteTaxRate(id: string): boolean {
 }
 
 export function calculateTax(input: TaxEstimateInput): TaxCalculation {
-  const { amount, country, state, city } = input;
+  const { amount, country, state, city: _city } = input;
   const taxBreakdown: TaxBreakdownItem[] = [];
   let totalTax = 0;
 

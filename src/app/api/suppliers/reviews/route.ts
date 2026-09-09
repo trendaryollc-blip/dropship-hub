@@ -41,18 +41,18 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
       });
     }
 
-    const avgRating = reviews.reduce((sum: number, r: any) => sum + (r.overallRating || 0), 0) / totalReviews;
-    const verified = reviews.filter((r: any) => r.verified).length;
-    const positive = reviews.filter((r: any) => r.overallRating >= 4).length;
-    const negative = reviews.filter((r: any) => r.overallRating <= 2).length;
+    const avgRating = reviews.reduce((sum: number, r: Record<string, unknown>) => sum + ((r.overallRating as number) || 0), 0) / totalReviews;
+    const verified = reviews.filter((r: Record<string, unknown>) => r.verified).length;
+    const positive = reviews.filter((r: Record<string, unknown>) => (r.overallRating as number) >= 4).length;
+    const negative = reviews.filter((r: Record<string, unknown>) => (r.overallRating as number) <= 2).length;
     const neutral = totalReviews - positive - negative;
 
     const breakdownAverages = {
-      productQuality: reviews.reduce((sum: number, r: any) => sum + (r.breakdown?.productQuality || 0), 0) / totalReviews,
-      shippingSpeed: reviews.reduce((sum: number, r: any) => sum + (r.breakdown?.shippingSpeed || 0), 0) / totalReviews,
-      communication: reviews.reduce((sum: number, r: any) => sum + (r.breakdown?.communication || 0), 0) / totalReviews,
-      pricing: reviews.reduce((sum: number, r: any) => sum + (r.breakdown?.pricing || 0), 0) / totalReviews,
-      reliability: reviews.reduce((sum: number, r: any) => sum + (r.breakdown?.reliability || 0), 0) / totalReviews,
+      productQuality: reviews.reduce((sum: number, r: Record<string, unknown>) => sum + (((r.breakdown as Record<string, unknown>)?.productQuality as number) || 0), 0) / totalReviews,
+      shippingSpeed: reviews.reduce((sum: number, r: Record<string, unknown>) => sum + (((r.breakdown as Record<string, unknown>)?.shippingSpeed as number) || 0), 0) / totalReviews,
+      communication: reviews.reduce((sum: number, r: Record<string, unknown>) => sum + (((r.breakdown as Record<string, unknown>)?.communication as number) || 0), 0) / totalReviews,
+      pricing: reviews.reduce((sum: number, r: Record<string, unknown>) => sum + (((r.breakdown as Record<string, unknown>)?.pricing as number) || 0), 0) / totalReviews,
+      reliability: reviews.reduce((sum: number, r: Record<string, unknown>) => sum + (((r.breakdown as Record<string, unknown>)?.reliability as number) || 0), 0) / totalReviews,
     };
 
     return NextResponse.json({
@@ -83,7 +83,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
 
     const {
       supplierId,
-      supplierName,
+      _supplierName,
       overallRating,
       breakdown,
       title,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import Image from "next/image";
 import { Camera, Loader2, X, Upload } from "lucide-react";
 
 interface VisualSearchButtonProps {
@@ -124,7 +125,7 @@ export default function VisualSearchButton({
               ) : (
                 <div className="space-y-4">
                   <div className="relative">
-                    <img src={preview} alt="Preview" className="w-full h-48 object-contain rounded-xl bg-white/5" />
+                    <Image src={preview} alt="Preview" width={400} height={192} unoptimized className="w-full h-48 object-contain rounded-xl bg-white/5" />
                     <button
                       onClick={() => setPreview(null)}
                       className="absolute top-2 right-2 p-1 bg-black/60 rounded-lg text-white hover:bg-black/80"

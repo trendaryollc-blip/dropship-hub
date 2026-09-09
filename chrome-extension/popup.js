@@ -39,9 +39,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function loadProduct() {
     try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      const response = await chrome.tabs.sendMessage(tab.id, { action: "getProduct" });
-      
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      const response = await chrome.tabs.sendMessage(tab.id, {
+        action: "getProduct",
+      });
+
       if (response && response.title) {
         productTitle.textContent = response.title;
         if (response.price) {
@@ -58,7 +63,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         loading.style.display = "none";
         productSection.style.display = "block";
       }
-    } catch (e) {
+    } catch (_e) {
       productTitle.textContent = "Could not detect product";
       loading.style.display = "none";
       productSection.style.display = "block";
@@ -79,8 +84,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     status.textContent = "";
 
     try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      const product = await chrome.tabs.sendMessage(tab.id, { action: "getProduct" });
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      const product = await chrome.tabs.sendMessage(tab.id, {
+        action: "getProduct",
+      });
 
       const res = await fetch(`${API_BASE}/api/chrome-extension/save`, {
         method: "POST",
@@ -99,7 +109,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         status.textContent = data.error || "Failed to save product";
         status.className = "status error";
       }
-    } catch (e) {
+    } catch (_e) {
       status.textContent = "Network error — check your connection";
       status.className = "status error";
     }

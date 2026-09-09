@@ -298,7 +298,7 @@ function extractAsin(url: string): string {
   return "";
 }
 
-export const POST = withAuth(async (request: NextRequest, uid: string) => {
+export const POST = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const { asin, url, source } = await request.json();
 

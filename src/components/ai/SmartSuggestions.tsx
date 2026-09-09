@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   TrendingUp, DollarSign, AlertTriangle, Sparkles,
   Store, ArrowUpRight, RefreshCw, Bell, ChevronRight,
-  Clock, ShoppingCart, Target, Zap,
+  Clock, Zap,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAPI } from "@/hooks/useAPI";

@@ -1,6 +1,6 @@
 "use client";
 
-import { DollarSign, MousePointer, ShoppingCart, TrendingUp, Eye, BarChart3 } from "lucide-react";
+import { DollarSign, MousePointer, ShoppingCart, TrendingUp, BarChart3 } from "lucide-react";
 import { useAPI } from "@/hooks/useAPI";
 
 interface CampaignMetrics {

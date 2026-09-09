@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { searchAliExpress } from "@/lib/platform-search";
 import { withAuth } from "@/lib/auth";
 
-export const POST = withAuth(async (request: NextRequest, uid: string) => {
+export const POST = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const { query } = await request.json();
     if (!query) return NextResponse.json({ error: "Query is required" }, { status: 400 });
@@ -24,7 +24,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
   }
 });
 
-export const GET = withAuth(async (request: NextRequest, uid: string) => {
+export const GET = withAuth(async (_request: NextRequest, _uid: string) => {
   return NextResponse.json({
     platform: "AliExpress",
     configured: !!process.env.SCRAPER_API_KEY,

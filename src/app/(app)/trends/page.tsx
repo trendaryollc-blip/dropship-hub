@@ -4,7 +4,15 @@ import { useState } from "react";
 import { TrendingUp, TrendingDown, Minus, Search, Plus, Trash2, Loader2, Flame, Zap, Eye } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAPI } from "@/hooks/useAPI";
-import type { TrendPrediction, RisingStar } from "@/types/trend-predictor";
+import type { TrendPrediction, RisingStar, TrendWatchlistEntry, TrendAnalysisResponse } from "@/types/trend-predictor";
+
+interface TrendingItem {
+  id: string;
+  keyword: string;
+  direction: string;
+  growth: number;
+  volume: number;
+}
 
 const DIRECTION_ICONS = { rising: TrendingUp, peaking: Flame, stable: Minus, declining: TrendingDown } as Record<string, typeof TrendingUp>;
 const DIRECTION_COLORS = { rising: "text-emerald-400", peaking: "text-amber-400", stable: "text-blue-400", declining: "text-red-400" } as Record<string, string>;
@@ -14,10 +22,10 @@ export default function TrendsPage() {
   const { user } = useAuth();
   const uid = user?.uid || "";
 
-  const { data: trendingData } = useAPI<{ trending?: any[]; risingStars?: RisingStar[] }>(uid ? `/api/ai/trends?uid=${uid}` : null);
+  const { data: trendingData } = useAPI<{ trending?: TrendingItem[]; risingStars?: RisingStar[] }>(uid ? `/api/ai/trends?uid=${uid}` : null);
   const { data: risingData } = useAPI<{ risingStars?: RisingStar[] }>(uid ? `/api/ai/trends/rising-stars?uid=${uid}` : null);
   const { data: predictionsData } = useAPI<{ predictions?: TrendPrediction[] }>(uid ? `/api/ai/trends/predictions?uid=${uid}` : null);
-  const { data: watchlistData, mutate: mutateWatchlist } = useAPI<{ entries?: any[] }>(uid ? `/api/ai/trends/watchlist?uid=${uid}` : null);
+  const { data: watchlistData, mutate: mutateWatchlist } = useAPI<{ entries?: TrendWatchlistEntry[] }>(uid ? `/api/ai/trends/watchlist?uid=${uid}` : null);
 
   const trending = trendingData?.trending || [];
   const risingStars = risingData?.risingStars || trendingData?.risingStars || [];
@@ -27,7 +35,7 @@ export default function TrendsPage() {
   const [searchKeyword, setSearchKeyword] = useState("");
   const [searchCategory, setSearchCategory] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [analysisResult, setAnalysisResult] = useState<TrendAnalysisResponse | null>(null);
   const [activeTab, setActiveTab] = useState<"dashboard" | "analyze" | "predictions" | "watchlist">("dashboard");
   const [watchKeyword, setWatchKeyword] = useState("");
   const [watchCategory, setWatchCategory] = useState("");
@@ -43,7 +51,7 @@ export default function TrendsPage() {
       });
       const data = await res.json();
       setAnalysisResult(data);
-    } catch (e) { if (process.env.NODE_ENV === "development") console.error(e); }
+    } catch (e) { console.error("[Trends] Error:", e instanceof Error ? e.message : e); }
     finally { setAnalyzing(false); }
   };
 
@@ -58,14 +66,14 @@ export default function TrendsPage() {
       mutateWatchlist();
       setWatchKeyword("");
       setWatchCategory("");
-    } catch (e) { if (process.env.NODE_ENV === "development") console.error(e); }
+    } catch (e) { console.error("[Trends] Error:", e instanceof Error ? e.message : e); }
   };
 
   const handleRemoveWatchlist = async (id: string) => {
     try {
       await fetch(`/api/ai/trends/watchlist?id=${id}`, { method: "DELETE" });
       mutateWatchlist();
-    } catch (e) { if (process.env.NODE_ENV === "development") console.error(e); }
+    } catch (e) { console.error("[Trends] Error:", e instanceof Error ? e.message : e); }
   };
 
   return (
@@ -93,7 +101,7 @@ export default function TrendsPage() {
             <div className="glass rounded-2xl p-4 sm:p-5">
               <h3 className="font-display text-sm font-semibold text-foreground mb-3">Trending Keywords</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
-                {trending.map((t: any) => {
+                {trending.map((t) => {
                   const DirIcon = DIRECTION_ICONS[t.direction as keyof typeof DIRECTION_ICONS] || Minus;
                   const dirColor = DIRECTION_COLORS[t.direction as keyof typeof DIRECTION_COLORS] || "text-gray-400";
                   return (
@@ -139,7 +147,7 @@ export default function TrendsPage() {
           {trending.length === 0 && risingStars.length === 0 && (
             <div className="glass rounded-2xl p-12 text-center">
               <TrendingUp className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">Click "Analyze" to discover trending products and rising stars</p>
+              <p className="text-sm text-muted-foreground">Click &quot;Analyze&quot; to discover trending products and rising stars</p>
             </div>
           )}
         </>
@@ -205,11 +213,11 @@ export default function TrendsPage() {
               </div>
             )}
 
-            {analysisResult?.risingStars?.length > 0 && (
+            {analysisResult?.risingStars && analysisResult.risingStars.length > 0 && (
               <div className="glass rounded-2xl p-4 sm:p-5">
                 <h3 className="font-display text-sm font-semibold text-foreground mb-3">Rising Stars Found</h3>
                 <div className="space-y-2">
-                  {analysisResult.risingStars.map((rs: RisingStar) => (
+                  {analysisResult.risingStars.map((rs) => (
                     <div key={rs.id} className="flex items-center justify-between p-2.5 rounded-xl bg-surface border border-border">
                       <div>
                         <span className="text-xs font-medium text-foreground">{rs.productKeyword}</span>
@@ -290,7 +298,7 @@ export default function TrendsPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {watchlist.map((w: any) => (
+              {watchlist.map((w) => (
                 <div key={w.id} className="glass rounded-xl p-3 flex items-center justify-between">
                   <div>
                     <span className="text-sm font-medium text-foreground">{w.keyword}</span>

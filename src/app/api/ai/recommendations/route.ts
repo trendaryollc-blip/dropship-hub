@@ -45,7 +45,7 @@ function computeMatchScore(
   product: Omit<ProductRecommendation, "matchScore" | "reasoning">,
   userNiches: string[],
   userCategories: string[],
-  topMargins: number[],
+  _topMargins: number[],
 ): { score: number; reasoning: string } {
   let score = 50; // Base score
   const reasons: string[] = [];
@@ -107,7 +107,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
 
     const lifecycle = lifecycleSnap.docs.map((d) => d.data() as DocumentData);
     const searches = searchSnap.docs.map((d) => d.data() as DocumentData);
-    const favorites = favoritesSnap.docs.map((d) => d.data() as DocumentData);
+    const _favorites = favoritesSnap.docs.map((d) => d.data() as DocumentData);
 
     // Extract user's niches and categories from their data
     const userNiches = [

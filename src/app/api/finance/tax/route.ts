@@ -4,7 +4,7 @@ import { addTaxRate, getTaxRatesByCountry, getTaxRatesByState, getAllTaxRates, u
 
 initializeDefaultTaxRates();
 
-export const GET = withAuth(async (request: NextRequest, uid: string) => {
+export const GET = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get("action") || "list";
@@ -35,7 +35,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
   }
 });
 
-export const POST = withAuth(async (request: NextRequest, uid: string) => {
+export const POST = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const body = await request.json();
     const { action, rate, rateId, updates, input, order, reportInput } = body;

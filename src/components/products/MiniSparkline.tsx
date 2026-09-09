@@ -12,7 +12,6 @@ interface MiniSparklineProps {
 
 export default function MiniSparkline({ points, color = "#3b82f6", id = "spark", width, height }: MiniSparklineProps) {
   const [mounted, setMounted] = useState(false);
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- standard SSR mount guard
   useEffect(() => { setMounted(true); }, []);
 
   if (!mounted) return <div className="shrink-0" style={{ width: width || 120, height: height || 32 }} />;

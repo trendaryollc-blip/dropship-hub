@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Wand2, ChevronRight, ChevronLeft, Check, Loader2, Sparkles } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
-import { useAPI, useMutation } from "@/hooks/useAPI";
+import { useMutation } from "@/hooks/useAPI";
 import type { SupplierMatchResult, SupplierRecommendation, StoreProfile } from "@/types/supplier";
 
 const STEPS = ["niche", "audience", "priorities", "results"];
@@ -124,7 +124,7 @@ function RecommendationCard({ rec }: { rec: SupplierRecommendation }) {
 }
 
 export default function SmartMatchWizard() {
-  const { ref, isInView } = useInView();
+  const { ref, isInView: _isInView } = useInView();
   const [currentStep, setCurrentStep] = useState(0);
   const [profile, setProfile] = useState<StoreProfile>({
     niche: "",

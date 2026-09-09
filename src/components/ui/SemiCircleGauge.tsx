@@ -40,7 +40,7 @@ export default function SemiCircleGauge({
   const r = (Math.min(width, height * 2) - 10) / 2;
 
   const startAngle = Math.PI;
-  const endAngle = 0;
+  const _endAngle = 0;
   const currentAngle = startAngle - pct * Math.PI;
 
   const needleX = cx + r * Math.cos(currentAngle);

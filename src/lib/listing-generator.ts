@@ -108,7 +108,7 @@ function buildEbayTitle(product: ProductInput, _keywords: string[]): string {
   return truncate(product.title, 80);
 }
 
-function buildWalmartTitle(product: ProductInput, keywords: string[]): string {
+function buildWalmartTitle(product: ProductInput, _keywords: string[]): string {
   const brand = product.supplierName || "";
   let title = product.title;
   if (brand && !title.toLowerCase().includes(brand.toLowerCase())) {

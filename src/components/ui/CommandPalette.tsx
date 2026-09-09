@@ -102,7 +102,7 @@ export default function CommandPalette() {
                   flatIndex++;
                   const isSelected = flatIndex === selectedIndex;
                   const Icon = cmd.icon;
-                  const idx = flatIndex;
+                  const _idx = flatIndex;
                   return (
                     <button
                       key={cmd.id}

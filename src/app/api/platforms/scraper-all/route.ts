@@ -43,7 +43,7 @@ function extractProducts(html: string, source: string) {
   }));
 }
 
-export const POST = withAuth(async (request: NextRequest, uid: string) => {
+export const POST = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const { query, platform } = await request.json();
     if (!query) return NextResponse.json({ error: "Query is required" }, { status: 400 });
@@ -61,6 +61,6 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
   }
 });
 
-export const GET = withAuth(async (request: NextRequest, uid: string) => {
+export const GET = withAuth(async (_request: NextRequest, _uid: string) => {
   return NextResponse.json({ platform: "Scraper Platforms", configured: !!(SCRAPER_API_KEY || ZENROWS_API_KEY), supported: Object.keys(platformUrls) });
 });

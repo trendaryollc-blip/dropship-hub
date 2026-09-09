@@ -38,7 +38,7 @@ export function calculateLandedPrice(price: number, shipping: number): number {
 export function evaluatePriceRule(
   rule: PriceRule,
   competitorPrices: CompetitorPrice[],
-  config: PriceWarConfig = DEFAULT_CONFIG
+  _config: PriceWarConfig = DEFAULT_CONFIG
 ): PriceCheckResult {
   const alerts: CompetitorAlert[] = [];
   const inStockCompetitors = competitorPrices.filter((c) => c.inStock && c.totalLanded > 0);

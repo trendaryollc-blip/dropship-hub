@@ -40,7 +40,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
 
     const alerts = alertsSnap.docs.map((d) => d.data() as DocumentData);
     const supplierAlerts = supplierAlertsSnap.docs.map((d) => d.data() as DocumentData);
-    const lifecycleAlerts = lifecycleAlertsSnap.docs.map((d) => d.data() as DocumentData);
+    const _lifecycleAlerts = lifecycleAlertsSnap.docs.map((d) => d.data() as DocumentData);
     const escalated = csConversationsSnap.docs.map((d) => d.data() as DocumentData);
     const revenue = revenueSnap.docs.map((d) => d.data() as DocumentData);
     const stores = storeSnap.docs.map((d) => d.data() as DocumentData);

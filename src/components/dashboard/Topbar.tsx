@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/components/auth/AuthProvider";
-import { Bell, Search, LogOut, ChevronDown, Menu, ArrowLeft, TrendingUp, AlertTriangle, Sparkles, AlertCircle, Info, Clock, X } from "lucide-react";
+import { Bell, Search, LogOut, ChevronDown, Menu, ArrowLeft, TrendingUp, AlertTriangle, Sparkles, AlertCircle, Info, Clock } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import ThemeGallery from "@/components/theme/ThemeGallery";
@@ -151,7 +151,7 @@ export default function Topbar({ onMenuToggle }: TopbarProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: searchQuery.trim(), source: "topbar" }),
-      }).catch((e) => { if (process.env.NODE_ENV === "development") console.warn("[Topbar] silently caught", e); });
+      }).catch((e) => { console.warn("[Topbar] Error:", e instanceof Error ? e.message : e); });
       router.push(`${searchConfig.destination}?${searchConfig.paramName}=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery("");
       setSearchFocused(false);

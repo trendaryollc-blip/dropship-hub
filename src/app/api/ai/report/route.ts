@@ -125,7 +125,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
 
     // Alerts summary
     const criticalAlerts = alerts.filter((a) => safeStr(a.type) === "warning" || safeStr(a.type) === "risk").length;
-    const opportunities = alerts.filter((a) => safeStr(a.type) === "opportunity").length;
+    const _opportunities = alerts.filter((a) => safeStr(a.type) === "opportunity").length;
 
     // Health score (simplified)
     let healthScore = 50;

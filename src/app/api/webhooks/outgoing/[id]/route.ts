@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { getAdminDB } from "@/lib/firebase-admin";
-import { retryWebhook } from "@/lib/webhooks/outgoing";
 import { logger } from "@/lib/logger";
 
 export const PATCH = withAuth(async (request: NextRequest, uid: string) => {
