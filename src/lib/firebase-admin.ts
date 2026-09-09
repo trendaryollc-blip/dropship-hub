@@ -5,6 +5,7 @@ import { getAuth } from "firebase-admin/auth";
 
 let adminDb: ReturnType<typeof getFirestore> | null = null;
 let adminAuth: ReturnType<typeof getAuth> | null = null;
+let initError: string | null = null;
 
 function getServiceAccount() {
   const json = process.env.FIREBASE_SERVICE_ACCOUNT;
@@ -51,8 +52,8 @@ function ensureApp() {
       const serviceAccount = getServiceAccount();
       initializeApp({ credential: cert(serviceAccount) });
     } catch (err) {
-      console.error("[firebase-admin] Failed to initialize Firebase Admin SDK:", err instanceof Error ? err.message : err);
-      throw err;
+      initError = err instanceof Error ? err.message : String(err);
+      console.error("[firebase-admin] Failed to initialize Firebase Admin SDK:", initError);
     }
   }
 }
@@ -60,6 +61,7 @@ function ensureApp() {
 export async function getAdminDB() {
   if (adminDb) return adminDb;
   ensureApp();
+  if (initError) throw new Error(`Firebase Admin SDK not available: ${initError}`);
   adminDb = getFirestore();
   return adminDb;
 }
@@ -67,6 +69,7 @@ export async function getAdminDB() {
 export function getAdminAuth() {
   if (adminAuth) return adminAuth;
   ensureApp();
+  if (initError) throw new Error(`Firebase Admin SDK not available: ${initError}`);
   adminAuth = getAuth();
   return adminAuth;
 }
