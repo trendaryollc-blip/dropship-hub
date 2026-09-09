@@ -96,11 +96,17 @@ export async function GET(req: NextRequest) {
     let uid = "";
 
     if (idToken) {
-      try {
-        const decoded = await getAdminAuth().verifyIdToken(idToken);
-        uid = decoded.uid;
-      } catch {
-        // Token invalid or expired
+      const adminAuth = getAdminAuth();
+      if (adminAuth) {
+        try {
+          const decoded = await adminAuth.verifyIdToken(idToken);
+          uid = decoded.uid;
+        } catch {
+          // Token invalid or expired
+        }
+      } else {
+        console.warn("[shopify-callback] Admin Auth unavailable — cannot verify ID token");
+        return NextResponse.redirect(`${errorRedirect}unauthorized`);
       }
     }
 

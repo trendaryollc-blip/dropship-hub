@@ -245,6 +245,10 @@ function evaluateCondition(
 
 export async function getRecentExecutions(uid: string, limit: number = 20): Promise<ToolExecutionRecord[]> {
   const db = await getAdminDB();
+  if (!db) {
+    console.warn("[executor] getAdminDB unavailable — returning empty executions for uid:", uid);
+    return [];
+  }
   const snapshot = await db
     .collection("users")
     .doc(uid)
@@ -258,6 +262,10 @@ export async function getRecentExecutions(uid: string, limit: number = 20): Prom
 
 export async function getPendingConfirmations(uid: string): Promise<ToolExecutionRecord[]> {
   const db = await getAdminDB();
+  if (!db) {
+    console.warn("[executor] getAdminDB unavailable — returning empty confirmations for uid:", uid);
+    return [];
+  }
   const snapshot = await db
     .collection("users")
     .doc(uid)

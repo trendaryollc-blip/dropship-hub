@@ -7,28 +7,35 @@ export async function verifyAuth(request: NextRequest): Promise<string | null> {
   if (!authHeader?.startsWith("Bearer ")) return null;
   const token = authHeader.split("Bearer ")[1];
   if (!token) return null;
-  try {
-    const checkRevocation = process.env.CHECK_TOKEN_REVOCATION === "true";
-    const decoded = await getAdminAuth().verifyIdToken(token, checkRevocation);
-    return decoded.uid;
-  } catch (err) {
-    console.warn("[auth] Admin SDK token verification failed, attempting unverified decode:", err instanceof Error ? err.message : err);
-    // If Admin SDK is unavailable, decode the JWT payload without verification
-    // to extract the UID. This is less secure but prevents total auth failure.
+
+  // Try Admin SDK verification first
+  const adminAuth = getAdminAuth();
+  if (adminAuth) {
     try {
-      const parts = token.split(".");
-      if (parts.length === 3) {
-        const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
-        if (payload.sub) {
-          console.warn("[auth] Using unverified UID from JWT payload:", payload.sub);
-          return payload.sub;
-        }
-      }
-    } catch {
-      // Failed to decode
+      const checkRevocation = process.env.CHECK_TOKEN_REVOCATION === "true";
+      const decoded = await adminAuth.verifyIdToken(token, checkRevocation);
+      return decoded.uid;
+    } catch (err) {
+      console.warn("[auth] Admin SDK token verification failed, attempting unverified decode:", err instanceof Error ? err.message : err);
     }
-    return null;
+  } else {
+    console.warn("[auth] Firebase Admin Auth unavailable — falling back to unverified JWT decode");
   }
+
+  // Fallback: decode JWT payload without verification
+  try {
+    const parts = token.split(".");
+    if (parts.length === 3) {
+      const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
+      if (payload.sub) {
+        console.warn("[auth] Using unverified UID from JWT payload:", payload.sub);
+        return payload.sub;
+      }
+    }
+  } catch {
+    // Failed to decode
+  }
+  return null;
 }
 
 export async function requireAuth(request: NextRequest): Promise<{ uid: string } | NextResponse> {
@@ -40,8 +47,9 @@ export async function requireAuth(request: NextRequest): Promise<{ uid: string }
 }
 
 export async function getUserTier(uid: string): Promise<UserTier> {
+  const db = await getAdminDB();
+  if (!db) return "free";
   try {
-    const db = await getAdminDB();
     const userDoc = await db.collection("users").doc(uid).collection("settings").doc("subscription").get();
     if (userDoc.exists) {
       const data = userDoc.data();
@@ -122,23 +130,26 @@ export async function isOwner(uid: string): Promise<boolean> {
 
   // Hardcoded fallback: if the user's email matches the known owner email,
   // grant owner access. This matches the client-side check in the Sidebar.
-  // Try via Admin SDK first, but if it's unavailable, still grant access
-  // when no env-var config exists (the user IS authenticated via client SDK).
-  try {
-    const userRecord = await getAdminAuth().getUser(uid);
-    if (userRecord.email) {
-      const normalizedEmail = userRecord.email.toLowerCase();
-      if (ownerEmails.includes(normalizedEmail)) return true;
-      // Also check against hardcoded known owner emails
-      const knownOwnerEmails = ["trendaryo206@gmail.com"];
-      if (knownOwnerEmails.includes(normalizedEmail)) return true;
+  const adminAuth = getAdminAuth();
+  if (adminAuth) {
+    try {
+      const userRecord = await adminAuth.getUser(uid);
+      if (userRecord.email) {
+        const normalizedEmail = userRecord.email.toLowerCase();
+        if (ownerEmails.includes(normalizedEmail)) return true;
+        // Also check against hardcoded known owner emails
+        const knownOwnerEmails = ["trendaryo206@gmail.com"];
+        if (knownOwnerEmails.includes(normalizedEmail)) return true;
+      }
+    } catch (err) {
+      console.warn("[auth] Admin SDK getUser failed for uid:", uid, ":", err instanceof Error ? err.message : err);
     }
-  } catch {
-    // Firebase Admin SDK may not be available — if UID matches a known
-    // owner UID pattern or the user is authenticated, grant access
-    console.warn("[auth] Admin SDK unavailable for uid:", uid, "— granting owner access (env vars are configured)");
-    return true;
+  } else {
+    console.warn("[auth] Admin SDK unavailable for uid:", uid, "— falling back to env-var/email checks only");
   }
 
+  // If env vars are configured but Admin SDK is unavailable, we can't verify
+  // the email via Admin SDK, so rely on what we've already checked (direct UID match).
+  // If no env config exists, grant access as dev fallback (handled above).
   return false;
 }

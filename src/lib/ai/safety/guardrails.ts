@@ -94,6 +94,7 @@ export async function recordAction(uid: string, cost: number = 0): Promise<void>
 
 async function getActionCount(uid: string, window: "hour" | "day"): Promise<number> {
   const db = await getAdminDB();
+  if (!db) return 0;
   const now = new Date();
   let key: string;
 
@@ -109,6 +110,7 @@ async function getActionCount(uid: string, window: "hour" | "day"): Promise<numb
 
 async function getDailyCost(uid: string): Promise<number> {
   const db = await getAdminDB();
+  if (!db) return 0;
   const now = new Date();
   const key = `day_${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 

@@ -11,6 +11,15 @@ const SETTINGS_COLLECTION = "settings";
 
 export async function getModePreferences(uid: string): Promise<AIModePreferences> {
   const db = await getAdminDB();
+  if (!db) {
+    console.warn("[user-prefs] getAdminDB unavailable — returning default preferences for uid:", uid);
+    return {
+      ...DEFAULT_MODE_PREFERENCES,
+      uid,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  }
   const doc = await db
     .collection("users")
     .doc(uid)
@@ -35,6 +44,11 @@ export async function updateModePreferences(
   updates: Partial<Omit<AIModePreferences, "uid" | "createdAt" | "updatedAt">>
 ): Promise<AIModePreferences> {
   const db = await getAdminDB();
+  if (!db) {
+    console.warn("[user-prefs] getAdminDB unavailable — cannot update preferences for uid:", uid);
+    const existing = await getModePreferences(uid);
+    return existing;
+  }
   const existing = await getModePreferences(uid);
 
   const updated: AIModePreferences = {

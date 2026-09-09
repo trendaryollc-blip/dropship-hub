@@ -44,7 +44,11 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     // Delete Firebase Auth user
     try {
       const adminAuth = getAdminAuth();
-      await adminAuth.deleteUser(uid);
+      if (adminAuth) {
+        await adminAuth.deleteUser(uid);
+      } else {
+        console.warn("[delete-account] Admin Auth unavailable — skipping user deletion");
+      }
     } catch {
       // Auth user deletion may fail if called from client — that's OK
     }

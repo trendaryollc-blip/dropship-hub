@@ -168,6 +168,10 @@ function createExecutionRecord(
 
 async function saveExecutionRecord(record: ToolExecutionRecord): Promise<void> {
   const db = await getAdminDB();
+  if (!db) {
+    console.warn("[runner] getAdminDB unavailable — cannot save execution record:", record.id);
+    return;
+  }
   await db
     .collection("users")
     .doc(record.uid)
@@ -178,6 +182,10 @@ async function saveExecutionRecord(record: ToolExecutionRecord): Promise<void> {
 
 export async function getExecutionRecord(uid: string, executionId: string): Promise<ToolExecutionRecord | null> {
   const db = await getAdminDB();
+  if (!db) {
+    console.warn("[runner] getAdminDB unavailable — cannot get execution record:", executionId);
+    return null;
+  }
   const doc = await db
     .collection("users")
     .doc(uid)
@@ -194,8 +202,13 @@ export async function confirmExecution(uid: string, executionId: string): Promis
     return null;
   }
 
-  // Mark as confirmed
   const db = await getAdminDB();
+  if (!db) {
+    console.warn("[runner] getAdminDB unavailable — cannot confirm execution:", executionId);
+    return null;
+  }
+
+  // Mark as confirmed
   await db
     .collection("users")
     .doc(uid)
@@ -222,6 +235,11 @@ export async function cancelExecution(uid: string, executionId: string): Promise
   }
 
   const db = await getAdminDB();
+  if (!db) {
+    console.warn("[runner] getAdminDB unavailable — cannot cancel execution:", executionId);
+    return false;
+  }
+
   await db
     .collection("users")
     .doc(uid)

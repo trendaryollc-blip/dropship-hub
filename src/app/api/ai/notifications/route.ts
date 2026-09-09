@@ -16,6 +16,9 @@ interface NotificationPayload {
 export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const db = await getAdminDB();
+    if (!db) {
+      return NextResponse.json({ error: "Service temporarily unavailable" }, { status: 503 });
+    }
     const userRef = db.collection("users").doc(uid);
 
     // Get user settings for notification preferences
@@ -141,33 +144,37 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     if (fcmToken) {
       try {
         const { getAdminAuth } = await import("@/lib/firebase-admin");
-        const auth = getAdminAuth();
-        const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "";
+        const adminAuth = getAdminAuth();
+        if (!adminAuth) {
+          console.warn("[notifications] Admin Auth unavailable — skipping FCM push");
+        } else {
+          const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "";
 
-        const messagePayload = {
-          notification: {
-            title: notifications[0].title,
-            body: notifications[0].body,
-          },
-          data: {
-            url: notifications[0].url,
-            severity: notifications[0].severity,
-          },
-          token: fcmToken,
-        };
+          const messagePayload = {
+            notification: {
+              title: notifications[0].title,
+              body: notifications[0].body,
+            },
+            data: {
+              url: notifications[0].url,
+              severity: notifications[0].severity,
+            },
+            token: fcmToken,
+          };
 
-        const fcmRes = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${await auth.createCustomToken(uid)}`,
-          },
-          body: JSON.stringify({ message: messagePayload }),
-        });
+          const fcmRes = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${await adminAuth.createCustomToken(uid)}`,
+            },
+            body: JSON.stringify({ message: messagePayload }),
+          });
 
-        pushSent = fcmRes.ok;
-        if (!fcmRes.ok) {
-          console.error("[notifications] FCM send failed:", fcmRes.status, await fcmRes.text().catch(() => ""));
+          pushSent = fcmRes.ok;
+          if (!fcmRes.ok) {
+            console.error("[notifications] FCM send failed:", fcmRes.status, await fcmRes.text().catch(() => ""));
+          }
         }
       } catch (err) {
         console.error("[notifications] FCM push error:", err instanceof Error ? err.message : err);
