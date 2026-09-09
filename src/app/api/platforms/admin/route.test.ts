@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("@/lib/auth", () => ({
   verifyAuth: vi.fn(),
   isOwner: vi.fn(),
+  extractEmailFromRequest: vi.fn(() => null),
 }));
 
 vi.mock("@/lib/platform-config", () => ({

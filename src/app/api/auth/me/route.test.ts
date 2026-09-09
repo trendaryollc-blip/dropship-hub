@@ -5,6 +5,7 @@ vi.mock("@/lib/auth", () => ({
     return handler(req, "test-user-123");
   }),
   isOwner: vi.fn().mockResolvedValue(false),
+  extractEmailFromRequest: vi.fn(() => null),
 }));
 
 vi.mock("@/lib/rate-limit", () => ({

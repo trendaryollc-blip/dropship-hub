@@ -17,6 +17,7 @@ vi.mock("next/server", () => {
 
 vi.mock("@/lib/firebase-admin", () => ({
   getAdminAuth: vi.fn(),
+  getAdminDB: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock("@/lib/rate-limit", () => ({

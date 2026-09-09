@@ -155,14 +155,6 @@ export async function isOwner(uid: string, email: string | null = null): Promise
   // Hardcoded known owner email(s) — fallback used when env vars are missing.
   const knownOwnerEmails = ["trendaryo206@gmail.com"];
 
-  // If no OWNER_UID or OWNER_EMAIL is configured at all, grant owner access
-  // to any authenticated user as a dev/fallback mode.
-  const hasOwnerConfig = ownerUids.length > 0 || ownerEmails.length > 0;
-  if (!hasOwnerConfig) {
-    console.warn("[auth] No OWNER_UID or OWNER_EMAIL configured — granting owner access to uid:", uid);
-    return true;
-  }
-
   const emailMatches = (candidate: string | null | undefined): boolean => {
     if (!candidate) return false;
     const normalized = candidate.toLowerCase();
@@ -173,8 +165,9 @@ export async function isOwner(uid: string, email: string | null = null): Promise
   //    when the Admin SDK is unavailable or misconfigured.
   if (emailMatches(email)) return true;
 
-  // 2) Fallback: resolve the uid → email via the Admin SDK. Guarded so a failure
-  //    here never throws out of isOwner (which would 500 the caller).
+  // 2) Fallback: resolve the uid → email via the Admin SDK against the
+  //    configured + known owner emails. Guarded so a failure here never throws
+  //    out of isOwner (which would 500 the caller).
   try {
     const adminAuth = getAdminAuth();
     if (adminAuth) {
