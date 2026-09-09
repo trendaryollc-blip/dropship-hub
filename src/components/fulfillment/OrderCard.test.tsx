@@ -8,6 +8,10 @@ vi.mock("@/hooks/useInView", () => ({
   useInView: () => ({ ref: vi.fn(), isInView: true }),
 }));
 
+vi.mock("next/image", () => ({
+  default: (props: any) => <img {...props} />,
+}));
+
 const baseOrder: FulfillmentOrder = {
   id: "ord-1",
   trendaryoOrderId: "tord-1",

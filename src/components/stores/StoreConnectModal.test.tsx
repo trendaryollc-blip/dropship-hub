@@ -4,6 +4,10 @@ import StoreConnectModal from "./StoreConnectModal";
 
 const mockGetIdToken = vi.fn().mockResolvedValue("mock_id_token");
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 vi.mock("@/components/auth/AuthProvider", () => ({
   useAuth: () => ({
     user: { uid: "test-uid", email: "test@test.com", getIdToken: mockGetIdToken },

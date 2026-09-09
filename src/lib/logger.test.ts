@@ -72,13 +72,13 @@ describe("logger", () => {
     vi.unstubAllEnvs();
   });
 
-  it("silentCatch does not log in production", async () => {
+  it("silentCatch logs in production", async () => {
     vi.stubEnv("NODE_ENV", "production");
 
     const { silentCatch } = await import("./logger");
     silentCatch("ctx", new Error("fail"));
 
-    expect(consoleWarnSpy).not.toHaveBeenCalled();
+    expect(consoleWarnSpy).toHaveBeenCalled();
 
     vi.unstubAllEnvs();
   });

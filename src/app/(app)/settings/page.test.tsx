@@ -6,6 +6,10 @@ vi.mock("next/link", () => ({
   default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
+}));
+
 vi.mock("@/components/auth/AuthProvider", () => ({
   useAuth: () => ({
     user: { uid: "test-uid", email: "test@test.com", getIdToken: vi.fn().mockResolvedValue("token") },
