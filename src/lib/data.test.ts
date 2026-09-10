@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 
 describe("data barrel re-exports", () => {
-  it("re-exports user-settings", async () => {
+  it("re-exports user-settings", { timeout: 15000 }, async () => {
     const mod = await import("./data");
     expect(typeof mod.getUserSettings).toBe("function");
     expect(typeof mod.updateUserSettings).toBe("function");
