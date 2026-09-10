@@ -47,6 +47,14 @@
         { "fieldPath": "type", "order": "ASCENDING" },
         { "fieldPath": "addedAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "settings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tier", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

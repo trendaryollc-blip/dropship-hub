@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "i.ebayimg.com" },
       { protocol: "https", hostname: "m.media-amazon.com" },
       { protocol: "https", hostname: "images.unsplash.com" },
-      { protocol: "https", hostname: "cf.cjdropshipping.com" },
+      { protocol: "https", hostname: "**.cjdropshipping.com" },
     ],
   },
 };

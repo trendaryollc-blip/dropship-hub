@@ -2,19 +2,61 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // User profiles and all subcollections
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    // Helper: check if the signed-in user is the app owner
+    function isOwner() {
+      return request.auth != null && request.auth.uid == "WBH7KDGxsaOPTYrYXjd4oZLgu5T2";
     }
 
-    // Platform configurations (API keys, health status)
-    // Read: any authenticated user. Write: only admin (owner).
+    // ──────────────────────────────────────────────────
+    // USER PROFILES — self read/write, owner full access
+    // ──────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || isOwner());
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && (request.auth.uid == userId || isOwner());
+      allow delete: if isOwner();
+
+      // User subcollections (settings, usage, etc.)
+      match /{document=**} {
+        allow read: if request.auth != null && (request.auth.uid == userId || isOwner());
+        allow write: if request.auth != null && (request.auth.uid == userId || isOwner());
+      }
+    }
+
+    // ──────────────────────────────────────────────────
+    // COLLECTION GROUP: settings (subscription info)
+    // Used by admin stats to count active subscriptions
+    // ──────────────────────────────────────────────────
+    match /{document=**} {
+      allow read: if isOwner();
+    }
+
+    // ──────────────────────────────────────────────────
+    // PLATFORMS — any authenticated user reads, owner writes
+    // ──────────────────────────────────────────────────
     match /platforms/{platformId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.token.admin == true;
+      allow write: if isOwner();
     }
 
-    // Reject all other access
+    // ──────────────────────────────────────────────────
+    // SYSTEM SETTINGS — owner only
+    // ──────────────────────────────────────────────────
+    match /system/{doc} {
+      allow read, write: if isOwner();
+    }
+
+    // ──────────────────────────────────────────────────
+    // SEARCH HISTORY — owner read, authenticated user write
+    // ──────────────────────────────────────────────────
+    match /searchHistory/{doc} {
+      allow read: if isOwner();
+      allow create: if request.auth != null;
+    }
+
+    // ──────────────────────────────────────────────────
+    // REJECT ALL OTHER ACCESS
+    // ──────────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
     }
