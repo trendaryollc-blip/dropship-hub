@@ -8,17 +8,31 @@ let adminAuth: ReturnType<typeof getAuth> | null = null;
 let initError: string | null = null;
 
 function repairPrivateKey(pem: string): string {
-  // Normalize the PEM: strip surrounding whitespace, ensure proper line breaks
-  const lines = pem.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  // Step 1: Convert literal \n sequences to actual newlines
+  const normalized = pem.replace(/\\n/g, "\n");
+
+  // Step 2: Split into lines, trim, filter empties
+  const lines = normalized.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+
+  // Step 3: Find PEM boundaries
   const header = lines.find((l) => l.startsWith("-----BEGIN"));
   const footer = lines.find((l) => l.startsWith("-----END"));
-  if (!header || !footer) return pem;
+  if (!header || !footer) {
+    console.error("[firebase-admin] PEM header/footer not found in private_key");
+    return pem;
+  }
 
   const headerIdx = lines.indexOf(header);
   const footerIdx = lines.indexOf(footer);
-  const base64Lines = lines.slice(headerIdx + 1, footerIdx).filter((l) => /^[A-Za-z0-9+/=]+$/.test(l));
+  const base64Lines = lines
+    .slice(headerIdx + 1, footerIdx)
+    .join("")
+    .match(/.{1,64}/g) || [];
 
-  return [header, ...base64Lines, footer].join("\n");
+  const result = [header, ...base64Lines, footer].join("\n") + "\n";
+
+  console.log("[firebase-admin] Private key repaired successfully");
+  return result;
 }
 
 function getServiceAccount() {
@@ -63,8 +77,13 @@ function getServiceAccount() {
   }
 
   // Step 4: Repair the private_key PEM if present
-  if (parsed.private_key && typeof parsed.private_key === "string") {
-    parsed.private_key = repairPrivateKey(parsed.private_key);
+  const pk = parsed.private_key;
+  if (pk && typeof pk === "string") {
+    const originalLength = pk.length;
+    parsed.private_key = repairPrivateKey(pk);
+    console.log(`[firebase-admin] Private key: ${originalLength} → ${(parsed.private_key as string).length} chars`);
+  } else {
+    console.error("[firebase-admin] No private_key found in service account JSON");
   }
 
   return parsed;
