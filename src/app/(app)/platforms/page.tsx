@@ -503,16 +503,14 @@ export default function PlatformsPage() {
           )}
         </div>
         <div className="flex items-center gap-3">
-          {process.env.NODE_ENV === "development" && (
-            <button
-              onClick={handleSeed}
-              disabled={seeding}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-muted-foreground hover:text-foreground hover:border-accent/30 transition-all disabled:opacity-50"
-            >
-              {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-              Import from .env
-            </button>
-          )}
+          <button
+            onClick={handleSeed}
+            disabled={seeding}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-muted-foreground hover:text-foreground hover:border-accent/30 transition-all disabled:opacity-50"
+          >
+            {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            Import from .env
+          </button>
           {errorCount > 0 && (
             <button
               onClick={handleClearCooldowns}
