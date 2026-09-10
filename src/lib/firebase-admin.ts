@@ -1,5 +1,5 @@
 // Server-side only — never import this in client components
-import { initializeApp, cert, getApps } from "firebase-admin/app";
+import { initializeApp, cert, getApps, type ServiceAccount } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 
@@ -7,97 +7,93 @@ let adminDb: ReturnType<typeof getFirestore> | null = null;
 let adminAuth: ReturnType<typeof getAuth> | null = null;
 let initError: string | null = null;
 
-function repairPrivateKey(pem: string): string {
-  // Step 1: Convert literal \n sequences to actual newlines
-  const normalized = pem.replace(/\\n/g, "\n");
-
-  // Step 2: Split into lines, trim, filter empties
-  const lines = normalized.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-
-  // Step 3: Find PEM boundaries
-  const header = lines.find((l) => l.startsWith("-----BEGIN"));
-  const footer = lines.find((l) => l.startsWith("-----END"));
-  if (!header || !footer) {
-    console.error("[firebase-admin] PEM header/footer not found in private_key");
-    return pem;
-  }
-
-  const headerIdx = lines.indexOf(header);
-  const footerIdx = lines.indexOf(footer);
-  const base64Lines = lines
-    .slice(headerIdx + 1, footerIdx)
-    .join("")
-    .match(/.{1,64}/g) || [];
-
-  const result = [header, ...base64Lines, footer].join("\n") + "\n";
-
-  console.log("[firebase-admin] Private key repaired successfully");
-  return result;
-}
-
-function getServiceAccount() {
+/**
+ * Build a ServiceAccount from the raw JSON env var, repairing common
+ * Vercel env-var corruptions along the way.
+ */
+function buildServiceAccount(): ServiceAccount {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
+
   if (!raw) {
     throw new Error(
-      "FIREBASE_SERVICE_ACCOUNT environment variable is not set. " +
-      "Go to Vercel Dashboard → Settings → Environment Variables and add the full service-account JSON."
+      "FIREBASE_SERVICE_ACCOUNT is not set. Go to Vercel → Settings → Environment Variables."
     );
   }
 
-  // Step 1: Try parsing as-is
-  let parsed: Record<string, unknown>;
+  // --- try parsing as-is first ---
+  let obj: Record<string, unknown>;
   try {
-    parsed = JSON.parse(raw);
+    obj = JSON.parse(raw);
   } catch {
-    // Step 2: Vercel can corrupt \n inside JSON strings by converting them to
-    // real newlines. Try to repair by collapsing newlines inside all string values.
+    // Vercel may convert \n inside JSON strings to real newlines.
+    // Strategy: rebuild the JSON by finding key:value pairs with a regex.
     try {
-      const repaired = raw.replace(
-        /("(?:private_key|private_key_id|client_email|client_id|token_uri|type)"\s*:\s*")([\s\S]*?)("\s*[,}])/g,
-        (_match, prefix: string, value: string, suffix: string) => {
-          return `${prefix}${value.replace(/\n/g, "\\n")}${suffix}`;
-        }
-      );
-      parsed = JSON.parse(repaired);
+      const fixed = raw
+        // collapse real newlines inside string values by matching key:value pairs
+        .replace(/"([^"]+)"\s*:\s*"([^"]*)"/g, (_m, key: string, val: string) => {
+          return `"${key}":"${val.replace(/\n/g, "\\n")}"`;
+        });
+      obj = JSON.parse(fixed);
     } catch {
-      // Step 3: More aggressive — collapse ALL newlines between quotes
+      // last-ditch: strip all newlines and collapse whitespace
       try {
-        const aggressivelyRepaired = raw
-          .replace(/\n/g, " ")
-          .replace(/\s{2,}/g, " ");
-        parsed = JSON.parse(aggressivelyRepaired);
-      } catch (repairErr) {
-        console.error("[firebase-admin] FIREBASE_SERVICE_ACCOUNT JSON parse failed.", repairErr);
+        obj = JSON.parse(raw.replace(/[\r\n]+/g, " ").replace(/\s{2,}/g, " "));
+      } catch (e) {
         throw new Error(
-          "FIREBASE_SERVICE_ACCOUNT contains invalid JSON. " +
-          "In Vercel, paste the ENTIRE service-account JSON as a single-line value."
+          `FIREBASE_SERVICE_ACCOUNT is not valid JSON. ` +
+          `Re-download the JSON from Firebase Console → Project Settings → Service Accounts → Generate new private key, ` +
+          `and paste the entire single-line JSON into the Vercel env var.`
         );
       }
     }
   }
 
-  // Step 4: Repair the private_key PEM if present
-  const pk = parsed.private_key;
-  if (pk && typeof pk === "string") {
-    const originalLength = pk.length;
-    parsed.private_key = repairPrivateKey(pk);
-    console.log(`[firebase-admin] Private key: ${originalLength} → ${(parsed.private_key as string).length} chars`);
-  } else {
-    console.error("[firebase-admin] No private_key found in service account JSON");
+  // --- repair the private key PEM ---
+  let pk = obj.private_key as string | undefined;
+  if (!pk || typeof pk !== "string") {
+    throw new Error("Service account JSON is missing the private_key field.");
   }
 
-  return parsed;
+  // Convert any escaped \n to real newlines
+  pk = pk.replace(/\\n/g, "\n");
+
+  // Extract the base64 payload between BEGIN and END markers
+  const pemMatch = pk.match(
+    /-----BEGIN (?:RSA )?PRIVATE KEY-----\s*([\s\S]*?)\s*-----END (?:RSA )?PRIVATE KEY-----/
+  );
+  if (!pemMatch) {
+    throw new Error(
+      "Private key does not contain valid PEM header/footer. " +
+      "Re-download the service account JSON from Firebase Console."
+    );
+  }
+
+  // Strip all whitespace / line breaks from the base64, then re-chunk to 64-char lines
+  const b64 = pemMatch[1].replace(/\s+/g, "");
+  const chunked = b64.match(/.{1,64}/g)?.join("\n") || b64;
+  const header = pk.includes("BEGIN RSA PRIVATE KEY")
+    ? "-----BEGIN RSA PRIVATE KEY-----"
+    : "-----BEGIN PRIVATE KEY-----";
+  const footer = pk.includes("END RSA PRIVATE KEY")
+    ? "-----END RSA PRIVATE KEY-----"
+    : "-----END PRIVATE KEY-----";
+
+  obj.private_key = `${header}\n${chunked}\n${footer}\n`;
+
+  console.log("[firebase-admin] Service account loaded, project:", obj.project_id);
+
+  return obj as unknown as ServiceAccount;
 }
 
 function ensureApp() {
   if (getApps().length === 0) {
     try {
-      const serviceAccount = getServiceAccount();
-      initializeApp({ credential: cert(serviceAccount as Record<string, string>) });
+      const serviceAccount = buildServiceAccount();
+      initializeApp({ credential: cert(serviceAccount) });
       console.log("[firebase-admin] Firebase Admin SDK initialized successfully");
     } catch (err) {
       initError = err instanceof Error ? err.message : String(err);
-      console.error("[firebase-admin] Failed to initialize Firebase Admin SDK:", initError);
+      console.error("[firebase-admin] Failed to initialize:", initError);
     }
   }
 }
@@ -118,15 +114,11 @@ export function getAdminAuth() {
   return adminAuth;
 }
 
-/**
- * Check if Firebase Admin SDK is properly configured.
- * Returns a descriptive error string if misconfigured, or null if healthy.
- */
 export function checkAdminHealth(): string | null {
   const json = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!json) return "FIREBASE_SERVICE_ACCOUNT is not set";
   try {
-    getServiceAccount();
+    buildServiceAccount();
     return null;
   } catch (err) {
     return err instanceof Error ? err.message : "FIREBASE_SERVICE_ACCOUNT is invalid";
