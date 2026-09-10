@@ -8,6 +8,17 @@ let adminAuth: ReturnType<typeof getAuth> | null = null;
 let initError: string | null = null;
 
 /**
+ * Use node-forge (bundled with firebase-admin) to parse and re-export a clean PEM.
+ * This handles any DER corruption that simple string repair cannot fix.
+ */
+function reEncodePrivateKey(pem: string): string {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const forge = require("node-forge");
+  const result = forge.pki.privateKeyFromPem(pem);
+  return forge.pki.privateKeyToPem(result);
+}
+
+/**
  * Build a ServiceAccount from the raw JSON env var, repairing common
  * Vercel env-var corruptions along the way.
  */
@@ -25,24 +36,18 @@ function buildServiceAccount(): ServiceAccount {
   try {
     obj = JSON.parse(raw);
   } catch {
-    // Vercel may convert \n inside JSON strings to real newlines.
-    // Strategy: rebuild the JSON by finding key:value pairs with a regex.
     try {
-      const fixed = raw
-        // collapse real newlines inside string values by matching key:value pairs
-        .replace(/"([^"]+)"\s*:\s*"([^"]*)"/g, (_m, key: string, val: string) => {
-          return `"${key}":"${val.replace(/\n/g, "\\n")}"`;
-        });
+      const fixed = raw.replace(
+        /"([^"]+)"\s*:\s*"([^"]*)"/g,
+        (_m, key: string, val: string) => `"${key}":"${val.replace(/\n/g, "\\n")}"`
+      );
       obj = JSON.parse(fixed);
     } catch {
-      // last-ditch: strip all newlines and collapse whitespace
       try {
         obj = JSON.parse(raw.replace(/[\r\n]+/g, " ").replace(/\s{2,}/g, " "));
-      } catch (e) {
+      } catch {
         throw new Error(
-          `FIREBASE_SERVICE_ACCOUNT is not valid JSON. ` +
-          `Re-download the JSON from Firebase Console → Project Settings → Service Accounts → Generate new private key, ` +
-          `and paste the entire single-line JSON into the Vercel env var.`
+          "FIREBASE_SERVICE_ACCOUNT is not valid JSON. Re-download from Firebase Console → Project Settings → Service Accounts."
         );
       }
     }
@@ -54,32 +59,36 @@ function buildServiceAccount(): ServiceAccount {
     throw new Error("Service account JSON is missing the private_key field.");
   }
 
-  // Convert any escaped \n to real newlines
+  // Convert escaped \n to real newlines
   pk = pk.replace(/\\n/g, "\n");
 
-  // Extract the base64 payload between BEGIN and END markers
+  // Extract PEM between BEGIN/END markers
   const pemMatch = pk.match(
     /-----BEGIN (?:RSA )?PRIVATE KEY-----\s*([\s\S]*?)\s*-----END (?:RSA )?PRIVATE KEY-----/
   );
   if (!pemMatch) {
-    throw new Error(
-      "Private key does not contain valid PEM header/footer. " +
-      "Re-download the service account JSON from Firebase Console."
+    throw new Error("Private key does not contain valid PEM header/footer.");
+  }
+
+  const b64 = pemMatch[1].replace(/\s+/g, "");
+  const isRSA = pk.includes("BEGIN RSA PRIVATE KEY");
+  const header = isRSA ? "-----BEGIN RSA PRIVATE KEY-----" : "-----BEGIN PRIVATE KEY-----";
+  const footer = isRSA ? "-----END RSA PRIVATE KEY-----" : "-----END PRIVATE KEY-----";
+  let repairedPem = `${header}\n${b64}\n${footer}\n`;
+
+  // Try node-forge re-encoding — this validates and re-exports a clean PEM
+  // that jose/google-auth-library can always parse.
+  try {
+    repairedPem = reEncodePrivateKey(repairedPem);
+    console.log("[firebase-admin] Private key re-encoded via node-forge");
+  } catch (forgeErr) {
+    console.warn(
+      "[firebase-admin] node-forge re-encode failed, using raw PEM:",
+      forgeErr instanceof Error ? forgeErr.message : forgeErr
     );
   }
 
-  // Strip all whitespace / line breaks from the base64, then re-chunk to 64-char lines
-  const b64 = pemMatch[1].replace(/\s+/g, "");
-  const chunked = b64.match(/.{1,64}/g)?.join("\n") || b64;
-  const header = pk.includes("BEGIN RSA PRIVATE KEY")
-    ? "-----BEGIN RSA PRIVATE KEY-----"
-    : "-----BEGIN PRIVATE KEY-----";
-  const footer = pk.includes("END RSA PRIVATE KEY")
-    ? "-----END RSA PRIVATE KEY-----"
-    : "-----END PRIVATE KEY-----";
-
-  obj.private_key = `${header}\n${chunked}\n${footer}\n`;
-
+  obj.private_key = repairedPem;
   console.log("[firebase-admin] Service account loaded, project:", obj.project_id);
 
   return obj as unknown as ServiceAccount;
