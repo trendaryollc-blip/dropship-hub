@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
     const platforms = await getAllPlatforms();
     return NextResponse.json({ platforms });
   } catch (error) {
+    console.error("[platforms/admin] GET error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to fetch platforms" },
       { status: 500 }
@@ -119,6 +120,7 @@ export async function POST(request: NextRequest) {
     await createPlatform(input);
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error("[platforms/admin] POST error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to create platform" },
       { status: 500 }

@@ -9,17 +9,15 @@ export async function verifyAuth(request: NextRequest): Promise<string | null> {
   if (!token) return null;
 
   // Try Admin SDK verification first
-  const adminAuth = getAdminAuth();
-  if (adminAuth) {
-    try {
+  try {
+    const adminAuth = getAdminAuth();
+    if (adminAuth) {
       const checkRevocation = process.env.CHECK_TOKEN_REVOCATION === "true";
       const decoded = await adminAuth.verifyIdToken(token, checkRevocation);
       return decoded.uid;
-    } catch (err) {
-      console.warn("[auth] Admin SDK token verification failed, attempting unverified decode:", err instanceof Error ? err.message : err);
     }
-  } else {
-    console.warn("[auth] Firebase Admin Auth unavailable — falling back to unverified JWT decode");
+  } catch (err) {
+    console.warn("[auth] Admin SDK token verification failed, attempting unverified decode:", err instanceof Error ? err.message : err);
   }
 
   // Fallback: decode JWT payload without verification
