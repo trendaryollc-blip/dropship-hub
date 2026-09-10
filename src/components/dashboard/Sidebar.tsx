@@ -3,8 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAuth } from "@/components/auth/AuthProvider";
-import { safeFetch } from "@/lib/safe-fetch";
 import {
   LayoutDashboard,
   Search,
@@ -163,7 +161,6 @@ const moreItems = [
   { label: "Price Monitor", href: "/monitoring", icon: Activity },
   { label: "Bulk Orders", href: "/bulk-orders", icon: Package },
   { label: "Financial Reports", href: "/reports", icon: BarChart3 },
-  { label: "Platforms", href: "/platforms", icon: Globe },
   { label: "Daily Digest", href: "/digest", icon: FileText },
   { label: "Shipping Optimizer", href: "/shipping-optimizer", icon: Truck },
 ];
@@ -195,35 +192,8 @@ function NavItem({ item, pathname, collapsed, isOpen, onClose }: { item: typeof 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [isOwner, setIsOwner] = useState(false);
-  const { user } = useAuth();
   const pathname = usePathname();
   const dialogRef = useRef<HTMLDivElement>(null);
-
-  // Determine whether the signed-in user is the app owner. Only owners see
-  // platform management — regular users must never see this process.
-  useEffect(() => {
-    if (!user) return;
-    let active = true;
-
-    const ownerEmails = ["trendaryo206@gmail.com"];
-    if (user.email && ownerEmails.includes(user.email.toLowerCase())) {
-      if (active) setIsOwner(true);
-      return;
-    }
-
-    user.getIdToken()
-      .then((token) =>
-        safeFetch<{ isOwner?: boolean }>("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } })
-      )
-      .then((data) => {
-        if (active && typeof data.isOwner === "boolean") setIsOwner(data.isOwner);
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [user]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -249,8 +219,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     return () => document.removeEventListener("keydown", handleKey);
   }, [isOpen, onClose]);
 
-  const visibleMoreItems = isOwner ? moreItems : moreItems.filter((item) => item.href !== "/platforms");
-  const isMoreActive = visibleMoreItems.some((item) => pathname === item.href || pathname.startsWith(item.href + "/"));
+  const isMoreActive = moreItems.some((item) => pathname === item.href || pathname.startsWith(item.href + "/"));
 
   const navContent = (
     <>
@@ -346,7 +315,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             </button>
             {moreOpen && (
               <div className="ml-2 mt-1 space-y-0.5 animate-slide-up">
-                {visibleMoreItems.map((item) => {
+                {moreItems.map((item) => {
                   const active = pathname === item.href || pathname.startsWith(item.href + "/");
                   return (
                     <Link

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminAuth, getAdminDB } from "@/lib/firebase-admin";
 import { rateLimitByUser, LIMITS, type UserTier } from "@/lib/rate-limit";
+import { getUserRole } from "@/lib/roles";
 
 export async function verifyAuth(request: NextRequest): Promise<string | null> {
   const authHeader = request.headers.get("Authorization");
@@ -128,12 +129,21 @@ function normalizeUid(uid: string): string {
 /**
  * Determine whether the given user is the app owner.
  *
+ * Strategy:
+ * 1. Check Firestore role (primary — database-driven)
+ * 2. Fall back to OWNER_UID env var
+ * 3. Fall back to OWNER_EMAIL / hardcoded email matching
+ *
  * @param uid   Firebase Auth UID of the signed-in user.
  * @param email Optional email resolved from the request's ID token. When present
  *              it lets us confirm an owner match without needing the Admin SDK.
  */
 export async function isOwner(uid: string, email: string | null = null): Promise<boolean> {
   if (!uid) return false;
+
+  // 1) Primary: check database role
+  const dbRole = await getUserRole(uid);
+  if (dbRole === "owner") return true;
 
   const directUid = normalizeUid(uid);
 
@@ -150,22 +160,16 @@ export async function isOwner(uid: string, email: string | null = null): Promise
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
 
-  // Hardcoded known owner email(s) — fallback used when env vars are missing.
-  const knownOwnerEmails = ["trendaryo206@gmail.com"];
-
   const emailMatches = (candidate: string | null | undefined): boolean => {
     if (!candidate) return false;
     const normalized = candidate.toLowerCase();
-    return ownerEmails.includes(normalized) || knownOwnerEmails.includes(normalized);
+    return ownerEmails.includes(normalized);
   };
 
-  // 1) Match against the email claim embedded in the ID token. This works even
-  //    when the Admin SDK is unavailable or misconfigured.
+  // 3) Match against the email claim embedded in the ID token.
   if (emailMatches(email)) return true;
 
-  // 2) Fallback: resolve the uid → email via the Admin SDK against the
-  //    configured + known owner emails. Guarded so a failure here never throws
-  //    out of isOwner (which would 500 the caller).
+  // 4) Fallback: resolve the uid → email via the Admin SDK.
   try {
     const adminAuth = getAdminAuth();
     if (adminAuth) {

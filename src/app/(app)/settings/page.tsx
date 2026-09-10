@@ -4,26 +4,21 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Brain, Key, Shield, Zap,
-  Globe, Package, Store, DollarSign,
-  BarChart3, LayoutDashboard, Search, Sparkles,
-  TrendingUp, Bell, User, Download,
+  Brain, Key, LayoutDashboard, Search, DollarSign,
+  Package, BarChart3,
+  Store, Bell, User, Download,
 } from "lucide-react";
 import { safeFetch, FetchError } from "@/lib/safe-fetch";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { allProviders, platformConnectors } from "@/components/settings/constants";
+import { allProviders } from "@/components/settings/constants";
 import type { AIProvider } from "@/components/settings/constants";
 import ProvidersTab from "@/components/settings/ProvidersTab";
-import FeaturesTab from "@/components/settings/FeaturesTab";
-import PlatformsTab from "@/components/settings/PlatformsTab";
 import StoresTab from "@/components/settings/StoresTab";
 import NotificationsTab from "@/components/settings/NotificationsTab";
 import AccountTab from "@/components/settings/AccountTab";
 import DataTab from "@/components/settings/DataTab";
-import HowItWorksSection from "@/components/settings/HowItWorksSection";
-import SystemHealthPanel from "@/components/settings/SystemHealthPanel";
 import SettingsChatSidebar from "@/components/settings/SettingsChatSidebar";
 
 type SlotKey = string;
@@ -38,7 +33,7 @@ export default function AISettingsPage() {
   const router = useRouter();
   const [providers, setProviders] = useState<AIProvider[]>(allProviders);
   const [showKeys, setShowKeys] = useState<Record<SlotKey, boolean>>({});
-  const [activeTab, setActiveTab] = useState<"providers" | "features" | "platforms" | "stores" | "notifications" | "account" | "data">("providers");
+  const [activeTab, setActiveTab] = useState<"providers" | "stores" | "notifications" | "account" | "data">("providers");
 
   const [apiKeys, setApiKeys] = useState<Record<string, string[]>>({});
 
@@ -53,7 +48,6 @@ export default function AISettingsPage() {
   const [savingSlot, setSavingSlot] = useState<{ provider: string; index: number } | null>(null);
 
   const [stores, setStores] = useState<Array<{ id: string; name: string; platform: string; status: string; url: string }>>([]);
-  const [platformStatus, setPlatformStatus] = useState<Record<string, boolean>>({});
 
   const [notifPrefs, setNotifPrefs] = useState({
     priceAlerts: true, stockAlerts: true, orderUpdates: true,
@@ -84,8 +78,7 @@ export default function AISettingsPage() {
         safeFetch<{ connections?: Array<{ id: string; name: string; platform: string; status: string; url: string }> }>("/api/store/connections", { headers: authHeaders }),
         safeFetch<{ preferences?: typeof notifPrefs }>("/api/settings/notifications", { headers: authHeaders }),
         safeFetch<{ keys?: Record<string, { keys: Array<{ masked: string; index: number }>; configured: boolean }> }>("/api/settings/api-keys", { headers: authHeaders }),
-        safeFetch<{ platforms?: Array<{ id: string; enabled: boolean; keys: Array<{ id: string }>; lastHealth: string }> }>("/api/platforms/admin", { headers: authHeaders }).catch(() => null),
-      ]).then(([aiData, storeData, notifData, keyData, platformData]) => {
+      ]).then(([aiData, storeData, notifData, keyData]) => {
         if (aiData?.providers) {
           setProviders((prev) => prev.map((p) => ({ ...p, configured: aiData.providers![p.id]?.configured ?? false })));
         }
@@ -106,14 +99,6 @@ export default function AISettingsPage() {
             ...p,
             configured: keyData.keys![p.id]?.configured ?? p.configured,
           })));
-        }
-        // Build platform configured status from Firestore platform data
-        if (platformData?.platforms) {
-          const status: Record<string, boolean> = {};
-          for (const p of platformData.platforms) {
-            status[p.id] = p.enabled && p.keys.length > 0;
-          }
-          setPlatformStatus(status);
         }
       }).catch((e) => { console.warn("[SettingsPage] data fetch error:", e); });
     });
@@ -327,21 +312,6 @@ export default function AISettingsPage() {
 
   const _configuredCount = providers.filter((p) => p.configured).length;
 
-  const aiFeatures = [
-    { name: "Price Optimization", description: "AI-powered pricing recommendations based on market data", icon: DollarSign, color: "text-emerald-400", bgColor: "bg-emerald-400/10", href: "/calculator", hrefLabel: "Open Calculator" },
-    { name: "Product Analysis", description: "Deep analysis of product potential and competition", icon: Search, color: "text-blue-400", bgColor: "bg-blue-400/10", href: "/products", hrefLabel: "Search Products" },
-    { name: "Market Trends", description: "Trend detection and forecasting for niches", icon: TrendingUp, color: "text-purple-400", bgColor: "bg-purple-400/10", href: "/competitors", hrefLabel: "Analyze Market" },
-    { name: "Listing Optimization", description: "SEO-optimized titles, descriptions, and tags", icon: Sparkles, color: "text-amber-400", bgColor: "bg-amber-400/10", href: "/products", hrefLabel: "Optimize Listings" },
-    { name: "Supplier Verification", description: "AI-powered supplier risk assessment", icon: Shield, color: "text-emerald-400", bgColor: "bg-emerald-400/10", href: "/suppliers", hrefLabel: "Verify Suppliers" },
-    { name: "Competitor Intelligence", description: "Automated competitor analysis and insights", icon: BarChart3, color: "text-pink-400", bgColor: "bg-pink-400/10", href: "/competitors", hrefLabel: "Spy Competitors" },
-  ];
-
-  // Build dynamic platform connectors with actual configured status from Firestore
-  const dynamicPlatformConnectors = platformConnectors.map((pc) => ({
-    ...pc,
-    configured: platformStatus[pc.id] ?? pc.configured,
-  }));
-
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div>
@@ -368,13 +338,9 @@ export default function AISettingsPage() {
         ))}
       </div>
 
-      <SystemHealthPanel providers={providers} stores={stores} platformConnectors={dynamicPlatformConnectors} />
-
       <div className="flex gap-2 border-b border-border pb-2 overflow-x-auto">
         {[
           { id: "providers" as const, label: "API Providers", icon: Key },
-          { id: "features" as const, label: "AI Features", icon: Zap },
-          { id: "platforms" as const, label: "Platforms", icon: Globe },
           { id: "stores" as const, label: "Stores", icon: Store },
           { id: "notifications" as const, label: "Notifications", icon: Bell },
           { id: "account" as const, label: "Account", icon: User },
@@ -400,10 +366,6 @@ export default function AISettingsPage() {
           />
         )}
 
-      {activeTab === "features" && <FeaturesTab aiFeatures={aiFeatures} />}
-
-      {activeTab === "platforms" && <PlatformsTab platformConnectors={dynamicPlatformConnectors} />}
-
       {activeTab === "stores" && <StoresTab stores={stores} />}
 
       {activeTab === "notifications" && <NotificationsTab notifPrefs={notifPrefs} onTogglePref={handleNotifPrefChange} />}
@@ -416,8 +378,6 @@ export default function AISettingsPage() {
       )}
 
       {activeTab === "data" && <DataTab exporting={exporting} importing={importing} onExport={handleExportData} onImport={handleImportData} />}
-
-      <HowItWorksSection />
 
       <SettingsChatSidebar providers={providers} />
 

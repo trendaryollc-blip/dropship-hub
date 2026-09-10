@@ -2,20 +2,31 @@
 import { initializeApp, cert, getApps, type ServiceAccount } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const crypto = require("crypto");
 
 let adminDb: ReturnType<typeof getFirestore> | null = null;
 let adminAuth: ReturnType<typeof getAuth> | null = null;
 let initError: string | null = null;
 
 /**
- * Use node-forge (bundled with firebase-admin) to parse and re-export a clean PEM.
- * This handles any DER corruption that simple string repair cannot fix.
+ * Use Node.js crypto to parse any PEM key and re-export a clean PKCS#8 PEM.
+ * Node's crypto parser is much more lenient than jose's and handles PKCS#1,
+ * PKCS#8, encrypted keys, and other edge-cases that jose rejects.
  */
-function reEncodePrivateKey(pem: string): string {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const forge = require("node-forge");
-  const result = forge.pki.privateKeyFromPem(pem);
-  return forge.pki.privateKeyToPem(result);
+function cleanPem(rawPem: string): string {
+  try {
+    const keyObject = crypto.createPrivateKey({ key: rawPem, format: "pem" });
+    return keyObject.export({ type: "pkcs8", format: "pem" }) as string;
+  } catch {
+    // If PKCS#8 export fails, try PKCS#1 (RSA only)
+    try {
+      const keyObject = crypto.createPrivateKey({ key: rawPem, format: "pem" });
+      return keyObject.export({ type: "pkcs1", format: "pem" }) as string;
+    } catch {
+      return rawPem;
+    }
+  }
 }
 
 /**
@@ -74,21 +85,14 @@ function buildServiceAccount(): ServiceAccount {
   const isRSA = pk.includes("BEGIN RSA PRIVATE KEY");
   const header = isRSA ? "-----BEGIN RSA PRIVATE KEY-----" : "-----BEGIN PRIVATE KEY-----";
   const footer = isRSA ? "-----END RSA PRIVATE KEY-----" : "-----END PRIVATE KEY-----";
-  let repairedPem = `${header}\n${b64}\n${footer}\n`;
+  const rawPem = `${header}\n${b64}\n${footer}\n`;
 
-  // Try node-forge re-encoding — this validates and re-exports a clean PEM
-  // that jose/google-auth-library can always parse.
-  try {
-    repairedPem = reEncodePrivateKey(repairedPem);
-    console.log("[firebase-admin] Private key re-encoded via node-forge");
-  } catch (forgeErr) {
-    console.warn(
-      "[firebase-admin] node-forge re-encode failed, using raw PEM:",
-      forgeErr instanceof Error ? forgeErr.message : forgeErr
-    );
-  }
-
+  // Use Node.js crypto to parse and re-export a clean PEM.
+  // This is more reliable than node-forge because Node's crypto uses
+  // OpenSSL under the hood and handles many more PEM edge-cases.
+  const repairedPem = cleanPem(rawPem);
   obj.private_key = repairedPem;
+
   console.log("[firebase-admin] Service account loaded, project:", obj.project_id);
 
   return obj as unknown as ServiceAccount;
