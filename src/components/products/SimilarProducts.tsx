@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { Package, Sparkles, ExternalLink, Star, RefreshCw } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { safeFetch } from "@/lib/safe-fetch";
+import { useAuth } from "@/components/auth/AuthProvider";
 import SectionEmpty from "./SectionEmpty";
 
 interface SimilarProduct {
@@ -91,10 +92,21 @@ function BoughtTogetherCard({ product, index }: { product: SimilarProduct; index
 
 export default function SimilarProducts({ category, title, currentPrice }: { category?: string; title?: string; currentPrice?: number }) {
   const { ref, isInView } = useInView({ threshold: 0.1 });
+  const { user } = useAuth();
   const [similar, setSimilar] = useState<SimilarProduct[]>([]);
   const [boughtTogether, setBoughtTogether] = useState<SimilarProduct[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
+    if (!user) return {};
+    try {
+      const token = await user.getIdToken();
+      return { Authorization: `Bearer ${token}` };
+    } catch {
+      return {};
+    }
+  }, [user]);
 
   useEffect(() => {
     if (!title && !category) return;
@@ -105,9 +117,10 @@ export default function SimilarProducts({ category, title, currentPrice }: { cat
       setLoading(true);
       setError(false);
       try {
+        const authHeaders = await getAuthHeaders();
         const data = await safeFetch<{ similar?: SimilarProduct[]; boughtTogether?: SimilarProduct[] }>("/api/products/similar", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({ title, category, currentPrice }),
         });
         if (!cancelled) {
@@ -122,7 +135,7 @@ export default function SimilarProducts({ category, title, currentPrice }: { cat
 
     fetchSimilar();
     return () => { cancelled = true; };
-  }, [title, category, currentPrice]);
+  }, [title, category, currentPrice, getAuthHeaders]);
 
   return (
     <div ref={ref} className={`intel-card transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>

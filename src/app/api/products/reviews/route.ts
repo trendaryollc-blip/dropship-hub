@@ -276,7 +276,7 @@ export const POST = withAuth(async (request: NextRequest) => {
       });
     }
 
-    return NextResponse.json({ error: "Unable to fetch reviews" }, { status: 400 });
+    return NextResponse.json({});
   } catch {
     return NextResponse.json({ error: "Failed to fetch reviews" }, { status: 500 });
   }

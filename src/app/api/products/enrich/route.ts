@@ -135,10 +135,7 @@ export const POST = withAuth(async (request: NextRequest) => {
     let supplierMatches: EnrichmentResult["supplierMatches"] = [];
     try {
       const suppliers = await getSuppliers();
-      supplierMatches = suppliers
-        .filter((s) => s.catalog.categories.some((c) => c.toLowerCase().includes("all") || query.toLowerCase().includes(c.toLowerCase())))
-        .slice(0, 3)
-        .map((s) => ({
+      supplierMatches = suppliers.slice(0, 3).map((s) => ({
           id: s.id,
           name: s.name,
           trustBadge: s.trustBadge,
