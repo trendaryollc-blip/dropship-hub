@@ -30,6 +30,49 @@ function cleanPem(rawPem: string): string {
 }
 
 /**
+ * If the base64 body has extra bytes that make the DER longer than the
+ * ASN.1 header declares, jose will reject it. Trim to the declared length.
+ */
+function trimDerTrailingBytes(pem: string): string {
+  const match = pem.match(
+    /-----BEGIN (?:RSA )?PRIVATE KEY-----\n([\s\S]+?)\n-----END (?:RSA )?PRIVATE KEY-----/
+  );
+  if (!match) return pem;
+
+  const b64 = match[1].replace(/\s+/g, "");
+  const der = Buffer.from(b64, "base64");
+  if (der.length < 5) return pem;
+
+  // Read ASN.1 SEQUENCE length (tag 0x30)
+  if (der[0] !== 0x30) return pem;
+  let lenBytes: number;
+  let contentLen: number;
+  const lenByte = der[1];
+  if (lenByte < 0x80) {
+    lenBytes = 1;
+    contentLen = lenByte;
+  } else {
+    lenBytes = lenByte & 0x7f;
+    contentLen = 0;
+    for (let i = 0; i < lenBytes; i++) {
+      contentLen = (contentLen << 8) | der[2 + i];
+    }
+    lenBytes += 1; // include the length-of-length byte
+  }
+
+  const expectedTotal = 1 + lenBytes + contentLen;
+  if (der.length === expectedTotal) return pem;
+
+  // Truncate to the expected DER length and rebuild PEM
+  const trimmed = der.subarray(0, expectedTotal);
+  const trimmedB64 = trimmed.toString("base64");
+  const isRsa = pem.includes("BEGIN RSA PRIVATE KEY");
+  const header = isRsa ? "-----BEGIN RSA PRIVATE KEY-----" : "-----BEGIN PRIVATE KEY-----";
+  const footer = isRsa ? "-----END RSA PRIVATE KEY-----" : "-----END PRIVATE KEY-----";
+  return `${header}\n${trimmedB64}\n${footer}\n`;
+}
+
+/**
  * Build a ServiceAccount from the raw JSON env var, repairing common
  * Vercel env-var corruptions along the way.
  */
@@ -82,15 +125,18 @@ function buildServiceAccount(): ServiceAccount {
   }
 
   const b64 = pemMatch[1].replace(/\s+/g, "");
+  const paddedB64 = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
   const isRSA = pk.includes("BEGIN RSA PRIVATE KEY");
   const header = isRSA ? "-----BEGIN RSA PRIVATE KEY-----" : "-----BEGIN PRIVATE KEY-----";
   const footer = isRSA ? "-----END RSA PRIVATE KEY-----" : "-----END PRIVATE KEY-----";
-  const rawPem = `${header}\n${b64}\n${footer}\n`;
+  const rawPem = `${header}\n${paddedB64}\n${footer}\n`;
 
   // Use Node.js crypto to parse and re-export a clean PEM.
   // This is more reliable than node-forge because Node's crypto uses
   // OpenSSL under the hood and handles many more PEM edge-cases.
-  const repairedPem = cleanPem(rawPem);
+  const cleanedPem = cleanPem(rawPem);
+  // jose rejects PEMs whose DER has trailing bytes beyond the ASN.1 header length
+  const repairedPem = trimDerTrailingBytes(cleanedPem);
   obj.private_key = repairedPem;
 
   console.log("[firebase-admin] Service account loaded, project:", obj.project_id);

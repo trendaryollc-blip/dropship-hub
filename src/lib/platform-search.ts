@@ -1,4 +1,4 @@
-import { getAllPlatforms, incrementKeyUsage, markKeyError, markKeyHealthy, setPlatformCooldown, type PlatformFirestoreConfig } from "./platform-config";
+import { getAllPlatforms, incrementKeyUsage, markKeyError, markKeyHealthy, resetBillingPeriodIfNeeded, setPlatformCooldown, type PlatformFirestoreConfig } from "./platform-config";
 import { getCJAccessToken } from "./cj-auth";
 import { logger } from "@/lib/logger";
 
@@ -808,9 +808,18 @@ export async function searchAllPlatformsFromFirestore(
       let lastError = "No API keys configured";
 
       for (const keyEntry of keysSorted) {
-        // Check if this key has hit its rate limit
-        const resetDate = keyEntry.resetDate ? new Date(keyEntry.resetDate) : null;
-        const limitReached = resetDate && resetDate > now
+        // Auto-reset billing period if expired
+        const currentResetDate = keyEntry.resetDate ? new Date(keyEntry.resetDate) : null;
+        if (currentResetDate && currentResetDate <= now) {
+          const didReset = await resetBillingPeriodIfNeeded(platform.id, keyEntry.id, keyEntry.resetDate);
+          if (didReset) {
+            keyEntry.requestsUsed = 0;
+          }
+        }
+
+        // Check if this key has hit its rate limit (after potential auto-reset)
+        const effectiveResetDate = keyEntry.resetDate ? new Date(keyEntry.resetDate) : null;
+        const limitReached = effectiveResetDate && effectiveResetDate > now
           ? keyEntry.requestsUsed >= keyEntry.requestsLimit
           : false;
 

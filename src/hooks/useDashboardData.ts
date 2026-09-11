@@ -33,16 +33,23 @@ interface QuickActionStat {
   statLabel: string;
 }
 
-interface RevenueData {
-  actual: { date: string; value: number }[];
-  predicted: { date: string; value: number }[];
-  stats: { revenue: number; growth: number; orders: number; avgOrder: number };
+interface RevenueStats {
+  revenue: number;
+  growth: number;
+  orders: number;
+  avgOrder: number;
+}
+
+interface RevenueChartPoint {
+  date: string;
+  value: number;
 }
 
 export interface DashboardData {
   ticker: TickerItem[];
   dailyPick: AIDailyPick | null;
-  revenue: RevenueData;
+  revenueStats: RevenueStats;
+  revenueChart: RevenueChartPoint[];
   alerts: SmartAlert[];
   niches: NicheCard[];
   suppliers: SupplierStatus[];
@@ -57,12 +64,15 @@ export interface DashboardData {
   actionStats: QuickActionStat[];
   fulfillmentPipeline: FulfillmentPipelineData;
   contextualActions: ContextualAction[];
+  storesCount: number;
+  healthScore: number | null;
 }
 
 const defaults = {
   ticker: [] as TickerItem[],
   dailyPick: null as AIDailyPick | null,
-  revenue: { actual: [], predicted: [], stats: { revenue: 0, growth: 0, orders: 0, avgOrder: 0 } } as RevenueData,
+  revenueStats: { revenue: 0, growth: 0, orders: 0, avgOrder: 0 } as RevenueStats,
+  revenueChart: [] as RevenueChartPoint[],
   alerts: [] as SmartAlert[],
   niches: [] as NicheCard[],
   suppliers: [] as SupplierStatus[],
@@ -92,13 +102,16 @@ const defaults = {
     recentOrders: [],
   } as FulfillmentPipelineData,
   contextualActions: [] as ContextualAction[],
+  storesCount: 0,
+  healthScore: null as number | null,
 };
 
 export function useDashboardData() {
   const { data: apiData, isLoading, mutate } = useAPI<{
     ticker?: TickerItem[];
     aiDailyPick?: AIDailyPick | null;
-    revenueStats?: { revenue: number; growth: number; orders: number; avgOrder: number };
+    revenueStats?: RevenueStats;
+    revenueChart?: RevenueChartPoint[];
     alerts?: SmartAlert[];
     nicheCards?: NicheCard[];
     supplierStatuses?: SupplierStatus[];
@@ -109,6 +122,8 @@ export function useDashboardData() {
     actionStats?: QuickActionStat[];
     fulfillmentPipeline?: FulfillmentPipelineData;
     contextualActions?: ContextualAction[];
+    storesCount?: number;
+    healthScore?: number | null;
   }>("/api/dashboard", {
     refreshInterval: 60000,
   });
@@ -116,11 +131,8 @@ export function useDashboardData() {
   const data: DashboardData = {
     ticker: apiData?.ticker?.length ? apiData.ticker : defaults.ticker,
     dailyPick: apiData?.aiDailyPick ?? defaults.dailyPick,
-    revenue: {
-      actual: defaults.revenue.actual,
-      predicted: defaults.revenue.predicted,
-      stats: apiData?.revenueStats ?? defaults.revenue.stats,
-    },
+    revenueStats: apiData?.revenueStats ?? defaults.revenueStats,
+    revenueChart: apiData?.revenueChart ?? defaults.revenueChart,
     alerts: apiData?.alerts?.length ? apiData.alerts : defaults.alerts,
     niches: apiData?.nicheCards?.length ? apiData.nicheCards : defaults.niches,
     suppliers: apiData?.supplierStatuses?.length ? apiData.supplierStatuses : defaults.suppliers,
@@ -135,6 +147,8 @@ export function useDashboardData() {
     actionStats: apiData?.actionStats?.length ? apiData.actionStats : defaults.actionStats,
     fulfillmentPipeline: apiData?.fulfillmentPipeline ?? defaults.fulfillmentPipeline,
     contextualActions: apiData?.contextualActions ?? defaults.contextualActions,
+    storesCount: apiData?.storesCount ?? defaults.storesCount,
+    healthScore: apiData?.healthScore ?? defaults.healthScore,
   };
 
   const [compareItems, setCompareItems] = useState<DashboardData["compareItems"]>([]);

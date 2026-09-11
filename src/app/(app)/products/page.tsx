@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Search, Compass, Zap, ArrowRight,
-  Flame, TrendingUp, Sparkles, ShoppingCart, Package, Heart,
-  GitCompare, Bell,
+  Flame, TrendingUp, Sparkles, ShoppingCart, Package,
+  GitCompare, Bell, ChevronUp,
 } from "lucide-react";
 import Image from "next/image";
 import { useInView } from "@/hooks/useInView";
@@ -22,14 +22,15 @@ import AICollections from "@/components/products/AICollections";
 import PersonalizedRecommendations from "@/components/products/PersonalizedRecommendations";
 import SearchAlertModal, { type SearchAlertData } from "@/components/products/SearchAlertModal";
 import VisualSearchButton from "@/components/products/VisualSearchButton";
-import { useSavedProducts } from "@/components/saved/SavedProductsProvider";
+
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useSearchTracking } from "@/contexts/SearchTrackingContext";
 import { useAPI } from "@/hooks/useAPI";
-import { useSearchStream } from "@/hooks/useSearchStream";
 import { safeFetch } from "@/lib/safe-fetch";
 import { PageErrorBoundary } from "@/components/ui/PageErrorBoundary";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
+import { useSearchHistory } from "@/hooks/useSearchHistory";
+import SmartFeed from "@/components/products/SmartFeed";
 
 interface SearchResult {
   id: string;
@@ -187,6 +188,25 @@ function normalizeResults(platform: string, data: unknown): SearchResult[] {
     });
   });
   return results;
+}
+
+function BackToTop() {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setShow(window.scrollY > 500);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  if (!show) return null;
+  return (
+    <button
+      onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+      className="fixed bottom-6 right-6 z-50 p-3 rounded-full bg-accent/90 text-white shadow-lg shadow-accent/20 hover:bg-accent hover:scale-110 transition-all duration-200"
+      aria-label="Back to top"
+    >
+      <ChevronUp className="h-5 w-5" />
+    </button>
+  );
 }
 
 function HowItWorksSection() {
@@ -596,12 +616,6 @@ export default function ProductsPage() {
   );
 }
 
-// Module-level cache
-let _lastQuery = "";
-let _lastResults: SearchResult[] = [];
-let _lastPlatformResults: PlatformResult[] = [];
-let _lastPlatformErrors: PlatformError[] = [];
-
 const DEFAULT_PLATFORMS: PlatformInfo[] = [
   { id: "amazon", name: "Amazon", enabled: true, configured: true },
   { id: "ebay", name: "Ebay", enabled: true, configured: true },
@@ -620,13 +634,14 @@ const DEFAULT_PLATFORMS: PlatformInfo[] = [
 function ProductsContent() {
   const searchParams = useSearchParams();
   const urlQuery = searchParams.get("q") || "";
+  const cacheRef = useRef({ query: "", results: [] as SearchResult[], platformResults: [] as PlatformResult[], platformErrors: [] as PlatformError[] });
   const [query, setQuery] = useState(urlQuery);
-  const [results, setResults] = useState<SearchResult[]>(() => _lastResults);
-  const [platformResults, setPlatformResults] = useState<PlatformResult[]>(() => _lastPlatformResults);
-  const [platformErrors, setPlatformErrors] = useState<PlatformError[]>(() => _lastPlatformErrors);
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [platformResults, setPlatformResults] = useState<PlatformResult[]>([]);
+  const [platformErrors, setPlatformErrors] = useState<PlatformError[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searched, setSearched] = useState(() => _lastResults.length > 0 || _lastQuery !== "");
+  const [searched, setSearched] = useState(false);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [availablePlatforms, setAvailablePlatforms] = useState<PlatformInfo[]>(DEFAULT_PLATFORMS);
   const [sortBy, setSortBy] = useState<"relevance" | "price-asc" | "price-desc" | "rating" | "reviews" | "margin" | "golden">("relevance");
@@ -637,22 +652,13 @@ function ProductsContent() {
     brands: [], priceMin: "", priceMax: "", minRating: 0,
     minMargin: 0, competitionLevel: [], trendingDirection: [], platformFilter: [],
   });
-  const { savedProducts } = useSavedProducts();
   const { user } = useAuth();
-  const { trackSearch, trackClick: _trackClick } = useSearchTracking();
+  const { trackSearch } = useSearchTracking();
   const searchAbortRef = useRef<AbortController | null>(null);
-  const { 
-    results: _streamResults, 
-    completedPlatforms: _completedPlatforms, 
-    loadingPlatforms: _loadingPlatforms, 
-    errorPlatforms: _errorPlatforms, 
-    isStreaming: _isStreaming, 
-    totalExpected: _totalExpected, 
-    totalResults: _streamTotalResults,
-    startStream, 
-    abort: _abortStream, 
-    reset: _resetStream 
-  } = useSearchStream();
+  const {
+    history, addSearch, markProductClicked,
+    getInterestedProducts, getInterestProfile, getSmartRecommendations, clearHistory,
+  } = useSearchHistory();
 
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
     if (!user) return {};
@@ -672,9 +678,6 @@ function ProductsContent() {
   const [platformProgress, setPlatformProgress] = useState<{
     platforms: { platform: string; name: string; status: "pending" | "loading" | "success" | "error"; resultCount?: number; error?: string }[];
   }>({ platforms: [] });
-
-  // AI response panel
-  const [_aiResponse, setAiResponse] = useState<{ query: string; response: string; loading: boolean }>({ query: "", response: "", loading: false });
 
   // Search Alert modal (Feature 10)
   const [showAlertModal, setShowAlertModal] = useState(false);
@@ -718,10 +721,7 @@ function ProductsContent() {
         setSearched(true);
         setLoading(false);
         setQuery(q);
-        _lastQuery = q;
-        _lastResults = cleanResults;
-        _lastPlatformResults = cached.platformResults || [];
-        _lastPlatformErrors = [];
+        cacheRef.current = { query: q, results: cleanResults, platformResults: cached.platformResults || [], platformErrors: [] };
         return;
       }
     } catch (e) { console.warn("[Products] Error:", e instanceof Error ? e.message : e); }
@@ -750,10 +750,7 @@ function ProductsContent() {
       };
       if (parsedIntent) requestBody.intent = parsedIntent;
 
-      // Use streaming for real-time results
-      startStream(q, platforms.length > 0 ? platforms : undefined);
-      
-      // Also fetch the full enriched results for the enhancement pipeline
+      // Fetch the full enriched results for the enhancement pipeline
       const data = await safeFetch<{
         platforms?: PlatformResult[];
         platformErrors?: PlatformError[];
@@ -811,10 +808,8 @@ function ProductsContent() {
       setPlatformResults(platformData);
       setPlatformErrors(errs);
       setResults(allResults);
-      _lastQuery = q;
-      _lastResults = allResults;
-      _lastPlatformResults = platformData;
-      _lastPlatformErrors = errs;
+      addSearch(q, allResults, selectedPlatforms.length > 0 ? selectedPlatforms : availablePlatforms.map((p) => p.id));
+      cacheRef.current = { query: q, results: allResults, platformResults: platformData, platformErrors: errs };
       try {
         sessionStorage.setItem(cacheKey, JSON.stringify({ query: q, results: allResults, platformResults: platformData }));
       } catch (e) { console.warn("[Products] Error:", e instanceof Error ? e.message : e); }
@@ -855,7 +850,7 @@ function ProductsContent() {
                 }
                 return item;
               });
-              _lastResults = updated;
+              cacheRef.current = { ...cacheRef.current, results: updated };
               try {
                 sessionStorage.setItem(cacheKey, JSON.stringify({ query: q, results: updated, platformResults: platformData }));
               } catch (e) { console.warn("[Products] Error:", e instanceof Error ? e.message : e); }
@@ -870,9 +865,28 @@ function ProductsContent() {
     } finally {
       setLoading(false);
     }
-  }, [query, selectedPlatforms, getAuthHeaders, saveRecentSearch, startStream, trackSearch, user]);
+  }, [query, selectedPlatforms, getAuthHeaders, saveRecentSearch, trackSearch, user]);
 
   const initialSearchDone = useRef(false);
+
+  // Restore last search results from history on mount
+  useEffect(() => {
+    if (initialSearchDone.current) return;
+    if (searchParams.get("q")) return; // URL query takes priority
+    if (history.length === 0) return;
+
+    const lastSearch = history[0];
+    if (lastSearch && lastSearch.results.length > 0) {
+      initialSearchDone.current = true;
+      setQuery(lastSearch.query);
+      setResults(lastSearch.results as SearchResult[]);
+      setSearched(true);
+      if (lastSearch.platforms.length > 0) {
+        setSelectedPlatforms(lastSearch.platforms);
+      }
+    }
+  }, [history, searchParams]);
+
   const lastSearchParam = useRef<string | null>(null);
   useEffect(() => {
     const q = searchParams.get("q");
@@ -880,7 +894,7 @@ function ProductsContent() {
     if (q === lastSearchParam.current && initialSearchDone.current) return;
     lastSearchParam.current = q;
     initialSearchDone.current = true;
-    if (_lastQuery === q && _lastResults.length > 0) {
+    if (cacheRef.current.query === q && cacheRef.current.results.length > 0) {
       setSearched(true);
       setQuery(q);
       return;
@@ -978,6 +992,10 @@ function ProductsContent() {
 
   const getSelectedProducts = () => results.filter((r) => selectedForCompare.includes(r.id));
 
+  const handleProductClick = useCallback((product: Record<string, unknown>) => {
+    markProductClicked((product.id as string) || (product.title as string));
+  }, [markProductClicked]);
+
   // AI action handler
   const handleAIAction = useCallback((action: string, product: SearchResult) => {
     const prompts: Record<string, string> = {
@@ -993,7 +1011,6 @@ function ProductsContent() {
 
   // AI Ask handler (Feature 2: LLM-powered intent parsing)
   const handleAskAI = useCallback(async (naturalLanguageQuery: string) => {
-    setAiResponse({ query: naturalLanguageQuery, response: "", loading: true });
     try {
       // Use local intent parser for instant structured extraction
       const { parseIntentLocally, buildSearchKeywords, applyIntentToFilters } = await import("@/lib/search/intent-parser");
@@ -1027,7 +1044,6 @@ function ProductsContent() {
       setQuery(searchQ);
       await handleSearch(searchQ);
     }
-    setAiResponse({ query: "", response: "", loading: false });
   }, [handleSearch]);
 
   // Quick action handler
@@ -1058,7 +1074,7 @@ function ProductsContent() {
       <SearchHeader
         query={query}
         setQuery={setQuery}
-        onSearch={() => handleSearch()}
+        onSearch={(platformsOverride) => handleSearch(undefined, platformsOverride)}
         loading={loading}
         platforms={availablePlatforms}
         selectedPlatforms={selectedPlatforms}
@@ -1069,24 +1085,6 @@ function ProductsContent() {
         onRecentClick={(q) => handleSearch(q)}
         onAskAI={handleAskAI}
       />
-
-      {savedProducts.length > 0 && (
-        <Link
-          href="/saved"
-          className="flex items-center gap-3 p-3.5 rounded-2xl glass border border-accent/10 hover:border-accent/25 hover:bg-accent/5 transition-all group"
-        >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/10 group-hover:bg-accent/15 transition-colors">
-            <Heart className="h-4 w-4 text-accent fill-current" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-foreground">
-              {savedProducts.length} saved product{savedProducts.length === 1 ? "" : "s"}
-            </p>
-            <p className="text-[10px] text-muted-foreground">Tap to view the products you saved for later</p>
-          </div>
-          <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
-        </Link>
-      )}
 
       {error && (
         <div className="glass rounded-2xl p-4 border border-red-400/20 bg-red-400/5">
@@ -1165,7 +1163,7 @@ function ProductsContent() {
         <PlatformProgress platforms={platformProgress.platforms} />
       )}
 
-      {!loading && (
+      {!loading && searched && (
         <ResultsHeader
           resultCount={filteredResults.length}
           platformCount={platformResults.length}
@@ -1203,20 +1201,21 @@ function ProductsContent() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredResults.map((product, i) => (
                 <EnrichedProductCard
-                  key={product.id}
+                  key={`${product.id}-${i}`}
                   product={product}
                   index={i}
                   compareMode={compareMode}
                   selected={selectedForCompare.includes(product.id)}
                   onToggleSelect={toggleProductSelect}
                   onAIAction={handleAIAction}
+                  onProductClick={handleProductClick}
                 />
               ))}
             </div>
           ) : (
             <div className="space-y-2">
               {filteredResults.map((product, i) => (
-                <ListItemCard key={product.id} product={product} index={i} />
+                <ListItemCard key={`${product.id}-${i}`} product={product} index={i} onProductClick={handleProductClick} />
               ))}
             </div>
           )}
@@ -1244,7 +1243,7 @@ function ProductsContent() {
         <EmptyState onAskAI={handleAskAI} />
       )}
 
-      {!loading && !searched && (
+      {!loading && !searched && history.length === 0 && (
         <>
           <div className="flex items-center gap-2 mb-2 pt-2">
             <div className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
@@ -1258,6 +1257,9 @@ function ProductsContent() {
           <HowItWorksSection />
         </>
       )}
+
+      {/* Back to top button */}
+      <BackToTop />
     </div>
   );
 }

@@ -350,6 +350,61 @@ export async function resetKeyUsage(platformId: string, keyId: string): Promise<
   });
 }
 
+// ── Billing Period Auto-Reset ─────────────────────────────────────────────
+
+const DEFAULT_BILLING_INTERVAL_DAYS = 30;
+
+export async function resetBillingPeriodIfNeeded(
+  platformId: string,
+  keyId: string,
+  currentResetDate: string
+): Promise<boolean> {
+  const now = new Date();
+  const resetDate = new Date(currentResetDate);
+
+  if (resetDate > now) return false;
+
+  const firestore = await db();
+  const docRef = firestore.collection(COLLECTION).doc(platformId);
+
+  let intervalMs = DEFAULT_BILLING_INTERVAL_DAYS * 24 * 60 * 60 * 1000;
+
+  await firestore.runTransaction(async (tx) => {
+    const snap = await tx.get(docRef);
+    if (!snap.exists) return;
+    const platform = snap.data() as PlatformFirestoreConfig;
+
+    const key = platform.keys.find((k) => k.id === keyId);
+    if (!key) return;
+
+    const keyResetDate = new Date(key.resetDate);
+    if (keyResetDate > now) return;
+
+    if (platform.createdAt && typeof platform.createdAt === "object" && "seconds" in platform.createdAt) {
+      const createdAtDate = new Date((platform.createdAt as { seconds: number }).seconds * 1000);
+      const originalInterval = keyResetDate.getTime() - createdAtDate.getTime();
+      if (originalInterval > 0) {
+        intervalMs = originalInterval;
+      }
+    }
+
+    const nextResetDate = new Date(now.getTime() + intervalMs).toISOString().slice(0, 10);
+
+    const updatedKeys = platform.keys.map((k) =>
+      k.id === keyId
+        ? { ...k, requestsUsed: 0, resetDate: nextResetDate, lastError: null, lastStatus: "untested" as const }
+        : k
+    );
+
+    tx.update(docRef, {
+      keys: updatedKeys,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+
+  return true;
+}
+
 // ── Key Selection (for search engine) ──────────────────────────────────────
 
 export function selectBestKey(keys: ApiKeyEntry[]): ApiKeyEntry | null {

@@ -36,7 +36,7 @@ export default function StickyProductBar({ title, price, image, rating, reviews,
   if (!visible) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-40 animate-slide-down-fade">
+    <div className="fixed top-16 left-0 right-0 md:left-[240px] z-50 animate-slide-down-fade">
       <div className="glass border-b border-border/50 backdrop-blur-xl">
         <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center gap-3">
           {image && (

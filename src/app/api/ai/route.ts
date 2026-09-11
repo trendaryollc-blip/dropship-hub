@@ -656,9 +656,10 @@ async function getUserApiKeys(uid: string): Promise<Record<string, string[]>> {
   try {
     const { getAdminDB } = await import("@/lib/firebase-admin");
     const db = await getAdminDB();
+
+    // Load user's own keys
     const snap = await db.collection("users").doc(uid).collection("settings").doc("apiKeys").get();
     const data = snap.exists ? snap.data() : {};
-    // Filter out null/empty values
     const keys: Record<string, string[]> = {};
     const providers = [
       "groq", "gemini", "openai", "deepseek",
@@ -675,10 +676,32 @@ async function getUserApiKeys(uid: string): Promise<Record<string, string[]>> {
           keys[provider] = validKeys;
         }
       } else if (typeof rawValue === "string") {
-        // Backward compatibility: single string key
         keys[provider] = [rawValue.trim()];
       }
     }
+
+    // Load admin-provisioned keys and append as fallback (after user keys)
+    try {
+      const adminDoc = await db.collection("system").doc("aiProviderKeys").get();
+      if (adminDoc.exists) {
+        const adminData = adminDoc.data() || {};
+        for (const provider of providers) {
+          const adminKeys = adminData[provider];
+          if (Array.isArray(adminKeys) && adminKeys.length > 0) {
+            const validAdminKeys = adminKeys
+              .filter((k: { key?: string }) => k && typeof k.key === "string" && k.key.trim().length > 0)
+              .map((k: { key: string }) => k.key.trim());
+            if (validAdminKeys.length > 0) {
+              if (!keys[provider]) keys[provider] = [];
+              keys[provider].push(...validAdminKeys);
+            }
+          }
+        }
+      }
+    } catch (adminErr) {
+      console.warn("[getUserApiKeys] Failed to load admin AI keys:", adminErr);
+    }
+
     console.log("[getUserApiKeys] uid:", uid, "providers with keys:", Object.keys(keys));
     return keys;
   } catch (e) {

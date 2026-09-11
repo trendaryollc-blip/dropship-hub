@@ -24,7 +24,7 @@ interface SearchResult {
   reviews?: number;
 }
 
-export default function ListItemCard({ product, index }: { product: SearchResult; index: number }) {
+export default function ListItemCard({ product, index, onProductClick }: { product: SearchResult; index: number; onProductClick?: (product: Record<string, unknown>) => void }) {
   const { ref, isInView } = useInView({ threshold: 0.15 });
   const router = useRouter();
 
@@ -32,6 +32,7 @@ export default function ListItemCard({ product, index }: { product: SearchResult
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
+    onProductClick?.(product as unknown as Record<string, unknown>);
     sessionStorage.setItem("selectedProduct", JSON.stringify(product));
     const params = new URLSearchParams({ t: product.title, src: product.source });
     if (product.price != null) params.set("p", String(product.price));

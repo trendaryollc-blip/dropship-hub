@@ -175,7 +175,7 @@ export default function ProductActionBar({ platform, platformUrl, productTitle, 
       </div>
 
       {/* Mobile: sticky bottom bar */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 safe-area-bottom">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-[60] safe-area-bottom">
         <div className="glass border-t border-border px-3 py-2 flex items-center gap-1.5">
           <button onClick={toggleFavorite} className={`flex-1 flex flex-col items-center gap-0.5 py-2 rounded-xl transition-all ${saved ? "bg-red-400/10 text-red-400" : "text-muted-foreground active:bg-surface"}`}>
             <Heart className={`h-4 w-4 ${saved ? "fill-current" : ""}`} />

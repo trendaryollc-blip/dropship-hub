@@ -31,6 +31,7 @@ export interface AIDailyPick {
   overallScore: number;
   earningsPreview: { profitPerOrder: number; ordersPerMonth: number; monthlyRevenue: number };
   reasonPoints: string[];
+  sourceUrl?: string;
   expiresAt: string;
   yesterdayPick?: { title: string; result: string; up: boolean };
 }

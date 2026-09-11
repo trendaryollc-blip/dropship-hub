@@ -24,6 +24,7 @@ import SectionSkeleton from "@/components/products/SectionSkeleton";
 import { safeFetch } from "@/lib/safe-fetch";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { logger } from "@/lib/logger";
+import { PageErrorBoundary } from "@/components/ui/PageErrorBoundary";
 
 const platformIcons: Record<string, string> = {
   amazon: "\ud83d\udce6", ebay: "\ud83c\udff7\ufe0f", aliexpress: "\ud83c\udde8\ud83c\uddf3",
@@ -79,6 +80,17 @@ function ImageGallery({ images, title }: { images: string[]; title: string }) {
   const goNext = () => setActiveIndex((prev) => (prev + 1) % images.length);
   const goPrev = () => setActiveIndex((prev) => (prev - 1 + images.length) % images.length);
 
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxOpen(false);
+      if (e.key === "ArrowLeft") goPrev();
+      if (e.key === "ArrowRight") goNext();
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [lightboxOpen]);
+
   if (images.length === 0) {
     return (
       <div className="aspect-square bg-surface flex items-center justify-center rounded-2xl border border-border">
@@ -110,7 +122,7 @@ function ImageGallery({ images, title }: { images: string[]; title: string }) {
           <div className="flex gap-1.5 p-3 overflow-x-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }}>
             {images.map((img, i) => (
               <button key={i} onClick={() => setActiveIndex(i)} className={`w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden shrink-0 border-2 transition-all ${i === activeIndex ? "border-accent shadow-[0_0_12px_rgba(var(--glow-color),0.3)]" : "border-transparent opacity-50 hover:opacity-90"}`}>
-                <Image src={img} alt="" width={56} height={56} unoptimized className="w-full h-full object-cover" />
+                <Image src={img} alt={`${title} thumbnail ${i + 1}`} width={56} height={56} unoptimized className="w-full h-full object-cover" />
               </button>
             ))}
           </div>
@@ -175,6 +187,10 @@ function ProductDetailContent() {
   const [listingData, setListingData] = useState<Record<string, unknown> | null>(null);
   const [listingError, setListingError] = useState(false);
   const [loadingListing, setLoadingListing] = useState(false);
+  const [retryEnrichment, setRetryEnrichment] = useState(0);
+  const [retryReview, setRetryReview] = useState(0);
+  const [retryMarketIntel, setRetryMarketIntel] = useState(0);
+  const [retryListing, setRetryListing] = useState(0);
 
   const title = product?.title || searchParams.get("t") || "Product";
   const price = product?.price != null ? String(product.price) : searchParams.get("p");
@@ -282,7 +298,7 @@ function ProductDetailContent() {
     };
 
     fetchEnrichment();
-  }, [title, source, priceNum, getAuthHeaders]);
+  }, [title, source, priceNum, getAuthHeaders, retryEnrichment]);
 
   useEffect(() => {
     if (!title || title === "Product") return;
@@ -308,7 +324,7 @@ function ProductDetailContent() {
     };
 
     fetchReviews();
-  }, [title, link, source, ratingNum, reviewsNum, getAuthHeaders]);
+  }, [title, link, source, ratingNum, reviewsNum, getAuthHeaders, retryReview]);
 
   useEffect(() => {
     if (!title || title === "Product") return;
@@ -334,7 +350,7 @@ function ProductDetailContent() {
     };
 
     fetchMarketIntel();
-  }, [title, priceNum, ratingNum, reviewsNum, getAuthHeaders]);
+  }, [title, priceNum, ratingNum, reviewsNum, getAuthHeaders, retryMarketIntel]);
 
   useEffect(() => {
     if (!title || title === "Product") return;
@@ -360,7 +376,7 @@ function ProductDetailContent() {
     };
 
     fetchListing();
-  }, [title, category, priceNum, source, getAuthHeaders]);
+  }, [title, category, priceNum, source, getAuthHeaders, retryListing]);
 
   const enriched = useMemo(() => {
     if (enrichmentData?.platforms) {
@@ -673,7 +689,7 @@ function ProductDetailContent() {
           <div className="glass rounded-2xl p-4 border border-border flex items-center gap-3">
             <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
             <p className="text-xs text-muted-foreground flex-1">Failed to load price data</p>
-            <button onClick={() => { setEnrichmentError(false); setLoadingEnrichment(true); window.location.reload(); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition-colors">
+            <button onClick={() => { setEnrichmentError(false); setLoadingEnrichment(true); setRetryEnrichment((c) => c + 1); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition-colors">
               <RefreshCw className="h-3 w-3" /> Retry
             </button>
           </div>
@@ -697,7 +713,7 @@ function ProductDetailContent() {
           <div className="intel-card p-4 flex items-center gap-3">
             <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
             <p className="text-xs text-muted-foreground flex-1">Failed to load market intelligence</p>
-            <button onClick={() => { setMarketIntelError(false); setLoadingMarketIntel(true); window.location.reload(); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition-colors">
+            <button onClick={() => { setMarketIntelError(false); setLoadingMarketIntel(true); setRetryMarketIntel((c) => c + 1); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition-colors">
               <RefreshCw className="h-3 w-3" /> Retry
             </button>
           </div>
@@ -715,7 +731,7 @@ function ProductDetailContent() {
           <div className="review-card p-4 flex items-center gap-3">
             <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
             <p className="text-xs text-muted-foreground flex-1">Failed to load review data</p>
-            <button onClick={() => { setReviewError(false); setLoadingReview(true); window.location.reload(); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition-colors">
+            <button onClick={() => { setReviewError(false); setLoadingReview(true); setRetryReview((c) => c + 1); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition-colors">
               <RefreshCw className="h-3 w-3" /> Retry
             </button>
           </div>
@@ -739,7 +755,7 @@ function ProductDetailContent() {
           <div className="listing-card p-4 flex items-center gap-3">
             <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
             <p className="text-xs text-muted-foreground flex-1">Failed to load listing suggestions</p>
-            <button onClick={() => { setListingError(false); setLoadingListing(true); window.location.reload(); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition-colors">
+            <button onClick={() => { setListingError(false); setLoadingListing(true); setRetryListing((c) => c + 1); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition-colors">
               <RefreshCw className="h-3 w-3" /> Retry
             </button>
           </div>
@@ -775,8 +791,10 @@ function ProductDetailContent() {
 
 export default function ProductDetailPage() {
   return (
-    <Suspense fallback={<div className="max-w-5xl mx-auto flex items-center justify-center py-20"><div className="text-center"><div className="h-8 w-8 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4" /><p className="text-sm text-muted-foreground">Loading product...</p></div></div>}>
-      <ProductDetailContent />
-    </Suspense>
+    <PageErrorBoundary>
+      <Suspense fallback={<div className="max-w-5xl mx-auto flex items-center justify-center py-20"><div className="text-center"><div className="h-8 w-8 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4" /><p className="text-sm text-muted-foreground">Loading product...</p></div></div>}>
+        <ProductDetailContent />
+      </Suspense>
+    </PageErrorBoundary>
   );
 }

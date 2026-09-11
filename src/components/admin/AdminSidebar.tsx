@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowLeft,
+  Brain,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
@@ -25,6 +26,7 @@ const mainNavItems = [
 const managementItems = [
   { label: "Platforms", href: "/admin/platforms", icon: Globe },
   { label: "API Keys", href: "/admin/api-keys", icon: Key },
+  { label: "AI Keys", href: "/admin/ai-keys", icon: Brain },
   { label: "Users", href: "/admin/users", icon: Users },
 ];
 

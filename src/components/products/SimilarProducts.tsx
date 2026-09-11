@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { Package, Sparkles, ExternalLink, Star } from "lucide-react";
+import { Package, Sparkles, ExternalLink, Star, RefreshCw } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { safeFetch } from "@/lib/safe-fetch";
 import SectionEmpty from "./SectionEmpty";
@@ -94,6 +94,7 @@ export default function SimilarProducts({ category, title, currentPrice }: { cat
   const [similar, setSimilar] = useState<SimilarProduct[]>([]);
   const [boughtTogether, setBoughtTogether] = useState<SimilarProduct[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!title && !category) return;
@@ -102,6 +103,7 @@ export default function SimilarProducts({ category, title, currentPrice }: { cat
 
     const fetchSimilar = async () => {
       setLoading(true);
+      setError(false);
       try {
         const data = await safeFetch<{ similar?: SimilarProduct[]; boughtTogether?: SimilarProduct[] }>("/api/products/similar", {
           method: "POST",
@@ -113,7 +115,7 @@ export default function SimilarProducts({ category, title, currentPrice }: { cat
           if (data.boughtTogether) setBoughtTogether(data.boughtTogether);
         }
       } catch {
-        // Silently handle fetch errors
+        if (!cancelled) setError(true);
       }
       if (!cancelled) setLoading(false);
     };
@@ -164,8 +166,17 @@ export default function SimilarProducts({ category, title, currentPrice }: { cat
           </div>
         )}
 
-        {!loading && similar.length === 0 && boughtTogether.length === 0 && (
+        {!loading && !error && similar.length === 0 && boughtTogether.length === 0 && (
           <SectionEmpty icon={Package} title="No similar products found for this category" description="Try browsing related categories" iconColor="text-pink-400" />
+        )}
+
+        {error && !loading && similar.length === 0 && boughtTogether.length === 0 && (
+          <div className="flex flex-col items-center gap-3 py-4">
+            <p className="text-xs text-muted-foreground">Failed to load similar products</p>
+            <button onClick={() => { setError(false); setLoading(true); setSimilar([]); setBoughtTogether([]); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition-colors">
+              <RefreshCw className="h-3 w-3" /> Try again
+            </button>
+          </div>
         )}
       </div>
     </div>

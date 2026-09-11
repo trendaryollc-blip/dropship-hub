@@ -18,6 +18,7 @@ vi.mock("./platform-config", () => ({
   markKeyError: vi.fn(),
   markKeyHealthy: vi.fn(),
   setPlatformCooldown: vi.fn(),
+  resetBillingPeriodIfNeeded: vi.fn(),
 }));
 
 vi.mock("./cj-auth", () => ({
@@ -28,7 +29,7 @@ vi.mock("@/lib/logger", () => ({
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
 }));
 
-import { getAllPlatforms, incrementKeyUsage, markKeyHealthy } from "./platform-config";
+import { getAllPlatforms, incrementKeyUsage, markKeyHealthy, resetBillingPeriodIfNeeded } from "./platform-config";
 
 function mockFetchResponse(ok: boolean, body: unknown, status = 200) {
   if (ok) {
@@ -386,6 +387,50 @@ describe("searchAllPlatformsFromFirestore", () => {
     });
 
     const result = await searchAllPlatformsFromFirestore("test");
+    expect(result).toHaveLength(1);
+  });
+
+  it("auto-resets billing period when resetDate is in the past", async () => {
+    const pastDate = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    vi.mocked(getAllPlatforms).mockResolvedValue([
+      {
+        id: "scraper_api", name: "ScraperAPI", enabled: true, method: "scraperapi",
+        keys: [
+          { id: "k1", key: "expired_key", label: "Expired", priority: 1, requestsUsed: 5000, requestsLimit: 5000, resetDate: pastDate, lastError: null, lastTested: null, lastStatus: "untested" },
+        ],
+        lastHealth: "untested", lastSearched: null, lastError: null, cooldownUntil: null, createdAt: null, updatedAt: null,
+      },
+    ] as never);
+
+    vi.mocked(resetBillingPeriodIfNeeded).mockResolvedValue(true);
+
+    mockFetchResponse(true, {
+      search_results: [{ title: "Reset Result", price: 10, image: "img.jpg", link: "http://test.com" }],
+    });
+
+    const result = await searchAllPlatformsFromFirestore("test");
+    expect(resetBillingPeriodIfNeeded).toHaveBeenCalledWith("scraper_api", "k1", pastDate);
+    expect(result).toHaveLength(1);
+  });
+
+  it("skips auto-reset when resetDate is in the future", async () => {
+    const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    vi.mocked(getAllPlatforms).mockResolvedValue([
+      {
+        id: "test_platform", name: "Test", enabled: true, method: "serpapi",
+        keys: [
+          { id: "k1", key: "active_key", label: "Active", priority: 1, requestsUsed: 50, requestsLimit: 100, resetDate: futureDate, lastError: null, lastTested: null, lastStatus: "untested" },
+        ],
+        lastHealth: "untested", lastSearched: null, lastError: null, cooldownUntil: null, createdAt: null, updatedAt: null,
+      },
+    ] as never);
+
+    mockFetchResponse(true, {
+      search_results: [{ title: "Active Result", price: 20, image: "img.jpg", link: "http://test.com" }],
+    });
+
+    const result = await searchAllPlatformsFromFirestore("test");
+    expect(resetBillingPeriodIfNeeded).not.toHaveBeenCalled();
     expect(result).toHaveLength(1);
   });
 });

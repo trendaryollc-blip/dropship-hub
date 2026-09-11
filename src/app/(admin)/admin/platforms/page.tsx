@@ -504,13 +504,13 @@ export default function AdminPlatformsPage() {
                                   </div>
                                 </div>
                               ) : (
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-4">
-                                    <div className="flex items-center gap-1.5 cursor-grab active:cursor-grabbing">
+                                <div className="flex items-start justify-between gap-4">
+                                  <div className="flex items-start gap-4 min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5 cursor-grab active:cursor-grabbing mt-0.5">
                                       <GripVertical className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-accent transition-colors" />
                                       <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-accent/10 text-accent border border-accent/20">#{key.priority}</span>
                                     </div>
-                                    <div>
+                                    <div className="min-w-0 flex-1">
                                       <div className="flex items-center gap-2">
                                         <span className="text-sm font-medium text-foreground">{key.label}</span>
                                         <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
@@ -519,11 +519,11 @@ export default function AdminPlatformsPage() {
                                           : "bg-muted-foreground/10 text-muted-foreground"
                                         }`}>{key.lastStatus.toUpperCase()}</span>
                                       </div>
-                                      <div className="flex items-center gap-3 mt-1">
-                                        <span className="text-xs font-mono text-muted-foreground">
+                                      <div className="mt-1">
+                                        <span className="text-xs font-mono text-muted-foreground break-all leading-relaxed">
                                           {visibleKeys.has(key.id) ? key.key : `${key.key.slice(0, 8)}${"•".repeat(12)}${key.key.slice(-4)}`}
                                         </span>
-                                        <button onClick={() => toggleKeyVisibility(key.id)} className="text-muted-foreground hover:text-foreground">
+                                        <button onClick={() => toggleKeyVisibility(key.id)} className="ml-2 text-muted-foreground hover:text-foreground inline align-middle">
                                           {visibleKeys.has(key.id) ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                                         </button>
                                       </div>

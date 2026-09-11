@@ -182,6 +182,7 @@ export default function Topbar({ onMenuToggle }: TopbarProps) {
         <Menu className="h-5 w-5" />
       </button>
 
+      {!pathname.startsWith("/products") && (
       <div className="flex-1 max-w-md" ref={searchRef}>
         <form onSubmit={handleSearch} className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -236,6 +237,7 @@ export default function Topbar({ onMenuToggle }: TopbarProps) {
           )}
         </form>
       </div>
+      )}
 
       <div className="flex items-center gap-2 md:gap-3">
         <ThemeGallery />

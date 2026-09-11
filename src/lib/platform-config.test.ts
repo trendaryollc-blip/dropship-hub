@@ -15,6 +15,7 @@ import {
   markKeyHealthy,
   setPlatformCooldown,
   resetKeyUsage,
+  resetBillingPeriodIfNeeded,
 } from "./platform-config";
 
 vi.mock("./firebase-admin", () => ({
@@ -561,6 +562,104 @@ describe("platform-config key management", () => {
           ]),
         })
       );
+    });
+  });
+
+  describe("resetBillingPeriodIfNeeded", () => {
+    it("returns false if resetDate is in the future", async () => {
+      const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const result = await resetBillingPeriodIfNeeded("amazon", "k1", futureDate);
+      expect(result).toBe(false);
+    });
+
+    it("resets requestsUsed and advances resetDate when billing period expired", async () => {
+      const pastDate = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const existingPlatform = {
+        createdAt: { seconds: Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60 },
+        keys: [{ id: "k1", requestsUsed: 100, requestsLimit: 100, resetDate: pastDate, lastError: "quota exceeded", lastStatus: "error" }],
+      };
+      const txUpdate = vi.fn();
+      mockFirestore = makeMockFirestore([]);
+      mockFirestore.runTransaction = vi.fn(async (fn) => {
+        const tx = {
+          get: vi.fn().mockResolvedValue({ exists: true, data: () => existingPlatform }),
+          update: txUpdate,
+        };
+        await fn(tx);
+      });
+      vi.mocked(getAdminDB).mockResolvedValue(mockFirestore as never);
+
+      const result = await resetBillingPeriodIfNeeded("amazon", "k1", pastDate);
+
+      expect(result).toBe(true);
+      expect(txUpdate).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          keys: expect.arrayContaining([
+            expect.objectContaining({
+              id: "k1",
+              requestsUsed: 0,
+              lastError: null,
+              lastStatus: "untested",
+              resetDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+            }),
+          ]),
+        })
+      );
+    });
+
+    it("does not reset if key not found in platform", async () => {
+      const pastDate = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const existingPlatform = {
+        keys: [{ id: "k_other", requestsUsed: 50, resetDate: pastDate }],
+      };
+      const txUpdate = vi.fn();
+      mockFirestore = makeMockFirestore([]);
+      mockFirestore.runTransaction = vi.fn(async (fn) => {
+        const tx = {
+          get: vi.fn().mockResolvedValue({ exists: true, data: () => existingPlatform }),
+          update: txUpdate,
+        };
+        await fn(tx);
+      });
+      vi.mocked(getAdminDB).mockResolvedValue(mockFirestore as never);
+
+      const result = await resetBillingPeriodIfNeeded("amazon", "k1", pastDate);
+
+      expect(result).toBe(true);
+      expect(txUpdate).not.toHaveBeenCalled();
+    });
+
+    it("advances resetDate by original interval from createdAt", async () => {
+      const nowMs = Date.now();
+      const fourteenDaysMs = 14 * 24 * 60 * 60 * 1000;
+      const oneDayMs = 1 * 24 * 60 * 60 * 1000;
+      const createdAtSec = Math.floor((nowMs - fourteenDaysMs) / 1000);
+      const pastDate = new Date(nowMs - oneDayMs).toISOString().slice(0, 10);
+      const existingPlatform = {
+        createdAt: { seconds: createdAtSec },
+        keys: [{ id: "k1", requestsUsed: 50, requestsLimit: 100, resetDate: pastDate }],
+      };
+      let capturedKeys: Record<string, unknown>[] = [];
+      const txUpdate = vi.fn().mockImplementation((_ref: unknown, data: { keys: Record<string, unknown>[] }) => {
+        capturedKeys = data.keys;
+      });
+      mockFirestore = makeMockFirestore([]);
+      mockFirestore.runTransaction = vi.fn(async (fn) => {
+        const tx = {
+          get: vi.fn().mockResolvedValue({ exists: true, data: () => existingPlatform }),
+          update: txUpdate,
+        };
+        await fn(tx);
+      });
+      vi.mocked(getAdminDB).mockResolvedValue(mockFirestore as never);
+
+      await resetBillingPeriodIfNeeded("amazon", "k1", pastDate);
+
+      const newResetDateStr = capturedKeys[0].resetDate as string;
+      const newResetDateMs = new Date(newResetDateStr).getTime();
+      expect(newResetDateMs).toBeGreaterThan(nowMs);
+      expect(newResetDateMs).toBeLessThan(nowMs + fourteenDaysMs + 2 * 24 * 60 * 60 * 1000);
     });
   });
 });

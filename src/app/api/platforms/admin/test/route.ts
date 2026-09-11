@@ -2,6 +2,30 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, isOwner } from "@/lib/auth";
 import { markKeyHealthy, markKeyError } from "@/lib/platform-config";
 
+const _CHAT_EXCLUDE = /embed|tts|whisper|dall|vision|audio|realtime|moderation|image/i;
+
+function _sortChatModels(ids: string[]): string[] {
+  return ids
+    .filter((id) => !_CHAT_EXCLUDE.test(id))
+    .sort((a, b) => {
+      const aN = parseFloat((a.match(/(\d+(?:\.\d+)?)b/i) || [, "0"])[1]);
+      const bN = parseFloat((b.match(/(\d+(?:\.\d+)?)b/i) || [, "0"])[1]);
+      return bN - aN;
+    });
+}
+
+async function _fetchModels(url: string, headers: Record<string, string>): Promise<string[]> {
+  try {
+    const r = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
+    if (!r.ok) return [];
+    const d = await r.json();
+    const raw: string[] = Array.isArray(d) ? d.map((m: { id: string }) => m.id) : (d.data ?? d.models ?? []).map((m: { id: string }) => m.id);
+    return _sortChatModels(raw);
+  } catch {
+    return [];
+  }
+}
+
 async function testPlatformKey(
   method: string,
   key: string,
@@ -136,6 +160,144 @@ async function testPlatformKey(
           return { success: false, message: "API key cannot be empty" };
         }
         return { success: true, message: "Custom scraper key saved. Testing will occur on first search." };
+      }
+
+      case "ai_provider": {
+        // Dynamically resolve an available model, then send a minimal test request
+        const providerConfigs: Record<string, {
+          modelsUrl: string;
+          modelsHeaders: Record<string, string>;
+          chatUrl: string;
+          chatHeaders: Record<string, string>;
+          buildBody: (model: string) => string;
+        }> = {
+          groq: {
+            modelsUrl: "https://api.groq.com/openai/v1/models",
+            modelsHeaders: { Authorization: `Bearer ${key}` },
+            chatUrl: "https://api.groq.com/openai/v1/chat/completions",
+            chatHeaders: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+            buildBody: (model) => JSON.stringify({ model, messages: [{ role: "user", content: "Hi" }], max_tokens: 1 }),
+          },
+          gemini: {
+            modelsUrl: "",
+            modelsHeaders: {},
+            chatUrl: "",
+            chatHeaders: {},
+            buildBody: () => "",
+          },
+          openai: {
+            modelsUrl: "https://api.openai.com/v1/models",
+            modelsHeaders: { Authorization: `Bearer ${key}` },
+            chatUrl: "https://api.openai.com/v1/chat/completions",
+            chatHeaders: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+            buildBody: (model) => JSON.stringify({ model, messages: [{ role: "user", content: "Hi" }], max_tokens: 1 }),
+          },
+          deepseek: {
+            modelsUrl: "https://api.deepseek.com/v1/models",
+            modelsHeaders: { Authorization: `Bearer ${key}` },
+            chatUrl: "https://api.deepseek.com/v1/chat/completions",
+            chatHeaders: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+            buildBody: (model) => JSON.stringify({ model, messages: [{ role: "user", content: "Hi" }], max_tokens: 1 }),
+          },
+          mistral: {
+            modelsUrl: "https://api.mistral.ai/v1/models",
+            modelsHeaders: { Authorization: `Bearer ${key}` },
+            chatUrl: "https://api.mistral.ai/v1/chat/completions",
+            chatHeaders: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+            buildBody: (model) => JSON.stringify({ model, messages: [{ role: "user", content: "Hi" }], max_tokens: 1 }),
+          },
+          cohere: {
+            modelsUrl: "https://api.cohere.com/v2/models",
+            modelsHeaders: { Authorization: `Bearer ${key}` },
+            chatUrl: "https://api.cohere.ai/v1/chat",
+            chatHeaders: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+            buildBody: (model) => JSON.stringify({ model, message: "Hi" }),
+          },
+          together: {
+            modelsUrl: "https://api.together.xyz/v1/models",
+            modelsHeaders: { Authorization: `Bearer ${key}` },
+            chatUrl: "https://api.together.xyz/v1/chat/completions",
+            chatHeaders: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+            buildBody: (model) => JSON.stringify({ model, messages: [{ role: "user", content: "Hi" }], max_tokens: 1 }),
+          },
+          fireworks: {
+            modelsUrl: "https://api.fireworks.ai/inference/v1/models",
+            modelsHeaders: { Authorization: `Bearer ${key}` },
+            chatUrl: "https://api.fireworks.ai/inference/v1/chat/completions",
+            chatHeaders: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+            buildBody: (model) => JSON.stringify({ model, messages: [{ role: "user", content: "Hi" }], max_tokens: 1 }),
+          },
+          openrouter: {
+            modelsUrl: "https://openrouter.ai/api/v1/models",
+            modelsHeaders: { Authorization: `Bearer ${key}` },
+            chatUrl: "https://openrouter.ai/api/v1/chat/completions",
+            chatHeaders: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+            buildBody: (model) => JSON.stringify({ model, messages: [{ role: "user", content: "Hi" }], max_tokens: 1 }),
+          },
+          huggingface: {
+            modelsUrl: "https://huggingface.co/api/models?pipeline_tag=text-generation&sort=downloads&limit=5",
+            modelsHeaders: { Authorization: `Bearer ${key}` },
+            chatUrl: "",
+            chatHeaders: {},
+            buildBody: () => "",
+          },
+        };
+
+        // Special case: Gemini uses probe-based model resolution
+        if (platformId === "gemini") {
+          const probeModels = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
+          for (const model of probeModels) {
+            const res = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
+              { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: "Hi" }] }] }), signal: AbortSignal.timeout(15000) }
+            );
+            if (res.ok) return { success: true, message: `gemini connection successful (${model})` };
+          }
+          return { success: false, message: "Gemini: no available models found" };
+        }
+
+        // Special case: HuggingFace uses text-generation models
+        if (platformId === "huggingface") {
+          const models = await _fetchModels("https://huggingface.co/api/models?pipeline_tag=text-generation&sort=downloads&limit=5", { Authorization: `Bearer ${key}` });
+          const model = models[0] || "meta-llama/Llama-3-8b-instruct";
+          const res = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ inputs: "Hi" }),
+            signal: AbortSignal.timeout(15000),
+          });
+          if (!res.ok) {
+            const errBody = await res.text();
+            return { success: false, message: `huggingface API ${res.status}: ${errBody.slice(0, 200)}` };
+          }
+          return { success: true, message: `huggingface connection successful (${model})` };
+        }
+
+        const config = providerConfigs[platformId];
+        if (!config) {
+          return { success: false, message: `No test endpoint configured for provider: ${platformId}` };
+        }
+
+        // Fetch available models
+        const models = await _fetchModels(config.modelsUrl, config.modelsHeaders);
+        const model = models[0];
+        if (!model) {
+          return { success: false, message: `${platformId}: could not resolve any available models` };
+        }
+
+        // Test with resolved model
+        const res = await fetch(config.chatUrl, {
+          method: "POST",
+          headers: config.chatHeaders,
+          body: config.buildBody(model),
+          signal: AbortSignal.timeout(15000),
+        });
+
+        if (!res.ok) {
+          const errBody = await res.text();
+          return { success: false, message: `${platformId} API ${res.status}: ${errBody.slice(0, 200)}` };
+        }
+        return { success: true, message: `${platformId} connection successful (${model})` };
       }
 
       default:

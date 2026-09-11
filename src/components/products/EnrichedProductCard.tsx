@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Package, Heart, Star, Images, Check, Send, Loader2, Store, X, ExternalLink,
-  Sparkles, TrendingUp, BarChart3, Search, GitCompare,
+  Sparkles, TrendingUp, BarChart3, Search, GitCompare, Truck, AlertTriangle,
+  MessageSquare, ShoppingCart, Clock, Users,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -46,9 +47,15 @@ interface EnrichedProductCardProps {
     goldenRank?: "S" | "A" | "B" | "C" | "D";
     trendPhase?: "emerging" | "growth" | "mature" | "declining";
     saturationLevel?: "unsaturated" | "low" | "moderate" | "saturated" | "hyper-saturated";
+    saturationScore?: number;
     competitionScore?: number;
+    shippingDays?: number;
+    inStock?: boolean;
+    stockQuantity?: number;
     platformCount?: number;
     platforms?: Array<{ platform: string; price: number | null; link: string }>;
+    competitorCount?: number;
+    competitorPrices?: Array<{ platform: string; price: number; url: string }>;
   };
   index: number;
   selected?: boolean;
@@ -56,6 +63,7 @@ interface EnrichedProductCardProps {
   compareMode?: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onAIAction?: (action: string, product: any) => void;
+  onProductClick?: (product: Record<string, unknown>) => void;
 }
 
 function MiniSparkline({ data }: { data: number[] }) {
@@ -87,7 +95,7 @@ function MiniSparkline({ data }: { data: number[] }) {
 }
 
 export default function EnrichedProductCard({
-  product, index, selected, onToggleSelect, compareMode, onAIAction,
+  product, index, selected, onToggleSelect, compareMode, onAIAction, onProductClick,
 }: EnrichedProductCardProps) {
   const { ref, isInView } = useInView({ threshold: 0.15 });
   const router = useRouter();
@@ -96,6 +104,8 @@ export default function EnrichedProductCard({
   const { trackClick } = useSearchTracking();
   const saved = isSaved(product.id || product.title);
   const [showPushModal, setShowPushModal] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
+  const [noteText, setNoteText] = useState("");
   const [stores, setStores] = useState<ConnectedStore[]>([]);
   const [pushingStore, setPushingStore] = useState<string | null>(null);
   const [pushResult, setPushResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -106,11 +116,13 @@ export default function EnrichedProductCard({
     return Array.from({ length: 7 }, () => base + (Math.random() - 0.5) * base * 0.2);
   });
 
-  // Use real enrichment data when available (Feature 4)
   const estimatedMargin = product.estimatedMargin ?? (product.price ? Math.min(60, Math.max(10, Math.round(40 + (Math.random() - 0.5) * 30))) : null);
   const estimatedProfit = product.price && estimatedMargin ? +(product.price * estimatedMargin / 100).toFixed(2) : null;
-
   const imageCount = product.images?.length || (product.image ? 1 : 0);
+
+  const shippingDays = product.shippingDays ?? (product.source === "cj" ? Math.floor(Math.random() * 10) + 5 : product.source === "aliexpress" ? Math.floor(Math.random() * 20) + 10 : Math.floor(Math.random() * 7) + 2);
+  const inStock = product.inStock ?? (product.stockQuantity == null ? true : product.stockQuantity > 0);
+  const saturationScore = product.saturationScore ?? (product.competitionScore != null ? product.competitionScore : null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -130,8 +142,8 @@ export default function EnrichedProductCard({
       return;
     }
     e.preventDefault();
-    // Feature 6: Track click event
     trackClick(product.id || product.title, "", product.source);
+    onProductClick?.(product);
     sessionStorage.setItem("selectedProduct", JSON.stringify({
       ...product,
       id: product.id,
@@ -199,6 +211,36 @@ export default function EnrichedProductCard({
     onAIAction?.(action, product as any);
   };
 
+  const getSaturationColor = (level?: string) => {
+    switch (level) {
+      case "unsaturated": return { text: "text-emerald-400", bg: "bg-emerald-500/90", label: "Unsaturated" };
+      case "low": return { text: "text-blue-400", bg: "bg-blue-500/90", label: "Low Sat" };
+      case "moderate": return { text: "text-amber-400", bg: "bg-amber-500/90", label: "Moderate" };
+      case "saturated": return { text: "text-orange-400", bg: "bg-orange-500/90", label: "Saturated" };
+      case "hyper-saturated": return { text: "text-red-400", bg: "bg-red-500/90", label: "Hyper" };
+      default: return null;
+    }
+  };
+
+  const saturation = getSaturationColor(product.saturationLevel);
+
+  const saveNote = () => {
+    if (!noteText.trim()) return;
+    try {
+      const notes = JSON.parse(localStorage.getItem("productNotes") || "{}");
+      notes[product.id || product.title] = noteText;
+      localStorage.setItem("productNotes", JSON.stringify(notes));
+      setShowNotes(false);
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => {
+    try {
+      const notes = JSON.parse(localStorage.getItem("productNotes") || "{}");
+      setNoteText(notes[product.id || product.title] || "");
+    } catch { /* ignore */ }
+  }, [product.id, product.title]);
+
   return (
     <div
       ref={ref}
@@ -212,13 +254,13 @@ export default function EnrichedProductCard({
           compareMode && selected ? "ring-2 ring-accent ring-offset-2 ring-offset-background" : ""
         }`}
       >
-        <div className="aspect-square bg-surface relative overflow-hidden">
+        <div className="aspect-[4/3] bg-surface relative overflow-hidden">
           {product.image ? (
             <Image
               src={product.image}
               alt={product.title}
               width={400}
-              height={400}
+              height={300}
               unoptimized
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
@@ -228,37 +270,22 @@ export default function EnrichedProductCard({
             </div>
           )}
 
-          {/* Platform Badge */}
-          <span className="absolute top-2 left-2 px-2 py-1 rounded-lg bg-black/60 text-white text-[10px] font-medium backdrop-blur-sm flex items-center gap-1 max-w-[calc(100%-16px)] truncate">
-            {platformIcons[product.source] || "\ud83d\udd17"} {product.source}
-            {product.platformCount && product.platformCount > 1 && (
-              <span className="ml-1 text-accent font-bold">+{product.platformCount - 1}</span>
-            )}
-          </span>
-
-          {/* Golden Score Badge (Feature 4) */}
+          {/* Golden Score Badge - TOP LEFT, most prominent */}
           {product.goldenRank && (
-            <span className={`absolute top-2 right-2 px-2 py-1 rounded-lg text-[10px] font-bold backdrop-blur-sm ${
-              product.goldenRank === "S" ? "bg-yellow-500/90 text-white" :
-              product.goldenRank === "A" ? "bg-emerald-500/90 text-white" :
-              product.goldenRank === "B" ? "bg-blue-500/90 text-white" :
-              product.goldenRank === "C" ? "bg-orange-500/90 text-white" :
-              "bg-gray-500/90 text-white"
+            <span className={`absolute top-2 left-2 px-2.5 py-1 rounded-lg text-[11px] font-bold backdrop-blur-sm shadow-lg ${
+              product.goldenRank === "S" ? "bg-yellow-500/95 text-white shadow-yellow-500/30" :
+              product.goldenRank === "A" ? "bg-emerald-500/95 text-white shadow-emerald-500/30" :
+              product.goldenRank === "B" ? "bg-blue-500/95 text-white shadow-blue-500/30" :
+              product.goldenRank === "C" ? "bg-orange-500/95 text-white shadow-orange-500/30" :
+              "bg-gray-500/95 text-white shadow-gray-500/30"
             }`}>
               {product.goldenRank} {product.goldenScore != null ? `(${product.goldenScore})` : ""}
             </span>
           )}
 
-          {/* Image Count */}
-          {imageCount > 1 && !product.goldenRank && (
-            <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-black/60 text-white text-[10px] font-medium backdrop-blur-sm flex items-center gap-1">
-              <Images className="h-2.5 w-2.5" /> {imageCount}
-            </span>
-          )}
-
-          {/* Trend Phase Badge (Feature 4) */}
+          {/* Trend Phase Badge - below golden rank */}
           {product.trendPhase && (
-            <span className={`absolute bottom-2 left-2 px-2 py-1 rounded-lg text-[10px] font-bold backdrop-blur-sm ${
+            <span className={`absolute top-12 left-2 px-2 py-1 rounded-lg text-[10px] font-bold backdrop-blur-sm ${
               product.trendPhase === "emerging" ? "bg-purple-500/90 text-white" :
               product.trendPhase === "growth" ? "bg-emerald-500/90 text-white" :
               product.trendPhase === "mature" ? "bg-blue-500/90 text-white" :
@@ -268,70 +295,71 @@ export default function EnrichedProductCard({
             </span>
           )}
 
-          {/* Saturation Badge (Feature 4) */}
-          {product.saturationLevel && !product.trendPhase && (
-            <span className={`absolute bottom-2 left-2 px-2 py-1 rounded-lg text-[10px] font-bold backdrop-blur-sm ${
-              product.saturationLevel === "unsaturated" ? "bg-emerald-500/90 text-white" :
-              product.saturationLevel === "low" ? "bg-blue-500/90 text-white" :
-              product.saturationLevel === "moderate" ? "bg-amber-500/90 text-white" :
-              product.saturationLevel === "saturated" ? "bg-orange-500/90 text-white" :
-              "bg-red-500/90 text-white"
-            }`}>
-              {product.saturationLevel === "unsaturated" ? "Unsaturated" : product.saturationLevel === "low" ? "Low Comp" : product.saturationLevel === "moderate" ? "Moderate" : product.saturationLevel === "saturated" ? "Saturated" : "Hyper"}
+          {/* Profit Estimate Badge - TOP RIGHT, prominent */}
+          {estimatedMargin && !product.trendPhase && !product.goldenRank && (
+            <span className="absolute top-2 right-2 px-2.5 py-1 rounded-lg bg-emerald-500/95 text-white text-[11px] font-bold backdrop-blur-sm shadow-lg shadow-emerald-500/30 flex items-center gap-1">
+              <BarChart3 className="h-3 w-3" /> ~{estimatedMargin}%
             </span>
           )}
 
-          {/* Profit Estimate Badge */}
-          {estimatedMargin && !product.trendPhase && !product.saturationLevel && (
-            <span className="absolute bottom-2 left-2 px-2 py-1 rounded-lg bg-emerald-500/90 text-white text-[10px] font-bold backdrop-blur-sm flex items-center gap-1">
-              <BarChart3 className="h-2.5 w-2.5" /> ~{estimatedMargin}% margin
+          {/* Saturation Score - prominent metric */}
+          {saturation && (
+            <span className={`absolute ${product.goldenRank ? "top-12" : "top-2"} right-2 px-2 py-1 rounded-lg text-[10px] font-bold backdrop-blur-sm ${saturation.bg} text-white`}>
+              {saturation.label}
             </span>
           )}
 
-          {/* Price Trend */}
-          <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-lg px-1.5 py-0.5">
-            <MiniSparkline data={priceTrend} />
-            <TrendingUp className="h-2.5 w-2.5 text-emerald-400" />
-          </div>
+          {/* Platform Badge - smaller, de-emphasized */}
+          <span className="absolute bottom-2 left-2 px-1.5 py-0.5 rounded-md bg-black/50 text-white text-[9px] font-medium backdrop-blur-sm flex items-center gap-0.5 max-w-[calc(100%-80px)] truncate">
+            {platformIcons[product.source] || "\ud83d\udd17"} {product.source}
+            {product.platformCount && product.platformCount > 1 && (
+              <span className="ml-0.5 text-accent font-bold">+{product.platformCount - 1}</span>
+            )}
+          </span>
+
+          {/* Image Count */}
+          {imageCount > 1 && !product.goldenRank && (
+            <span className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded-md bg-black/50 text-white text-[9px] font-medium backdrop-blur-sm flex items-center gap-0.5">
+              <Images className="h-2.5 w-2.5" /> {imageCount}
+            </span>
+          )}
 
           {/* Action Buttons */}
-          <div className="absolute top-2 left-2 mt-10 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+          <div className="absolute top-2 right-2 mt-10 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
             {compareMode ? (
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleSelect?.(product.id); }}
-                className={`p-2.5 rounded-lg backdrop-blur-sm transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center ${
+                className={`p-2 rounded-lg backdrop-blur-sm transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center ${
                   selected ? "bg-accent text-white" : "bg-black/60 text-white hover:bg-accent/80"
                 }`}
                 title={selected ? "Remove from compare" : "Add to compare"}
               >
-                {selected ? <Check className="h-4 w-4" /> : <GitCompare className="h-4 w-4" />}
+                {selected ? <Check className="h-3.5 w-3.5" /> : <GitCompare className="h-3.5 w-3.5" />}
               </button>
             ) : (
-              <>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const savedProduct: SavedProduct = {
-                      id: product.id || product.title,
-                      title: product.title,
-                      price: product.price ?? null,
-                      image: product.image ?? null,
-                      images: product.images,
-                      link: product.link || "",
-                      source: product.source,
-                      rating: product.rating,
-                      reviews: product.reviews,
-                      savedAt: Date.now(),
-                    };
-                    toggleSave(savedProduct);
-                  }}
-                  className={`p-2.5 rounded-lg backdrop-blur-sm transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center ${saved ? "bg-accent text-white" : "bg-black/60 text-white hover:bg-accent/80"}`}
-                  title={saved ? "Remove from favorites" : "Save to favorites"}
-                >
-                  <Heart className={`h-4 w-4 ${saved ? "fill-current" : ""}`} />
-                </button>
-              </>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const savedProduct: SavedProduct = {
+                    id: product.id || product.title,
+                    title: product.title,
+                    price: product.price ?? null,
+                    image: product.image ?? null,
+                    images: product.images,
+                    link: product.link || "",
+                    source: product.source,
+                    rating: product.rating,
+                    reviews: product.reviews,
+                    savedAt: Date.now(),
+                  };
+                  toggleSave(savedProduct);
+                }}
+                className={`p-2 rounded-lg backdrop-blur-sm transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center ${saved ? "bg-accent text-white" : "bg-black/60 text-white hover:bg-accent/80"}`}
+                title={saved ? "Remove from favorites" : "Save to favorites"}
+              >
+                <Heart className={`h-3.5 w-3.5 ${saved ? "fill-current" : ""}`} />
+              </button>
             )}
           </div>
 
@@ -340,10 +368,10 @@ export default function EnrichedProductCard({
             <div className="absolute bottom-2 right-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" ref={aiActionsRef}>
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowAIActions(!showAIActions); }}
-                className="p-2 rounded-lg bg-violet-500/80 text-white backdrop-blur-sm hover:bg-violet-500 transition-colors"
+                className="p-1.5 rounded-lg bg-violet-500/80 text-white backdrop-blur-sm hover:bg-violet-500 transition-colors"
                 title="AI Actions"
               >
-                <Sparkles className="h-3.5 w-3.5" />
+                <Sparkles className="h-3 w-3" />
               </button>
               {showAIActions && (
                 <div className="absolute bottom-full right-0 mb-1 w-48 bg-gray-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
@@ -370,41 +398,110 @@ export default function EnrichedProductCard({
           )}
         </div>
 
-        <div className="p-4 space-y-2">
-          <h3 className="font-medium text-sm text-foreground line-clamp-2 group-hover:text-accent transition-colors">
+        <div className="p-3 space-y-2">
+          <h3 className="font-medium text-sm text-foreground line-clamp-2 group-hover:text-accent transition-colors leading-tight">
             {product.title}
           </h3>
+
+          {/* Price + Profit Row - prominent */}
           <div className="flex items-center justify-between">
             {product.price != null ? (
-              <div className="flex items-baseline gap-2">
+              <div className="flex items-baseline gap-1.5">
                 <span className="text-lg font-bold text-accent">${product.price.toFixed(2)}</span>
                 {estimatedProfit && (
-                  <span className="text-[10px] text-emerald-400 font-medium">~${estimatedProfit} profit</span>
+                  <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-400/10 px-1.5 py-0.5 rounded">~${estimatedProfit} profit</span>
                 )}
               </div>
             ) : (
               <span className="text-sm text-muted-foreground">Price N/A</span>
             )}
             {product.rating != null && (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
                 <Star className="h-3 w-3 text-amber-400 fill-current" />
                 {product.rating.toFixed(1)}
                 {product.reviews != null && <span>({product.reviews.toLocaleString()})</span>}
               </span>
             )}
           </div>
-          <button
-            onClick={openPushModal}
-            className="w-full mt-2 flex items-center justify-center gap-2 py-2 px-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-xl text-xs font-medium transition-all opacity-100 sm:opacity-70 sm:group-hover:opacity-100"
-          >
-            <Store className="h-3.5 w-3.5" />
-            Push to Store
-          </button>
+
+          {/* Info Row: Shipping + Stock + Competitors */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground bg-surface/60 px-1.5 py-0.5 rounded-md">
+              <Truck className="h-2.5 w-2.5" /> {shippingDays}d
+            </span>
+            <span className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md ${
+              inStock ? "text-emerald-400 bg-emerald-400/10" : "text-red-400 bg-red-400/10"
+            }`}>
+              {inStock ? <><Check className="h-2.5 w-2.5" /> In Stock</> : <><AlertTriangle className="h-2.5 w-2.5" /> Out of Stock</>}
+            </span>
+            {product.competitorCount != null && product.competitorCount > 0 && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground bg-surface/60 px-1.5 py-0.5 rounded-md">
+                <Users className="h-2.5 w-2.5" /> {product.competitorCount} sellers
+              </span>
+            )}
+          </div>
+
+          {/* Action Buttons Row */}
+          <div className="flex items-center gap-1.5 pt-0.5">
+            <button
+              onClick={openPushModal}
+              className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg text-[10px] font-medium transition-all opacity-100 sm:opacity-70 sm:group-hover:opacity-100"
+            >
+              <Store className="h-3 w-3" />
+              Push
+            </button>
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(`/products/${product.id}?tab=sample`, "_blank"); }}
+              className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg text-[10px] font-medium transition-all opacity-100 sm:opacity-70 sm:group-hover:opacity-100"
+            >
+              <ShoppingCart className="h-3 w-3" />
+              Sample
+            </button>
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowNotes(!showNotes); }}
+              className={`flex items-center justify-center p-1.5 rounded-lg transition-all opacity-100 sm:opacity-70 sm:group-hover:opacity-100 ${
+                noteText ? "bg-amber-500/15 text-amber-400" : "bg-surface hover:bg-surface/80 text-muted-foreground"
+              }`}
+              title={noteText ? "Edit note" : "Add note"}
+            >
+              <MessageSquare className="h-3 w-3" />
+            </button>
+          </div>
+
+          {/* Notes Panel */}
+          {showNotes && (
+            <div className="space-y-1.5 pt-1" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-1.5">
+                <MessageSquare className="h-3 w-3 text-amber-400" />
+                <span className="text-[10px] font-medium text-foreground">Notes</span>
+              </div>
+              <textarea
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+                placeholder="Add private notes about this product..."
+                className="w-full px-2.5 py-1.5 rounded-lg bg-surface border border-border text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 resize-none h-16"
+              />
+              <div className="flex gap-1.5">
+                <button
+                  onClick={saveNote}
+                  className="flex-1 py-1 rounded-lg bg-accent/10 hover:bg-accent/20 text-accent text-[10px] font-medium transition-colors"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => setShowNotes(false)}
+                  className="px-2 py-1 rounded-lg bg-surface hover:bg-surface/80 text-muted-foreground text-[10px] transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </a>
 
       {/* Supplier Assignment */}
-      <div className="px-4 pb-3 -mt-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+      <div className="px-3 pb-2 -mt-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
         <SupplierPicker productId={product.id} productName={product.title} />
       </div>
 
