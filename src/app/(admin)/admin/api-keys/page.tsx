@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Key, Eye, EyeOff, Loader2, Globe, Plus, Trash2, TestTube,
   RotateCcw, Settings, CheckCircle2, XCircle, GripVertical,
-  ChevronDown, ChevronUp, AlertTriangle, Shield,
+  ChevronDown, ChevronUp, AlertTriangle, Shield, ExternalLink,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { safeFetch } from "@/lib/safe-fetch";
@@ -41,6 +41,56 @@ const METHOD_LABELS: Record<string, string> = {
   rapidapi_walmart: "Walmart RapidAPI",
   scraperapi: "ScraperAPI",
   custom_scraper: "Custom Scraper",
+};
+
+const PLATFORM_WEBSITES: Record<string, string> = {
+  aliexpress: "https://developers.aliexpress.com",
+  cj: "https://developers.cjdropshipping.com",
+  cjdropshipping: "https://developers.cjdropshipping.com",
+  amazon: "https://developer.amazonservices.com",
+  google_shopping: "https://developers.google.com/search/apis/about",
+  keepa: "https://keepa.com/#!discuss",
+  shopify: "https://shopify.dev",
+  etsy: "https://developers.etsy.com",
+  walmart: "https://developer.walmart.com",
+  tiktokshop: "https://partner.tiktokshop.com",
+  temu: "https://seller.temu.com",
+  shein: "https://seller.shein.com",
+  alibaba: "https://open.1688.com",
+  banggood: "https://www.banggood.com",
+  dhgate: "https://www.dhgate.com",
+  lightinthebox: "https://www.lightinthebox.com",
+  dropship: "https://www.dropship.io",
+  modanisa: "https://www.modanisa.com",
+  joom: "https://api.joom.com",
+  veeqo: "https://developers.veeqo.com",
+  square: "https://developer.squareup.com",
+  bigcommerce: "https://developer.bigcommerce.com",
+  wix: "https://dev.wix.com",
+  ecwid: "https://developers.ecwid.com",
+  prestashop: "https://devdocs.prestashop-project.org",
+  woocommerce: "https://woocommerce.github.io",
+  magento: "https://developer.adobe.com/commerce/webapi",
+  basecom: "https://www.base.com",
+  sirena: "https://sirena-app.com",
+  voonik: "https://www.voonik.com",
+  flipkart: "https://seller.flipkart.com/api-docs",
+  meesho: "https://supplier.meesho.com",
+  jiomart: "https://seller.jiomart.com",
+  glucose: "https://www.glucose.com",
+  snapdeal: "https://seller.snapdeal.com",
+  tradebyte: "https://www.tradebyte.com",
+  inhub: "https://www.inhub.de",
+  orderchamp: "https://www.orderchamp.com",
+  shopee: "https://open.shopee.com",
+  ebay: "https://developer.ebay.com",
+  "1688": "https://open.1688.com",
+  wish: "https://merchant.wish.com",
+  zendrop: "https://app.zendrop.com",
+  spocket: "https://app.spocket.co",
+  global_sources: "https://www.globalsources.com",
+  scraperapi: "https://www.scraperapi.com",
+  scraper: "https://www.scraperapi.com",
 };
 
 export default function AdminApiKeysPage() {
@@ -296,6 +346,12 @@ export default function AdminApiKeysPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {PLATFORM_WEBSITES[platform.id] && (
+                    <a href={PLATFORM_WEBSITES[platform.id]} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border text-xs text-muted-foreground hover:text-foreground hover:border-accent/30 transition-all">
+                      <ExternalLink className="h-3 w-3" /> Website
+                    </a>
+                  )}
                   <button onClick={() => { setShowAddKeyFor(platform.id); setExpandedPlatform(platform.id); }}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-medium hover:bg-accent-hover transition-all">
                     <Plus className="h-3 w-3" /> Add Key

@@ -1,13 +1,14 @@
 "use client";
 
 import { useAuth } from "@/components/auth/AuthProvider";
-import { Bell, Search, LogOut, ChevronDown, Menu, ArrowLeft, TrendingUp, AlertTriangle, Sparkles, AlertCircle, Info, Clock } from "lucide-react";
+import { Bell, Search, LogOut, ChevronDown, Menu, ArrowLeft, TrendingUp, AlertTriangle, Sparkles, AlertCircle, Info, Clock, Package, Truck, Zap, ArrowUpRight } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import ThemeGallery from "@/components/theme/ThemeGallery";
 import { safeFetch } from "@/lib/safe-fetch";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useAPI } from "@/hooks/useAPI";
+import { useContextualActions } from "@/hooks/useContextualActions";
 
 interface NotificationItem {
   id: string;
@@ -61,6 +62,18 @@ export default function Topbar({ onMenuToggle }: TopbarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const debouncedSearch = useDebouncedValue(searchQuery, 300);
+  const contextualActions = useContextualActions();
+
+  const contextualIconMap: Record<string, typeof Bell> = {
+    urgent: Package,
+    suggestion: TrendingUp,
+    info: Truck,
+  };
+  const contextualColorMap: Record<string, string> = {
+    urgent: "bg-red-400/10 text-red-400",
+    suggestion: "bg-emerald-400/10 text-emerald-400",
+    info: "bg-blue-400/10 text-blue-400",
+  };
 
   const { data: notifData, mutate: refetchNotifs } = useAPI<{ notifications: NotificationItem[]; unreadCount: number }>("/api/ai/notifications", {
     refreshInterval: 60000,
@@ -248,7 +261,7 @@ export default function Topbar({ onMenuToggle }: TopbarProps) {
             className="relative p-2.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all"
           >
             <Bell className="h-4 w-4" />
-            {unreadCount > 0 && (
+            {(unreadCount > 0 || contextualActions.length > 0) && (
               <span className="absolute top-2 right-2 h-2 w-2 bg-accent rounded-full">
                 <span className="absolute inset-0 rounded-full bg-accent animate-ping opacity-75" />
               </span>
@@ -264,38 +277,81 @@ export default function Topbar({ onMenuToggle }: TopbarProps) {
                 )}
               </div>
               <div className="border-t border-border my-1" />
-              {notifications.length === 0 ? (
+
+              {/* Contextual Actions */}
+              {contextualActions.length > 0 && (
+                <>
+                  <div className="px-3 py-1.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Quick Actions</p>
+                  </div>
+                  {contextualActions.map((action) => {
+                    const Icon = contextualIconMap[action.icon] || Zap;
+                    const colorCls = contextualColorMap[action.type] || contextualColorMap.info;
+                    return (
+                      <button
+                        key={action.id}
+                        onClick={() => {
+                          setNotificationsOpen(false);
+                          router.push(action.href);
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-surface-hover transition-colors text-left group"
+                      >
+                        <div className={`p-1.5 rounded-lg ${colorCls} shrink-0`}>
+                          <Icon className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-foreground">{action.message}</p>
+                          <p className="text-[10px] text-accent mt-0.5">{action.action}</p>
+                        </div>
+                        <ArrowUpRight className="h-3 w-3 text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </button>
+                    );
+                  })}
+                  <div className="border-t border-border my-1" />
+                </>
+              )}
+
+              {/* Regular Notifications */}
+              {notifications.length === 0 && contextualActions.length === 0 && (
                 <div className="px-3 py-6 text-center">
                   <Bell className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
                   <p className="text-xs text-muted-foreground">No notifications yet</p>
                 </div>
-              ) : (
-                notifications.map((n) => {
-                  const severity = n.severity || "info";
-                  const cfg = iconMap[n.icon || ""] || severityConfig[severity] || severityConfig.info;
-                  const IconComp = cfg.icon;
-                  return (
-                    <button
-                      key={n.id}
-                      onClick={() => {
-                        if (!n.read) handleMarkRead(n.id);
-                        setNotificationsOpen(false);
-                        if (n.url) router.push(n.url);
-                      }}
-                      className={`w-full flex items-start gap-3 px-3 py-2.5 hover:bg-surface-hover transition-colors text-left ${!n.read ? "bg-accent/5" : ""}`}
-                    >
-                      <div className={`p-1.5 rounded-lg ${cfg.bg} shrink-0 mt-0.5`}>
-                        <IconComp className={`h-3.5 w-3.5 ${cfg.color}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-foreground">{n.title}</p>
-                        {n.body && <p className="text-[11px] text-muted-foreground truncate">{n.body}</p>}
-                        <p className="text-[10px] text-muted-foreground/60 mt-0.5">{timeAgo(n.createdAt)}</p>
-                      </div>
-                      {!n.read && <div className="h-2 w-2 rounded-full bg-accent shrink-0 mt-1" />}
-                    </button>
-                  );
-                })
+              )}
+              {notifications.length > 0 && (
+                <>
+                  {contextualActions.length > 0 && (
+                    <div className="px-3 py-1.5">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Alerts</p>
+                    </div>
+                  )}
+                  {notifications.map((n) => {
+                    const severity = n.severity || "info";
+                    const cfg = iconMap[n.icon || ""] || severityConfig[severity] || severityConfig.info;
+                    const IconComp = cfg.icon;
+                    return (
+                      <button
+                        key={n.id}
+                        onClick={() => {
+                          if (!n.read) handleMarkRead(n.id);
+                          setNotificationsOpen(false);
+                          if (n.url) router.push(n.url);
+                        }}
+                        className={`w-full flex items-start gap-3 px-3 py-2.5 hover:bg-surface-hover transition-colors text-left ${!n.read ? "bg-accent/5" : ""}`}
+                      >
+                        <div className={`p-1.5 rounded-lg ${cfg.bg} shrink-0 mt-0.5`}>
+                          <IconComp className={`h-3.5 w-3.5 ${cfg.color}`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-foreground">{n.title}</p>
+                          {n.body && <p className="text-[11px] text-muted-foreground truncate">{n.body}</p>}
+                          <p className="text-[10px] text-muted-foreground/60 mt-0.5">{timeAgo(n.createdAt)}</p>
+                        </div>
+                        {!n.read && <div className="h-2 w-2 rounded-full bg-accent shrink-0 mt-1" />}
+                      </button>
+                    );
+                  })}
+                </>
               )}
               <div className="border-t border-border my-1" />
               <button

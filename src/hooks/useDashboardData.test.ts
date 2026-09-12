@@ -160,4 +160,146 @@ describe("useDashboardData", () => {
     const updated = updater(prev);
     expect(updated.alerts.every((a: { read: boolean }) => a.read)).toBe(true);
   });
+
+  it("maps revenueStats from API data", () => {
+    vi.mocked(useAPI).mockReturnValue({
+      data: { revenueStats: { revenue: 5000, growth: 12, orders: 100, avgOrder: 50 } },
+      isLoading: false,
+      mutate: vi.fn(),
+    } as never);
+
+    const { result } = renderHook(() => useDashboardData());
+    expect(result.current.data.revenueStats).toBeDefined();
+  });
+
+  it("maps heatmap from API data", () => {
+    vi.mocked(useAPI).mockReturnValue({
+      data: { heatmap: [{ category: "Electronics", heat: 85 }] },
+      isLoading: false,
+      mutate: vi.fn(),
+    } as never);
+
+    const { result } = renderHook(() => useDashboardData());
+    expect(result.current.data.heatmap).toEqual([{ category: "Electronics", heat: 85 }]);
+  });
+
+  it("maps suppliers from API data", () => {
+    vi.mocked(useAPI).mockReturnValue({
+      data: { supplierStatuses: [{ name: "Supplier A", status: "online" }] },
+      isLoading: false,
+      mutate: vi.fn(),
+    } as never);
+
+    const { result } = renderHook(() => useDashboardData());
+    expect(result.current.data.suppliers).toEqual([{ name: "Supplier A", status: "online" }]);
+  });
+
+  it("maps niches from API data", () => {
+    vi.mocked(useAPI).mockReturnValue({
+      data: { nicheCards: [{ name: "Tech Niche", grade: "A+" }] },
+      isLoading: false,
+      mutate: vi.fn(),
+    } as never);
+
+    const { result } = renderHook(() => useDashboardData());
+    expect(result.current.data.niches).toEqual([{ name: "Tech Niche", grade: "A+" }]);
+  });
+
+  it("maps pulse from API data", () => {
+    vi.mocked(useAPI).mockReturnValue({
+      data: { pulse: [{ label: "Market", value: "Up" }] },
+      isLoading: false,
+      mutate: vi.fn(),
+    } as never);
+
+    const { result } = renderHook(() => useDashboardData());
+    expect(result.current.data.pulse).toEqual([{ label: "Market", value: "Up" }]);
+  });
+
+  it("maps actionStats from API data", () => {
+    vi.mocked(useAPI).mockReturnValue({
+      data: { actionStats: [{ label: "Search", href: "/search" }] },
+      isLoading: false,
+      mutate: vi.fn(),
+    } as never);
+
+    const { result } = renderHook(() => useDashboardData());
+    expect(result.current.data.actionStats).toEqual([{ label: "Search", href: "/search" }]);
+  });
+
+  it("maps trending from API data", () => {
+    vi.mocked(useAPI).mockReturnValue({
+      data: { trending: [{ name: "Product A" }] },
+      isLoading: false,
+      mutate: vi.fn(),
+    } as never);
+
+    const { result } = renderHook(() => useDashboardData());
+    expect(result.current.data.trending).toEqual([{ name: "Product A" }]);
+  });
+
+  it("returns loading false when SWR finishes", () => {
+    vi.mocked(useAPI).mockReturnValue({
+      data: { ticker: [] },
+      isLoading: false,
+      mutate: vi.fn(),
+    } as never);
+
+    const { result } = renderHook(() => useDashboardData());
+    expect(result.current.loading).toBe(false);
+  });
+
+  it("addToCompare deduplicates by name", () => {
+    vi.mocked(useAPI).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      mutate: vi.fn(),
+    } as never);
+
+    const { result } = renderHook(() => useDashboardData());
+
+    act(() => result.current.addToCompare({ name: "A", price: 1, margin: 1, image: "" }));
+    act(() => result.current.addToCompare({ name: "A", price: 2, margin: 2, image: "" }));
+    expect(result.current.data.compareItems).toHaveLength(1);
+  });
+
+  it("removeFromCompare handles non-existent name", () => {
+    vi.mocked(useAPI).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      mutate: vi.fn(),
+    } as never);
+
+    const { result } = renderHook(() => useDashboardData());
+
+    act(() => result.current.addToCompare({ name: "A", price: 1, margin: 1, image: "" }));
+    act(() => result.current.removeFromCompare("NonExistent"));
+    expect(result.current.data.compareItems).toHaveLength(1);
+  });
+
+  it("clearCompare on empty list does not throw", () => {
+    vi.mocked(useAPI).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      mutate: vi.fn(),
+    } as never);
+
+    const { result } = renderHook(() => useDashboardData());
+    expect(() => act(() => result.current.clearCompare())).not.toThrow();
+  });
+
+  it("provides all required functions", () => {
+    vi.mocked(useAPI).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      mutate: vi.fn(),
+    } as never);
+
+    const { result } = renderHook(() => useDashboardData());
+    expect(typeof result.current.addToCompare).toBe("function");
+    expect(typeof result.current.removeFromCompare).toBe("function");
+    expect(typeof result.current.clearCompare).toBe("function");
+    expect(typeof result.current.markAlertRead).toBe("function");
+    expect(typeof result.current.markAllAlertsRead).toBe("function");
+  });
 });

@@ -76,7 +76,7 @@ vi.mock("lucide-react", () => ({
   Target: (p: any) => <div data-testid="icon-target" />,
 }));
 
-import SuppliersContent from "../suppliers/page";
+import SuppliersContent from "./tabs/DiscoverTab";
 import { useAPI } from "@/hooks/useAPI";
 import type { SupplierProfile } from "@/types/supplier";
 
@@ -132,7 +132,7 @@ describe("SuppliersPage", () => {
   it("renders hero title", () => {
     (useAPI as any).mockReturnValue({ data: { suppliers: [mockSupplier] }, error: null, isLoading: false, mutate: vi.fn() });
     render(<SuppliersContent />);
-    expect(screen.getByText("Supplier Intelligence")).toBeInTheDocument();
+    expect(screen.getByText("1 supplier found")).toBeInTheDocument();
   });
 
   it("renders hero search bar", () => {

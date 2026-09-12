@@ -7,6 +7,7 @@ import {
   Eye, ChevronRight, X, Send, TrendingDown,
   Tag, Truck,
 } from "lucide-react";
+import VoiceInput from "@/components/ai/VoiceInput";
 import Image from "next/image";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAPI } from "@/hooks/useAPI";
@@ -482,6 +483,7 @@ export default function ReturnsPage() {
                 className="w-full pl-9 pr-3 py-2 bg-surface border border-white/10 rounded-lg text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent"
               />
             </div>
+            <VoiceInput onTranscript={(text) => setSearchQuery(text)} />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}

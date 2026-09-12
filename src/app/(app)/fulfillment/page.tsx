@@ -9,6 +9,7 @@ import {
   FileText, Shield, LayoutTemplate,
   AlertCircle,
 } from "lucide-react";
+import VoiceInput from "@/components/ai/VoiceInput";
 import { useAPI } from "@/hooks/useAPI";
 import { safeFetch } from "@/lib/safe-fetch";
 import type { FulfillmentOrder, FulfillmentSettings } from "@/types/fulfillment";
@@ -311,6 +312,7 @@ export default function FulfillmentPage() {
               className="w-full pl-9 pr-3 py-2 bg-surface border border-white/10 rounded-lg text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent"
             />
           </div>
+          <VoiceInput onTranscript={(text) => setSearchQuery(text)} />
           {uniqueSources.length > 1 && (
             <select
               value={sourceFilter}

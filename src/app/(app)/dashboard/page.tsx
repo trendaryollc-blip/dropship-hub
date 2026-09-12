@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import "./dashboard-styles.css";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -20,6 +21,8 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { useInView } from "@/hooks/useInView";
 import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
 import { useSavedProducts } from "@/components/saved/SavedProductsProvider";
+import { setContextualActions } from "@/hooks/useContextualActions";
+import { useAPI } from "@/hooks/useAPI";
 import type {
   AIDailyPick, SmartAlert, SupplierStatus, TrendingProduct,
   HeatmapCategory, FulfillmentPipelineData, ContextualAction,
@@ -37,6 +40,34 @@ function SectionDivider({ label, icon: Icon }: { label: string; icon: React.Elem
         <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{label}</span>
       </div>
       <div className="flex-1 h-px bg-gradient-to-r from-white/[0.08] to-transparent" />
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════
+   HERO SKELETON LOADING
+   ═══════════════════════════════════════════════ */
+function HeroSkeleton() {
+  return (
+    <div className="-mx-4 md:-mx-6 lg:-mx-8">
+      <div className="hero-skeleton border-y md:border border-white/[0.06] p-6 md:p-8 lg:p-10">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-8">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-white/[0.05] animate-pulse" />
+            <div className="space-y-2">
+              <div className="h-8 w-72 bg-white/[0.05] rounded-lg animate-pulse" />
+              <div className="h-4 w-48 bg-white/[0.03] rounded animate-pulse" />
+            </div>
+          </div>
+          <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-white/[0.04] animate-pulse" />
+        </div>
+        <div className="h-14 w-full max-w-3xl mx-auto bg-white/[0.04] rounded-2xl animate-pulse mb-6" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-12 bg-white/[0.04] rounded-xl animate-pulse" />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -99,8 +130,17 @@ function SmartSearchBar() {
   const [query, setQuery] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
+  const [showAllChips, setShowAllChips] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
+
+  const { data: historyData } = useAPI<{ entries: { id: string; query: string }[] }>(
+    showSuggestions ? "/api/search-history" : null
+  );
+  const recentSearches = useMemo(() => {
+    if (!historyData?.entries) return [];
+    return historyData.entries.slice(0, 3);
+  }, [historyData]);
 
   const suggestedCommands = [
     { icon: Search, label: "Find winning products under $30", color: "cyan", action: "/products?q=winning+products&maxPrice=30" },
@@ -110,6 +150,25 @@ function SmartSearchBar() {
     { icon: Brain, label: "AI product analysis", color: "pink", action: "/ai" },
     { icon: BarChart3, label: "Competitor price analysis", color: "amber", action: "/competitors" },
   ];
+
+  const visibleChips = showAllChips ? suggestedCommands : suggestedCommands.slice(0, 4);
+
+  // Ctrl+K shortcut
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        inputRef.current?.focus();
+        setShowSuggestions(true);
+      }
+      if (e.key === "Escape") {
+        inputRef.current?.blur();
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const parseCommand = (input: string): string => {
     const q = input.toLowerCase().trim();
@@ -190,12 +249,20 @@ function SmartSearchBar() {
   };
 
   return (
-    <div className="w-full max-w-2xl">
-      <form onSubmit={handleSubmit} className="relative">
-        <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-white/[0.06] border border-white/[0.1] focus-within:border-cyan-500/40 focus-within:bg-white/[0.08] transition-all duration-300">
-          <div className="pl-3">
-            <Search className="h-4 w-4 text-gray-500" />
+    <div className="w-full max-w-3xl mx-auto">
+      <form onSubmit={handleSubmit} className="relative group">
+        {/* Glow backdrop on focus */}
+        <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-[var(--accent)]/20 via-[var(--gradient-mid)]/20 to-[var(--accent-warm)]/20 opacity-0 group-focus-within:opacity-100 blur-xl transition-opacity duration-500 pointer-events-none" />
+
+        <div className="relative flex items-center gap-2 p-2 rounded-2xl bg-white/[0.06] border border-white/[0.1] focus-within:border-[var(--accent)]/50 focus-within:bg-white/[0.08] transition-all duration-500 search-bar-container">
+          {/* Search icon with pulse on focus */}
+          <div className="pl-3 flex items-center">
+            <div className="relative">
+              <Search className="h-5 w-5 text-gray-500 group-focus-within:text-[var(--accent)] transition-colors duration-300" />
+              <div className="absolute inset-0 bg-[var(--accent)]/20 rounded-full blur-md opacity-0 group-focus-within:opacity-100 transition-opacity duration-300" />
+            </div>
           </div>
+
           <input
             ref={inputRef}
             type="text"
@@ -203,36 +270,79 @@ function SmartSearchBar() {
             onChange={(e) => { setQuery(e.target.value); setShowSuggestions(false); }}
             onFocus={() => !query && setShowSuggestions(true)}
             placeholder="Search winning products, find suppliers, calculate margins..."
-            className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 outline-none py-2"
+            className="flex-1 bg-transparent text-sm md:text-base text-white placeholder-gray-500 outline-none py-2.5"
           />
+
+          {/* Keyboard shortcut badge */}
+          <div className="hidden md:flex items-center gap-1 mr-1 opacity-40 group-focus-within:opacity-0 transition-opacity">
+            <kbd className="px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/[0.08] text-[10px] font-mono text-gray-500">Ctrl</kbd>
+            <kbd className="px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/[0.08] text-[10px] font-mono text-gray-500">K</kbd>
+          </div>
+
+          {/* Voice input button */}
           <button
             type="button"
             onClick={isListening ? stopVoice : startVoice}
-            className={`p-2 rounded-xl transition-all ${isListening ? "bg-red-500/20 text-red-400 animate-pulse" : "text-gray-500 hover:text-white hover:bg-white/[0.06]"}`}
+            className={`p-2.5 rounded-xl transition-all duration-300 ${isListening ? "bg-red-500/20 text-red-400 animate-pulse shadow-lg shadow-red-500/20" : "text-gray-500 hover:text-white hover:bg-white/[0.08] hover:shadow-md"}`}
           >
             <Mic className="h-4 w-4" />
           </button>
+
+          {/* Divider */}
+          <div className="w-px h-6 bg-white/[0.08]" />
+
+          {/* Submit button */}
           <button
             type="submit"
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white text-xs font-semibold hover:from-cyan-600 hover:to-blue-600 transition-all active:scale-[0.97]"
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-warm)] text-white text-sm font-semibold hover:brightness-110 transition-all duration-300 active:scale-[0.97] shadow-lg shadow-[var(--accent)]/25 hover:shadow-[var(--accent)]/40 flex items-center gap-2"
           >
-            Go
+            <span>Go</span>
+            <kbd className="hidden md:inline-flex items-center px-1.5 py-0.5 rounded bg-white/10 text-[10px] font-mono">&#x23CE;</kbd>
           </button>
         </div>
       </form>
 
+      {/* Suggestions panel */}
       {showSuggestions && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {suggestedCommands.map((cmd, i) => (
-            <button
-              key={i}
-              onClick={() => handleSuggestionClick(cmd.action)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[10px] text-gray-400 hover:bg-white/[0.08] hover:text-white hover:border-white/[0.12] transition-all"
-            >
-              <cmd.icon className="h-3 w-3" />
-              {cmd.label}
-            </button>
-          ))}
+        <div className="mt-4 space-y-3">
+          {/* Recent Searches */}
+          {recentSearches.length > 0 && (
+            <div className="flex flex-wrap gap-2 justify-center">
+              <span className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold self-center mr-1">Recent</span>
+              {recentSearches.map((entry, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setQuery(entry.query); setShowSuggestions(false); router.push(`/products?q=${encodeURIComponent(entry.query)}`); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.05] text-[11px] text-gray-500 hover:bg-white/[0.07] hover:text-gray-300 hover:border-white/[0.1] transition-all duration-300"
+                >
+                  <Clock className="h-3 w-3" />
+                  {entry.query}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Suggested Commands */}
+          <div className="flex flex-wrap gap-2 justify-center">
+            {visibleChips.map((cmd, i) => (
+              <button
+                key={i}
+                onClick={() => handleSuggestionClick(cmd.action)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.08] text-xs text-gray-400 hover:bg-white/[0.08] hover:text-white hover:border-white/[0.15] hover:shadow-lg transition-all duration-300 group/chip"
+              >
+                <cmd.icon className="h-3.5 w-3.5 group-hover/chip:scale-110 transition-transform" />
+                {cmd.label}
+              </button>
+            ))}
+            {suggestedCommands.length > 4 && (
+              <button
+                onClick={() => setShowAllChips(!showAllChips)}
+                className="flex items-center gap-1 px-3 py-2 rounded-full text-[11px] text-gray-600 hover:text-gray-400 transition-colors"
+              >
+                {showAllChips ? "Show less" : `+${suggestedCommands.length - 4} more`}
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -243,12 +353,14 @@ function SmartSearchBar() {
    SECTION 1: HERO COMMAND CENTER
    ═══════════════════════════════════════════════ */
 function HeroCommandCenter({
-  username, healthScore,
+  username, healthScore, trendingCount, suppliersCount, savedCount,
 }: {
   username: string; healthScore: number | null;
+  trendingCount?: number; suppliersCount?: number; savedCount?: number;
 }) {
   const { ref, isInView } = useInView({ threshold: 0.1 });
   const [time, setTime] = useState(new Date());
+  const [showHealthTip, setShowHealthTip] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 60000);
@@ -257,37 +369,73 @@ function HeroCommandCenter({
 
   const hour = time.getHours();
   const greet = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : hour < 21 ? "Good evening" : "Good night";
-  const emoji = hour < 12 ? "\u{1F305}" : hour < 17 ? "\u{2600}\u{FE0F}" : hour < 21 ? "\u{1F306}" : "\u{1F319}";
+
   const healthColor = (healthScore ?? 0) >= 80 ? "#22c55e" : (healthScore ?? 0) >= 60 ? "#f59e0b" : "#ef4444";
   const healthLabel = (healthScore ?? 0) >= 80 ? "Running strong" : (healthScore ?? 0) >= 60 ? "Needs attention" : "Critical";
+  const healthTip = (healthScore ?? 0) >= 80
+    ? "Your store is performing well. Keep it up!"
+    : (healthScore ?? 0) >= 60
+      ? "Connect more suppliers or products to improve your score."
+      : "Connect your store and add products to boost your score.";
+  const healthCta = (healthScore ?? 0) < 80 ? "Connect Store" : null;
+
+  const quickActions = [
+    { icon: Zap, label: "Find Products", href: "/products", color: "cyan", badge: trendingCount },
+    { icon: Truck, label: "Suppliers", href: "/suppliers", color: "blue", badge: suppliersCount },
+    { icon: Calculator, label: "Calculator", href: "/calculator", color: "purple", badge: null },
+    { icon: Brain, label: "AI Tools", href: "/ai", color: "pink", badge: null },
+  ];
 
   return (
-    <div ref={ref} className={`transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
-      <div className="relative overflow-hidden rounded-3xl border border-white/[0.06]">
-        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/[0.07] via-blue-600/[0.03] to-purple-600/[0.07]" />
-        <div className="absolute -top-20 -right-20 w-80 h-80 bg-cyan-400/10 rounded-full blur-[100px]" />
-        <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-purple-500/10 rounded-full blur-[80px]" />
+    <div ref={ref} className={`transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"} -mx-4 md:-mx-6 lg:-mx-8`}>
+      <div className="relative overflow-hidden rounded-none md:rounded-3xl border-y md:border border-white/[0.08] hero-card">
+        {/* Animated background layers */}
+        <div className="absolute inset-0 hero-gradient" />
+        <div className="absolute -top-32 -right-32 w-96 h-96 bg-[var(--accent)]/[0.07] rounded-full blur-[120px] float-orb" />
+        <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-[var(--accent-warm)]/[0.06] rounded-full blur-[100px] float-orb-delayed" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[var(--accent)]/[0.03] rounded-full blur-[80px]" />
         <div className="absolute inset-0 backdrop-blur-2xl" />
 
-        <div className="relative z-10 p-6 md:p-8">
-          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6 mb-6">
+        <div className="relative z-10 p-6 md:p-8 lg:p-10">
+          {/* Top row: Greeting + Health Score */}
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-8">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-4xl md:text-5xl">{emoji}</span>
+              <div className="flex items-center gap-4 mb-3">
+                {/* Animated Rocket Icon */}
+                <div className="relative rocket-bounce">
+                  <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-warm)] flex items-center justify-center shadow-lg shadow-[var(--accent)]/20">
+                    <span className="text-2xl md:text-3xl">&#x1F680;</span>
+                  </div>
+                  <div className="absolute -inset-1 rounded-2xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-warm)] opacity-20 blur-md" />
+                </div>
                 <div>
                   <h1 className="font-display text-2xl md:text-3xl lg:text-4xl font-bold text-white leading-tight">
-                    {greet}, <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">{username}</span>
+                    Welcome to <span className="bg-gradient-to-r from-[var(--accent)] via-[var(--gradient-mid)] to-[var(--accent-warm)] bg-clip-text text-transparent glow-text-accent">Dropship Hub</span>
                   </h1>
-                  <p className="text-gray-400 text-sm mt-1">What would you like to do today?</p>
+                  <p className="text-gray-500 text-xs md:text-sm mt-0.5">{greet},</p>
+                  <p className="text-gray-400 text-sm md:text-base mt-0.5">
+                    Hey <span className="text-white font-medium">{username}</span> &mdash; what&apos;s the move today?
+                  </p>
                 </div>
               </div>
             </div>
 
+            {/* Health Score with Tooltip */}
             {healthScore != null && (
-              <div className="flex items-center gap-5 shrink-0">
-                <div className="relative">
-                  <svg viewBox="0 0 100 100" className="w-20 h-20 md:w-24 md:h-24">
-                    <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="6" />
+              <div className="flex items-center gap-4 shrink-0">
+                <div
+                  className="relative group cursor-pointer"
+                  onMouseEnter={() => setShowHealthTip(true)}
+                  onMouseLeave={() => setShowHealthTip(false)}
+                >
+                  <svg viewBox="0 0 100 100" className="w-20 h-20 md:w-24 md:h-24 drop-shadow-lg transition-transform duration-300 group-hover:scale-105">
+                    <defs>
+                      <linearGradient id="healthGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor={healthColor} stopOpacity="0.2" />
+                        <stop offset="100%" stopColor={healthColor} stopOpacity="0.05" />
+                      </linearGradient>
+                    </defs>
+                    <circle cx="50" cy="50" r="42" fill="url(#healthGrad)" stroke="rgba(255,255,255,0.04)" strokeWidth="6" />
                     <circle cx="50" cy="50" r="42" fill="none" stroke={healthColor} strokeWidth="6" strokeLinecap="round"
                       strokeDasharray={2 * Math.PI * 42} strokeDashoffset={2 * Math.PI * 42 * (1 - (healthScore ?? 0) / 100)}
                       className="transition-all duration-1500 ease-out -rotate-90" />
@@ -296,6 +444,18 @@ function HeroCommandCenter({
                     <span className="font-display text-xl md:text-2xl font-bold text-white">{healthScore}</span>
                     <span className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: healthColor }}>{healthLabel}</span>
                   </div>
+
+                  {/* Tooltip */}
+                  {showHealthTip && (
+                    <div className="absolute right-0 top-full mt-3 w-64 p-3 rounded-xl bg-gray-900/95 border border-white/[0.1] shadow-2xl backdrop-blur-xl z-50 animate-in fade-in slide-in-from-top-2">
+                      <p className="text-xs text-gray-300 leading-relaxed">{healthTip}</p>
+                      {healthCta && (
+                        <Link href="/settings" className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-cyan-400 hover:text-cyan-300 transition-colors">
+                          {healthCta} <ArrowUpRight className="h-3 w-3" />
+                        </Link>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -305,18 +465,23 @@ function HeroCommandCenter({
           <SmartSearchBar />
 
           {/* Quick Actions */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-6">
-            {[
-              { icon: Zap, label: "Find Products", href: "/products", color: "cyan" },
-              { icon: Truck, label: "Suppliers", href: "/suppliers", color: "blue" },
-              { icon: Calculator, label: "Calculator", href: "/calculator", color: "purple" },
-              { icon: Brain, label: "AI Tools", href: "/ai", color: "pink" },
-            ].map((a) => {
-              const cMap: Record<string, string> = { cyan: "bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20", blue: "bg-blue-500/10 border-blue-500/20 text-blue-400 hover:bg-blue-500/20", purple: "bg-purple-500/10 border-purple-500/20 text-purple-400 hover:bg-purple-500/20", pink: "bg-pink-500/10 border-pink-500/20 text-pink-400 hover:bg-pink-500/20" };
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-8">
+            {quickActions.map((a) => {
+              const cMap: Record<string, string> = {
+                cyan: "bg-[var(--accent)]/10 border-[var(--accent)]/20 text-[var(--accent)] hover:bg-[var(--accent)]/20 hover:border-[var(--accent)]/40 hover:shadow-[var(--accent)]/10",
+                blue: "bg-[var(--accent-warm)]/10 border-[var(--accent-warm)]/20 text-[var(--accent-warm)] hover:bg-[var(--accent-warm)]/20 hover:border-[var(--accent-warm)]/40 hover:shadow-[var(--accent-warm)]/10",
+                purple: "bg-[var(--gradient-mid)]/10 border-[var(--gradient-mid)]/20 text-[var(--gradient-mid)] hover:bg-[var(--gradient-mid)]/20 hover:border-[var(--gradient-mid)]/40 hover:shadow-[var(--gradient-mid)]/10",
+                pink: "bg-[var(--accent)]/10 border-[var(--accent)]/20 text-[var(--accent)] hover:bg-[var(--accent)]/20 hover:border-[var(--accent)]/40 hover:shadow-[var(--accent)]/10",
+              };
               return (
-                <Link key={a.href} href={a.href} className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border ${cMap[a.color]} transition-all duration-300 hover:scale-[1.02] group`}>
+                <Link key={a.href} href={a.href} className={`relative flex items-center justify-center gap-2 px-4 py-3 rounded-xl border ${cMap[a.color]} transition-all duration-300 hover:scale-[1.02] hover:shadow-lg group`}>
                   <a.icon className="h-4 w-4 group-hover:scale-110 transition-transform" />
                   <span className="text-xs font-semibold">{a.label}</span>
+                  {a.badge != null && a.badge > 0 && (
+                    <span className={`absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[9px] font-bold px-1 bg-[var(--accent)] text-white`}>
+                      {a.badge > 99 ? "99+" : a.badge}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -1396,38 +1561,6 @@ function MarketTickerFooter({ ticker }: { ticker: TickerItem[] }) {
 }
 
 /* ═══════════════════════════════════════════════
-   SECTION 11: CONTEXTUAL ACTIONS
-   ═══════════════════════════════════════════════ */
-function ContextualActionsBanner({ actions }: { actions: ContextualAction[] }) {
-  if (actions.length === 0) return null;
-  const iconMap: Record<string, React.ElementType> = {
-    urgent: Package,
-    suggestion: TrendingUp,
-    info: Truck,
-  };
-  return (
-    <div className="flex flex-wrap gap-2">
-      {actions.map((action) => {
-        const Icon = iconMap[action.icon] || Zap;
-        const typeStyles: Record<string, string> = {
-          urgent: "bg-red-500/8 border-red-500/15 text-red-400 hover:bg-red-500/15",
-          suggestion: "bg-emerald-500/8 border-emerald-500/15 text-emerald-400 hover:bg-emerald-500/15",
-          info: "bg-blue-500/8 border-blue-500/15 text-blue-400 hover:bg-blue-500/15",
-        };
-        return (
-          <Link key={action.id} href={action.href}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-medium transition-all duration-200 hover:scale-[1.02] group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 ${typeStyles[action.type] || typeStyles.info}`}>
-            <Icon className="h-3.5 w-3.5 shrink-0" />
-            <span className="text-white/90">{action.message}</span>
-            <ArrowUpRight className="h-3 w-3 opacity-0 group-hover:opacity-60 transition-opacity" />
-          </Link>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════
    MAIN DASHBOARD PAGE
    ═══════════════════════════════════════════════ */
 export default function DashboardHome() {
@@ -1435,6 +1568,13 @@ export default function DashboardHome() {
   const { user } = useAuth();
   const { toggleSave, isSaved } = useSavedProducts();
   const router = useRouter();
+
+  useEffect(() => {
+    if (data.contextualActions?.length) {
+      setContextualActions(data.contextualActions);
+    }
+    return () => setContextualActions([]);
+  }, [data.contextualActions]);
 
   const stats = {
     revenue: data.revenueStats?.revenue ?? 0,
@@ -1489,8 +1629,7 @@ export default function DashboardHome() {
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto space-y-6 p-4 md:p-6" aria-busy="true" aria-label="Loading dashboard">
-        <div className="h-10 w-32 rounded-full bg-white/[0.04] animate-pulse" />
-        <div className="h-48 rounded-3xl bg-white/[0.03] border border-white/[0.06] animate-pulse" />
+        <HeroSkeleton />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           <div className="lg:col-span-2 h-64 rounded-2xl bg-white/[0.03] border border-white/[0.06] animate-pulse" />
           <div className="h-64 rounded-2xl bg-white/[0.03] border border-white/[0.06] animate-pulse" />
@@ -1510,11 +1649,12 @@ export default function DashboardHome() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 p-4 md:p-6">
-      <ContextualActionsBanner actions={data.contextualActions} />
-
       <HeroCommandCenter
         username={user?.displayName || user?.email?.split("@")[0] || "there"}
         healthScore={data.healthScore}
+        trendingCount={data.trending?.length}
+        suppliersCount={onlineSuppliers}
+        savedCount={undefined}
       />
 
       <RevenueProfitHub stats={stats} chartData={data.revenueChart ?? []} storesConnected={data.storesCount} suppliersActive={onlineSuppliers} pendingOrders={data.fulfillmentPipeline.pending ?? 0} />

@@ -23,10 +23,10 @@ vi.mock("lucide-react", () => ({
 
 const COLLECTION_TITLES = [
   "Hot Under $50",
-  "Low Competition Winners",
-  "High Margin Products",
+  "Low Competition",
+  "High Margin 40%+",
   "Trending Electronics",
-  "Top Rated Finds",
+  "Top Rated 4.5+",
   "Viral Potential",
 ];
 
@@ -34,7 +34,7 @@ const COLLECTION_QUERIES = [
   "trending popular bestseller under 50",
   "niche unique low competition high margin",
   "high profit margin premium quality",
-  "trending electronics gadget technology 2024",
+  "trending electronics gadget technology",
   "best rated top quality highly reviewed",
   "viral trending social media TikTok Instagram popular",
 ];
@@ -56,18 +56,16 @@ describe("AICollections", () => {
     });
   });
 
-  it("renders titles and subtitles", () => {
+  it("renders badges on applicable collections", () => {
     render(<AICollections />);
-    expect(screen.getByText("Trending products with high demand under $50")).toBeInTheDocument();
-    expect(screen.getByText("Underserved niches with high profit potential")).toBeInTheDocument();
-    expect(screen.getByText("Products with 40%+ profit margins")).toBeInTheDocument();
-    expect(screen.getByText("Hot tech gadgets selling fast")).toBeInTheDocument();
-    expect(screen.getByText("4.5+ star products across all platforms")).toBeInTheDocument();
-    expect(screen.getByText("Products with social media buzz")).toBeInTheDocument();
+    expect(screen.getByText("Trending")).toBeInTheDocument();
+    expect(screen.getByText("Hidden Gems")).toBeInTheDocument();
+    expect(screen.getByText("Hot")).toBeInTheDocument();
+    expect(screen.getByText("Viral")).toBeInTheDocument();
   });
 
   it("renders section heading", () => {
     render(<AICollections />);
-    expect(screen.getByText("AI Curated Collections")).toBeInTheDocument();
+    expect(screen.getByText("Quick Start")).toBeInTheDocument();
   });
 });

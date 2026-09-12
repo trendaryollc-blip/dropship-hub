@@ -30,7 +30,6 @@ import {
   FileText,
   Heart,
   RotateCcw,
-  Shield,
 } from "lucide-react";
 
 const navItems = [
@@ -128,18 +127,6 @@ const navItems = [
     label: "Ad ROI",
     href: "/ad-roi",
     icon: TrendingUp,
-    section: "analytics",
-  },
-  {
-    label: "Supplier Intel",
-    href: "/supplier-performance",
-    icon: Truck,
-    section: "analytics",
-  },
-  {
-    label: "Supplier SRM",
-    href: "/srm",
-    icon: Shield,
     section: "analytics",
   },
   {

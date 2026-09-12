@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Package, Star, Images } from "lucide-react";
+import { Package, Star, Images, Heart, Check } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
+import { useSavedProducts, type SavedProduct } from "@/components/saved/SavedProductsProvider";
 
 const platformIcons: Record<string, string> = {
   amazon: "\ud83d\udce6", ebay: "\ud83c\udff7\ufe0f", aliexpress: "\ud83c\udde8\ud83c\uddf3",
@@ -24,9 +25,19 @@ interface SearchResult {
   reviews?: number;
 }
 
-export default function ListItemCard({ product, index, onProductClick }: { product: SearchResult; index: number; onProductClick?: (product: Record<string, unknown>) => void }) {
+interface ListItemCardProps {
+  product: SearchResult;
+  index: number;
+  onProductClick?: (product: Record<string, unknown>) => void;
+  selectedForActions?: boolean;
+  onSelectForActions?: (id: string) => void;
+}
+
+export default function ListItemCard({ product, index, onProductClick, selectedForActions, onSelectForActions }: ListItemCardProps) {
   const { ref, isInView } = useInView({ threshold: 0.15 });
   const router = useRouter();
+  const { isSaved, toggleSave } = useSavedProducts();
+  const saved = isSaved(product.id || product.title);
 
   const imageCount = product.images?.length || (product.image ? 1 : 0);
 
@@ -52,7 +63,9 @@ export default function ListItemCard({ product, index, onProductClick }: { produ
       <a
         href={`/products/${product.id}`}
         onClick={handleClick}
-        className="glass-card-animated rounded-xl flex items-center gap-4 p-3 group"
+        className={`glass-card-animated rounded-xl flex items-center gap-4 p-3 group ${
+          selectedForActions ? "ring-2 ring-accent/60 ring-offset-1 ring-offset-background" : ""
+        }`}
       >
         <div className="w-16 h-16 rounded-xl bg-surface overflow-hidden shrink-0 relative">
           {product.image ? (
@@ -94,6 +107,45 @@ export default function ListItemCard({ product, index, onProductClick }: { produ
             <span className="text-xs text-muted-foreground">N/A</span>
           )}
         </div>
+
+        {/* Select for Quick Actions */}
+        {onSelectForActions && (
+          <button
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSelectForActions(product.id); }}
+            className={`p-2 rounded-lg transition-all shrink-0 ${
+              selectedForActions
+                ? "bg-accent text-white"
+                : "text-muted-foreground hover:text-accent hover:bg-accent/10"
+            }`}
+            title={selectedForActions ? "Deselect product" : "Select product for actions"}
+          >
+            {selectedForActions ? <Check className="h-4 w-4" /> : <div className="w-4 h-4 rounded border border-current/40" />}
+          </button>
+        )}
+
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const savedProduct: SavedProduct = {
+              id: product.id || product.title,
+              title: product.title,
+              price: product.price ?? null,
+              image: product.image ?? null,
+              images: product.images,
+              link: product.link || "",
+              source: product.source,
+              rating: product.rating,
+              reviews: product.reviews,
+              savedAt: Date.now(),
+            };
+            toggleSave(savedProduct);
+          }}
+          className={`p-2 rounded-lg transition-colors shrink-0 ${saved ? "bg-accent/15 text-accent" : "text-muted-foreground hover:text-accent hover:bg-accent/10"}`}
+          title={saved ? "Remove from favorites" : "Save to favorites"}
+        >
+          <Heart className={`h-4 w-4 ${saved ? "fill-current" : ""}`} />
+        </button>
       </a>
     </div>
   );

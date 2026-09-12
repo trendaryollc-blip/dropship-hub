@@ -9,6 +9,7 @@ import {
   Search, RefreshCcw, ChevronDown, ChevronUp,
   Sparkles, GitBranch, Plus,
 } from "lucide-react";
+import VoiceInput from "@/components/ai/VoiceInput";
 import PlatformConnect from "@/components/ad-campaigns/PlatformConnect";
 import CampaignCard from "@/components/ad-campaigns/CampaignCard";
 import CampaignForm from "@/components/ad-campaigns/CampaignForm";
@@ -272,9 +273,12 @@ export default function AdRoiPage() {
               placeholder="e.g. wireless earbuds, phone case, led strip lights..."
               className="w-full px-4 py-2.5 rounded-xl bg-surface border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all text-sm"
             />
-            <p className="text-[10px] text-muted-foreground mt-1.5">
-              Used to pre-fill product and competitor searches below with the exact product you want intel about.
-            </p>
+            <div className="flex items-center gap-2 mt-2">
+              <VoiceInput onTranscript={(text) => setProductQuery(text)} />
+              <p className="text-[10px] text-muted-foreground">
+                Used to pre-fill product and competitor searches below with the exact product you want intel about.
+              </p>
+            </div>
           </div>
         </div>
       </div>

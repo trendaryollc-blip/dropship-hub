@@ -220,12 +220,12 @@ describe("isOwner", () => {
     expect(await isOwner("some-uid")).toBe(false);
   });
 
-  it("falls back to hardcoded email check", async () => {
+  it("falls back to Admin SDK email lookup matching OWNER_EMAIL", async () => {
     process.env.OWNER_UID = "";
-    process.env.OWNER_EMAIL = "";
+    process.env.OWNER_EMAIL = "admin@example.com";
     vi.mocked(getAdminAuth).mockReturnValue({
       getUserByEmail: vi.fn(),
-      getUser: vi.fn().mockResolvedValue({ email: "trendaryo206@gmail.com" }),
+      getUser: vi.fn().mockResolvedValue({ email: "admin@example.com" }),
     } as any);
     expect(await isOwner("fallback-uid")).toBe(true);
   });

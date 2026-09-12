@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import {
   Search, Compass, Zap, ArrowRight,
   Flame, TrendingUp, Sparkles, ShoppingCart, Package,
-  GitCompare, Bell, ChevronUp,
+  ChevronUp,
 } from "lucide-react";
 import Image from "next/image";
 import { useInView } from "@/hooks/useInView";
@@ -21,7 +21,6 @@ import QuickActionChips from "@/components/products/QuickActionChips";
 import AICollections from "@/components/products/AICollections";
 import PersonalizedRecommendations from "@/components/products/PersonalizedRecommendations";
 import SearchAlertModal, { type SearchAlertData } from "@/components/products/SearchAlertModal";
-import VisualSearchButton from "@/components/products/VisualSearchButton";
 
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useSearchTracking } from "@/contexts/SearchTrackingContext";
@@ -674,6 +673,9 @@ function ProductsContent() {
   const [compareMode, setCompareMode] = useState(false);
   const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
 
+  // Product selection for Quick AI Actions (independent per card)
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+
   // Platform progress tracking
   const [platformProgress, setPlatformProgress] = useState<{
     platforms: { platform: string; name: string; status: "pending" | "loading" | "success" | "error"; resultCount?: number; error?: string }[];
@@ -992,6 +994,19 @@ function ProductsContent() {
 
   const getSelectedProducts = () => results.filter((r) => selectedForCompare.includes(r.id));
 
+  // Product selection for Quick AI Actions (independent toggle per card)
+  const selectProduct = useCallback((id: string) => {
+    setSelectedProductIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }, []);
+
+  const getSelectedProduct = useCallback(() => {
+    // Return the last selected product for Quick Actions
+    if (selectedProductIds.length === 0) return null;
+    return results.find((r) => r.id === selectedProductIds[selectedProductIds.length - 1]) || null;
+  }, [results, selectedProductIds]);
+
   const handleProductClick = useCallback((product: Record<string, unknown>) => {
     markProductClicked((product.id as string) || (product.title as string));
   }, [markProductClicked]);
@@ -1063,12 +1078,6 @@ function ProductsContent() {
     if (!res.success && res.error) throw new Error(res.error);
   }, [user]);
 
-  // Visual search handler (Feature 8)
-  const handleVisualSearch = useCallback(async (query: string) => {
-    setQuery(query);
-    await handleSearch(query);
-  }, [handleSearch]);
-
   return (
     <div className="max-w-7xl mx-auto space-y-5 md:space-y-6 pb-16 md:pb-24">
       <SearchHeader
@@ -1113,35 +1122,12 @@ function ProductsContent() {
         />
       )}
 
-      {/* Compare mode toggle + Alert + Visual Search */}
-      {searched && results.length > 0 && (
-        <div className="flex items-center gap-3 flex-wrap">
-          <button
-            onClick={toggleCompareMode}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-              compareMode
-                ? "bg-accent text-white"
-                : "bg-surface border border-border text-muted-foreground hover:text-foreground hover:border-accent/20"
-            }`}
-          >
-            <GitCompare className="h-4 w-4" />
-            {compareMode ? "Exit Compare" : "Compare Products"}
-          </button>
-          {compareMode && selectedForCompare.length > 0 && (
-            <span className="text-xs text-muted-foreground">
-              {selectedForCompare.length}/4 selected
-            </span>
-          )}
-          {/* Feature 10: Create Alert button */}
-          <button
-            onClick={() => setShowAlertModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-surface border border-border text-muted-foreground hover:text-amber-400 hover:border-amber-400/20 transition-all"
-          >
-            <Bell className="h-4 w-4" />
-            Create Alert
-          </button>
-          {/* Feature 8: Visual Search button */}
-          <VisualSearchButton onSearch={handleVisualSearch} />
+      {/* Compare mode counter */}
+      {compareMode && selectedForCompare.length > 0 && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">
+            {selectedForCompare.length}/4 selected
+          </span>
         </div>
       )}
 
@@ -1192,7 +1178,15 @@ function ProductsContent() {
 
       {/* Quick action chips */}
       {!loading && searched && results.length > 0 && (
-        <QuickActionChips query={query} onAction={handleQuickAction} />
+        <QuickActionChips
+          query={query}
+          onAction={handleQuickAction}
+          hasResults={results.length > 0}
+          compareMode={compareMode}
+          toggleCompareMode={toggleCompareMode}
+          onCreateAlert={() => setShowAlertModal(true)}
+          selectedProduct={getSelectedProduct()}
+        />
       )}
 
       {!loading && searched && results.length > 0 && (
@@ -1209,13 +1203,22 @@ function ProductsContent() {
                   onToggleSelect={toggleProductSelect}
                   onAIAction={handleAIAction}
                   onProductClick={handleProductClick}
+                  selectedForActions={selectedProductIds.includes(product.id)}
+                  onSelectForActions={selectProduct}
                 />
               ))}
             </div>
           ) : (
             <div className="space-y-2">
               {filteredResults.map((product, i) => (
-                <ListItemCard key={`${product.id}-${i}`} product={product} index={i} onProductClick={handleProductClick} />
+                <ListItemCard
+                  key={`${product.id}-${i}`}
+                  product={product}
+                  index={i}
+                  onProductClick={handleProductClick}
+                  selectedForActions={selectedProductIds.includes(product.id)}
+                  onSelectForActions={selectProduct}
+                />
               ))}
             </div>
           )}

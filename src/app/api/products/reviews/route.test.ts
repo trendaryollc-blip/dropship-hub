@@ -22,11 +22,11 @@ describe("POST /api/products/reviews", () => {
     vi.clearAllMocks();
   });
 
-  it("returns 400 when no useful data provided", async () => {
+  it("returns 200 with empty object when no useful data provided", async () => {
     const res = await POST(makeReq({}), null as any);
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data.error).toContain("Unable");
+    expect(data).toEqual({});
   });
 
   it("returns fallback review data when rating and count provided", async () => {

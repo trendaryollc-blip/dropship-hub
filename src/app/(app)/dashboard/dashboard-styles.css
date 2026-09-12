@@ -19,9 +19,9 @@
 .hero-gradient {
   background: linear-gradient(
     135deg,
-    rgba(0, 200, 255, 0.1),
-    rgba(59, 130, 246, 0.05),
-    rgba(168, 85, 247, 0.1)
+    rgba(255, 35, 72, 0.08),
+    rgba(255, 91, 122, 0.04),
+    rgba(255, 179, 71, 0.06)
   );
   background-size: 200% 200%;
   animation: hero-gradient 8s ease infinite;
@@ -73,6 +73,13 @@
     0 0 60px rgba(0, 200, 255, 0.2);
 }
 
+.glow-text-accent {
+  text-shadow:
+    0 0 20px rgba(255, 35, 72, 0.5),
+    0 0 40px rgba(255, 35, 72, 0.3),
+    0 0 60px rgba(255, 91, 122, 0.2);
+}
+
 /* Animated border gradient */
 @keyframes border-flow {
   0% {
@@ -98,10 +105,10 @@
   padding: 1px;
   background: linear-gradient(
     135deg,
-    rgba(0, 200, 255, 0.3),
-    rgba(59, 130, 246, 0.3),
-    rgba(168, 85, 247, 0.3),
-    rgba(0, 200, 255, 0.3)
+    rgba(255, 35, 72, 0.3),
+    rgba(255, 91, 122, 0.3),
+    rgba(255, 179, 71, 0.3),
+    rgba(255, 35, 72, 0.3)
   );
   background-size: 300% 300%;
   animation: border-flow 4s ease infinite;
@@ -131,7 +138,7 @@
   inset: 0;
   background: radial-gradient(
     circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
-    rgba(0, 200, 255, 0.1),
+    rgba(255, 35, 72, 0.1),
     transparent 50%
   );
   opacity: 0;
@@ -192,16 +199,16 @@
 /* Neon glow effect */
 .neon-glow {
   box-shadow:
-    0 0 10px rgba(0, 200, 255, 0.3),
-    0 0 20px rgba(0, 200, 255, 0.2),
-    0 0 40px rgba(0, 200, 255, 0.1);
+    0 0 10px rgba(255, 35, 72, 0.3),
+    0 0 20px rgba(255, 35, 72, 0.2),
+    0 0 40px rgba(255, 35, 72, 0.1);
 }
 
 /* Smooth scroll behavior */
 .smooth-scroll {
   scroll-behavior: smooth;
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 200, 255, 0.3) transparent;
+  scrollbar-color: rgba(255, 35, 72, 0.3) transparent;
 }
 
 .smooth-scroll::-webkit-scrollbar {
@@ -213,18 +220,18 @@
 }
 
 .smooth-scroll::-webkit-scrollbar-thumb {
-  background: rgba(0, 200, 255, 0.3);
+  background: rgba(255, 35, 72, 0.3);
   border-radius: 3px;
 }
 
 .smooth-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 200, 255, 0.5);
+  background: rgba(255, 35, 72, 0.5);
 }
 
 /* Focus ring enhancement */
 .focus-ring:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(0, 200, 255, 0.5);
+  box-shadow: 0 0 0 2px rgba(255, 35, 72, 0.5);
 }
 
 /* Button hover effects */
@@ -234,7 +241,7 @@
 
 .btn-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0, 200, 255, 0.3);
+  box-shadow: 0 4px 20px rgba(255, 35, 72, 0.3);
 }
 
 .btn-hover:active {
@@ -260,6 +267,121 @@
   );
   background-size: 200% 100%;
   animation: shimmer 2s ease-in-out infinite;
+}
+
+/* ============================================
+   HERO CARD STYLES
+   ============================================ */
+
+/* Hero card entrance animation */
+.hero-card {
+  animation: heroCardEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes heroCardEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Rocket bounce animation */
+@keyframes rocketBounce {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-4px) rotate(-2deg);
+  }
+  75% {
+    transform: translateY(-2px) rotate(2deg);
+  }
+}
+
+.rocket-bounce {
+  animation: rocketBounce 3s ease-in-out infinite;
+}
+
+/* Hero skeleton loading */
+.hero-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 1rem;
+}
+
+.hero-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* ============================================
+   SEARCH BAR ADVANCED STYLES
+   ============================================ */
+
+/* Search bar focus glow animation */
+@keyframes searchGlow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 20px rgba(255, 35, 72, 0.15),
+      0 0 40px rgba(255, 35, 72, 0.05);
+  }
+  50% {
+    box-shadow:
+      0 0 30px rgba(255, 35, 72, 0.25),
+      0 0 60px rgba(255, 35, 72, 0.1);
+  }
+}
+
+.search-bar-container:focus-within {
+  animation: searchGlow 3s ease-in-out infinite;
+}
+
+/* Search bar shimmer effect */
+.search-bar-container::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 35, 72, 0.03) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.search-bar-container:focus-within::before {
+  opacity: 1;
+  animation: searchShimmer 3s ease-in-out infinite;
+}
+
+@keyframes searchShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 /* Responsive adjustments */

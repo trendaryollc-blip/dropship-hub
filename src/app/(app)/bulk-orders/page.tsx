@@ -6,6 +6,7 @@ import {
   Package, Loader2, AlertCircle, CheckCircle2, X, Search,
   PlayCircle, Clock, Zap, FileText,
 } from "lucide-react";
+import VoiceInput from "@/components/ai/VoiceInput";
 import { useAPI } from "@/hooks/useAPI";
 import { safeFetch } from "@/lib/safe-fetch";
 import { logger } from "@/lib/logger";
@@ -269,6 +270,7 @@ export default function BulkOrdersPage() {
               className="w-full pl-9 pr-3 py-2 bg-surface border border-white/10 rounded-lg text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent"
             />
           </div>
+          <VoiceInput onTranscript={(text) => setSearchQuery(text)} />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}

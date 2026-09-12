@@ -5,7 +5,7 @@ import {
   Globe, Plus, Trash2, Key, CheckCircle2, XCircle,
   Loader2, X, Eye, EyeOff, RotateCcw, GripVertical, AlertTriangle,
   Settings, RefreshCw, ChevronDown, ChevronUp, TestTube,
-  Layers, Store, MousePointer2, Brain, Shield, Zap,
+  Layers, Store, MousePointer2, Brain, Shield, Zap, ExternalLink,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import CuratedListTab from "@/components/platforms/CuratedListTab";
@@ -48,6 +48,56 @@ const METHOD_OPTIONS = [
   { value: "scraperapi", label: "ScraperAPI" },
   { value: "custom_scraper", label: "Custom Scraper" },
 ];
+
+const PLATFORM_WEBSITES: Record<string, string> = {
+  aliexpress: "https://developers.aliexpress.com",
+  cj: "https://developers.cjdropshipping.com",
+  cjdropshipping: "https://developers.cjdropshipping.com",
+  amazon: "https://developer.amazonservices.com",
+  google_shopping: "https://developers.google.com/search/apis/about",
+  keepa: "https://keepa.com/#!discuss",
+  shopify: "https://shopify.dev",
+  etsy: "https://developers.etsy.com",
+  walmart: "https://developer.walmart.com",
+  tiktokshop: "https://partner.tiktokshop.com",
+  temu: "https://seller.temu.com",
+  shein: "https://seller.shein.com",
+  alibaba: "https://open.1688.com",
+  banggood: "https://www.banggood.com",
+  dhgate: "https://www.dhgate.com",
+  lightinthebox: "https://www.lightinthebox.com",
+  dropship: "https://www.dropship.io",
+  modanisa: "https://www.modanisa.com",
+  joom: "https://api.joom.com",
+  veeqo: "https://developers.veeqo.com",
+  square: "https://developer.squareup.com",
+  bigcommerce: "https://developer.bigcommerce.com",
+  wix: "https://dev.wix.com",
+  ecwid: "https://developers.ecwid.com",
+  prestashop: "https://devdocs.prestashop-project.org",
+  woocommerce: "https://woocommerce.github.io",
+  magento: "https://developer.adobe.com/commerce/webapi",
+  basecom: "https://www.base.com",
+  sirena: "https://sirena-app.com",
+  voonik: "https://www.voonik.com",
+  flipkart: "https://seller.flipkart.com/api-docs",
+  meesho: "https://supplier.meesho.com",
+  jiomart: "https://seller.jiomart.com",
+  glucose: "https://www.glucose.com",
+  snapdeal: "https://seller.snapdeal.com",
+  tradebyte: "https://www.tradebyte.com",
+  inhub: "https://www.inhub.de",
+  orderchamp: "https://www.orderchamp.com",
+  shopee: "https://open.shopee.com",
+  ebay: "https://developer.ebay.com",
+  "1688": "https://open.1688.com",
+  wish: "https://merchant.wish.com",
+  zendrop: "https://app.zendrop.com",
+  spocket: "https://app.spocket.co",
+  global_sources: "https://www.globalsources.com",
+  scraperapi: "https://www.scraperapi.com",
+  scraper: "https://www.scraperapi.com",
+};
 
 export default function AdminPlatformsPage() {
   const { user } = useAuth();
@@ -437,6 +487,12 @@ export default function AdminPlatformsPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
+                        {PLATFORM_WEBSITES[platform.id] && (
+                          <a href={PLATFORM_WEBSITES[platform.id]} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border text-xs text-muted-foreground hover:text-foreground hover:border-accent/30 transition-all">
+                            <ExternalLink className="h-3 w-3" /> Website
+                          </a>
+                        )}
                         <button onClick={() => handleToggleEnabled(platform.id, platform.enabled)}
                           className={`relative w-12 h-6 rounded-full transition-colors ${platform.enabled ? "bg-emerald-500" : "bg-muted-foreground/30"}`}>
                           <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${platform.enabled ? "left-7" : "left-1"}`} />

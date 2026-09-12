@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, Copy, Check, Trash2, Loader2, Sparkles } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { FileText, Copy, Check, Trash2, Loader2, Sparkles, Package } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAPI } from "@/hooks/useAPI";
 import { useToast } from "@/components/ui/Toast";
@@ -20,17 +21,28 @@ const TONES = ["professional", "casual", "luxury", "budget", "handmade"] as cons
 export default function ProductListingsPage() {
   const { user } = useAuth();
   const { error: toastError } = useToast();
+  const searchParams = useSearchParams();
   const uid = user?.uid || "";
 
   const { data: listingsData, mutate: mutateListings } = useAPI<{ listings?: SavedListing[] }>(uid ? `/api/ai/listings?uid=${uid}` : null);
   const { data: statsData } = useAPI<{ stats?: ListingStats }>(uid ? `/api/ai/listings?type=stats&uid=${uid}` : null);
 
-  const [platform, setPlatform] = useState<PlatformType>("amazon");
+  const urlTitle = searchParams.get("title") || "";
+  const urlPrice = searchParams.get("price") || "";
+  const urlCategory = searchParams.get("category") || "";
+  const urlDescription = searchParams.get("description") || "";
+  const hasProductContext = urlTitle || urlPrice;
+
+  const [platform, setPlatform] = useState<PlatformType>(() => {
+    const p = searchParams.get("platform");
+    if (p && ["amazon", "shopify", "etsy", "ebay", "walmart"].includes(p)) return p as PlatformType;
+    return "amazon";
+  });
   const [tone, setTone] = useState<string>("professional");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("");
-  const [category, setCategory] = useState("");
+  const [title, setTitle] = useState(urlTitle);
+  const [description, setDescription] = useState(urlDescription);
+  const [price, setPrice] = useState(urlPrice);
+  const [category, setCategory] = useState(urlCategory);
   const [specKeys, setSpecKeys] = useState<string[]>([""]);
   const [specVals, setSpecVals] = useState<string[]>([""]);
   const [generating, setGenerating] = useState(false);
@@ -108,6 +120,20 @@ export default function ProductListingsPage() {
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">Generate platform-optimized product listings with AI. Titles, descriptions, bullet points, and SEO tags.</p>
         </div>
+
+        {/* Product Context Banner */}
+        {hasProductContext && (
+          <div className="glass rounded-xl p-3 border border-accent/10 bg-accent/5 flex items-center gap-3 shrink-0">
+            <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+              <Package className="h-4 w-4 text-accent" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] text-muted-foreground">Generating listing for</p>
+              <p className="text-xs font-semibold text-foreground truncate max-w-[200px]">{title || "Untitled"}</p>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center bg-surface rounded-xl border border-border p-0.5">
           {(["generate", "saved"] as const).map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)} className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold capitalize transition-all ${activeTab === tab ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-muted-foreground hover:text-foreground"}`}>

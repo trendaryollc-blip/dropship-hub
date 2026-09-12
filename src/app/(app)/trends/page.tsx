@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { TrendingUp, TrendingDown, Minus, Search, Plus, Trash2, Loader2, Flame, Zap, Eye } from "lucide-react";
+import VoiceInput from "@/components/ai/VoiceInput";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAPI } from "@/hooks/useAPI";
 import type { TrendPrediction, RisingStar, TrendWatchlistEntry, TrendAnalysisResponse } from "@/types/trend-predictor";
@@ -158,7 +159,10 @@ export default function TrendsPage() {
           <div className="glass rounded-2xl p-4 sm:p-5 space-y-4">
             <h3 className="font-display text-sm font-semibold text-foreground">Analyze Trend</h3>
             <input value={searchKeyword} onChange={(e) => setSearchKeyword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAnalyze()} placeholder="Enter keyword (e.g. wireless earbuds)" className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/40" />
-            <input value={searchCategory} onChange={(e) => setSearchCategory(e.target.value)} placeholder="Category (optional)" className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/40" />
+            <div className="flex gap-2">
+              <VoiceInput onTranscript={(text) => setSearchKeyword(text)} />
+              <input value={searchCategory} onChange={(e) => setSearchCategory(e.target.value)} placeholder="Category (optional)" className="flex-1 px-3 py-2 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/40" />
+            </div>
             <button onClick={handleAnalyze} disabled={analyzing || !searchKeyword.trim()} className="w-full py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent/80 disabled:opacity-50 transition-all flex items-center justify-center gap-2">
               {analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
               {analyzing ? "Analyzing..." : "Analyze Trend"}

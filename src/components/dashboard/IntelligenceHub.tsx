@@ -504,8 +504,7 @@ function MarketPulseGrid({ cards }: { cards: MarketPulseCard[] }) {
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function QuickActionsStrip({ actions }: { actions: QuickActionStat[] }) {
+export function QuickActionsStrip({ actions }: { actions: QuickActionStat[] }) {
   const { ref, isInView } = useInView({ threshold: 0.1 });
   const colorMap: Record<string, { icon: typeof Search; gradient: string; bg: string; color: string }> = {
     blue: { icon: Search, gradient: "from-blue-400/20 to-blue-500/5", bg: "bg-blue-400/10", color: "text-blue-400" },

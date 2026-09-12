@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import AISettingsPage from "./page";
 
 vi.mock("next/link", () => ({
@@ -129,16 +129,9 @@ describe("Settings Page", () => {
     expect(screen.getByText("Competitors")).toBeDefined();
   });
 
-  it("renders SystemHealthPanel", () => {
-    render(<AISettingsPage />);
-    expect(screen.getByTestId("system-health-panel")).toBeDefined();
-  });
-
-  it("renders tab bar with all 7 tabs", () => {
+  it("renders tab bar with all 5 tabs", () => {
     render(<AISettingsPage />);
     expect(screen.getByText("API Providers")).toBeDefined();
-    expect(screen.getByText("AI Features")).toBeDefined();
-    expect(screen.getByText("Platforms")).toBeDefined();
     expect(screen.getByText("Stores")).toBeDefined();
     expect(screen.getByText("Notifications")).toBeDefined();
     expect(screen.getByText("Account")).toBeDefined();
@@ -148,27 +141,6 @@ describe("Settings Page", () => {
   it("providers tab shows provider list", () => {
     render(<AISettingsPage />);
     expect(screen.getByTestId("providers-tab")).toBeDefined();
-  });
-
-  it("features tab shows AI feature cards when clicked", () => {
-    render(<AISettingsPage />);
-    fireEvent.click(screen.getByText("AI Features"));
-    expect(screen.getByTestId("features-tab")).toBeDefined();
-    expect(screen.getByText("Price Optimization")).toBeDefined();
-    expect(screen.getByText("Product Analysis")).toBeDefined();
-    expect(screen.getByText("Market Trends")).toBeDefined();
-    expect(screen.getByText("Listing Optimization")).toBeDefined();
-    expect(screen.getByText("Supplier Verification")).toBeDefined();
-    expect(screen.getByText("Competitor Intelligence")).toBeDefined();
-  });
-
-  it("platforms tab shows platform connectors when clicked", () => {
-    render(<AISettingsPage />);
-    fireEvent.click(screen.getByText("Platforms"));
-    expect(screen.getByTestId("platforms-tab")).toBeDefined();
-    expect(screen.getByText("AliExpress")).toBeDefined();
-    expect(screen.getByText("CJ Dropshipping")).toBeDefined();
-    expect(screen.getByText("Rainforest API (Amazon)")).toBeDefined();
   });
 
   it("stores tab shows connected stores or empty state", () => {
@@ -206,34 +178,15 @@ describe("Settings Page", () => {
     expect(screen.getByText("Import")).toBeDefined();
   });
 
-  it("HowItWorksSection renders", () => {
-    render(<AISettingsPage />);
-    expect(screen.getByTestId("how-it-works-section")).toBeDefined();
-    expect(screen.getByText("How It Works")).toBeDefined();
-  });
-
-  it("SettingsChatSidebar renders", () => {
-    render(<AISettingsPage />);
-    expect(screen.getByTestId("settings-chat-sidebar")).toBeDefined();
-  });
-
   it("tab switching works correctly", () => {
     render(<AISettingsPage />);
 
     expect(screen.getByTestId("providers-tab")).toBeDefined();
-    expect(screen.queryByTestId("features-tab")).toBeNull();
-
-    fireEvent.click(screen.getByText("AI Features"));
-    expect(screen.getByTestId("features-tab")).toBeDefined();
-    expect(screen.queryByTestId("providers-tab")).toBeNull();
-
-    fireEvent.click(screen.getByText("Platforms"));
-    expect(screen.getByTestId("platforms-tab")).toBeDefined();
-    expect(screen.queryByTestId("features-tab")).toBeNull();
+    expect(screen.queryByTestId("stores-tab")).toBeNull();
 
     fireEvent.click(screen.getByText("Stores"));
     expect(screen.getByTestId("stores-tab")).toBeDefined();
-    expect(screen.queryByTestId("platforms-tab")).toBeNull();
+    expect(screen.queryByTestId("providers-tab")).toBeNull();
 
     fireEvent.click(screen.getByText("Notifications"));
     expect(screen.getByTestId("notifications-tab")).toBeDefined();

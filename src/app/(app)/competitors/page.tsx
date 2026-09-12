@@ -6,6 +6,7 @@ import {
   Search, Globe, Loader2, Crosshair, BookmarkPlus,
   BarChart3, Layers, DollarSign, Users, Sparkles,
 } from "lucide-react";
+import VoiceInput from "@/components/ai/VoiceInput";
 import { useInView } from "@/hooks/useInView";
 import { type MarketData } from "@/types/competitors";
 import { useMutation } from "@/hooks/useAPI";
@@ -234,6 +235,7 @@ function CompetitorsContent() {
               className="w-full pl-11 pr-4 py-3.5 rounded-xl bg-surface border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all text-sm"
             />
           </div>
+          <VoiceInput onTranscript={(text) => setQuery(text)} />
           <button
             onClick={() => handleSearch()}
             disabled={isMutating || !query.trim()}

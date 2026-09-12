@@ -14,6 +14,10 @@ vi.mock("@/lib/safe-fetch", () => ({
   safeFetch: vi.fn().mockResolvedValue({ similar: [], boughtTogether: [] }),
 }));
 
+vi.mock("@/components/auth/AuthProvider", () => ({
+  useAuth: () => ({ user: null }),
+}));
+
 describe("SimilarProducts", () => {
   it("renders heading", async () => {
     render(<SimilarProducts category="Electronics" title="Headphones" />);

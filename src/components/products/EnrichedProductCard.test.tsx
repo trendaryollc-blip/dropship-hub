@@ -95,21 +95,20 @@ describe("EnrichedProductCard", () => {
     expect(screen.getByText("Price N/A")).toBeInTheDocument();
   });
 
-  it("renders Push to Store button", () => {
+  it("renders Push button", () => {
     render(<EnrichedProductCard product={mockProduct} index={0} />);
-    expect(screen.getByText("Push to Store")).toBeInTheDocument();
+    expect(screen.getByText("Push")).toBeInTheDocument();
   });
 
-  it("opens push modal when Push to Store is clicked", () => {
+  it("renders Sample button", () => {
     render(<EnrichedProductCard product={mockProduct} index={0} />);
-    fireEvent.click(screen.getByText("Push to Store"));
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("Sample")).toBeInTheDocument();
   });
 
-  it("shows no stores connected when modal opens with no stores", async () => {
+  it("renders trend percentage badge", () => {
     render(<EnrichedProductCard product={mockProduct} index={0} />);
-    fireEvent.click(screen.getByText("Push to Store"));
-    expect(await screen.findByText("No stores connected yet")).toBeInTheDocument();
+    const badges = screen.getAllByText(/%/);
+    expect(badges.length).toBeGreaterThan(0);
   });
 
   it("renders save button", () => {

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, Sparkles, ChevronDown, ChevronUp, RotateCcw, Clock } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { Loader2, Sparkles, ChevronDown, ChevronUp, RotateCcw, Clock, Package } from "lucide-react";
 import TrendVelocityCard from "./TrendVelocityCard";
 import SaturationGauge from "./SaturationGauge";
 import ProfitPotentialPanel from "./ProfitPotentialPanel";
@@ -106,12 +107,31 @@ function Input({ label, value, onChange, placeholder, type = "text" }: { label: 
 }
 
 export default function ProductValidationPage() {
-  const [form, setForm] = useState<FormData>(defaultForm);
+  const searchParams = useSearchParams();
+  const [form, setForm] = useState<FormData>(() => {
+    const initial = { ...defaultForm };
+    const productTitle = searchParams.get("productTitle");
+    const currentPrice = searchParams.get("currentPrice");
+    const productImage = searchParams.get("productImage");
+    const productUrl = searchParams.get("productUrl");
+    const category = searchParams.get("category");
+    if (productTitle) initial.productTitle = productTitle;
+    if (currentPrice) {
+      initial.currentPrice = currentPrice;
+      initial.sellingPrice = currentPrice;
+    }
+    if (productImage) initial.productImage = productImage;
+    if (productUrl) initial.productUrl = productUrl;
+    if (category) initial.category = category;
+    return initial;
+  });
   const [result, setResult] = useState<ProductValidationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { data: historyData } = useAPI<{ validations?: ValidationDoc[] }>("/api/product-validation");
   const history = historyData?.validations || [];
+
+  const hasProductContext = searchParams.get("productTitle") || searchParams.get("currentPrice");
 
   const update = (key: keyof FormData, value: string) => setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -204,6 +224,35 @@ export default function ProductValidationPage() {
         <h1 className="font-display text-2xl font-bold text-foreground mb-1">Product Validation Engine</h1>
         <p className="text-sm text-muted-foreground">Score products on 10+ criteria and find your next winner</p>
       </div>
+
+      {/* Product Context Banner */}
+      {hasProductContext && (
+        <div className="glass rounded-2xl p-4 border border-accent/10 bg-accent/5">
+          <div className="flex items-center gap-3">
+            {form.productImage && (
+              <div className="w-12 h-12 rounded-xl overflow-hidden bg-surface shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={form.productImage} alt={form.productTitle} className="w-full h-full object-cover" />
+              </div>
+            )}
+            {!form.productImage && (
+              <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+                <Package className="h-5 w-5 text-accent" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground">Validating product</p>
+              <p className="text-sm font-semibold text-foreground truncate">{form.productTitle || "Untitled"}</p>
+            </div>
+            {form.currentPrice && (
+              <div className="text-right shrink-0">
+                <p className="text-xs text-muted-foreground">Price</p>
+                <p className="text-sm font-bold text-accent">${parseFloat(form.currentPrice).toFixed(2)}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1 space-y-4">

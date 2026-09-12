@@ -6,6 +6,26 @@ import { PLATFORM_CATALOG, CATALOG_METHOD_LABELS, type CatalogPlatform } from "@
 import { Loader2, Key, Globe, ExternalLink } from "lucide-react";
 import { safeFetch, FetchError } from "@/lib/safe-fetch";
 
+const CURATED_WEBSITES: Record<string, string> = {
+  aliexpress: "https://developers.aliexpress.com",
+  cj: "https://developers.cjdropshipping.com",
+  temu: "https://seller.temu.com",
+  shein: "https://seller.shein.com",
+  wish: "https://merchant.wish.com",
+  banggood: "https://www.banggood.com",
+  dhgate: "https://www.dhgate.com",
+  "1688": "https://open.1688.com",
+  alibaba: "https://open.1688.com",
+  amazon: "https://developer.amazonservices.com",
+  ebay: "https://developer.ebay.com",
+  etsy: "https://developers.etsy.com",
+  walmart: "https://developer.walmart.com",
+  shopee: "https://open.shopee.com",
+  global_sources: "https://www.globalsources.com",
+  zendrop: "https://app.zendrop.com",
+  spocket: "https://app.spocket.co",
+};
+
 interface Props {
   onCreated: () => void;
 }
@@ -109,14 +129,26 @@ export default function CuratedListTab({ onCreated }: Props) {
                 <Key className="h-3 w-3 text-purple-400" />
                 <span className="text-[10px] text-muted-foreground">{catalog.keyHint}</span>
               </div>
-              <a
-                href={catalog.keyUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-[10px] text-accent hover:text-accent-hover transition-colors mb-3"
-              >
-                Get API Key <ExternalLink className="h-2.5 w-2.5" />
-              </a>
+              <div className="flex items-center gap-2 mb-3">
+                <a
+                  href={catalog.keyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[10px] text-accent hover:text-accent-hover transition-colors"
+                >
+                  Get API Key <ExternalLink className="h-2.5 w-2.5" />
+                </a>
+                {CURATED_WEBSITES[catalog.id] && (
+                  <a
+                    href={CURATED_WEBSITES[catalog.id]}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Website <ExternalLink className="h-2.5 w-2.5" />
+                  </a>
+                )}
+              </div>
             </div>
 
             <button

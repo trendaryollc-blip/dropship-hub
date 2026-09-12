@@ -68,4 +68,47 @@ describe("ProductCard", () => {
     const link = screen.getByText("Wireless Earbuds Pro").closest("a");
     expect(link).toHaveAttribute("href", "/products/p1");
   });
+
+  it("renders category", () => {
+    render(<ProductCard product={mockProduct} />);
+    expect(screen.getByText("Electronics")).toBeDefined();
+  });
+
+  it("renders trending badge when trending", () => {
+    render(<ProductCard product={mockProduct} />);
+    expect(screen.getByText(/Trending/)).toBeDefined();
+  });
+
+  it("renders profit potential badge", () => {
+    render(<ProductCard product={mockProduct} />);
+    expect(screen.getByText(/High Profit/)).toBeDefined();
+  });
+
+  it("renders category", () => {
+    render(<ProductCard product={mockProduct} />);
+    expect(screen.getByText("Electronics")).toBeDefined();
+  });
+
+  it("renders product image", () => {
+    render(<ProductCard product={mockProduct} />);
+    const img = screen.getByAltText("Wireless Earbuds Pro");
+    expect(img).toHaveAttribute("src", "/earbuds.jpg");
+  });
+
+  it("renders with different product", () => {
+    const product2 = { ...mockProduct, id: "p2", title: "LED Strip Lights", riskScore: 45 };
+    render(<ProductCard product={product2} />);
+    expect(screen.getByText("LED Strip Lights")).toBeDefined();
+  });
+
+  it("renders platform names", () => {
+    render(<ProductCard product={mockProduct} />);
+    expect(screen.getByText("aliexpress")).toBeDefined();
+    expect(screen.getByText("amazon")).toBeDefined();
+  });
+
+  it("renders potential margin", () => {
+    render(<ProductCard product={mockProduct} />);
+    expect(screen.getByText("Potential margin")).toBeDefined();
+  });
 });

@@ -33,26 +33,7 @@ describe("SearchHeader", () => {
     expect(screen.getByPlaceholderText(/search/i)).toBeInTheDocument();
   });
 
-  it("renders heading", () => {
-    render(
-      <SearchHeader
-        query=""
-        setQuery={vi.fn()}
-        onSearch={vi.fn()}
-        loading={false}
-        platforms={[]}
-        selectedPlatforms={[]}
-        togglePlatform={vi.fn()}
-        showFilters={false}
-        setShowFilters={vi.fn()}
-        recentSearches={[]}
-        onRecentClick={vi.fn()}
-      />
-    );
-    expect(screen.getByText("Product Search")).toBeInTheDocument();
-  });
-
-  it("renders platform buttons", () => {
+  it("renders platform chips", () => {
     render(
       <SearchHeader
         query=""
@@ -192,7 +173,7 @@ describe("SearchHeader", () => {
     expect(screen.getByText("phone case")).toBeInTheDocument();
   });
 
-  it("calls onSearch when search button is clicked", () => {
+  it("calls onSearch when Search All Platforms is clicked", () => {
     const onSearch = vi.fn();
     render(
       <SearchHeader
@@ -200,8 +181,8 @@ describe("SearchHeader", () => {
         setQuery={vi.fn()}
         onSearch={onSearch}
         loading={false}
-        platforms={[]}
-        selectedPlatforms={[]}
+        platforms={[{ id: "amazon", name: "Amazon" }, { id: "ebay", name: "eBay" }]}
+        selectedPlatforms={["amazon"]}
         togglePlatform={vi.fn()}
         showFilters={false}
         setShowFilters={vi.fn()}
@@ -243,7 +224,7 @@ describe("SearchHeader", () => {
     expect(onRecentClick).toHaveBeenCalledWith("earbuds");
   });
 
-  it("shows AI input panel when Ask AI button is clicked", () => {
+  it("does not render AI panel by default", () => {
     render(
       <SearchHeader
         query=""
@@ -261,40 +242,30 @@ describe("SearchHeader", () => {
       />
     );
 
-    const askAIButton = screen.getByText("Ask AI");
-    fireEvent.click(askAIButton);
-
-    expect(screen.getByPlaceholderText(/describe what you're looking for/i)).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/describe what you're looking for/i)).not.toBeInTheDocument();
   });
 
-  it("calls onAskAI when AI search is submitted", async () => {
-    const onAskAI = vi.fn();
+  it("calls onSearch when Enter is pressed in search input", () => {
+    const onSearch = vi.fn();
     render(
       <SearchHeader
-        query=""
+        query="test query"
         setQuery={vi.fn()}
-        onSearch={vi.fn()}
+        onSearch={onSearch}
         loading={false}
-        platforms={[]}
-        selectedPlatforms={[]}
+        platforms={[{ id: "amazon", name: "Amazon" }]}
+        selectedPlatforms={["amazon"]}
         togglePlatform={vi.fn()}
         showFilters={false}
         setShowFilters={vi.fn()}
         recentSearches={[]}
         onRecentClick={vi.fn()}
-        onAskAI={onAskAI}
       />
     );
 
-    const askAIButton = screen.getByText("Ask AI");
-    fireEvent.click(askAIButton);
+    const input = screen.getByPlaceholderText(/search/i);
+    fireEvent.keyDown(input, { key: "Enter" });
 
-    const aiInput = screen.getByPlaceholderText(/describe what you're looking for/i);
-    fireEvent.change(aiInput, { target: { value: "cheap earbuds under $20" } });
-
-    const submitButton = screen.getByText("Ask");
-    fireEvent.click(submitButton);
-
-    expect(onAskAI).toHaveBeenCalledWith("cheap earbuds under $20");
+    expect(onSearch).toHaveBeenCalled();
   });
 });

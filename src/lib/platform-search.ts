@@ -650,7 +650,7 @@ async function searchViaCustomConnectorWithKey(
   for (const pat of pricePatterns) {
     let m;
     while ((m = pat.exec(html)) !== null) {
-      const val = parseFloat(m[1].replace(/[$,]/g, ""));
+      const val = parseFloat((m[1] ?? m[0]).replace(/[$,]/g, ""));
       if (!isNaN(val) && val > 0) prices.push(val);
     }
   }
@@ -722,10 +722,7 @@ const dedicatedSearchFns: Record<string, SearchFn> = {
 
 // Build a search function from a custom (no-code / AI-generated) connector.
 function searchFnFromConnector(platform: PlatformFirestoreConfig): SearchFn {
-  const connector = platform.connector;
-  if (!connector) {
-    return searchFunctions.scraperapi;
-  }
+  const connector = platform.connector!;
   // If the connector simply points at a built-in site, reuse its scraper config.
   if (connector.siteKey && scraperSearchConfigs[connector.siteKey]) {
     return (key, q) => searchViaScraperWithKey(key, connector.siteKey as string, q);

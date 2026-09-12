@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Brain, Eye, EyeOff, Loader2, Plus, Trash2, TestTube,
   RotateCcw, Settings, CheckCircle2, XCircle, GripVertical,
-  ChevronDown, ChevronUp, Key, Zap,
+  ChevronDown, ChevronUp, Key, Zap, ExternalLink,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { safeFetch } from "@/lib/safe-fetch";
@@ -30,17 +30,17 @@ interface ProviderData {
 }
 
 const PROVIDERS = [
-  { id: "groq", name: "Groq", freeTier: "14,400 req/day", usedFor: "Real-time price optimization" },
-  { id: "gemini", name: "Google Gemini", freeTier: "1,500 req/day", usedFor: "Product & market analysis" },
-  { id: "openai", name: "OpenAI", freeTier: "Pay per use", usedFor: "Advanced reasoning & analysis" },
-  { id: "deepseek", name: "DeepSeek", freeTier: "Pay per use", usedFor: "Budget-friendly analysis" },
-  { id: "mistral", name: "Mistral AI", freeTier: "1,000 req/month", usedFor: "Fast open-source inference" },
-  { id: "cohere", name: "Cohere", freeTier: "Pay per use", usedFor: "Product search & NLP" },
-  { id: "together", name: "Together AI", freeTier: "Free credits", usedFor: "Open-source model hosting" },
-  { id: "fireworks", name: "Fireworks AI", freeTier: "Free credits", usedFor: "Low-latency inference" },
-  { id: "openrouter", name: "OpenRouter", freeTier: "Free models", usedFor: "Multi-provider fallback" },
-  { id: "huggingface", name: "Hugging Face", freeTier: "Free inference", usedFor: "Open-source model hub" },
-  { id: "hpc", name: "HPC AI", freeTier: "Pay per use", usedFor: "Enterprise-grade AI" },
+  { id: "groq", name: "Groq", freeTier: "14,400 req/day", usedFor: "Real-time price optimization", website: "https://console.groq.com" },
+  { id: "gemini", name: "Google Gemini", freeTier: "1,500 req/day", usedFor: "Product & market analysis", website: "https://ai.google.dev" },
+  { id: "openai", name: "OpenAI", freeTier: "Pay per use", usedFor: "Advanced reasoning & analysis", website: "https://platform.openai.com" },
+  { id: "deepseek", name: "DeepSeek", freeTier: "Pay per use", usedFor: "Budget-friendly analysis", website: "https://platform.deepseek.com" },
+  { id: "mistral", name: "Mistral AI", freeTier: "1,000 req/month", usedFor: "Fast open-source inference", website: "https://console.mistral.ai" },
+  { id: "cohere", name: "Cohere", freeTier: "Pay per use", usedFor: "Product search & NLP", website: "https://dashboard.cohere.com" },
+  { id: "together", name: "Together AI", freeTier: "Free credits", usedFor: "Open-source model hosting", website: "https://api.together.xyz" },
+  { id: "fireworks", name: "Fireworks AI", freeTier: "Free credits", usedFor: "Low-latency inference", website: "https://fireworks.ai" },
+  { id: "openrouter", name: "OpenRouter", freeTier: "Free models", usedFor: "Multi-provider fallback", website: "https://openrouter.ai" },
+  { id: "huggingface", name: "Hugging Face", freeTier: "Free inference", usedFor: "Open-source model hub", website: "https://huggingface.co" },
+  { id: "hpc", name: "HPC AI", freeTier: "Pay per use", usedFor: "Enterprise-grade AI", website: "https://hpc-ai.com" },
 ];
 
 export default function AdminAiKeysPage() {
@@ -296,6 +296,10 @@ export default function AdminAiKeysPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <a href={prov.website} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border text-xs text-muted-foreground hover:text-foreground hover:border-purple-400/30 transition-all">
+                      <ExternalLink className="h-3 w-3" /> Website
+                    </a>
                     <button onClick={() => { setShowAddKeyFor(prov.id); setExpandedProvider(prov.id); }}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500 text-white text-xs font-medium hover:bg-purple-600 transition-all">
                       <Plus className="h-3 w-3" /> Add Key

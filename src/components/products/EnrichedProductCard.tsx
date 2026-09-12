@@ -64,6 +64,8 @@ interface EnrichedProductCardProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onAIAction?: (action: string, product: any) => void;
   onProductClick?: (product: Record<string, unknown>) => void;
+  selectedForActions?: boolean;
+  onSelectForActions?: (id: string) => void;
 }
 
 function MiniSparkline({ data }: { data: number[] }) {
@@ -96,6 +98,7 @@ function MiniSparkline({ data }: { data: number[] }) {
 
 export default function EnrichedProductCard({
   product, index, selected, onToggleSelect, compareMode, onAIAction, onProductClick,
+  selectedForActions, onSelectForActions,
 }: EnrichedProductCardProps) {
   const { ref, isInView } = useInView({ threshold: 0.15 });
   const router = useRouter();
@@ -252,7 +255,7 @@ export default function EnrichedProductCard({
         onClick={handleClick}
         className={`glass-card-animated rounded-2xl overflow-hidden group block ${
           compareMode && selected ? "ring-2 ring-accent ring-offset-2 ring-offset-background" : ""
-        }`}
+        } ${selectedForActions ? "ring-2 ring-accent/60 ring-offset-1 ring-offset-background" : ""}`}
       >
         <div className="aspect-[4/3] bg-surface relative overflow-hidden">
           {product.image ? (
@@ -317,11 +320,19 @@ export default function EnrichedProductCard({
             )}
           </span>
 
-          {/* Image Count */}
-          {imageCount > 1 && !product.goldenRank && (
-            <span className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded-md bg-black/50 text-white text-[9px] font-medium backdrop-blur-sm flex items-center gap-0.5">
-              <Images className="h-2.5 w-2.5" /> {imageCount}
-            </span>
+          {/* Select for Quick Actions - TOP RIGHT corner */}
+          {onSelectForActions && !compareMode && (
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSelectForActions(product.id); }}
+              className={`absolute top-2 right-2 w-7 h-7 rounded-lg backdrop-blur-sm flex items-center justify-center transition-all z-10 ${
+                selectedForActions
+                  ? "bg-accent text-white shadow-lg shadow-accent/30"
+                  : "bg-black/40 text-white/70 hover:bg-black/60 hover:text-white sm:opacity-0 sm:group-hover:opacity-100"
+              }`}
+              title={selectedForActions ? "Deselect product" : "Select product for actions"}
+            >
+              {selectedForActions ? <Check className="h-3.5 w-3.5" /> : <div className="w-3.5 h-3.5 rounded border border-white/50" />}
+            </button>
           )}
 
           {/* Action Buttons */}

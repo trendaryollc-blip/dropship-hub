@@ -1,47 +1,105 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
 import Sidebar from "./Sidebar";
 
+vi.mock("next/link", () => ({
+  default: ({ children, href, ...props }: any) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}));
+
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/dashboard",
+  usePathname: vi.fn(() => "/dashboard"),
 }));
 
-vi.mock("@/components/auth/AuthProvider", () => ({
-  useAuth: () => ({ user: null }),
-}));
+const mockOnClose = vi.fn();
 
-vi.mock("@/lib/safe-fetch", () => ({
-  safeFetch: vi.fn(),
-}));
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 describe("Sidebar", () => {
-  it("renders navigation links", () => {
-    render(<Sidebar isOpen={true} onClose={vi.fn()} />);
-    expect(screen.getAllByText("Dashboard").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Find Products").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("AI Assistant").length).toBeGreaterThanOrEqual(1);
+  it("renders desktop sidebar", () => {
+    const { container } = render(<Sidebar isOpen={false} onClose={mockOnClose} />);
+    const aside = container.querySelector("aside");
+    expect(aside).toBeTruthy();
   });
 
-  it("calls onClose when overlay clicked", () => {
-    const onClose = vi.fn();
-    render(<Sidebar isOpen={true} onClose={onClose} />);
-    const overlay = document.querySelector(".absolute.inset-0.bg-black\\/50");
-    if (overlay) {
-      const { fireEvent } = require("@testing-library/react");
-      fireEvent.click(overlay);
-      expect(onClose).toHaveBeenCalled();
+  it("shows mobile overlay when isOpen is true", () => {
+    const { container } = render(<Sidebar isOpen={true} onClose={mockOnClose} />);
+    const overlays = container.querySelectorAll("aside");
+    expect(overlays.length).toBe(2);
+  });
+
+  it("hides mobile overlay when isOpen is false", () => {
+    const { container } = render(<Sidebar isOpen={false} onClose={mockOnClose} />);
+    const overlays = container.querySelectorAll("aside");
+    expect(overlays.length).toBe(1);
+  });
+
+  it("calls onClose when close button clicked", () => {
+    render(<Sidebar isOpen={true} onClose={mockOnClose} />);
+    const closeBtn = screen.getAllByRole("button").find(b => b.getAttribute("aria-label") === "Close menu");
+    if (closeBtn) {
+      fireEvent.click(closeBtn);
+      expect(mockOnClose).toHaveBeenCalled();
     }
   });
 
-  it("highlights active route", () => {
-    render(<Sidebar isOpen={true} onClose={vi.fn()} />);
-    const dashboardLinks = screen.getAllByText("Dashboard");
-    const dashboardLink = dashboardLinks[0].closest("a");
-    expect(dashboardLink).toHaveClass("bg-accent/10");
+  it("renders nav items", () => {
+    render(<Sidebar isOpen={false} onClose={mockOnClose} />);
+    expect(screen.getByText("Dashboard")).toBeTruthy();
+    expect(screen.getByText("Find Products")).toBeTruthy();
+    expect(screen.getByText("Saved")).toBeTruthy();
+    expect(screen.getByText("Find Suppliers")).toBeTruthy();
+    expect(screen.getByText("Calculator")).toBeTruthy();
+    expect(screen.getByText("Competitors")).toBeTruthy();
+    expect(screen.getByText("Health Score")).toBeTruthy();
+    expect(screen.getByText("My Store")).toBeTruthy();
+    expect(screen.getByText("Multi-Store")).toBeTruthy();
+    expect(screen.getByText("Fulfillment")).toBeTruthy();
+    expect(screen.getByText("AI Assistant")).toBeTruthy();
+    expect(screen.getByText("Customer Service")).toBeTruthy();
+    expect(screen.getByText("Returns & Refunds")).toBeTruthy();
+    expect(screen.getByText("Revenue")).toBeTruthy();
+    expect(screen.getByText("Profit Tracker")).toBeTruthy();
+    expect(screen.getByText("Ad ROI")).toBeTruthy();
+    expect(screen.getByText("Supplier Intel")).toBeTruthy();
+    expect(screen.getByText("Supplier SRM")).toBeTruthy();
+    expect(screen.getByText("Product Validation")).toBeTruthy();
   });
 
   it("renders Settings link", () => {
-    render(<Sidebar isOpen={true} onClose={vi.fn()} />);
-    expect(screen.getAllByText("Settings").length).toBeGreaterThanOrEqual(1);
+    render(<Sidebar isOpen={false} onClose={mockOnClose} />);
+    expect(screen.getByText("Settings")).toBeTruthy();
+  });
+
+  it("shows active state for current path", () => {
+    render(<Sidebar isOpen={false} onClose={mockOnClose} />);
+    const dashboardLink = screen.getByText("Dashboard").closest("a");
+    expect(dashboardLink?.className).toContain("bg-accent/10");
+  });
+
+  it("handles collapse toggle", () => {
+    const { container } = render(<Sidebar isOpen={false} onClose={mockOnClose} />);
+    const toggleBtn = container.querySelector("aside button.absolute") as HTMLButtonElement;
+    fireEvent.click(toggleBtn);
+    const aside = container.querySelector("aside");
+    expect(aside?.className).toContain("w-[68px]");
+  });
+
+  it("shows More dropdown", () => {
+    render(<Sidebar isOpen={true} onClose={mockOnClose} />);
+    const buttons = screen.getAllByText("More");
+    fireEvent.click(buttons[0]);
+    expect(screen.getAllByText(/AI Listings|Price War Bot/).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders logo text", () => {
+    render(<Sidebar isOpen={false} onClose={mockOnClose} />);
+    expect(screen.getByText("DropShip")).toBeTruthy();
+    expect(screen.getByText("Hub")).toBeTruthy();
   });
 });

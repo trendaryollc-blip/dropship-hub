@@ -115,7 +115,7 @@ describe("platform-search individual search functions", () => {
             title: "Multi Image",
             price: 15,
             image: "https://img.jpg",
-            images: [{ link: "https://img2.jpg" }, { large: "https://img3.jpg" }],
+            images: [{ link: "https://img2.jpg" }, { large: "https://img3.jpg" }, 99],
             link: "https://amazon.com/dp/B003",
             asin: "B003",
           },
@@ -164,6 +164,25 @@ describe("platform-search individual search functions", () => {
 
       const result = await searchGoogleShopping("item");
       expect(result.search_results[0].price).toBe(19.99);
+    });
+
+    it("handles object image arrays", async () => {
+      mockFetchResponse(true, {
+        shopping_results: [
+          {
+            title: "Obj Img",
+            price: 9.99,
+            thumbnail: "https://serpimg.com/thumb.jpg",
+            link: "https://store.com/obj",
+            images: ["https://serpimg.com/a.jpg", { original: "https://serpimg.com/orig.jpg" }, 42],
+          },
+        ],
+      });
+
+      const result = await searchGoogleShopping("obj img");
+      const images = result.search_results[0].images ?? [];
+      expect(images).toContain("https://serpimg.com/thumb.jpg");
+      expect(images).toContain("https://serpimg.com/orig.jpg");
     });
   });
 
@@ -255,6 +274,33 @@ describe("platform-search individual search functions", () => {
       const result = await searchAliExpress("ali widget");
       expect(result.search_results).toHaveLength(1);
       expect(result.search_results[0].source).toBe("aliexpress");
+    });
+
+    it("parses JSON-LD with numeric, string, and lowPrice offers", async () => {
+      const html = `
+        <html>
+          <script type="application/ld+json">
+          {"@type":"ItemList","itemListElement":[
+            {"item":{"@type":"Product","name":"P1","offers":{"price":11.99},"image":"i1","url":"https://aliexpress.com/item/1.html"}},
+            {"item":{"@type":"Product","name":"P2","offers":{"price":"12.99"},"image":"i2","url":"https://aliexpress.com/item/2.html"}},
+            {"item":{"@type":"Product","name":"P3","offers":{"lowPrice":13.99},"image":"i3","url":"https://aliexpress.com/item/3.html"}},
+            {"item":{"@type":"Product","name":"P4","offers":{},"image":"i4","url":"https://aliexpress.com/item/4.html"}}
+          ]}
+          </script>
+        </html>
+      `;
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          text: () => Promise.resolve(html),
+        })
+      );
+
+      const result = await searchAliExpress("items");
+      expect(result.search_results).toHaveLength(3);
+      expect(result.search_results.map((r) => r.price)).toEqual([11.99, 12.99, 13.99]);
     });
 
     it("falls back to regex extraction", async () => {
@@ -847,6 +893,28 @@ describe("platform-search — individual function deep coverage", () => {
       expect(result.search_results[0].images).toBeDefined();
     });
 
+    it("skips non-string non-object entries in productImageSet", async () => {
+      mockFetchResponse(true, {
+        data: {
+          list: [
+            {
+              productNameEn: "Mixed Images",
+              productImage: "https://cj.com/main.jpg",
+              productImageSet: ["https://cj.com/a.jpg", 42, { image: "https://cj.com/b.jpg" }],
+              sellPrice: 4.99,
+              pid: "P_MIX",
+            },
+          ],
+        },
+      });
+
+      const result = await searchCJProducts("mixed");
+      const images = result.search_results[0].images ?? [];
+      expect(images).toContain("https://cj.com/main.jpg");
+      expect(images).toContain("https://cj.com/b.jpg");
+      expect(images).not.toContain(42);
+    });
+
     it("handles CJ API errors", async () => {
       mockFetchResponse(false, {}, 403);
       await expect(searchCJProducts("test")).rejects.toThrow("CJ Products 403");
@@ -952,6 +1020,30 @@ describe("platform-search — individual function deep coverage", () => {
       const { searchAllPlatformsFromFirestore } = await import("./platform-search");
       const result = await searchAllPlatformsFromFirestore("num price");
       expect(result).toHaveLength(1);
+    });
+
+    it("handles Serper API error responses", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({ ok: false, status: 429, text: () => Promise.resolve("Rate limited") })
+      );
+
+      const { getAllPlatforms } = await import("./platform-config");
+      vi.mocked(getAllPlatforms).mockResolvedValue([
+        {
+          id: "serper_fail",
+          name: "Serper Fail",
+          enabled: true,
+          method: "serper",
+          keys: [{ id: "k1", key: "test", label: "P", priority: 1, requestsUsed: 0, requestsLimit: 100, resetDate: "2099-01-01", lastError: null, lastTested: null, lastStatus: "untested" }],
+          lastHealth: "untested", lastSearched: null, lastError: null, cooldownUntil: null, createdAt: null, updatedAt: null,
+        },
+      ] as never);
+
+      const { searchAllPlatformsFromFirestore } = await import("./platform-search");
+      const result = await searchAllPlatformsFromFirestore("serper err");
+      expect(result).toHaveLength(1);
+      expect(result[0].error).toContain("Serper.dev 429");
     });
   });
 
@@ -1060,6 +1152,25 @@ describe("platform-search — individual function deep coverage", () => {
       expect(result.search_results[0].title).toBe("JSON Product");
     });
 
+    it("parses scraper JSON-LD with string and lowPrice offers (3+ items)", async () => {
+      const html = `
+        <html>
+          <script type="application/ld+json">
+          {"@type":"ItemList","itemListElement":[
+            {"item":{"@type":"Product","name":"S1","offers":{"price":1.99},"image":"i1","url":"http://site.com/1"}},
+            {"item":{"@type":"Product","name":"S2","offers":{"price":"2.99"},"image":"i2","url":"http://site.com/2"}},
+            {"item":{"@type":"Product","name":"S3","offers":{"lowPrice":3.99},"image":"i3","url":"http://site.com/3"}}
+          ]}
+          </script>
+        </html>
+      `;
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, text: () => Promise.resolve(html) }));
+
+      const result = await searchViaScraper("etsy", "json items");
+      expect(result.search_results).toHaveLength(3);
+      expect(result.search_results.map((r) => r.price)).toEqual([1.99, 2.99, 3.99]);
+    });
+
     it("handles ScraperAPI errors", async () => {
       vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 503, text: () => Promise.resolve("Service unavailable") }));
       await expect(searchViaScraper("etsy", "test")).rejects.toThrow("ScraperAPI 503");
@@ -1109,5 +1220,209 @@ describe("platform-search — individual function deep coverage", () => {
       const result = await searchAllPlatforms("test", ["nonexistent_platform"]);
       expect(result).toEqual([]);
     });
+  });
+});
+
+describe("platform-search — custom connectors and fallbacks", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.unstubAllGlobals();
+    process.env.SCRAPER_API_KEY = "test-scraper";
+  });
+
+  function platformWith(id: string, extra: Record<string, unknown> = {}) {
+    return {
+      id,
+      name: id,
+      enabled: true,
+      method: "custom_scraper",
+      keys: [{ id: "k1", key: "test", label: "Primary", priority: 1, requestsUsed: 0, requestsLimit: 100, resetDate: "2099-01-01", lastError: null, lastTested: null, lastStatus: "untested" }],
+      lastHealth: "untested",
+      lastSearched: null,
+      lastError: null,
+      cooldownUntil: null,
+      createdAt: null,
+      updatedAt: null,
+      ...extra,
+    } as never;
+  }
+
+  it("searches via custom connector with template and default selectors", async () => {
+    const html = `
+      <html>
+        <a href="/product-1.html">Prod 1</a>
+        <div class="product-title">Custom Widget</div>
+        <span>$14.99</span>
+        <img src="https://custom.com/p1.jpg" />
+      </html>
+    `;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, text: () => Promise.resolve(html) }));
+    vi.mocked(getAllPlatforms).mockResolvedValue([
+      platformWith("custom1", {
+        connector: { searchUrlTemplate: "https://custom.com/search?q={{query}}" },
+      }),
+    ]);
+
+    const result = await searchAllPlatformsFromFirestore("my widget");
+    expect(result).toHaveLength(1);
+    expect(result[0].error).toBeUndefined();
+    expect(result[0].data?.search_results).toHaveLength(1);
+    expect(result[0].data?.search_results[0].title).toBe("Custom Widget");
+    expect(result[0].data?.search_results[0].price).toBe(14.99);
+    expect(result[0].data?.search_results[0].link).toBe("https://custom.com/product-1.html");
+    const url = String(vi.mocked(fetch).mock.calls[0][0]);
+    expect(url).toContain("api.scraperapi.com");
+    expect(url).toContain("q%3Dmy%2520widget");
+  });
+
+  it("uses custom connector selectors when provided", async () => {
+    const html = `
+      <html>
+        <a href="/deal/77.html">Deal</a>
+        <h1 class="prod-name">Selector Product</h1>
+        <span>19.99 USD</span>
+        <img data-src="https://cdn.com/photo.png" />
+      </html>
+    `;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, text: () => Promise.resolve(html) }));
+    vi.mocked(getAllPlatforms).mockResolvedValue([
+      platformWith("custom2", {
+        connector: {
+          searchUrlTemplate: "https://site.com/go?kw={{query}}",
+          selectors: {
+            link: 'href="(\\/deal\\/[^"]+)"',
+            title: 'class="prod-name"[^>]*>([^<]+)',
+            price: "([\\d.]+)\\s*USD",
+            image: 'data-src="(https?:\\/\\/[^"]+)"',
+          },
+        },
+      }),
+    ]);
+
+    const result = await searchAllPlatformsFromFirestore("selector");
+    expect(result).toHaveLength(1);
+    const item = result[0].data?.search_results[0];
+    expect(item?.title).toBe("Selector Product");
+    expect(item?.price).toBe(19.99);
+    expect(item?.image).toBe("https://cdn.com/photo.png");
+    expect(item?.link).toBe("https://site.com/deal/77.html");
+  });
+
+  it("throws when custom connector scrapes no results", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, text: () => Promise.resolve("<html>nothing here</html>") }));
+    vi.mocked(getAllPlatforms).mockResolvedValue([
+      platformWith("custom3", {
+        connector: { searchUrlTemplate: "https://site.com/search?q={{query}}" },
+      }),
+    ]);
+
+    const result = await searchAllPlatformsFromFirestore("nothing");
+    expect(result).toHaveLength(1);
+    expect(result[0].data).toBeNull();
+    expect(result[0].error).toContain("No results scraped via custom connector");
+  });
+
+  it("throws ScraperAPI error when custom connector request fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: false, status: 502, text: () => Promise.resolve("Bad gateway") })
+    );
+    vi.mocked(getAllPlatforms).mockResolvedValue([
+      platformWith("custom4", {
+        connector: { searchUrlTemplate: "https://site.com/search?q={{query}}" },
+      }),
+    ]);
+
+    const result = await searchAllPlatformsFromFirestore("fail");
+    expect(result).toHaveLength(1);
+    expect(result[0].error).toContain("ScraperAPI 502");
+  });
+
+  it("reuses built-in scraper config when connector has siteKey", async () => {
+    const html = `
+      <html>
+        <a href="/ip/widget-1">Link</a>
+        <h3>SiteKey Widget</h3>
+        <span>$8.99</span>
+        <img src="https://walmart.com/i.jpg" />
+      </html>
+    `;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, text: () => Promise.resolve(html) }));
+    vi.mocked(getAllPlatforms).mockResolvedValue([
+      platformWith("sitekey_plat", {
+        connector: { siteKey: "walmart" },
+      }),
+    ]);
+
+    const result = await searchAllPlatformsFromFirestore("widget");
+    expect(result).toHaveLength(1);
+    expect(result[0].data?.search_results[0].link).toContain("walmart.com");
+  });
+
+  it("falls back to generic scraper for connector with no template or siteKey", async () => {
+    vi.mocked(getAllPlatforms).mockResolvedValue([
+      platformWith("empty_connector", { connector: { aiGenerated: true } }),
+    ]);
+
+    const result = await searchAllPlatformsFromFirestore("widget");
+    expect(result).toHaveLength(1);
+    expect(result[0].error).toContain("No scraper config for generic");
+  });
+
+  it("falls back to generic scraper for unknown method and id without connector", async () => {
+    vi.mocked(getAllPlatforms).mockResolvedValue([
+      platformWith("unknown_plat", { method: "official_api" }),
+    ]);
+
+    const result = await searchAllPlatformsFromFirestore("widget");
+    expect(result).toHaveLength(1);
+    expect(result[0].error).toContain("No scraper config for generic");
+  });
+
+  it("invokes every dedicated scraper-based search function", async () => {
+    const html = `
+      <html>
+        <script type="application/ld+json">
+        {"@type":"ItemList","itemListElement":[
+          {"item":{"@type":"Product","name":"D1","offers":{"price":1},"image":"i1","url":"u1"}},
+          {"item":{"@type":"Product","name":"D2","offers":{"price":2},"image":"i2","url":"u2"}},
+          {"item":{"@type":"Product","name":"D3","offers":{"price":3},"image":"i3","url":"u3"}}
+        ]}
+        </script>
+      </html>
+    `;
+    const ids = ["walmart", "etsy", "temu", "shein", "banggood", "dhgate", "alibaba", "wish", "ebay", "shopee", "1688", "global_sources"];
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, text: () => Promise.resolve(html) }));
+    vi.mocked(getAllPlatforms).mockResolvedValue(ids.map((id) => platformWith(id)) as never[]);
+
+    const result = await searchAllPlatformsFromFirestore("dedicated");
+    const platformsReturned = new Set(result.map((r) => r.platform));
+    for (const id of ids) {
+      expect(platformsReturned).toContain(id);
+    }
+  });
+
+  it("treats malformed cooldownUntil as ready to search", async () => {
+    mockFetchResponse(true, { shopping_results: [{ title: "CD", price: 5, thumbnail: "img.jpg", link: "http://cd.com" }] });
+    vi.mocked(getAllPlatforms).mockResolvedValue([
+      platformWith("cd_plat", {
+        method: "serpapi",
+        cooldownUntil: {},
+      }),
+    ]);
+
+    const result = await searchAllPlatformsFromFirestore("cd");
+    expect(result).toHaveLength(1);
+    expect(result[0].platform).toBe("cd_plat");
+  });
+
+  it("logs a warning and falls back when getAllPlatforms returns a non-array", async () => {
+    const { logger } = await import("@/lib/logger");
+    mockFetchResponse(true, { search_results: [{ title: "Env", price: 1, image: "i", link: "http://e.com" }] });
+    vi.mocked(getAllPlatforms).mockResolvedValue(null as never);
+
+    const result = await searchAllPlatforms("fallback");
+    expect(logger.warn).toHaveBeenCalled();
+    expect(result).toBeDefined();
   });
 });

@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { Search, X, SlidersHorizontal, CheckSquare, Square } from "lucide-react";
+import VoiceInput from "@/components/ai/VoiceInput";
 import ViewToggle from "@/components/ui/ViewToggle";
 import { useSavedProducts } from "./SavedProductsProvider";
 
@@ -78,6 +79,8 @@ export default function SavedToolbar({
             </button>
           )}
         </div>
+
+        <VoiceInput onTranscript={(text) => setSearch(text)} />
 
         <select
           value={sort}

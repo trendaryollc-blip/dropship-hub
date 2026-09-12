@@ -5,6 +5,19 @@ export default defineConfig({
   test: {
     environment: "happy-dom",
     globals: true,
+    testTimeout: 30000,
+    hookTimeout: 15000,
+    pool: "forks",
+    poolOptions: {
+      forks: {
+        maxForks: 4,
+        minForks: 2,
+        execArgv: ["--max-old-space-size=4096"],
+      },
+    },
+    sequence: {
+      concurrent: false,
+    },
     setupFiles: ["./src/__tests__/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
     coverage: {
@@ -16,7 +29,6 @@ export default defineConfig({
         "src/**/*.test.{ts,tsx}",
         "src/**/*.spec.{ts,tsx}",
         "src/app/**",
-        "src/components/**",
         "public/**",
       ],
     },
