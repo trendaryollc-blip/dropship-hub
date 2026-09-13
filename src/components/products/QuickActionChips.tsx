@@ -66,7 +66,7 @@ const ACTIONS: QuickAction[] = [
   },
   {
     id: "analyze-market",
-    label: "Market Analysis",
+    label: "Analyze Competitors",
     icon: BarChart3,
     color: "text-amber-400",
     bg: "bg-amber-400/10 border-amber-400/20",
@@ -141,7 +141,7 @@ function buildProductParams(product: Product, destination: string): string {
 }
 
 export default function QuickActionChips({
-  query, onAction, disabled, hasResults, compareMode, toggleCompareMode,
+  query, onAction: _onAction, disabled, hasResults, compareMode, toggleCompareMode,
   onCreateAlert, selectedProduct,
 }: QuickActionChipsProps) {
   const router = useRouter();
@@ -158,6 +158,9 @@ export default function QuickActionChips({
       return;
     }
     if (action.action === "navigate" && action.destination && selectedProduct) {
+      if (action.destination === "/competitors") {
+        sessionStorage.setItem("competitorProduct", JSON.stringify(selectedProduct));
+      }
       const paramString = buildProductParams(selectedProduct, action.destination);
       router.push(`${action.destination}?${paramString}`);
       return;

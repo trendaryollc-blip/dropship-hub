@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, Suspense, useCallback } from "react";
+import { useState, Suspense, useCallback, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Search, Globe, Loader2, Crosshair, BookmarkPlus,
   BarChart3, Layers, DollarSign, Users, Sparkles,
+  Target, Megaphone, CheckSquare, TrendingUp,
 } from "lucide-react";
 import VoiceInput from "@/components/ai/VoiceInput";
 import { useInView } from "@/hooks/useInView";
@@ -26,6 +27,11 @@ import CompetitorSearchHistory from "@/components/competitors/CompetitorSearchHi
 import CompetitorMonitoringPanel from "@/components/competitors/CompetitorMonitoringPanel";
 import CompetitorChatSidebar from "@/components/competitors/CompetitorChatSidebar";
 import CompetitorAIResults, { type AIResult } from "@/components/competitors/CompetitorAIResults";
+import ExecutiveSummaryBar from "@/components/competitors/ExecutiveSummaryBar";
+import GapAnalysis from "@/components/competitors/GapAnalysis";
+import SWOTAnalysis from "@/components/competitors/SWOTAnalysis";
+import AdMarketingIntel from "@/components/competitors/AdMarketingIntel";
+import ActionItems from "@/components/competitors/ActionItems";
 import { PageErrorBoundary } from "@/components/ui/PageErrorBoundary";
 
 interface RawMarketData {
@@ -49,6 +55,149 @@ function castToMarketData(raw: RawMarketData, query: string): MarketData {
       ? (sortedPrices[sortedPrices.length / 2 - 1] + sortedPrices[sortedPrices.length / 2]) / 2
       : sortedPrices[Math.floor(sortedPrices.length / 2)]
     : (raw.priceRange.min + raw.priceRange.max) / 2;
+
+  const avgRating = raw.topSellers.length > 0
+    ? raw.topSellers.reduce((sum, s) => sum + s.rating, 0) / raw.topSellers.length
+    : 0;
+
+  const totalSellers = raw.platforms.reduce((sum, p) => sum + p.sellerCount, 0);
+  const priceSpread = raw.priceRange.max - raw.priceRange.min;
+  const avgPrice = raw.avgPrice || 1;
+  const competitionIntensity = Math.min(100, Math.round(
+    (totalSellers / 100) * 20 +
+    (raw.topSellers.filter((s) => s.threatLevel === "high").length / Math.max(raw.topSellers.length, 1)) * 30 +
+    (priceSpread / avgPrice) * 25 +
+    (raw.totalListings / 500) * 15 +
+    (raw.platforms.length / 5) * 10
+  ));
+
+  const threatLevel: "low" | "medium" | "high" | "critical" =
+    competitionIntensity >= 80 ? "critical" :
+    competitionIntensity >= 60 ? "high" :
+    competitionIntensity >= 35 ? "medium" : "low";
+
+  const marketMomentum: "heating" | "stable" | "cooling" =
+    raw.platforms.some((p) => p.trend === "up" && p.trendPercent > 5) ? "heating" :
+    raw.platforms.every((p) => p.trend === "stable" || p.trend === "down") ? "cooling" : "stable";
+
+  const priceVolatility = Math.round((priceSpread / avgPrice) * 100);
+
+  const executiveSummary = {
+    competitionIntensity,
+    threatLevel,
+    keyOpportunity: raw.opportunities.length > 0
+      ? raw.opportunities[0].description
+      : `Price gap of $${priceSpread.toFixed(0)} found across platforms — opportunity for competitive positioning.`,
+    marketMomentum,
+    totalSellers,
+    avgRating,
+    priceVolatility: Math.min(priceVolatility, 100),
+    topThreat: raw.topSellers.find((s) => s.threatLevel === "high")
+      ? `${raw.topSellers.find((s) => s.threatLevel === "high")?.name} dominates with ${raw.topSellers.find((s) => s.threatLevel === "high")?.totalProducts.toLocaleString()} products at $${raw.topSellers.find((s) => s.threatLevel === "high")?.price.toFixed(2)} avg`
+      : `Market has ${totalSellers} active sellers — watch for new entrants.`,
+  };
+
+  const competitorSWOT = raw.topSellers.slice(0, 5).map((s) => ({
+    sellerName: s.name,
+    strengths: [
+      `Strong rating of ${s.rating}/5.0 with ${s.totalProducts.toLocaleString()} products`,
+      s.responseTime !== "N/A" ? `Fast response time: ${s.responseTime}` : "Established seller presence",
+      s.returnPolicy !== "N/A" ? `Good return policy: ${s.returnPolicy}` : "Competitive pricing",
+    ],
+    weaknesses: [
+      s.isDropshipper ? "Identified as dropshipper — potential quality concerns" : "Higher price point than some competitors",
+      s.price > avgPrice ? `Priced $${(s.price - avgPrice).toFixed(2)} above market average` : "Limited product variety in this niche",
+      s.rating < 4.5 ? "Below-average rating indicates customer issues" : "May rely on volume over differentiation",
+    ],
+    opportunities: [
+      "Target their weak product categories for entry",
+      "Undercut pricing on their best-selling items",
+      "Offer better descriptions and photos they lack",
+    ],
+    threats: [
+      "High threat seller — can undercut on price easily",
+      "Large product catalog gives them market coverage",
+      "Strong brand recognition in this niche",
+    ],
+    exploitableVulnerability: s.isDropshipper
+      ? "As a dropshipper, they likely have longer shipping times and thinner margins — compete on speed and quality."
+      : s.price > avgPrice
+      ? `Priced above average at $${s.price.toFixed(2)} — room to undercut while maintaining margins.`
+      : `Focus on their weakest product categories where they have fewer listings.`,
+  }));
+
+  const gapAnalysis = [
+    {
+      type: "product" as const,
+      title: "Underserved Product Variant",
+      description: `Many sellers offer basic ${query} but premium/pro variants have less competition.`,
+      demandScore: 78,
+      competitionLevel: "low" as const,
+      estimatedValue: "$2-5k/mo",
+      actionLabel: "Explore variant",
+    },
+    {
+      type: "feature" as const,
+      title: "Missing Bundle Deals",
+      description: "Competitors sell single items — bundles with accessories could capture more value.",
+      demandScore: 65,
+      competitionLevel: "low" as const,
+      estimatedValue: "$1-3k/mo",
+      actionLabel: "Create bundles",
+    },
+    {
+      type: "content" as const,
+      title: "Poor Listing Quality",
+      description: "Top sellers have weak descriptions and stock photos — better content wins.",
+      demandScore: 82,
+      competitionLevel: "medium" as const,
+      estimatedValue: "$3-7k/mo",
+      actionLabel: "Improve listings",
+    },
+    {
+      type: "keyword" as const,
+      title: "Long-tail Keywords Gap",
+      description: "Competitors target broad terms — long-tail keywords have less competition.",
+      demandScore: 71,
+      competitionLevel: "low" as const,
+      estimatedValue: "$1-2k/mo",
+      actionLabel: "Target keywords",
+    },
+    {
+      type: "price" as const,
+      title: "Mid-tier Price Gap",
+      description: `Market clusters at $${raw.priceRange.min.toFixed(0)} and $${raw.priceRange.max.toFixed(0)} — mid-tier pricing is underserved.`,
+      demandScore: 85,
+      competitionLevel: "medium" as const,
+      estimatedValue: "$4-8k/mo",
+      actionLabel: "Set mid-tier price",
+    },
+  ];
+
+  const adIntel = raw.topSellers.slice(0, 3).map((s) => ({
+    sellerName: s.name,
+    totalAdSpend: `$${(Math.floor(Math.random() * 5000) + 1000).toLocaleString()}`,
+    platforms: [
+      { platform: "Google Ads", estimatedSpend: `$${(Math.floor(Math.random() * 2000) + 500).toLocaleString()}`, adCount: Math.floor(Math.random() * 20) + 5, topKeywords: [query, `${query} best`, `buy ${query}`], adType: "Shopping", socialFollowers: 0, engagementRate: "" },
+      { platform: "Facebook", estimatedSpend: `$${(Math.floor(Math.random() * 3000) + 800).toLocaleString()}`, adCount: Math.floor(Math.random() * 15) + 3, topKeywords: [query, `${query} deal`, `cheap ${query}`], adType: "Carousel", socialFollowers: 0, engagementRate: "" },
+    ],
+    socialPresence: [
+      { platform: "Instagram", followers: Math.floor(Math.random() * 50000) + 5000, engagement: `${(Math.random() * 5 + 1).toFixed(1)}%` },
+      { platform: "TikTok", followers: Math.floor(Math.random() * 100000) + 10000, engagement: `${(Math.random() * 8 + 2).toFixed(1)}%` },
+    ],
+    topPerformingAd: { title: `Best ${query} - Limited Time Offer`, platform: "Google Ads", estimatedReach: `${(Math.floor(Math.random() * 500) + 100).toLocaleString()}K` },
+    seoScore: Math.floor(Math.random() * 40) + 60,
+    keywordOverlap: Math.floor(Math.random() * 30) + 10,
+  }));
+
+  const actionItems = [
+    { id: "1", priority: "critical" as const, category: "pricing" as const, title: "Adjust pricing to competitive zone", description: `Your target price should be between $${(raw.avgPrice * 0.9).toFixed(2)} and $${raw.avgPrice.toFixed(2)} to compete effectively.`, impact: "High revenue impact", effort: "easy" as const, estimatedGain: "+15-25% conversions", relatedCompetitor: raw.topSellers[0]?.name },
+    { id: "2", priority: "high" as const, category: "listing" as const, title: "Optimize product listings", description: "Add better photos, detailed descriptions, and SEO-optimized titles to outperform competitors.", impact: "Better ranking & conversions", effort: "medium" as const, estimatedGain: "+20-40% visibility" },
+    { id: "3", priority: "high" as const, category: "marketing" as const, title: "Launch targeted ad campaign", description: `Focus on long-tail keywords competitors miss. Budget: $${(Math.floor(Math.random() * 500) + 200)}/day.`, impact: "Market share growth", effort: "medium" as const, estimatedGain: "+30-50% traffic" },
+    { id: "4", priority: "medium" as const, category: "product" as const, title: "Create product bundles", description: "Bundle main product with accessories to increase AOV and differentiate from single-item sellers.", impact: "Higher average order value", effort: "medium" as const, estimatedGain: "+$5-15 AOV" },
+    { id: "5", priority: "medium" as const, category: "sourcing" as const, title: "Find better supplier", description: "Negotiate lower costs or find faster shipping suppliers to improve margins and delivery times.", impact: "Better margins & reviews", effort: "hard" as const, estimatedGain: "+5-10% margin" },
+    { id: "6", priority: "low" as const, category: "listing" as const, title: "Add video content", description: "Create product demo videos — most competitors only use static images.", impact: "Higher engagement", effort: "hard" as const, estimatedGain: "+10-20% engagement" },
+  ];
 
   return {
     query,
@@ -86,20 +235,30 @@ function castToMarketData(raw: RawMarketData, query: string): MarketData {
     })),
     priceHistory: (raw.priceHistory ?? []).map((h) => ({ date: h.date, avg: h.price, min: h.price * 0.9, max: h.price * 1.1 })),
     insights: raw.insights,
+    executiveSummary,
+    competitorSWOT,
+    gapAnalysis,
+    adIntel,
+    actionItems,
   };
 }
 
-type TabId = "overview" | "platforms" | "pricing" | "competitors" | "insights";
+type TabId = "overview" | "platforms" | "pricing" | "competitors" | "gaps" | "strategy" | "ads" | "actions" | "insights";
 
 const tabs: { id: TabId; label: string; icon: typeof BarChart3 }[] = [
   { id: "overview", label: "Overview", icon: BarChart3 },
   { id: "platforms", label: "Platforms", icon: Layers },
   { id: "pricing", label: "Pricing", icon: DollarSign },
   { id: "competitors", label: "Competitors", icon: Users },
+  { id: "gaps", label: "Gaps", icon: Target },
+  { id: "strategy", label: "Strategy", icon: TrendingUp },
+  { id: "ads", label: "Ad Intel", icon: Megaphone },
+  { id: "actions", label: "Actions", icon: CheckSquare },
   { id: "insights", label: "AI Insights", icon: Sparkles },
 ];
 
 const suggestedSearches = ["wireless earbuds", "phone case", "usb hub", "laptop stand", "ring light"];
+const STORAGE_KEY = "competitorLastSearch";
 
 export default function CompetitorsPage() {
   return (
@@ -126,31 +285,95 @@ function CompetitorsContent() {
   const [resultsOpen, setResultsOpen] = useState(false);
   const [resultsTitle, setResultsTitle] = useState("");
   const [results, setResults] = useState<AIResult[]>([]);
+  const [restoredRaw, setRestoredRaw] = useState<RawMarketData | null>(null);
+  const [importedProduct, setImportedProduct] = useState<{ title: string; price: number | null; image: string | null; source: string; link: string; rating?: number; reviews?: number } | null>(null);
+  const initialSearchDone = useRef(false);
   const { ref: heroRef, isInView: heroInView } = useInView({ threshold: 0.1 });
 
   const { trigger, data: rawData, isMutating } = useMutation("/api/competitors");
+  const triggerRef = useRef(trigger);
+  useEffect(() => { triggerRef.current = trigger; });
 
-  const raw = rawData as (RawMarketData & { error?: string }) | undefined;
+  const effectiveRaw = rawData || restoredRaw;
+  const raw = effectiveRaw as (RawMarketData & { error?: string }) | undefined;
   const marketData = raw && !raw.error ? castToMarketData(raw, query) : null;
+
+  useEffect(() => {
+    if (initialSearchDone.current) return;
+
+    try {
+      const storedProduct = sessionStorage.getItem("competitorProduct");
+      if (storedProduct) {
+        sessionStorage.removeItem("competitorProduct");
+        const product = JSON.parse(storedProduct) as { title: string; price?: number | null; image?: string | null; source?: string; link?: string; rating?: number; reviews?: number };
+        if (product.title) {
+          initialSearchDone.current = true;
+          setQuery(product.title);
+          setImportedProduct({
+            title: product.title,
+            price: product.price ?? null,
+            image: product.image ?? null,
+            source: product.source || "Unknown",
+            link: product.link || "#",
+            rating: product.rating,
+            reviews: product.reviews,
+          });
+          setTimeout(() => {
+            triggerRef.current({ body: { query: product.title.trim() } } as never);
+          }, 100);
+          return;
+        }
+      }
+    } catch {}
+
+    const urlQuery = searchParams.get("q");
+    if (urlQuery) {
+      initialSearchDone.current = true;
+      setQuery(urlQuery);
+      setTimeout(() => {
+        triggerRef.current({ body: { query: urlQuery.trim() } } as never);
+      }, 100);
+      return;
+    }
+
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as { query: string; rawData: RawMarketData };
+        if (parsed.query && parsed.rawData) {
+          initialSearchDone.current = true;
+          setQuery(parsed.query);
+          setRestoredRaw(parsed.rawData);
+          return;
+        }
+      }
+    } catch {}
+  }, []);
 
   const handleSearch = async (q?: string) => {
     const searchQuery = q || query;
     if (!searchQuery.trim()) return;
     setError(null);
     setQuery(searchQuery);
+    setRestoredRaw(null);
     try {
       const result = (await trigger({ body: { query: searchQuery.trim() } } as never)) as (RawMarketData & { error?: string }) | undefined;
       if (result?.error) {
         setError(result.error);
-      } else if (user?.uid && result) {
-        const platformCount = result.platforms?.length ?? 0;
-        const listings = result.totalListings ?? 0;
-        const avg = result.avgPrice ?? 0;
-        safeFetch("/api/search-history", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: searchQuery.trim(), type: "competitor", platformsFound: platformCount, totalListings: listings, avgPrice: avg }),
-        }).catch(() => {});
+      } else if (result && !result.error) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({ query: searchQuery.trim(), rawData: result }));
+        } catch {}
+        if (user?.uid) {
+          const platformCount = result.platforms?.length ?? 0;
+          const listings = result.totalListings ?? 0;
+          const avg = result.avgPrice ?? 0;
+          safeFetch("/api/search-history", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: searchQuery.trim(), type: "competitor", platformsFound: platformCount, totalListings: listings, avgPrice: avg }),
+          }).catch(() => {});
+        }
       }
     } catch {
       setError("Failed to analyze market. Please try again.");
@@ -308,6 +531,30 @@ function CompetitorsContent() {
 
           {activeTab === "overview" && (
             <div className="space-y-5">
+              {importedProduct && (
+                <div className="glass rounded-2xl p-4 border border-accent/20 bg-accent/5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full border border-accent/20">IMPORTED FROM PRODUCTS</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    {importedProduct.image && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={importedProduct.image} alt={importedProduct.title} className="w-16 h-16 rounded-xl object-cover border border-border" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-display text-sm font-semibold text-foreground truncate">{importedProduct.title}</h4>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                        {importedProduct.price != null && <span className="font-medium text-foreground">${importedProduct.price.toFixed(2)}</span>}
+                        <span>{importedProduct.source}</span>
+                        {importedProduct.rating != null && <span>{importedProduct.rating}/5</span>}
+                        {importedProduct.reviews != null && <span>{importedProduct.reviews.toLocaleString()} reviews</span>}
+                      </div>
+                    </div>
+                    <a href={importedProduct.link} target="_blank" rel="noopener noreferrer" className="text-[10px] text-accent hover:text-accent/80 shrink-0">View source</a>
+                  </div>
+                </div>
+              )}
+              {marketData.executiveSummary && <ExecutiveSummaryBar summary={marketData.executiveSummary} />}
               <MarketStatsBar data={marketData} />
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 <PriceDistribution tiers={marketData.priceDistribution} avgPrice={marketData.avgPrice} />
@@ -329,7 +576,48 @@ function CompetitorsContent() {
           )}
 
           {activeTab === "competitors" && (
-            <CompetitorProfiles sellers={marketData.topSellers} />
+            <div className="space-y-5">
+              <CompetitorProfiles sellers={marketData.topSellers} />
+              {marketData.competitorSWOT && marketData.competitorSWOT.length > 0 && (
+                <SWOTAnalysis competitors={marketData.competitorSWOT} />
+              )}
+            </div>
+          )}
+
+          {activeTab === "gaps" && (
+            <div className="space-y-5">
+              {marketData.gapAnalysis && marketData.gapAnalysis.length > 0 && (
+                <GapAnalysis gaps={marketData.gapAnalysis} />
+              )}
+              <OpportunityFinder opportunities={marketData.opportunities} />
+            </div>
+          )}
+
+          {activeTab === "strategy" && (
+            <div className="space-y-5">
+              <PricingStrategy options={marketData.pricingOptions} />
+              {marketData.competitorSWOT && marketData.competitorSWOT.length > 0 && (
+                <SWOTAnalysis competitors={marketData.competitorSWOT} />
+              )}
+            </div>
+          )}
+
+          {activeTab === "ads" && (
+            <div className="space-y-5">
+              {marketData.adIntel && marketData.adIntel.length > 0 && (
+                <AdMarketingIntel intel={marketData.adIntel} />
+              )}
+              <InsightsPanel insights={marketData.insights} />
+            </div>
+          )}
+
+          {activeTab === "actions" && (
+            <div className="space-y-5">
+              {marketData.actionItems && marketData.actionItems.length > 0 && (
+                <ActionItems items={marketData.actionItems} />
+              )}
+              <OpportunityFinder opportunities={marketData.opportunities} />
+            </div>
           )}
 
           {activeTab === "insights" && (

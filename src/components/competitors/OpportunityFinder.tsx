@@ -89,7 +89,7 @@ export default function OpportunityFinder({ opportunities }: { opportunities: Op
           const Icon = c.icon;
           return (
             <div
-              key={opp.type}
+              key={`${opp.type}-${i}`}
               onClick={() => setSelectedOpp(opp)}
               className={`relative glass rounded-2xl p-4 sm:p-6 border ${c.border} ${c.bg} overflow-hidden transition-all duration-500 hover:scale-[1.02] active:scale-[0.98] cursor-pointer group ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
               style={{ transitionDelay: `${i * 120}ms` }}

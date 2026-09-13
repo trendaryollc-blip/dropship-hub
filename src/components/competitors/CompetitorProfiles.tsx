@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Star, Shield, ShoppingCart, Clock, RotateCcw, ExternalLink, Store } from "lucide-react";
+import { ChevronDown, Star, Shield, ShoppingCart, Clock, RotateCcw, ExternalLink, Store, ArrowUpDown, Crown, Medal } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { SellerProfile } from "@/types/competitors";
 
@@ -10,6 +10,11 @@ const threatConfig = {
   medium: { label: "Medium Threat", color: "text-amber-400", bg: "bg-amber-400/10", border: "border-amber-400/20", ring: "bg-amber-400" },
   high: { label: "High Threat", color: "text-red-400", bg: "bg-red-400/10", border: "border-red-400/20", ring: "bg-red-400" },
 };
+
+const rankIcons = [Crown, Medal, Medal];
+const rankColors = ["text-amber-400", "text-gray-300", "text-orange-400"];
+
+type SortKey = "threat" | "rating" | "price" | "products";
 
 function TrustRing({ rating, size = 40 }: { rating: number; size?: number }) {
   const pct = (rating / 5) * 100;
@@ -28,17 +33,51 @@ function TrustRing({ rating, size = 40 }: { rating: number; size?: number }) {
 export default function CompetitorProfiles({ sellers }: { sellers: SellerProfile[] }) {
   const { ref, isInView } = useInView({ threshold: 0.1 });
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortKey>("threat");
+
+  const threatOrder = { high: 0, medium: 1, low: 2 };
+  const sorted = [...sellers].sort((a, b) => {
+    switch (sortBy) {
+      case "threat": return threatOrder[a.threatLevel] - threatOrder[b.threatLevel];
+      case "rating": return b.rating - a.rating;
+      case "price": return b.price - a.price;
+      case "products": return b.totalProducts - a.totalProducts;
+      default: return 0;
+    }
+  });
 
   return (
     <div ref={ref} className={`transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
-      <h3 className="font-display text-base font-semibold text-foreground mb-4 flex items-center gap-2">
-        <span className="text-lg">🏪</span> Top Competitors
-        <span className="text-xs font-normal text-muted-foreground ml-1">({sellers.length} sellers)</span>
-      </h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-display text-base font-semibold text-foreground flex items-center gap-2">
+          <span className="text-lg">🏪</span> Competitor Leaderboard
+          <span className="text-xs font-normal text-muted-foreground ml-1">({sellers.length} sellers)</span>
+        </h3>
+        <div className="flex items-center gap-1">
+          <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+          {(["threat", "rating", "price", "products"] as SortKey[]).map((key) => (
+            <button
+              key={key}
+              onClick={() => setSortBy(key)}
+              className={`text-[10px] px-2 py-0.5 rounded-full border transition-all capitalize ${
+                sortBy === key
+                  ? "bg-accent/10 text-accent border-accent/20"
+                  : "text-muted-foreground border-border hover:border-accent/20"
+              }`}
+            >
+              {key === "products" ? "products" : key}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="space-y-3">
-        {sellers.map((seller, i) => {
+        {sorted.map((seller, i) => {
           const tc = threatConfig[seller.threatLevel];
           const isOpen = expanded === seller.name;
+          const RankIcon = rankIcons[i];
+          const isTop3 = i < 3;
+
           return (
             <div
               key={seller.name}
@@ -49,7 +88,16 @@ export default function CompetitorProfiles({ sellers }: { sellers: SellerProfile
                 onClick={() => setExpanded(isOpen ? null : seller.name)}
                 className="w-full p-3 sm:p-4 flex items-center gap-2 sm:gap-4 text-left"
               >
+                <div className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center shrink-0 border border-border/50">
+                  {isTop3 && RankIcon ? (
+                    <RankIcon className={`h-4 w-4 ${rankColors[i]}`} />
+                  ) : (
+                    <span className="text-xs font-bold text-muted-foreground">#{i + 1}</span>
+                  )}
+                </div>
+
                 <TrustRing rating={seller.rating} size={36} />
+
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <h4 className="font-display text-sm font-semibold text-foreground truncate">{seller.name}</h4>
@@ -65,14 +113,17 @@ export default function CompetitorProfiles({ sellers }: { sellers: SellerProfile
                     <span className="hidden sm:inline">{seller.totalProducts.toLocaleString()} products</span>
                   </div>
                 </div>
+
                 <div className="text-right shrink-0 hidden sm:block">
                   <span className="font-display text-sm sm:text-lg font-bold text-foreground block">${seller.price.toFixed(2)}</span>
                   <span className="text-[10px] text-muted-foreground">avg price</span>
                 </div>
+
                 <div className={`hidden sm:flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${tc.color} ${tc.bg} ${tc.border} shrink-0`}>
                   <div className={`w-1.5 h-1.5 rounded-full ${tc.ring}`} />
                   {tc.label}
                 </div>
+
                 <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-300 shrink-0 ${isOpen ? "rotate-180" : ""}`} />
               </button>
 
