@@ -1,69 +1,74 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAPI } from "@/hooks/useAPI";
+import { useToast } from "@/components/ui/Toast";
 import {
-  Settings, Loader2, Package, Store as StoreIcon, Link2,
+  Settings, Loader2, Package, Store as StoreIcon, Link2, ArrowRight, LayoutDashboard,
 } from "lucide-react";
 import ConnectedStoresList, { type ConnectedStore } from "@/components/stores/ConnectedStoresList";
-import PushedProductsList, { type PushedProduct } from "@/components/stores/PushedProductsList";
+import { type PushedProduct } from "@/components/stores/PushedProductsList";
 import StoreCuratedTab from "@/components/stores/StoreCuratedTab";
 import StoreStatsBar from "@/components/stores/StoreStatsBar";
-import StoreAIBar from "@/components/stores/StoreAIBar";
 import StoreHealthPanel from "@/components/stores/StoreHealthPanel";
-import StoreChatSidebar from "@/components/stores/StoreChatSidebar";
+import GlobalStoreChat from "@/components/stores/GlobalStoreChat";
 import { safeFetch } from "@/lib/safe-fetch";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 export default function StorePage() {
   const { user } = useAuth();
+  const { success, error: toastError } = useToast();
   const uid = user?.uid || "";
   const { data: connData, mutate: refetchConnections } = useAPI<{ connections?: ConnectedStore[] }>(uid ? `/api/store/connections?uid=${uid}` : null);
-  const { data: pushData, mutate: _refetchPushed } = useAPI<{ products?: PushedProduct[] }>(uid ? `/api/store/push?uid=${uid}` : null);
+  const { data: pushData } = useAPI<{ products?: PushedProduct[] }>(uid ? `/api/store/push?uid=${uid}` : null);
   const connections = connData?.connections || [];
   const pushedProducts = pushData?.products || [];
   const loading = !user || (!connData && !pushData);
   const [syncing, setSyncing] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"stores" | "products">("stores");
   const [disconnectTarget, setDisconnectTarget] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState<string | null>(null);
+  const [disconnecting, setDisconnecting] = useState(false);
 
-  const handleDisconnect = async (storeId: string) => { setDisconnectTarget(storeId); };
+  const handleDisconnect = (storeId: string) => { setDisconnectTarget(storeId); };
 
   const confirmDisconnect = async () => {
     if (!user || !disconnectTarget) return;
-    try { await safeFetch(`/api/store/connections?uid=${user.uid}&storeId=${disconnectTarget}`, { method: "DELETE" }); refetchConnections(); } catch { /* ignore */ }
+    setDisconnecting(true);
+    try {
+      const token = await user.getIdToken();
+      await safeFetch(`/api/store/connections?uid=${user.uid}&storeId=${disconnectTarget}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      refetchConnections();
+      success("Store disconnected successfully");
+    } catch {
+      toastError("Failed to disconnect store. Please try again.");
+    }
     setDisconnectTarget(null);
+    setDisconnecting(false);
   };
 
   const handleSync = async (store: ConnectedStore) => {
     if (!user || store.platform !== "trendaryo") return;
     setSyncing(store.id);
-    try { await safeFetch("/api/store/trendaryo", { method: "GET" }); refetchConnections(); } catch { /* ignore */ }
+    try {
+      const token = await user.getIdToken();
+      const result = await safeFetch<{ error?: string; success?: boolean }>("/api/store/trendaryo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: "syncProducts", authToken: store.apiKey }),
+      });
+      refetchConnections();
+      success("Store synced successfully");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to sync store";
+      toastError(msg);
+    }
     setSyncing(null);
   };
-
-  const executeAITool = useCallback(async (toolId: string, input: Record<string, unknown>) => {
-    try {
-      return await safeFetch<{ success: boolean; summary?: string; data?: unknown; error?: string }>(
-        "/api/ai/execute", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: toolId, input }) }
-      );
-    } catch { return { success: false, summary: "Failed" }; }
-  }, []);
-
-  const handleAIBarAction = useCallback(async (action: string) => {
-    setAiLoading(action);
-    const configs: Record<string, { toolId: string; input: Record<string, unknown> }> = {
-      "sync-inventory": { toolId: "sync_inventory", input: {} },
-      "store-performance": { toolId: "get_store_performance", input: {} },
-      "bulk-push": { toolId: "push_bulk_to_store", input: { productIds: [] } },
-      "optimize-listings": { toolId: "generate_listing", input: {} },
-    };
-    const config = configs[action];
-    if (config) await executeAITool(config.toolId, config.input);
-    setAiLoading(null);
-  }, [executeAITool]);
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-5 w-5 text-accent animate-spin" /></div>;
@@ -88,7 +93,24 @@ export default function StorePage() {
       </div>
 
       <StoreStatsBar connections={connections} pushedProducts={pushedProducts} />
-      <StoreAIBar onAction={handleAIBarAction} loading={aiLoading} storeCount={connections.length} />
+
+      {connections.length > 0 && (
+        <Link
+          href="/multi-store"
+          className="flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-accent/5 to-accent/10 border border-accent/20 hover:border-accent/40 transition-all group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-accent/10">
+              <LayoutDashboard className="h-5 w-5 text-accent" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">Go to Multi-Store Dashboard</p>
+              <p className="text-xs text-muted-foreground">Manage orders, inventory, performance & bulk push across all stores</p>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-accent group-hover:translate-x-1 transition-all" />
+        </Link>
+      )}
 
       <div className="flex gap-1 p-1 rounded-xl bg-surface border border-border max-w-md">
         <button onClick={() => setActiveTab("stores")} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "stores" ? "bg-accent text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background/50"}`}>
@@ -112,10 +134,67 @@ export default function StorePage() {
         </div>
       )}
 
-      {activeTab === "products" && <PushedProductsList products={pushedProducts} />}
+      {activeTab === "products" && (
+        <div className="space-y-5">
+          {pushedProducts.length === 0 ? (
+            <div className="text-center py-20">
+              <Package className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
+              <h3 className="font-display text-xl font-semibold text-foreground mb-2">No products pushed yet</h3>
+              <p className="text-sm text-muted-foreground mb-6">
+                Push products from the Multi-Store Dashboard or from any product page
+              </p>
+              <Link
+                href="/multi-store"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent-hover transition-all"
+              >
+                Go to Dashboard <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="font-display text-lg font-semibold text-foreground">Pushed Products</h2>
+                <Link href="/multi-store" className="text-xs text-accent hover:text-accent-hover flex items-center gap-1 transition-colors">
+                  Manage in Dashboard <ArrowRight className="h-3 w-3" />
+                </Link>
+              </div>
+              {pushedProducts.map((product) => (
+                <div
+                  key={product.id}
+                  className="glass rounded-2xl border border-border p-4 flex items-center gap-4 hover:border-accent/30 transition-all"
+                >
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-medium text-foreground truncate">{product.productTitle}</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Pushed to <span className="text-accent">{product.storeName}</span> · ${product.productPrice.toFixed(2)}
+                    </p>
+                  </div>
+                  <span
+                    className={`px-2 py-1 rounded-full text-[10px] font-bold ${
+                      product.status === "pushed" || product.status === "live"
+                        ? "bg-emerald-400/10 text-emerald-400"
+                        : "bg-red-400/10 text-red-400"
+                    }`}
+                  >
+                    {product.status === "pushed" || product.status === "live" ? "✓ LIVE" : "⚠ ERROR"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
-      <StoreChatSidebar connections={connections} pushedProducts={pushedProducts} />
-      <ConfirmDialog open={!!disconnectTarget} title="Disconnect this store?" description="This will remove the store connection. You can reconnect it later." confirmLabel="Disconnect" danger onConfirm={confirmDisconnect} onCancel={() => setDisconnectTarget(null)} />
+      <GlobalStoreChat connections={connections} pushedProducts={pushedProducts} />
+      <ConfirmDialog
+        open={!!disconnectTarget}
+        title="Disconnect this store?"
+        description="This will remove the store connection. You can reconnect it later."
+        confirmLabel={disconnecting ? "Disconnecting..." : "Disconnect"}
+        danger
+        onConfirm={confirmDisconnect}
+        onCancel={() => { setDisconnectTarget(null); setDisconnecting(false); }}
+      />
     </div>
   );
 }

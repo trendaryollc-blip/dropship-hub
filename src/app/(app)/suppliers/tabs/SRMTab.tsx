@@ -398,18 +398,19 @@ export default function SRMTab() {
   const [showCompose, setShowCompose] = useState(false);
   const [sending, setSending] = useState(false);
 
-  const { data: msgData, mutate: refetchMessages } = useAPI<{ messages?: SupplierMessage[] }>(uid ? `/api/srm/messages?uid=${uid}` : null);
-  const { data: negData, mutate: refetchNegotiations } = useAPI<{ negotiations?: NegotiationRecord[] }>(uid ? `/api/srm/negotiations?uid=${uid}` : null);
-  const { data: scData } = useAPI<{ scorecards?: SupplierScorecard[] }>(uid ? `/api/srm/scorecards?uid=${uid}` : null);
-  const { data: ruleData, mutate: refetchRules } = useAPI<{ rules?: AutoSwitchRule[] }>(uid ? `/api/srm/auto-switch?uid=${uid}` : null);
-  const { data: switchData } = useAPI<{ logs?: SupplierSwitchLog[] }>(uid ? `/api/srm/auto-switch?type=logs&uid=${uid}` : null);
+  const { data: msgData, error: msgError, mutate: refetchMessages } = useAPI<{ messages?: SupplierMessage[] }>(uid ? `/api/srm/messages?uid=${uid}` : null);
+  const { data: negData, error: negError, mutate: refetchNegotiations } = useAPI<{ negotiations?: NegotiationRecord[] }>(uid ? `/api/srm/negotiations?uid=${uid}` : null);
+  const { data: scData, error: scError } = useAPI<{ scorecards?: SupplierScorecard[] }>(uid ? `/api/srm/scorecards?uid=${uid}` : null);
+  const { data: ruleData, error: ruleError, mutate: refetchRules } = useAPI<{ rules?: AutoSwitchRule[] }>(uid ? `/api/srm/auto-switch?uid=${uid}` : null);
+  const { data: switchData, error: switchError } = useAPI<{ logs?: SupplierSwitchLog[] }>(uid ? `/api/srm/auto-switch?type=logs&uid=${uid}` : null);
 
   const messages = msgData?.messages || [];
   const negotiations = negData?.negotiations || [];
   const scorecards = scData?.scorecards || [];
   const rules = ruleData?.rules || [];
   const switchLogs = switchData?.logs || [];
-  const loading = !user || (!msgData && !scData);
+  const loading = !user && !msgError && !scError;
+  const hasError = msgError || negError || scError || ruleError || switchError;
 
   const unreadMessages = messages.filter((m) => m.status !== "read" && m.direction === "incoming").length;
   const activeNegotiations = negotiations.filter((n) => n.status === "active").length;
@@ -473,6 +474,24 @@ export default function SRMTab() {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
         <Loader2 className="h-5 w-5 text-accent animate-spin" />
+      </div>
+    );
+  }
+
+  if (hasError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4">
+        <p className="text-sm text-muted-foreground">Failed to load SRM data.</p>
+        <button
+          onClick={() => {
+            refetchMessages();
+            refetchNegotiations();
+            refetchRules();
+          }}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white text-xs font-semibold hover:bg-accent/90"
+        >
+          <RefreshCw className="h-3.5 w-3.5" /> Retry
+        </button>
       </div>
     );
   }

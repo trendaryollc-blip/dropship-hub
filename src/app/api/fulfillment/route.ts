@@ -6,6 +6,10 @@ import { LIMITS } from "@/lib/rate-limit";
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
     const status = req.nextUrl.searchParams.get("status");
+    const startDate = req.nextUrl.searchParams.get("startDate");
+    const endDate = req.nextUrl.searchParams.get("endDate");
+    const page = parseInt(req.nextUrl.searchParams.get("page") || "1");
+    const pageSize = parseInt(req.nextUrl.searchParams.get("pageSize") || "100");
 
     const db = await getAdminDB();
     let query: FirebaseFirestore.Query<FirebaseFirestore.DocumentData> = db
@@ -16,9 +20,24 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
       query = query.where("status", "==", status);
     }
 
-    const snap = await query.limit(100).get();
-    const orders = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    return NextResponse.json({ orders });
+    if (startDate) {
+      query = query.where("createdAt", ">=", startDate);
+    }
+
+    if (endDate) {
+      query = query.where("createdAt", "<=", endDate + "T23:59:59");
+    }
+
+    // For pagination with Firestore, we need to fetch and count
+    const snap = await query.limit(1000).get();
+    const allOrders = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+    // Apply pagination
+    const offset = (page - 1) * pageSize;
+    const orders = allOrders.slice(offset, offset + pageSize);
+    const totalCount = allOrders.length;
+
+    return NextResponse.json({ orders, totalCount, page, pageSize });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch orders", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
   }

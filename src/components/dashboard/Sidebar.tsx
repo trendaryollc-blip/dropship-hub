@@ -76,13 +76,13 @@ const navItems = [
     section: "core",
   },
   {
-    label: "My Store",
+    label: "Stores",
     href: "/store",
     icon: Store,
     section: "tools",
   },
   {
-    label: "Multi-Store",
+    label: "Store Dashboard",
     href: "/multi-store",
     icon: Globe,
     section: "tools",

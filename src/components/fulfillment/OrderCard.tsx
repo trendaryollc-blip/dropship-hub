@@ -5,6 +5,7 @@ import Image from "next/image";
 import {
   Copy, Check, Globe, Send, CheckCircle2, X, Zap,
 } from "lucide-react";
+import Link from "next/link";
 import { useInView } from "@/hooks/useInView";
 import { PLATFORM_CONFIGS } from "@/types/fulfillment";
 import type { FulfillmentOrder } from "@/types/fulfillment";
@@ -39,7 +40,9 @@ export default function OrderCard({ order, onAction, storeName }: { order: Fulfi
         <div>
           <div className="flex items-center gap-2">
             <span className="text-lg">{getSourceIcon(source)}</span>
-            <h4 className="font-display text-sm font-semibold text-foreground">{order.orderNumber}</h4>
+            <Link href={`/fulfillment/${order.id}`} className="font-display text-sm font-semibold text-foreground hover:text-accent transition-colors">
+              {order.orderNumber}
+            </Link>
             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${st.bg} ${st.color}`}>
               {st.icon} {order.status.replace("_", " ")}
             </span>
@@ -219,6 +222,15 @@ export default function OrderCard({ order, onAction, storeName }: { order: Fulfi
           >
             <CheckCircle2 className="h-3 w-3" /> Mark Delivered
           </button>
+        )}
+
+        {order.status === "delivered" && (
+          <Link
+            href="/fulfillment?tab=returns"
+            className="flex items-center gap-1.5 px-3 py-2 bg-amber-500/20 text-amber-400 rounded-lg text-xs font-medium hover:bg-amber-500/30 transition-all"
+          >
+            Request Return
+          </Link>
         )}
 
         {order.status !== "delivered" && order.status !== "cancelled" && (

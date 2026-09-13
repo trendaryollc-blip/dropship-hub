@@ -1,4 +1,5 @@
 import type { AuditLogEntry, AuditAction } from "@/types/automation";
+import { getAdminDB } from "@/lib/firebase-admin";
 
 interface AuditContext {
   orderId: string;
@@ -7,14 +8,15 @@ interface AuditContext {
   metadata?: Record<string, unknown>;
 }
 
-const inMemoryLogs: Map<string, AuditLogEntry[]> = new Map();
+const COLLECTION = "auditLogs";
+const MAX_ENTRIES = 1000;
 
-function getLogsForUser(uid: string): AuditLogEntry[] {
-  if (!inMemoryLogs.has(uid)) inMemoryLogs.set(uid, []);
-  return inMemoryLogs.get(uid)!;
+async function getCollection(uid: string) {
+  const db = await getAdminDB();
+  return db.collection("users").doc(uid).collection(COLLECTION);
 }
 
-export function logAuditEvent(uid: string, context: AuditContext): AuditLogEntry {
+export async function logAuditEvent(uid: string, context: AuditContext): Promise<AuditLogEntry> {
   const entry: AuditLogEntry = {
     id: `audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     orderId: context.orderId,
@@ -24,17 +26,28 @@ export function logAuditEvent(uid: string, context: AuditContext): AuditLogEntry
     timestamp: new Date().toISOString(),
   };
 
-  const logs = getLogsForUser(uid);
-  logs.unshift(entry);
+  try {
+    const col = await getCollection(uid);
+    await col.doc(entry.id).set(entry);
 
-  if (logs.length > 1000) {
-    logs.splice(1000);
+    // Enforce cap: delete oldest if over limit
+    const countSnap = await col.count().get();
+    const count = countSnap.data().count;
+    if (count > MAX_ENTRIES) {
+      const excess = count - MAX_ENTRIES;
+      const oldDocs = await col.orderBy("timestamp", "asc").limit(excess).get();
+      const batch = (await getAdminDB()).batch();
+      oldDocs.docs.forEach((doc) => batch.delete(doc.ref));
+      await batch.commit();
+    }
+  } catch (error) {
+    console.error("[audit-logger] Failed to persist to Firestore:", error);
   }
 
   return entry;
 }
 
-export function getAuditLogs(
+export async function getAuditLogs(
   uid: string,
   options?: {
     orderId?: string;
@@ -42,66 +55,103 @@ export function getAuditLogs(
     limit?: number;
     offset?: number;
   }
-): AuditLogEntry[] {
-  const logs = getLogsForUser(uid);
-  let filtered = logs;
+): Promise<AuditLogEntry[]> {
+  try {
+    const col = await getCollection(uid);
+    let query: FirebaseFirestore.Query = col.orderBy("timestamp", "desc");
 
-  if (options?.orderId) {
-    filtered = filtered.filter((l) => l.orderId === options.orderId);
+    if (options?.orderId) {
+      query = query.where("orderId", "==", options.orderId);
+    }
+    if (options?.action) {
+      query = query.where("action", "==", options.action);
+    }
+
+    const offset = options?.offset || 0;
+    const limit = options?.limit || 50;
+
+    // Firestore doesn't support offset natively; use startAfter for pagination
+    if (offset > 0) {
+      const anchorSnap = await col.orderBy("timestamp", "desc").limit(offset).get();
+      const lastDoc = anchorSnap.docs[anchorSnap.docs.length - 1];
+      if (lastDoc) {
+        query = query.startAfter(lastDoc);
+      }
+    }
+
+    const snap = await query.limit(limit).get();
+    return snap.docs.map((d) => d.data() as AuditLogEntry);
+  } catch (error) {
+    console.error("[audit-logger] Failed to read from Firestore:", error);
+    return [];
   }
-  if (options?.action) {
-    filtered = filtered.filter((l) => l.action === options.action);
-  }
-
-  const offset = options?.offset || 0;
-  const limit = options?.limit || 50;
-
-  return filtered.slice(offset, offset + limit);
 }
 
-export function getAuditLogCount(uid: string, orderId?: string): number {
-  const logs = getLogsForUser(uid);
-  if (orderId) return logs.filter((l) => l.orderId === orderId).length;
-  return logs.length;
-}
-
-export function clearAuditLogs(uid: string, orderId?: string): number {
-  const logs = getLogsForUser(uid);
-  if (orderId) {
-    const before = logs.length;
-    const filtered = logs.filter((l) => l.orderId !== orderId);
-    inMemoryLogs.set(uid, filtered);
-    return before - filtered.length;
+export async function getAuditLogCount(uid: string, orderId?: string): Promise<number> {
+  try {
+    const col = await getCollection(uid);
+    if (orderId) {
+      const snap = await col.where("orderId", "==", orderId).count().get();
+      return snap.data().count;
+    }
+    const snap = await col.count().get();
+    return snap.data().count;
+  } catch (error) {
+    console.error("[audit-logger] Failed to count:", error);
+    return 0;
   }
-  const before = logs.length;
-  inMemoryLogs.set(uid, []);
-  return before;
 }
 
-export function getAuditStats(uid: string): {
+export async function clearAuditLogs(uid: string, orderId?: string): Promise<number> {
+  try {
+    const col = await getCollection(uid);
+    if (orderId) {
+      const snap = await col.where("orderId", "==", orderId).get();
+      const batch = (await getAdminDB()).batch();
+      snap.docs.forEach((doc) => batch.delete(doc.ref));
+      await batch.commit();
+      return snap.size;
+    }
+    const snap = await col.get();
+    const batch = (await getAdminDB()).batch();
+    snap.docs.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
+    return snap.size;
+  } catch (error) {
+    console.error("[audit-logger] Failed to clear:", error);
+    return 0;
+  }
+}
+
+export async function getAuditStats(uid: string): Promise<{
   totalEvents: number;
   eventsByAction: Record<string, number>;
   recentErrors: AuditLogEntry[];
   ordersProcessed: number;
-} {
-  const logs = getLogsForUser(uid);
-  const eventsByAction: Record<string, number> = {};
-  const errorActions = new Set(["order_failed", "sla_breach", "profit_rejected", "inventory_unavailable"]);
+}> {
+  try {
+    const col = await getCollection(uid);
+    const snap = await col.orderBy("timestamp", "desc").limit(1000).get();
+    const logs = snap.docs.map((d) => d.data() as AuditLogEntry);
 
-  for (const log of logs) {
-    eventsByAction[log.action] = (eventsByAction[log.action] || 0) + 1;
+    const eventsByAction: Record<string, number> = {};
+    const errorActions = new Set(["order_failed", "sla_breach", "profit_rejected", "inventory_unavailable"]);
+
+    for (const log of logs) {
+      eventsByAction[log.action] = (eventsByAction[log.action] || 0) + 1;
+    }
+
+    const recentErrors = logs.filter((l) => errorActions.has(l.action)).slice(0, 10);
+    const orderIds = new Set(logs.map((l) => l.orderId));
+
+    return {
+      totalEvents: logs.length,
+      eventsByAction,
+      recentErrors,
+      ordersProcessed: orderIds.size,
+    };
+  } catch (error) {
+    console.error("[audit-logger] Failed to get stats:", error);
+    return { totalEvents: 0, eventsByAction: {}, recentErrors: [], ordersProcessed: 0 };
   }
-
-  const recentErrors = logs
-    .filter((l) => errorActions.has(l.action))
-    .slice(0, 10);
-
-  const orderIds = new Set(logs.map((l) => l.orderId));
-
-  return {
-    totalEvents: logs.length,
-    eventsByAction,
-    recentErrors,
-    ordersProcessed: orderIds.size,
-  };
 }

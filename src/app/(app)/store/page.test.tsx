@@ -23,6 +23,10 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
+vi.mock("@/components/ui/Toast", () => ({
+  useToast: () => ({ success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() }),
+}));
+
 const mockUseAPI = vi.mocked(useAPI);
 
 const makeConnection = (overrides: Partial<ConnectedStore> = {}): ConnectedStore => ({
@@ -147,17 +151,8 @@ describe("StorePage", () => {
     expect(screen.queryByText("Connected")).not.toBeInTheDocument();
   });
 
-  it("renders StoreAIBar when connections exist", () => {
+  it("does not render StoreAIBar on this page", () => {
     renderWithData({ connections: [makeConnection()] });
-    expect(screen.getByText("AI-Powered Actions")).toBeInTheDocument();
-    expect(screen.getByText("Sync Inventory")).toBeInTheDocument();
-    expect(screen.getByText("Store Performance")).toBeInTheDocument();
-    expect(screen.getByText("Bulk Push")).toBeInTheDocument();
-    expect(screen.getByText("Optimize Listings")).toBeInTheDocument();
-  });
-
-  it("does not render StoreAIBar when no connections", () => {
-    renderWithData({ connections: [] });
     expect(screen.queryByText("AI-Powered Actions")).not.toBeInTheDocument();
   });
 
@@ -182,16 +177,16 @@ describe("StorePage", () => {
     renderWithData({ products: [] });
     fireEvent.click(screen.getByText(/Pushed Products/));
     expect(screen.getByText("No products pushed yet")).toBeInTheDocument();
-    expect(screen.getByText("Find Products to Push")).toBeInTheDocument();
+    expect(screen.getByText("Go to Dashboard")).toBeInTheDocument();
   });
 
-  it("renders StoreChatSidebar", () => {
+  it("renders GlobalStoreChat", () => {
     renderWithData();
     const chatButton = screen.getByTitle("AI Store Assistant");
     expect(chatButton).toBeInTheDocument();
   });
 
-  it("opens StoreChatSidebar on chat button click", () => {
+  it("opens GlobalStoreChat on chat button click", () => {
     renderWithData({ connections: [makeConnection()] });
     fireEvent.click(screen.getByTitle("AI Store Assistant"));
     expect(screen.getByText("Store AI")).toBeInTheDocument();
@@ -216,5 +211,15 @@ describe("StorePage", () => {
   it("renders subtitle text", () => {
     renderWithData();
     expect(screen.getByText("Connect your stores to push products directly")).toBeInTheDocument();
+  });
+
+  it("shows dashboard link when connections exist", () => {
+    renderWithData({ connections: [makeConnection()] });
+    expect(screen.getByText("Go to Multi-Store Dashboard")).toBeInTheDocument();
+  });
+
+  it("does not show dashboard link when no connections", () => {
+    renderWithData({ connections: [] });
+    expect(screen.queryByText("Go to Multi-Store Dashboard")).not.toBeInTheDocument();
   });
 });

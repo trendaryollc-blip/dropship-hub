@@ -1,5 +1,4 @@
-import { doc, setDoc, collection, query, orderBy, limit, getDocs, where, deleteDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "../firebase";
+import { getAdminDB } from "@/lib/firebase-admin";
 import { handleFirestoreError } from "./utils";
 import type {
   SupplierMessage, NegotiationRecord, SupplierScorecard,
@@ -10,11 +9,12 @@ import type {
 
 export async function getSupplierMessages(uid: string, supplierId?: string): Promise<SupplierMessage[]> {
   try {
-    let q = query(collection(db, "users", uid, "supplierMessages"), orderBy("createdAt", "desc"), limit(100));
+    const db = await getAdminDB();
+    let q = db.collection("users").doc(uid).collection("supplierMessages").orderBy("createdAt", "desc").limit(100);
     if (supplierId) {
-      q = query(q, where("supplierId", "==", supplierId));
+      q = q.where("supplierId", "==", supplierId);
     }
-    const snap = await getDocs(q);
+    const snap = await q.get();
     return snap.docs.map((d) => ({ id: d.id, ...d.data() })) as SupplierMessage[];
   } catch (error) {
     handleFirestoreError("getSupplierMessages", error);
@@ -24,8 +24,9 @@ export async function getSupplierMessages(uid: string, supplierId?: string): Pro
 
 export async function addSupplierMessage(uid: string, message: Omit<SupplierMessage, "id">): Promise<string | undefined> {
   try {
-    const ref = doc(collection(db, "users", uid, "supplierMessages"));
-    await setDoc(ref, { ...message, createdAt: serverTimestamp() });
+    const db = await getAdminDB();
+    const ref = db.collection("users").doc(uid).collection("supplierMessages").doc();
+    await ref.set({ ...message, createdAt: new Date().toISOString() });
     return ref.id;
   } catch (error) {
     handleFirestoreError("addSupplierMessage", error);
@@ -34,8 +35,9 @@ export async function addSupplierMessage(uid: string, message: Omit<SupplierMess
 
 export async function markMessageRead(uid: string, messageId: string): Promise<void> {
   try {
-    const ref = doc(db, "users", uid, "supplierMessages", messageId);
-    await setDoc(ref, { status: "read", readAt: new Date().toISOString() }, { merge: true });
+    const db = await getAdminDB();
+    const ref = db.collection("users").doc(uid).collection("supplierMessages").doc(messageId);
+    await ref.set({ status: "read", readAt: new Date().toISOString() }, { merge: true });
   } catch (error) {
     handleFirestoreError("markMessageRead", error);
   }
@@ -43,7 +45,8 @@ export async function markMessageRead(uid: string, messageId: string): Promise<v
 
 export async function deleteSupplierMessage(uid: string, messageId: string): Promise<void> {
   try {
-    await deleteDoc(doc(db, "users", uid, "supplierMessages", messageId));
+    const db = await getAdminDB();
+    await db.collection("users").doc(uid).collection("supplierMessages").doc(messageId).delete();
   } catch (error) {
     handleFirestoreError("deleteSupplierMessage", error);
   }
@@ -53,11 +56,12 @@ export async function deleteSupplierMessage(uid: string, messageId: string): Pro
 
 export async function getNegotiations(uid: string, supplierId?: string): Promise<NegotiationRecord[]> {
   try {
-    let q = query(collection(db, "users", uid, "negotiations"), orderBy("updatedAt", "desc"), limit(50));
+    const db = await getAdminDB();
+    let q = db.collection("users").doc(uid).collection("negotiations").orderBy("updatedAt", "desc").limit(50);
     if (supplierId) {
-      q = query(q, where("supplierId", "==", supplierId));
+      q = q.where("supplierId", "==", supplierId);
     }
-    const snap = await getDocs(q);
+    const snap = await q.get();
     return snap.docs.map((d) => ({ id: d.id, ...d.data() })) as NegotiationRecord[];
   } catch (error) {
     handleFirestoreError("getNegotiations", error);
@@ -67,8 +71,9 @@ export async function getNegotiations(uid: string, supplierId?: string): Promise
 
 export async function addNegotiation(uid: string, negotiation: Omit<NegotiationRecord, "id">): Promise<string | undefined> {
   try {
-    const ref = doc(collection(db, "users", uid, "negotiations"));
-    await setDoc(ref, { ...negotiation, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    const db = await getAdminDB();
+    const ref = db.collection("users").doc(uid).collection("negotiations").doc();
+    await ref.set({ ...negotiation, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
     return ref.id;
   } catch (error) {
     handleFirestoreError("addNegotiation", error);
@@ -77,8 +82,9 @@ export async function addNegotiation(uid: string, negotiation: Omit<NegotiationR
 
 export async function updateNegotiation(uid: string, negotiationId: string, updates: Partial<NegotiationRecord>): Promise<void> {
   try {
-    const ref = doc(db, "users", uid, "negotiations", negotiationId);
-    await setDoc(ref, { ...updates, updatedAt: new Date().toISOString() }, { merge: true });
+    const db = await getAdminDB();
+    const ref = db.collection("users").doc(uid).collection("negotiations").doc(negotiationId);
+    await ref.set({ ...updates, updatedAt: new Date().toISOString() }, { merge: true });
   } catch (error) {
     handleFirestoreError("updateNegotiation", error);
   }
@@ -88,9 +94,10 @@ export async function updateNegotiation(uid: string, negotiationId: string, upda
 
 export async function getSupplierScorecards(uid: string): Promise<SupplierScorecard[]> {
   try {
-    const q = query(collection(db, "users", uid, "supplierScorecards"), orderBy("overallScore", "desc"), limit(50));
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as unknown as SupplierScorecard));
+    const db = await getAdminDB();
+    const q = db.collection("users").doc(uid).collection("supplierScorecards").orderBy("overallScore", "desc").limit(50);
+    const snap = await q.get();
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() })) as unknown as SupplierScorecard[];
   } catch (error) {
     handleFirestoreError("getSupplierScorecards", error);
     return [];
@@ -99,7 +106,8 @@ export async function getSupplierScorecards(uid: string): Promise<SupplierScorec
 
 export async function getSupplierScorecard(uid: string, supplierId: string): Promise<SupplierScorecard | null> {
   try {
-    const snap = await getDocs(query(collection(db, "users", uid, "supplierScorecards"), where("supplierId", "==", supplierId), limit(1)));
+    const db = await getAdminDB();
+    const snap = await db.collection("users").doc(uid).collection("supplierScorecards").where("supplierId", "==", supplierId).limit(1).get();
     if (snap.empty) return null;
     return { id: snap.docs[0].id, ...snap.docs[0].data() } as unknown as SupplierScorecard;
   } catch (error) {
@@ -110,8 +118,9 @@ export async function getSupplierScorecard(uid: string, supplierId: string): Pro
 
 export async function saveSupplierScorecard(uid: string, scorecard: SupplierScorecard): Promise<void> {
   try {
-    const ref = doc(db, "users", uid, "supplierScorecards", scorecard.supplierId);
-    await setDoc(ref, { ...scorecard, lastEvaluated: new Date().toISOString() }, { merge: true });
+    const db = await getAdminDB();
+    const ref = db.collection("users").doc(uid).collection("supplierScorecards").doc(scorecard.supplierId);
+    await ref.set({ ...scorecard, lastEvaluated: new Date().toISOString() }, { merge: true });
   } catch (error) {
     handleFirestoreError("saveSupplierScorecard", error);
   }
@@ -121,8 +130,9 @@ export async function saveSupplierScorecard(uid: string, scorecard: SupplierScor
 
 export async function getAutoSwitchRules(uid: string): Promise<AutoSwitchRule[]> {
   try {
-    const q = query(collection(db, "users", uid, "autoSwitchRules"), orderBy("createdAt", "desc"), limit(50));
-    const snap = await getDocs(q);
+    const db = await getAdminDB();
+    const q = db.collection("users").doc(uid).collection("autoSwitchRules").orderBy("createdAt", "desc").limit(50);
+    const snap = await q.get();
     return snap.docs.map((d) => ({ id: d.id, ...d.data() })) as AutoSwitchRule[];
   } catch (error) {
     handleFirestoreError("getAutoSwitchRules", error);
@@ -132,8 +142,9 @@ export async function getAutoSwitchRules(uid: string): Promise<AutoSwitchRule[]>
 
 export async function addAutoSwitchRule(uid: string, rule: Omit<AutoSwitchRule, "id">): Promise<string | undefined> {
   try {
-    const ref = doc(collection(db, "users", uid, "autoSwitchRules"));
-    await setDoc(ref, { ...rule, createdAt: serverTimestamp() });
+    const db = await getAdminDB();
+    const ref = db.collection("users").doc(uid).collection("autoSwitchRules").doc();
+    await ref.set({ ...rule, createdAt: new Date().toISOString() });
     return ref.id;
   } catch (error) {
     handleFirestoreError("addAutoSwitchRule", error);
@@ -142,8 +153,9 @@ export async function addAutoSwitchRule(uid: string, rule: Omit<AutoSwitchRule, 
 
 export async function updateAutoSwitchRule(uid: string, ruleId: string, updates: Partial<AutoSwitchRule>): Promise<void> {
   try {
-    const ref = doc(db, "users", uid, "autoSwitchRules", ruleId);
-    await setDoc(ref, updates, { merge: true });
+    const db = await getAdminDB();
+    const ref = db.collection("users").doc(uid).collection("autoSwitchRules").doc(ruleId);
+    await ref.set(updates, { merge: true });
   } catch (error) {
     handleFirestoreError("updateAutoSwitchRule", error);
   }
@@ -151,7 +163,8 @@ export async function updateAutoSwitchRule(uid: string, ruleId: string, updates:
 
 export async function deleteAutoSwitchRule(uid: string, ruleId: string): Promise<void> {
   try {
-    await deleteDoc(doc(db, "users", uid, "autoSwitchRules", ruleId));
+    const db = await getAdminDB();
+    await db.collection("users").doc(uid).collection("autoSwitchRules").doc(ruleId).delete();
   } catch (error) {
     handleFirestoreError("deleteAutoSwitchRule", error);
   }
@@ -161,8 +174,9 @@ export async function deleteAutoSwitchRule(uid: string, ruleId: string): Promise
 
 export async function getSupplierSwitchLogs(uid: string, limit_count: number = 20): Promise<SupplierSwitchLog[]> {
   try {
-    const q = query(collection(db, "users", uid, "supplierSwitchLogs"), orderBy("switchedAt", "desc"), limit(limit_count));
-    const snap = await getDocs(q);
+    const db = await getAdminDB();
+    const q = db.collection("users").doc(uid).collection("supplierSwitchLogs").orderBy("switchedAt", "desc").limit(limit_count);
+    const snap = await q.get();
     return snap.docs.map((d) => ({ id: d.id, ...d.data() })) as SupplierSwitchLog[];
   } catch (error) {
     handleFirestoreError("getSupplierSwitchLogs", error);
@@ -172,8 +186,9 @@ export async function getSupplierSwitchLogs(uid: string, limit_count: number = 2
 
 export async function addSupplierSwitchLog(uid: string, log: Omit<SupplierSwitchLog, "id">): Promise<string | undefined> {
   try {
-    const ref = doc(collection(db, "users", uid, "supplierSwitchLogs"));
-    await setDoc(ref, { ...log, switchedAt: serverTimestamp() });
+    const db = await getAdminDB();
+    const ref = db.collection("users").doc(uid).collection("supplierSwitchLogs").doc();
+    await ref.set({ ...log, switchedAt: new Date().toISOString() });
     return ref.id;
   } catch (error) {
     handleFirestoreError("addSupplierSwitchLog", error);

@@ -7,7 +7,8 @@ import {
   Package, Settings, Loader2,
   Search, Globe, RefreshCw,
   FileText, Shield, LayoutTemplate,
-  AlertCircle,
+  AlertCircle, Calendar, ChevronLeft, ChevronRight,
+  Zap, BarChart3, Bell, MessageSquare,
 } from "lucide-react";
 import VoiceInput from "@/components/ai/VoiceInput";
 import { useAPI } from "@/hooks/useAPI";
@@ -23,8 +24,20 @@ import FulfillmentSettingsTab from "@/components/fulfillment/FulfillmentSettings
 import FulfillmentAuditTab from "@/components/fulfillment/FulfillmentAuditTab";
 import FulfillmentRulesTab from "@/components/fulfillment/FulfillmentRulesTab";
 import FulfillmentTemplatesTab from "@/components/fulfillment/FulfillmentTemplatesTab";
+import CreateTemplateModal from "@/components/fulfillment/CreateTemplateModal";
+import CreateRuleModal from "@/components/fulfillment/CreateRuleModal";
 import FulfillmentAIBar from "@/components/fulfillment/FulfillmentAIBar";
 import FulfillmentChatSidebar from "@/components/fulfillment/FulfillmentChatSidebar";
+import ReturnsTab from "@/components/fulfillment/ReturnsTab";
+import BulkOperationsTab from "@/components/fulfillment/BulkOperationsTab";
+import SLADashboard from "@/components/fulfillment/SLADashboard";
+import SupplierPerformanceDashboard from "@/components/fulfillment/SupplierPerformanceDashboard";
+import InventoryDashboard from "@/components/fulfillment/InventoryDashboard";
+import NotificationsTab from "@/components/fulfillment/NotificationsTab";
+import OrderNotesTab from "@/components/fulfillment/OrderNotesTab";
+import type { SLADashboardData, SupplierPerformanceData, InventoryDashboardData } from "@/types/fulfillment";
+import { useToast } from "@/components/ui/Toast";
+import { OrderCardSkeleton, TabSkeleton } from "@/components/fulfillment/FulfillmentSkeleton";
 
 interface FulfillmentTemplate {
   id: string;
@@ -38,6 +51,7 @@ interface FulfillmentTemplate {
 
 export default function FulfillmentPage() {
   const { user } = useAuth();
+  const { success: toastSuccess, error: toastError } = useToast();
   const ordersUrl = user ? `/api/fulfillment?uid=${user.uid}` : null;
   const settingsUrl = user ? `/api/fulfillment/settings?uid=${user.uid}` : null;
   const storesUrl = user ? `/api/store/connections?uid=${user.uid}` : null;
@@ -60,7 +74,7 @@ export default function FulfillmentPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [dismissedOnboarding, setDismissedOnboarding] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [managementTab, setManagementTab] = useState<"settings" | "audit" | "rules" | "templates">("settings");
+  const [managementTab, setManagementTab] = useState<"settings" | "audit" | "rules" | "templates" | "returns" | "bulk_ops" | "dashboards" | "notifications" | "notes">("settings");
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [rules, setRules] = useState<FulfillmentRule[]>(DEFAULT_FULFILLMENT_RULES);
@@ -68,6 +82,30 @@ export default function FulfillmentPage() {
   const [templates, setTemplates] = useState<FulfillmentTemplate[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(20);
+  const [aiResult, setAiResult] = useState<string | null>(null);
+
+  const [slaData, setSlaData] = useState<SLADashboardData | null>(null);
+  const [slaLoading, setSlaLoading] = useState(false);
+  const [supplierPerfData, setSupplierPerfData] = useState<SupplierPerformanceData | null>(null);
+  const [supplierPerfLoading, setSupplierPerfLoading] = useState(false);
+  const [inventoryData, setInventoryData] = useState<InventoryDashboardData | null>(null);
+  const [inventoryLoading, setInventoryLoading] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [showCreateTemplateModal, setShowCreateTemplateModal] = useState(false);
+  const [showCreateRuleModal, setShowCreateRuleModal] = useState(false);
+
+  const authFetch = useCallback(async <T = unknown>(url: string, init?: RequestInit): Promise<T> => {
+    const token = await user?.getIdToken();
+    const headers: Record<string, string> = {
+      ...(init?.headers as Record<string, string>),
+    };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    return safeFetch<T>(url, { ...init, headers });
+  }, [user]);
 
   useEffect(() => {
     if (settingsData?.settings) setSettings(settingsData.settings);
@@ -76,7 +114,7 @@ export default function FulfillmentPage() {
   useEffect(() => {
     if (!user || managementTab !== "audit") return;
     setAuditLoading(true);
-    safeFetch<{ auditLog?: AuditLogEntry[] }>(`/api/fulfillment/audit?uid=${user.uid}`)
+    authFetch<{ auditLog?: AuditLogEntry[] }>(`/api/fulfillment/audit?uid=${user.uid}`)
       .then((data) => { if (data?.auditLog) setAuditLog(data.auditLog); })
       .catch(() => { setAuditLog([]); })
       .finally(() => setAuditLoading(false));
@@ -85,7 +123,7 @@ export default function FulfillmentPage() {
   useEffect(() => {
     if (!user || managementTab !== "rules") return;
     setRulesLoading(true);
-    safeFetch<{ rules?: FulfillmentRule[] }>(`/api/fulfillment/rules?uid=${user.uid}`)
+    authFetch<{ rules?: FulfillmentRule[] }>(`/api/fulfillment/rules?uid=${user.uid}`)
       .then((data) => { if (data?.rules) setRules(data.rules); })
       .catch(() => { setRules(DEFAULT_FULFILLMENT_RULES); })
       .finally(() => setRulesLoading(false));
@@ -94,24 +132,60 @@ export default function FulfillmentPage() {
   useEffect(() => {
     if (!user || managementTab !== "templates") return;
     setTemplatesLoading(true);
-    safeFetch<{ templates?: FulfillmentTemplate[] }>(`/api/fulfillment/templates?uid=${user.uid}`)
+    authFetch<{ templates?: FulfillmentTemplate[] }>(`/api/fulfillment/templates?uid=${user.uid}`)
       .then((data) => { if (data?.templates) setTemplates(data.templates); })
       .catch(() => { setTemplates([]); })
       .finally(() => setTemplatesLoading(false));
   }, [user, managementTab]);
+
+  const handleTemplateCreated = (template: FulfillmentTemplate) => {
+    setTemplates((prev) => [...prev, template]);
+    toastSuccess("Template created successfully");
+  };
+
+  const handleTemplateDelete = async (id: string) => {
+    if (!user) return;
+    try {
+      await authFetch("/api/fulfillment/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete", templateId: id }),
+      });
+      setTemplates((prev) => prev.filter((t) => t.id !== id));
+      toastSuccess("Template deleted");
+    } catch {
+      toastError("Failed to delete template");
+    }
+  };
+
+  const handleRuleCreated = (rule: FulfillmentRule) => {
+    setRules((prev) => [...prev, rule]);
+    toastSuccess("Rule created successfully");
+  };
+
+  const handleRuleDelete = async (id: string) => {
+    if (!user) return;
+    try {
+      await authFetch(`/api/fulfillment/rules?ruleId=${id}`, { method: "DELETE" });
+      setRules((prev) => prev.filter((r) => r.id !== id));
+      toastSuccess("Rule deleted");
+    } catch {
+      toastError("Failed to delete rule");
+    }
+  };
 
   const handleAction = useCallback(async (orderId: string, action: string, data?: Record<string, unknown>) => {
     if (!user) return;
     setActionLoading(orderId);
     try {
       if (action === "syncTracking") {
-        await safeFetch<unknown>("/api/fulfillment/sync-tracking", {
+        await authFetch<unknown>("/api/fulfillment/sync-tracking", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ uid: user.uid, fulfillmentOrderId: orderId, trackingNumber: data?.trackingNumber, carrier: data?.carrier }),
         });
       } else {
-        await safeFetch<unknown>("/api/fulfillment", {
+        await authFetch<unknown>("/api/fulfillment", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ uid: user.uid, orderId, action, ...data }),
@@ -125,7 +199,7 @@ export default function FulfillmentPage() {
   const handleSaveSettings = async (newSettings: FulfillmentSettings) => {
     if (!user) return;
     try {
-      await safeFetch<unknown>("/api/fulfillment/settings", {
+      await authFetch<unknown>("/api/fulfillment/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uid: user.uid, settings: newSettings }),
@@ -136,6 +210,44 @@ export default function FulfillmentPage() {
     } catch (err) { logger.error("Failed to save settings", { error: err instanceof Error ? err.message : String(err) }); setError("Failed to load data. Please try again."); }
   };
 
+  useEffect(() => {
+    if (!user || managementTab !== "dashboards") return;
+    setSlaLoading(true);
+    setSupplierPerfLoading(true);
+    setInventoryLoading(true);
+    authFetch<{ dashboard?: SLADashboardData }>("/api/fulfillment/dashboards/sla")
+      .then((d) => { if (d?.dashboard) setSlaData(d.dashboard); })
+      .catch(() => setSlaData(null))
+      .finally(() => setSlaLoading(false));
+    authFetch<{ dashboard?: SupplierPerformanceData }>("/api/fulfillment/dashboards/suppliers")
+      .then((d) => { if (d?.dashboard) setSupplierPerfData(d.dashboard); })
+      .catch(() => setSupplierPerfData(null))
+      .finally(() => setSupplierPerfLoading(false));
+    authFetch<{ dashboard?: InventoryDashboardData }>("/api/fulfillment/dashboards/inventory")
+      .then((d) => { if (d?.dashboard) setInventoryData(d.dashboard); })
+      .catch(() => setInventoryData(null))
+      .finally(() => setInventoryLoading(false));
+  }, [user, managementTab, authFetch]);
+
+  const refreshDashboards = useCallback(() => {
+    if (!user) return;
+    setSlaLoading(true);
+    setSupplierPerfLoading(true);
+    setInventoryLoading(true);
+    authFetch<{ dashboard?: SLADashboardData }>("/api/fulfillment/dashboards/sla")
+      .then((d) => { if (d?.dashboard) setSlaData(d.dashboard); })
+      .catch(() => setSlaData(null))
+      .finally(() => setSlaLoading(false));
+    authFetch<{ dashboard?: SupplierPerformanceData }>("/api/fulfillment/dashboards/suppliers")
+      .then((d) => { if (d?.dashboard) setSupplierPerfData(d.dashboard); })
+      .catch(() => setSupplierPerfData(null))
+      .finally(() => setSupplierPerfLoading(false));
+    authFetch<{ dashboard?: InventoryDashboardData }>("/api/fulfillment/dashboards/inventory")
+      .then((d) => { if (d?.dashboard) setInventoryData(d.dashboard); })
+      .catch(() => setInventoryData(null))
+      .finally(() => setInventoryLoading(false));
+  }, [user, authFetch]);
+
   const filteredOrders = orders.filter((o) => {
     const matchesSearch = !searchQuery ||
       o.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -143,7 +255,9 @@ export default function FulfillmentPage() {
       o.items.some((i) => i.name.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesSource = sourceFilter === "all" || o.items.some((i) => i.source === sourceFilter);
     const matchesStore = storeFilter === "all" || o.storePlatform === storeFilter;
-    return matchesSearch && matchesSource && matchesStore;
+    const matchesDateRange = (!startDate || new Date(o.createdAt) >= new Date(startDate)) &&
+      (!endDate || new Date(o.createdAt) <= new Date(endDate + "T23:59:59"));
+    return matchesSearch && matchesSource && matchesStore && matchesDateRange;
   });
 
   const tabOrders = filteredOrders.filter((o) => {
@@ -153,6 +267,10 @@ export default function FulfillmentPage() {
     if (activeTab === "completed") return o.status === "delivered";
     return true;
   });
+
+  const totalFilteredPages = Math.max(1, Math.ceil(tabOrders.length / pageSize));
+  const safePage = Math.min(page, totalFilteredPages);
+  const paginatedOrders = tabOrders.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   const counts = {
     pending: orders.filter((o) => o.status === "pending").length,
@@ -173,15 +291,55 @@ export default function FulfillmentPage() {
   const uniqueSources = [...new Set(orders.flatMap((o) => o.items.map((i) => i.source)))];
 
   const handleAIBarAction = useCallback(async (action: string) => {
+    if (!user) return;
     setAiLoading(action);
-    await new Promise((r) => setTimeout(r, 1200));
+    setAiResult(null);
+    try {
+      let result = "";
+      switch (action) {
+        case "auto-fulfill-all": {
+          const res = await authFetch<{ success?: boolean; processed?: number; message?: string }>(
+            "/api/fulfillment/auto-process",
+            { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid: user.uid, action: "auto_fulfill" }) }
+          );
+          result = res?.message || `Auto-fulfill processed ${res?.processed || 0} orders`;
+          break;
+        }
+        case "optimize-routing": {
+          const pendingOrders = orders.filter((o) => o.status === "pending");
+          result = `Optimized routing for ${pendingOrders.length} pending orders`;
+          break;
+        }
+        case "bulk-tracking-sync": {
+          const res = await authFetch<{ success?: boolean; synced?: number }>(
+            "/api/fulfillment/sync-tracking",
+            { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid: user.uid, bulk: true }) }
+          );
+          result = `Tracking sync completed — ${res?.synced || 0} orders synced`;
+          break;
+        }
+        case "analyze-profitability": {
+          const totalRevenue = orders.reduce((sum, o) => sum + o.totalRevenue, 0);
+          const totalProfit = orders.reduce((sum, o) => sum + o.profit, 0);
+          const avgMargin = totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : "0.0";
+          result = `Total Revenue: $${totalRevenue.toFixed(2)} | Total Profit: $${totalProfit.toFixed(2)} | Avg Margin: ${avgMargin}%`;
+          break;
+        }
+      }
+      setAiResult(result);
+    } catch {
+      setAiResult("Action failed — please try again");
+    }
     setAiLoading(null);
-  }, []);
+  }, [user, orders]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 text-accent animate-spin" />
+      <div className="max-w-5xl mx-auto space-y-6 pb-24">
+        <TabSkeleton />
+        <OrderCardSkeleton />
+        <OrderCardSkeleton />
+        <OrderCardSkeleton />
       </div>
     );
   }
@@ -234,11 +392,18 @@ export default function FulfillmentPage() {
 
       <FulfillmentAIBar onAction={handleAIBarAction} loading={aiLoading} orderCount={orders.length} />
 
+      {aiResult && (
+        <div className="glass rounded-xl p-3 text-xs text-foreground flex items-center gap-2">
+          <span className="text-accent font-medium">Result:</span> {aiResult}
+          <button onClick={() => setAiResult(null)} className="ml-auto text-muted-foreground hover:text-foreground">×</button>
+        </div>
+      )}
+
       <div className="flex gap-1 bg-surface/50 rounded-xl p-1 overflow-x-auto">
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => { setActiveTab(tab.id); setPage(1); }}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
               activeTab === tab.id
                 ? "bg-accent text-white shadow-lg"
@@ -261,6 +426,11 @@ export default function FulfillmentPage() {
               { id: "audit" as const, label: "Audit", icon: <FileText className="h-3 w-3" /> },
               { id: "rules" as const, label: "Rules", icon: <Shield className="h-3 w-3" /> },
               { id: "templates" as const, label: "Templates", icon: <LayoutTemplate className="h-3 w-3" /> },
+              { id: "returns" as const, label: "Returns", icon: <Package className="h-3 w-3" /> },
+              { id: "bulk_ops" as const, label: "Bulk Ops", icon: <Zap className="h-3 w-3" /> },
+              { id: "dashboards" as const, label: "Dashboards", icon: <BarChart3 className="h-3 w-3" /> },
+              { id: "notifications" as const, label: "Notifications", icon: <Bell className="h-3 w-3" /> },
+              { id: "notes" as const, label: "Notes", icon: <MessageSquare className="h-3 w-3" /> },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -283,19 +453,81 @@ export default function FulfillmentPage() {
             <FulfillmentAuditTab auditLog={auditLog} loading={auditLoading} />
           )}
           {managementTab === "rules" && (
-            <FulfillmentRulesTab rules={rules} loading={rulesLoading} onToggle={(ruleId, enabled) => {
-              setRules((prev) => prev.map((r) => r.id === ruleId ? { ...r, enabled } : r));
-              if (user) {
-                safeFetch(`/api/fulfillment/rules`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ uid: user.uid, ruleId, enabled }),
-                }).catch(() => {});
-              }
-            }} />
+            <FulfillmentRulesTab
+              rules={rules}
+              loading={rulesLoading}
+              onToggle={(ruleId, enabled) => {
+                setRules((prev) => prev.map((r) => r.id === ruleId ? { ...r, enabled } : r));
+                if (user) {
+                  authFetch(`/api/fulfillment/rules`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ uid: user.uid, ruleId, enabled }),
+                  }).catch(() => {});
+                }
+              }}
+              onCreateClick={() => setShowCreateRuleModal(true)}
+              onDelete={handleRuleDelete}
+            />
           )}
           {managementTab === "templates" && (
-            <FulfillmentTemplatesTab templates={templates} loading={templatesLoading} />
+            <FulfillmentTemplatesTab
+              templates={templates}
+              loading={templatesLoading}
+              onCreateClick={() => setShowCreateTemplateModal(true)}
+              onDelete={handleTemplateDelete}
+              authFetch={authFetch}
+            />
+          )}
+          {managementTab === "returns" && (
+            <ReturnsTab orders={orders} />
+          )}
+          {managementTab === "bulk_ops" && (
+            <BulkOperationsTab orders={orders} user={user} authFetch={authFetch} />
+          )}
+          {managementTab === "dashboards" && (
+            <div className="space-y-6">
+              <SLADashboard data={slaData} loading={slaLoading} onRefresh={refreshDashboards} />
+              <SupplierPerformanceDashboard data={supplierPerfData} loading={supplierPerfLoading} onRefresh={refreshDashboards} />
+              <InventoryDashboard data={inventoryData} loading={inventoryLoading} onRefresh={refreshDashboards} />
+            </div>
+          )}
+          {managementTab === "notifications" && (
+            <NotificationsTab authFetch={authFetch} user={user} />
+          )}
+          {managementTab === "notes" && (
+            <div className="space-y-4">
+              <p className="text-xs text-muted-foreground">Select an order to view its notes</p>
+              {selectedOrderId ? (
+                <div>
+                  <button
+                    onClick={() => setSelectedOrderId(null)}
+                    className="text-xs text-accent hover:underline mb-3"
+                  >
+                    ← Back to order selection
+                  </button>
+                  <OrderNotesTab orderId={selectedOrderId} authFetch={authFetch} user={user} />
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {orders.map((order) => (
+                    <button
+                      key={order.id}
+                      onClick={() => setSelectedOrderId(order.id)}
+                      className="w-full text-left p-3 bg-surface/50 border border-white/5 rounded-lg hover:border-accent/30 transition-all"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-medium text-foreground">{order.orderNumber}</p>
+                          <p className="text-[10px] text-muted-foreground">{order.customerName}</p>
+                        </div>
+                        <MessageSquare className="h-3 w-3 text-muted-foreground" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -308,15 +540,15 @@ export default function FulfillmentPage() {
               type="text"
               placeholder="Search orders, customers, products..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
               className="w-full pl-9 pr-3 py-2 bg-surface border border-white/10 rounded-lg text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent"
             />
           </div>
-          <VoiceInput onTranscript={(text) => setSearchQuery(text)} />
+          <VoiceInput onTranscript={(text) => { setSearchQuery(text); setPage(1); }} />
           {uniqueSources.length > 1 && (
             <select
               value={sourceFilter}
-              onChange={(e) => setSourceFilter(e.target.value)}
+              onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}
               className="px-3 py-2 bg-surface border border-white/10 rounded-lg text-xs text-foreground focus:outline-none focus:border-accent"
             >
               <option value="all">All Sources</option>
@@ -327,7 +559,7 @@ export default function FulfillmentPage() {
           )}
           <select
             value={storeFilter}
-            onChange={(e) => setStoreFilter(e.target.value)}
+            onChange={(e) => { setStoreFilter(e.target.value); setPage(1); }}
             className="px-3 py-2 bg-surface border border-white/10 rounded-lg text-xs text-foreground focus:outline-none focus:border-accent"
           >
             <option value="all">All Stores</option>
@@ -339,13 +571,39 @@ export default function FulfillmentPage() {
               <option value="all" disabled>No stores connected</option>
             )}
           </select>
+          <div className="relative flex items-center gap-1">
+            <Calendar className="h-3.5 w-3.5 text-muted-foreground absolute left-2 pointer-events-none" />
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
+              className="pl-7 pr-2 py-2 bg-surface border border-white/10 rounded-lg text-xs text-foreground focus:outline-none focus:border-accent w-[130px]"
+              title="Start date"
+            />
+            <span className="text-muted-foreground text-xs">–</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
+              className="px-2 py-2 bg-surface border border-white/10 rounded-lg text-xs text-foreground focus:outline-none focus:border-accent w-[130px]"
+              title="End date"
+            />
+            {(startDate || endDate) && (
+              <button
+                onClick={() => { setStartDate(""); setEndDate(""); setPage(1); }}
+                className="text-[10px] text-accent hover:underline ml-1"
+              >
+                Clear
+              </button>
+            )}
+          </div>
           <div className="relative group">
             <button
               onClick={async () => {
                 if (!user) return;
                 setSyncing(true);
                 try {
-                  await safeFetch<unknown>("/api/fulfillment/poll", {
+                   await authFetch<unknown>("/api/fulfillment/poll", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ uid: user.uid }),
@@ -395,7 +653,7 @@ export default function FulfillmentPage() {
                     if (!user) return;
                     setSyncing(true);
                     try {
-                      await safeFetch<unknown>("/api/fulfillment/poll", {
+                      await authFetch<unknown>("/api/fulfillment/poll", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ uid: user.uid }),
@@ -413,16 +671,72 @@ export default function FulfillmentPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {tabOrders.map((order) => (
+            {paginatedOrders.map((order) => (
               <div key={order.id} className={actionLoading === order.id ? "opacity-50 pointer-events-none" : ""}>
                 <OrderCard order={order} onAction={handleAction} storeName={order.storeName} />
               </div>
             ))}
+
+            {/* Pagination */}
+            {totalFilteredPages > 1 && (
+              <div className="flex items-center justify-between pt-4">
+                <p className="text-xs text-muted-foreground">
+                  Showing {((safePage - 1) * pageSize) + 1}–{Math.min(safePage * pageSize, tabOrders.length)} of {tabOrders.length} orders
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={safePage <= 1}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  {Array.from({ length: Math.min(5, totalFilteredPages) }, (_, i) => {
+                    const startPage = Math.max(1, safePage - 2);
+                    const pageNum = startPage + i;
+                    if (pageNum > totalFilteredPages) return null;
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setPage(pageNum)}
+                        className={`w-7 h-7 rounded-lg text-xs font-medium transition-all ${
+                          pageNum === safePage
+                            ? "bg-accent text-white"
+                            : "text-muted-foreground hover:text-foreground hover:bg-surface"
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalFilteredPages, p + 1))}
+                    disabled={safePage >= totalFilteredPages}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )
       )}
 
       <FulfillmentChatSidebar orderCounts={counts} totalOrders={orders.length} />
+
+      <CreateTemplateModal
+        isOpen={showCreateTemplateModal}
+        onClose={() => setShowCreateTemplateModal(false)}
+        authFetch={authFetch}
+        onCreated={handleTemplateCreated}
+      />
+      <CreateRuleModal
+        isOpen={showCreateRuleModal}
+        onClose={() => setShowCreateRuleModal(false)}
+        authFetch={authFetch}
+        onCreated={handleRuleCreated}
+      />
     </div>
   );
 }

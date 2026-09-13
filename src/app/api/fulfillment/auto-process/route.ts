@@ -10,8 +10,99 @@ import type { FulfillmentRule } from "@/types/automation";
 export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
     const body = await req.json();
-    const { orderId, trigger = "manual" } = body;
+    const { orderId, action, trigger = "manual" } = body;
 
+    // Handle bulk auto-fulfill action
+    if (action === "auto_fulfill" && !orderId) {
+      const db = await getAdminDB();
+      const pendingSnap = await db.collection("users").doc(uid).collection("fulfillmentOrders")
+        .where("status", "==", "pending")
+        .orderBy("createdAt", "desc")
+        .limit(50)
+        .get();
+
+      let processed = 0;
+      let failed = 0;
+
+      for (const doc of pendingSnap.docs) {
+        try {
+          const orderData = { id: doc.id, ...doc.data() } as FulfillmentOrder;
+
+          const rulesSnap = await db.collection("users").doc(uid).collection("fulfillmentRules").get();
+          const rules: FulfillmentRule[] = rulesSnap.empty
+            ? createDefaultRules()
+            : rulesSnap.docs.map((d) => ({ id: d.id, ...d.data() } as FulfillmentRule));
+
+          const supplierInventory = orderData.items.map((item) => ({
+            supplierId: item.supplierId || "cj",
+            supplierName: item.supplierName || "CJ Dropshipping",
+            inStock: true,
+            stockLevel: 999,
+            unitCost: item.unitCost || 0,
+            shippingCost: 0,
+            shippingDays: 10,
+            reliabilityScore: 85,
+            qualityScore: 80,
+          }));
+
+          const settingsDoc = await db.collection("users").doc(uid).collection("fulfillmentSettings").doc("config").get();
+          const settings = settingsDoc.exists ? settingsDoc.data() : {};
+
+          const input = createOrchestrationInput(
+            uid,
+            orderData,
+            "bulk",
+            rules,
+            supplierInventory,
+            {
+              autoApprove: settings?.autoApprove,
+              optimization: settings?.optimization || "balanced",
+              maxShippingDays: settings?.maxShippingDays,
+              minReliabilityScore: settings?.minReliabilityScore,
+            }
+          );
+
+          const result = await orchestrateOrder(input);
+
+          if (result.action === "placed_order" || result.action === "auto_fulfilled") {
+            const updateData: Record<string, unknown> = {
+              status: result.state.selectedSupplier ? "in_progress" : "pending",
+              updatedAt: new Date().toISOString(),
+            };
+            if (result.state.selectedSupplier) updateData.assignedSupplier = result.state.selectedSupplier;
+            if (result.state.cjOrderId) {
+              updateData.platformOrders = [{
+                platform: "cj",
+                platformOrderId: result.state.cjOrderId,
+                trackingNumber: null,
+                carrier: null,
+                status: "placed",
+                placedAt: new Date().toISOString(),
+                shippedAt: null,
+                deliveredAt: null,
+                estimatedDelivery: null,
+                error: null,
+              }];
+            }
+            await db.collection("users").doc(uid).collection("fulfillmentOrders").doc(doc.id).update(updateData);
+            processed++;
+          } else {
+            failed++;
+          }
+        } catch {
+          failed++;
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        processed,
+        failed,
+        message: `Auto-fulfill complete: ${processed} processed, ${failed} failed out of ${pendingSnap.size} pending orders`,
+      });
+    }
+
+    // Handle single order action
     if (!orderId) {
       return NextResponse.json({ error: "orderId required" }, { status: 400 });
     }

@@ -1,6 +1,5 @@
 "use client";
 
-import { useAuth } from "@/components/auth/AuthProvider";
 import Link from "next/link";
 import {
   Trash2, ExternalLink, Send, RefreshCw, CheckCircle2,
@@ -31,8 +30,6 @@ interface Props {
 }
 
 export default function ConnectedStoresList({ stores, syncing, onRefresh: _onRefresh, onSync, onDisconnect }: Props) {
-  useAuth();
-
   if (stores.length === 0) return null;
 
   return (
@@ -82,7 +79,6 @@ export default function ConnectedStoresList({ stores, syncing, onRefresh: _onRef
               </div>
             </div>
 
-            {/* Trendaryo Stats */}
             {isTrendaryo && (store.productCount != null || store.orderCount != null) && (
               <div className="flex gap-4 mt-3 p-3 rounded-xl bg-surface/50 border border-border">
                 <div className="text-center">
@@ -96,7 +92,6 @@ export default function ConnectedStoresList({ stores, syncing, onRefresh: _onRef
               </div>
             )}
 
-            {/* Footer */}
             <div className="flex items-center gap-2 mt-4">
               <span className="text-[10px] text-muted-foreground">
                 Connected {new Date(store.connectedAt).toLocaleDateString()}
@@ -115,24 +110,27 @@ export default function ConnectedStoresList({ stores, syncing, onRefresh: _onRef
                   </button>
                 )}
                 <Link
-                  href="/products"
+                  href="/multi-store"
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 border border-accent/20 text-accent text-xs font-medium hover:bg-accent/20 transition-all"
                 >
                   <Send className="h-3 w-3" />
                   Push Products
                 </Link>
-                <a
-                  href={store.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border text-xs text-muted-foreground hover:text-foreground transition-all"
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  Visit
-                </a>
+                {store.url && (
+                  <a
+                    href={store.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border text-xs text-muted-foreground hover:text-foreground transition-all"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Visit
+                  </a>
+                )}
                 <button
                   onClick={() => onDisconnect(store.id)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-400/10 border border-red-400/20 text-red-400 text-xs font-medium hover:bg-red-400/20 transition-all"
+                  title="Disconnect store"
                 >
                   <Trash2 className="h-3 w-3" />
                 </button>

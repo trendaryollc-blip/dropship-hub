@@ -1,5 +1,6 @@
 import type { BulkOperation } from "@/types/automation";
 import type { FulfillmentOrder } from "@/types/fulfillment";
+import { getAdminDB } from "@/lib/firebase-admin";
 
 interface BulkOrderInput {
   orderIds: string[];
@@ -31,10 +32,23 @@ interface BulkOrderPlacementResult {
   }>;
 }
 
-const activeOperations: Map<string, BulkOperation> = new Map();
-const bulkOrderResults: Map<string, BulkOrderPlacementResult> = new Map();
+const COLLECTION = "bulkOperations";
 
-export function createBulkOperation(input: BulkOrderInput): BulkOperation {
+async function getCollection() {
+  const db = await getAdminDB();
+  return db.collection("system").doc("fulfillment").collection(COLLECTION);
+}
+
+async function saveOperation(op: BulkOperation): Promise<void> {
+  try {
+    const col = await getCollection();
+    await col.doc(op.id).set(op, { merge: true });
+  } catch (error) {
+    console.error("[bulk-processor] Failed to save operation:", error);
+  }
+}
+
+export async function createBulkOperation(input: BulkOrderInput): Promise<BulkOperation> {
   const id = `bulk_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const operation: BulkOperation = {
     id,
@@ -50,103 +64,134 @@ export function createBulkOperation(input: BulkOrderInput): BulkOperation {
     completedAt: null,
   };
 
-  activeOperations.set(id, operation);
+  await saveOperation(operation);
   return operation;
 }
 
-export function getBulkOperation(id: string): BulkOperation | null {
-  return activeOperations.get(id) || null;
+export async function getBulkOperation(id: string): Promise<BulkOperation | null> {
+  try {
+    const col = await getCollection();
+    const doc = await col.doc(id).get();
+    if (!doc.exists) return null;
+    return doc.data() as BulkOperation;
+  } catch (error) {
+    console.error("[bulk-processor] Failed to get operation:", error);
+    return null;
+  }
 }
 
-export function updateBulkOperation(
+export async function updateBulkOperation(
   id: string,
   update: Partial<BulkOperation>
-): BulkOperation | null {
-  const op = activeOperations.get(id);
-  if (!op) return null;
-  const updated = { ...op, ...update };
-  activeOperations.set(id, updated);
-  return updated;
+): Promise<BulkOperation | null> {
+  try {
+    const col = await getCollection();
+    const docRef = col.doc(id);
+    await docRef.update({ ...update, startedAt: update.startedAt || undefined });
+    const snap = await docRef.get();
+    if (!snap.exists) return null;
+    return snap.data() as BulkOperation;
+  } catch (error) {
+    console.error("[bulk-processor] Failed to update operation:", error);
+    return null;
+  }
 }
 
-export function processBulkResult(
+export async function processBulkResult(
   operationId: string,
   result: BulkProcessResult
-): BulkOperation | null {
-  const op = activeOperations.get(operationId);
-  if (!op) return null;
+): Promise<BulkOperation | null> {
+  try {
+    const op = await getBulkOperation(operationId);
+    if (!op) return null;
 
-  op.processedOrders++;
+    op.processedOrders++;
+    if (result.success) {
+      op.successfulOrders++;
+    } else {
+      op.failedOrders++;
+      op.errors.push({
+        orderId: result.orderId,
+        error: result.error || "Unknown error",
+      });
+    }
 
-  if (result.success) {
-    op.successfulOrders++;
-  } else {
-    op.failedOrders++;
-    op.errors.push({
-      orderId: result.orderId,
-      error: result.error || "Unknown error",
-    });
+    if (op.processedOrders >= op.totalOrders) {
+      op.status = op.failedOrders === 0 ? "completed" : op.successfulOrders === 0 ? "failed" : "partial";
+      op.completedAt = new Date().toISOString();
+    }
+
+    await saveOperation(op);
+    return op;
+  } catch (error) {
+    console.error("[bulk-processor] Failed to process result:", error);
+    return null;
   }
+}
 
-  if (op.processedOrders >= op.totalOrders) {
-    op.status = op.failedOrders === 0 ? "completed" : op.successfulOrders === 0 ? "failed" : "partial";
-    op.completedAt = new Date().toISOString();
+export async function startBulkOperation(id: string): Promise<BulkOperation | null> {
+  return updateBulkOperation(id, { status: "running", startedAt: new Date().toISOString() });
+}
+
+export async function getActiveBulkOperations(): Promise<BulkOperation[]> {
+  try {
+    const col = await getCollection();
+    const snap = await col.where("status", "in", ["pending", "running"]).get();
+    return snap.docs.map((d) => d.data() as BulkOperation);
+  } catch (error) {
+    console.error("[bulk-processor] Failed to get active operations:", error);
+    return [];
   }
-
-  activeOperations.set(operationId, op);
-  return op;
 }
 
-export function startBulkOperation(id: string): BulkOperation | null {
-  const op = activeOperations.get(id);
-  if (!op) return null;
-  op.status = "running";
-  op.startedAt = new Date().toISOString();
-  activeOperations.set(id, op);
-  return op;
+export async function getBulkOperationHistory(limit: number = 20): Promise<BulkOperation[]> {
+  try {
+    const col = await getCollection();
+    const snap = await col.orderBy("startedAt", "desc").limit(limit).get();
+    return snap.docs.map((d) => d.data() as BulkOperation);
+  } catch (error) {
+    console.error("[bulk-processor] Failed to get history:", error);
+    return [];
+  }
 }
 
-export function getActiveBulkOperations(): BulkOperation[] {
-  return Array.from(activeOperations.values()).filter(
-    (op) => op.status === "pending" || op.status === "running"
-  );
-}
-
-export function getBulkOperationHistory(limit: number = 20): BulkOperation[] {
-  const all = Array.from(activeOperations.values());
-  all.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
-  return all.slice(0, limit);
-}
-
-export function cancelBulkOperation(id: string): boolean {
-  const op = activeOperations.get(id);
+export async function cancelBulkOperation(id: string): Promise<boolean> {
+  const op = await getBulkOperation(id);
   if (!op) return false;
   if (op.status === "completed" || op.status === "failed") return false;
 
   op.status = "failed";
   op.completedAt = new Date().toISOString();
   op.errors.push({ orderId: "system", error: "Operation cancelled" });
-  activeOperations.set(id, op);
+  await saveOperation(op);
   return true;
 }
 
-export function clearOldOperations(maxAgeMs: number = 24 * 60 * 60 * 1000): number {
-  const now = Date.now();
-  let cleared = 0;
-  for (const [id, op] of activeOperations.entries()) {
-    if (op.completedAt) {
-      const completedAt = new Date(op.completedAt).getTime();
-      if (now - completedAt > maxAgeMs) {
-        activeOperations.delete(id);
-        cleared++;
-      }
-    }
+export async function clearOldOperations(maxAgeMs: number = 24 * 60 * 60 * 1000): Promise<number> {
+  try {
+    const col = await getCollection();
+    const cutoff = new Date(Date.now() - maxAgeMs).toISOString();
+    const snap = await col.where("completedAt", "<", cutoff).where("status", "in", ["completed", "failed", "partial"]).get();
+    const batch = (await getAdminDB()).batch();
+    snap.docs.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
+    return snap.size;
+  } catch (error) {
+    console.error("[bulk-processor] Failed to clear old operations:", error);
+    return 0;
   }
-  return cleared;
 }
 
-export function clearAllOperations(): void {
-  activeOperations.clear();
+export async function clearAllOperations(): Promise<void> {
+  try {
+    const col = await getCollection();
+    const snap = await col.get();
+    const batch = (await getAdminDB()).batch();
+    snap.docs.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
+  } catch (error) {
+    console.error("[bulk-processor] Failed to clear all:", error);
+  }
 }
 
 export function validateBulkInput(input: BulkOrderInput): { valid: boolean; errors: string[] } {
@@ -174,8 +219,7 @@ export function validateBulkInput(input: BulkOrderInput): { valid: boolean; erro
 }
 
 export async function executeBulkOrderPlacement(input: BulkOrderPlacementInput): Promise<BulkOrderPlacementResult> {
-  const _operationId = `bulk_orders_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  const operation = createBulkOperation({
+  const operation = await createBulkOperation({
     orderIds: input.orders.map((o) => o.id),
     action: "place_orders",
   });
@@ -188,7 +232,7 @@ export async function executeBulkOrderPlacement(input: BulkOrderPlacementInput):
     orders: [],
   };
 
-  startBulkOperation(operation.id);
+  await startBulkOperation(operation.id);
 
   for (const order of input.orders) {
     const orderResult: BulkOrderPlacementResult["orders"][0] = {
@@ -223,19 +267,26 @@ export async function executeBulkOrderPlacement(input: BulkOrderPlacementInput):
     }
 
     result.orders.push(orderResult);
-    processBulkResult(operation.id, {
+    await processBulkResult(operation.id, {
       orderId: order.id,
       success: orderResult.success,
       error: orderResult.error,
     });
   }
 
-  bulkOrderResults.set(operation.id, result);
   return result;
 }
 
-export function getBulkOrderResult(operationId: string): BulkOrderPlacementResult | null {
-  return bulkOrderResults.get(operationId) || null;
+export async function getBulkOrderResult(operationId: string): Promise<BulkOrderPlacementResult | null> {
+  const op = await getBulkOperation(operationId);
+  if (!op) return null;
+  return {
+    operationId: op.id,
+    totalOrders: op.totalOrders,
+    successfulOrders: op.successfulOrders,
+    failedOrders: op.failedOrders,
+    orders: op.errors.map((e) => ({ orderId: e.orderId, success: false, error: e.error })),
+  };
 }
 
 export function validateBulkOrderPlacementInput(input: BulkOrderPlacementInput): { valid: boolean; errors: string[] } {
@@ -269,24 +320,32 @@ export function validateBulkOrderPlacementInput(input: BulkOrderPlacementInput):
   return { valid: errors.length === 0, errors };
 }
 
-export function getBulkOrderStats(): {
+export async function getBulkOrderStats(): Promise<{
   totalOperations: number;
   activeOperations: number;
   completedOperations: number;
   totalOrdersProcessed: number;
   successRate: number;
-} {
-  const allOps = Array.from(activeOperations.values());
-  const completed = allOps.filter((op) => op.status === "completed" || op.status === "partial" || op.status === "failed");
-  const active = allOps.filter((op) => op.status === "pending" || op.status === "running");
-  const totalProcessed = allOps.reduce((sum, op) => sum + op.processedOrders, 0);
-  const totalSuccessful = allOps.reduce((sum, op) => sum + op.successfulOrders, 0);
+}> {
+  try {
+    const col = await getCollection();
+    const allSnap = await col.get();
+    const allOps = allSnap.docs.map((d) => d.data() as BulkOperation);
 
-  return {
-    totalOperations: allOps.length,
-    activeOperations: active.length,
-    completedOperations: completed.length,
-    totalOrdersProcessed: totalProcessed,
-    successRate: totalProcessed > 0 ? +((totalSuccessful / totalProcessed) * 100).toFixed(1) : 0,
-  };
+    const completed = allOps.filter((op) => op.status === "completed" || op.status === "partial" || op.status === "failed");
+    const active = allOps.filter((op) => op.status === "pending" || op.status === "running");
+    const totalProcessed = allOps.reduce((sum, op) => sum + op.processedOrders, 0);
+    const totalSuccessful = allOps.reduce((sum, op) => sum + op.successfulOrders, 0);
+
+    return {
+      totalOperations: allOps.length,
+      activeOperations: active.length,
+      completedOperations: completed.length,
+      totalOrdersProcessed: totalProcessed,
+      successRate: totalProcessed > 0 ? +((totalSuccessful / totalProcessed) * 100).toFixed(1) : 0,
+    };
+  } catch (error) {
+    console.error("[bulk-processor] Failed to get stats:", error);
+    return { totalOperations: 0, activeOperations: 0, completedOperations: 0, totalOrdersProcessed: 0, successRate: 0 };
+  }
 }

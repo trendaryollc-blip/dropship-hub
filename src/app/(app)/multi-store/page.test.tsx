@@ -17,6 +17,16 @@ vi.mock("@/lib/safe-fetch", () => ({
   safeFetch: vi.fn(() => Promise.resolve({})),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
+  usePathname: () => "/multi-store",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+vi.mock("@/components/ui/Toast", () => ({
+  useToast: () => ({ success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() }),
+}));
+
 vi.mock("@/components/multi-store/KpiCard", () => ({
   default: ({ label, value }: { label: string; value: any }) => (
     <div data-testid="kpi-card">
@@ -50,15 +60,15 @@ vi.mock("@/components/multi-store/InventorySyncPanel", () => ({
   ),
 }));
 
-vi.mock("@/components/multi-store/MultiStoreAIBar", () => ({
-  default: ({ storeCount, totalOrders, totalRevenue }: any) => (
-    <div data-testid="ai-bar">MultiStoreAIBar ({storeCount} stores)</div>
+vi.mock("@/components/stores/StoreAIBar", () => ({
+  default: ({ storeCount }: any) => (
+    <div data-testid="ai-bar">StoreAIBar ({storeCount} stores)</div>
   ),
 }));
 
-vi.mock("@/components/multi-store/MultiStoreChatSidebar", () => ({
-  default: ({ storeCount }: { storeCount: number }) => (
-    <div data-testid="chat-sidebar">MultiStoreChatSidebar ({storeCount} stores)</div>
+vi.mock("@/components/stores/GlobalStoreChat", () => ({
+  default: ({ storeCount }: { storeCount?: number }) => (
+    <div data-testid="chat-sidebar">GlobalStoreChat</div>
   ),
 }));
 
@@ -154,6 +164,7 @@ function setupUseAPIMock(overrides: Partial<Record<string, any>> = {}) {
     "/api/multi-store/inventory?uid=test-uid": { inventory: mockInventory },
     "/api/multi-store/performance?uid=test-uid&period=30d": { performances: mockPerformances },
     "/api/multi-store/bulk-push?uid=test-uid": { jobs: mockBulkJobs },
+    "/api/store/push?uid=test-uid": { products: [] },
   };
   const data = { ...defaults, ...overrides };
 
@@ -200,7 +211,7 @@ describe("MultiStorePage", () => {
     expect(labels).toContain("Active Stores");
   });
 
-  it("renders MultiStoreAIBar with store count", () => {
+  it("renders StoreAIBar with store count", () => {
     render(<MultiStorePage />);
     const aiBar = screen.getByTestId("ai-bar");
     expect(aiBar).toBeDefined();
@@ -301,11 +312,10 @@ describe("MultiStorePage", () => {
     expect(screen.getByText("No push jobs yet.")).toBeDefined();
   });
 
-  it("renders MultiStoreChatSidebar", () => {
+  it("renders GlobalStoreChat", () => {
     render(<MultiStorePage />);
     const sidebar = screen.getByTestId("chat-sidebar");
     expect(sidebar).toBeDefined();
-    expect(sidebar.textContent).toContain("3 stores");
   });
 
   it("KPI values reflect performance data aggregation", () => {
@@ -327,5 +337,19 @@ describe("MultiStorePage", () => {
     render(<MultiStorePage />);
     const aiBar = screen.getByTestId("ai-bar");
     expect(aiBar).toBeDefined();
+  });
+
+  it("shows empty state when no stores connected", () => {
+    setupUseAPIMock({
+      "/api/store/connections?uid=test-uid": { connections: [] },
+    });
+    render(<MultiStorePage />);
+    expect(screen.getByText("No stores connected yet")).toBeDefined();
+    expect(screen.getByText("Connect Your First Store")).toBeDefined();
+  });
+
+  it("shows manage connections link when stores exist", () => {
+    render(<MultiStorePage />);
+    expect(screen.getByText("Manage Connections")).toBeDefined();
   });
 });

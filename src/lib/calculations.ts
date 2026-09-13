@@ -1,3 +1,10 @@
+import type {
+  BreakEvenCalcInput, BreakEvenCalcResult,
+  ReturnsCalcInput, ReturnsCalcResult,
+  AmazonFBACalcInput, AmazonFBACalcResult,
+  PlatformComparisonResult, PlatformFeeData,
+} from "@/types/calculator";
+
 export interface ProfitCalc {
   totalCost: number;
   netProfit: number;
@@ -310,5 +317,204 @@ export function calculateAggregatedProfit(
     totalOrders,
     avgOrderProfit: +avgOrderProfit.toFixed(2),
     avgOrderValue: +avgOrderValue.toFixed(2),
+  };
+}
+
+// ── Break-Even Calculator ────────────────────────────────────────
+
+export function calculateBreakEven(input: BreakEvenCalcInput): BreakEvenCalcResult {
+  const { fixedCosts, sellingPrice, variableCostPerUnit, monthlyAdBudget } = input;
+  const safePrice = Math.max(0, sellingPrice) || 0;
+  const safeVar = Math.max(0, variableCostPerUnit) || 0;
+  const safeFixed = Math.max(0, fixedCosts) || 0;
+  const safeAd = Math.max(0, monthlyAdBudget) || 0;
+
+  const totalFixed = safeFixed + safeAd;
+  const contributionMargin = safePrice - safeVar;
+  const contributionMarginPct = safePrice > 0 ? (contributionMargin / safePrice) * 100 : 0;
+  const breakEvenUnits = contributionMargin > 0 ? Math.ceil(totalFixed / contributionMargin) : 0;
+  const breakEvenRevenue = +(breakEvenUnits * safePrice).toFixed(2);
+  const assumedDailyOrders = Math.max(1, Math.ceil(breakEvenUnits / 30));
+  const daysToBreakEven = Math.ceil(breakEvenUnits / assumedDailyOrders);
+
+  const monthlyProjection = Array.from({ length: 12 }, (_, i) => {
+    const month = i + 1;
+    const monthlyProfit = (contributionMargin * breakEvenUnits * month) - (totalFixed * month);
+    return {
+      month,
+      cumulativeProfit: +monthlyProfit.toFixed(2),
+      orders: breakEvenUnits * month,
+    };
+  });
+
+  return {
+    breakEvenUnits,
+    breakEvenRevenue,
+    contributionMargin: +contributionMargin.toFixed(2),
+    contributionMarginPct: +contributionMarginPct.toFixed(1),
+    daysToBreakEven,
+    monthlyProjection,
+  };
+}
+
+// ── Return & Refund Cost Calculator ──────────────────────────────
+
+export function calculateReturns(input: ReturnsCalcInput): ReturnsCalcResult {
+  const {
+    sellingPrice, productCost, shippingCost, returnRate,
+    returnShippingCost, refundProcessingFee, monthlyOrders,
+  } = input;
+
+  const safeReturnRate = Math.max(0, Math.min(100, returnRate)) || 0;
+  const safePrice = Math.max(0, sellingPrice) || 0;
+  const safeCost = Math.max(0, productCost) || 0;
+  const safeShip = Math.max(0, shippingCost) || 0;
+  const safeReturnShip = Math.max(0, returnShippingCost) || 0;
+  const safeRefundFee = Math.max(0, refundProcessingFee) || 0;
+  const safeOrders = Math.max(0, monthlyOrders) || 0;
+
+  const returnCostPerUnit = safeCost + safeShip + safeReturnShip + safeRefundFee;
+  const monthlyReturns = Math.round(safeOrders * (safeReturnRate / 100));
+  const totalMonthlyReturnCost = +(monthlyReturns * returnCostPerUnit).toFixed(2);
+  const totalMonthlyRevenue = safeOrders * safePrice;
+  const returnImpactOnMargin = totalMonthlyRevenue > 0
+    ? (totalMonthlyReturnCost / totalMonthlyRevenue) * 100
+    : 0;
+  const netLossPerReturn = +returnCostPerUnit.toFixed(2);
+  const annualReturnCost = +(totalMonthlyReturnCost * 12).toFixed(2);
+
+  const totalCostPerReturn = returnCostPerUnit;
+  const breakdown = [
+    { name: "Product Cost", value: safeCost, color: "#3b82f6" },
+    { name: "Outbound Shipping", value: safeShip, color: "#f97316" },
+    { name: "Return Shipping", value: safeReturnShip, color: "#ef4444" },
+    { name: "Refund Processing", value: safeRefundFee, color: "#a855f7" },
+  ].filter((b) => b.value > 0);
+
+  return {
+    returnCostPerUnit: +totalCostPerReturn.toFixed(2),
+    totalMonthlyReturnCost,
+    returnImpactOnMargin: +returnImpactOnMargin.toFixed(1),
+    netLossPerReturn,
+    annualReturnCost,
+    breakdown,
+  };
+}
+
+// ── Amazon FBA Calculator ────────────────────────────────────────
+
+const FBA_FEE_TIERS: Record<string, { standard: number; large: number; oversize: number }> = {
+  "Electronics": { standard: 3.22, large: 4.75, oversize: 8.26 },
+  "Clothing": { standard: 3.43, large: 4.95, oversize: 8.26 },
+  "Home & Garden": { standard: 3.08, large: 4.50, oversize: 8.00 },
+  "Beauty": { standard: 3.08, large: 4.50, oversize: 8.00 },
+  "Toys": { standard: 3.08, large: 4.50, oversize: 8.00 },
+  "Jewelry": { standard: 3.43, large: 4.95, oversize: 8.26 },
+  "Shoes": { standard: 3.43, large: 4.95, oversize: 8.26 },
+  "Default": { standard: 3.08, large: 4.50, oversize: 8.00 },
+};
+
+const REFERRAL_FEES: Record<string, number> = {
+  "Electronics": 8,
+  "Clothing": 17,
+  "Home & Garden": 15,
+  "Beauty": 8,
+  "Toys": 15,
+  "Jewelry": 20,
+  "Shoes": 15,
+  "Default": 15,
+};
+
+const STORAGE_FEE_PER_CUBIC_FOOT = 0.87;
+
+function getFBATier(weight: number, dims: { length: number; width: number; height: number }): "standard" | "large" | "oversize" {
+  const longestSide = Math.max(dims.length, dims.width, dims.height);
+  const girth = dims.length + 2 * (dims.width + dims.height);
+  if (longestSide > 18 || girth > 84 || weight > 20) return "oversize";
+  if (longestSide > 15 || weight > 3) return "large";
+  return "standard";
+}
+
+export function calculateAmazonFBA(input: AmazonFBACalcInput): AmazonFBACalcResult {
+  const {
+    productCategory, productWeight, productDimensions,
+    sellingPrice, productCost, shippingToWarehouse, monthlyStorageMonths,
+  } = input;
+
+  const category = productCategory || "Default";
+  const tier = getFBATier(productWeight, productDimensions);
+  const fees = FBA_FEE_TIERS[category] || FBA_FEE_TIERS["Default"];
+  const referralPct = REFERRAL_FEES[category] || REFERRAL_FEES["Default"];
+
+  const fbaFee = fees[tier];
+  const referralFee = +(sellingPrice * referralPct / 100).toFixed(2);
+  const cubicFeet = (productDimensions.length * productDimensions.width * productDimensions.height) / 1728;
+  const storageFee = +(cubicFeet * STORAGE_FEE_PER_CUBIC_FOOT * monthlyStorageMonths).toFixed(2);
+  const totalAmazonFees = +(fbaFee + referralFee + storageFee).toFixed(2);
+
+  const fbmCost = shippingToWarehouse + 3.5;
+  const totalFBA = productCost + totalAmazonFees + shippingToWarehouse;
+  const totalFBM = productCost + fbmCost;
+  const profitPerUnit = +(sellingPrice - totalFBA).toFixed(2);
+  const margin = sellingPrice > 0 ? +((profitPerUnit / sellingPrice) * 100).toFixed(1) : 0;
+  const roi = totalFBA > 0 ? +((profitPerUnit / totalFBA) * 100).toFixed(1) : 0;
+
+  const breakdown = [
+    { name: "Product Cost", value: productCost, pct: sellingPrice > 0 ? (productCost / sellingPrice) * 100 : 0, color: "#3b82f6" },
+    { name: "FBA Fulfillment Fee", value: fbaFee, pct: sellingPrice > 0 ? (fbaFee / sellingPrice) * 100 : 0, color: "#f97316" },
+    { name: "Referral Fee", value: referralFee, pct: sellingPrice > 0 ? (referralFee / sellingPrice) * 100 : 0, color: "#a855f7" },
+    { name: "Storage Fee", value: storageFee, pct: sellingPrice > 0 ? (storageFee / sellingPrice) * 100 : 0, color: "#eab308" },
+    { name: "Shipping to Warehouse", value: shippingToWarehouse, pct: sellingPrice > 0 ? (shippingToWarehouse / sellingPrice) * 100 : 0, color: "#6b7280" },
+  ];
+
+  return {
+    fbaFee,
+    referralFee,
+    storageFee,
+    totalAmazonFees,
+    profitPerUnit,
+    margin,
+    roi,
+    fbaVsFbm: { fba: totalFBA, fbm: totalFBM, savings: +(totalFBM - totalFBA).toFixed(2) },
+    breakdown,
+  };
+}
+
+// ── Platform Fee Comparison ──────────────────────────────────────
+
+const PLATFORMS: PlatformFeeData[] = [
+  { platform: "Shopify", monthlyFee: 29, transactionFee: 0, perOrderFee: 0, referralFee: 0, paymentProcessing: 2.9, color: "#96bf48" },
+  { platform: "Amazon", monthlyFee: 39.99, transactionFee: 0, perOrderFee: 0, referralFee: 15, paymentProcessing: 0, color: "#ff9900" },
+  { platform: "eBay", monthlyFee: 0, transactionFee: 0, perOrderFee: 0.30, referralFee: 13.25, paymentProcessing: 0, color: "#e53238" },
+  { platform: "Etsy", monthlyFee: 0, transactionFee: 0.20, perOrderFee: 0, referralFee: 6.5, paymentProcessing: 3, color: "#f1641e" },
+  { platform: "Walmart", monthlyFee: 0, transactionFee: 0, perOrderFee: 0, referralFee: 8, paymentProcessing: 0, color: "#0071dc" },
+  { platform: "WooCommerce", monthlyFee: 0, transactionFee: 0, perOrderFee: 0, referralFee: 0, paymentProcessing: 2.9, color: "#7b5ea7" },
+];
+
+export function calculatePlatformFees(price: number, _productCost: number = 0): PlatformComparisonResult {
+  const safePrice = Math.max(0, price) || 0;
+
+  const platforms = PLATFORMS.map((p) => {
+    const referralAmount = safePrice * p.referralFee / 100;
+    const processingAmount = safePrice * p.paymentProcessing / 100;
+    const perOrderFee = p.perOrderFee;
+    const transactionFee = p.transactionFee;
+    const totalFee = referralAmount + processingAmount + perOrderFee + transactionFee;
+    const effectiveFeeRate = safePrice > 0 ? (totalFee / safePrice) * 100 : 0;
+
+    return {
+      ...p,
+      totalFeeAtPrice: +totalFee.toFixed(2),
+      netProfitAtPrice: +(safePrice - totalFee).toFixed(2),
+      effectiveFeeRate: +effectiveFeeRate.toFixed(1),
+    };
+  });
+
+  const sorted = [...platforms].sort((a, b) => b.netProfitAtPrice - a.netProfitAtPrice);
+
+  return {
+    platforms,
+    bestPlatform: sorted[0]?.platform || "",
+    worstPlatform: sorted[sorted.length - 1]?.platform || "",
   };
 }

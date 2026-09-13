@@ -1,24 +1,29 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
+import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAPI } from "@/hooks/useAPI";
 import {
   Store, Package, RefreshCw, Send, BarChart3, Loader2, Globe, Zap,
-  ShoppingCart, DollarSign, TrendingUp,
+  ShoppingCart, DollarSign, TrendingUp, ArrowRight, Settings,
 } from "lucide-react";
+import { useToast } from "@/components/ui/Toast";
 import type { UnifiedOrder, StorePerformance, BulkPushJob, StoreInventoryItem } from "@/types/multi-store";
 import type { ConnectedStore } from "@/components/stores/ConnectedStoresList";
+import type { PushedProduct } from "@/components/stores/PushedProductsList";
 import KpiCard from "@/components/multi-store/KpiCard";
 import UnifiedOrderRow from "@/components/multi-store/UnifiedOrderRow";
 import StorePerformanceCard from "@/components/multi-store/StorePerformanceCard";
 import BulkPushPanel from "@/components/multi-store/BulkPushPanel";
 import InventorySyncPanel from "@/components/multi-store/InventorySyncPanel";
-import MultiStoreAIBar from "@/components/multi-store/MultiStoreAIBar";
-import MultiStoreChatSidebar from "@/components/multi-store/MultiStoreChatSidebar";
+import StoreAIBar from "@/components/stores/StoreAIBar";
+import GlobalStoreChat from "@/components/stores/GlobalStoreChat";
+import { safeFetch } from "@/lib/safe-fetch";
 
 export default function MultiStorePage() {
   const { user } = useAuth();
+  const { success, error: toastError } = useToast();
   const uid = user?.uid || "";
   const [activeTab, setActiveTab] = useState<"orders" | "inventory" | "performance" | "bulk-push">("orders");
   const [orderFilter, setOrderFilter] = useState<{ storeId?: string; status?: string }>({});
@@ -30,12 +35,14 @@ export default function MultiStorePage() {
   const { data: invData } = useAPI<{ inventory?: StoreInventoryItem[] }>(uid ? `/api/multi-store/inventory?uid=${uid}` : null);
   const { data: perfData, mutate: refetchPerf } = useAPI<{ performances?: StorePerformance[] }>(uid ? `/api/multi-store/performance?uid=${uid}&period=${performancePeriod}` : null);
   const { data: pushData } = useAPI<{ jobs?: BulkPushJob[] }>(uid ? `/api/multi-store/bulk-push?uid=${uid}` : null);
+  const { data: pushedData } = useAPI<{ products?: PushedProduct[] }>(uid ? `/api/store/push?uid=${uid}` : null);
 
   const stores = connData?.connections || [];
   const orders = useMemo(() => orderData?.orders || [], [orderData]);
   const inventory = invData?.inventory || [];
   const performances = perfData?.performances || [];
   const bulkJobs = pushData?.jobs || [];
+  const pushedProducts = pushedData?.products || [];
   const loading = !user || (!connData && !orderData);
 
   const filteredOrders = useMemo(() => {
@@ -50,16 +57,77 @@ export default function MultiStorePage() {
   const totalOrders = performances.reduce((sum, p) => sum + p.metrics.totalOrders, 0);
   const totalProfit = performances.reduce((sum, p) => sum + p.metrics.totalProfit, 0);
 
-  const handleAIBarAction = async (action: string) => {
+  const executeAITool = useCallback(async (toolId: string, input: Record<string, unknown>) => {
+    try {
+      const token = await user?.getIdToken();
+      return await safeFetch<{ success: boolean; summary?: string; data?: unknown; error?: string }>(
+        "/api/ai/execute", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ tool: toolId, input }),
+        }
+      );
+    } catch { return { success: false, summary: "Failed" }; }
+  }, [user]);
+
+  const handleAIBarAction = useCallback(async (action: string) => {
     setAiLoading(action);
-    await new Promise((r) => setTimeout(r, 1200));
+    const configs: Record<string, { toolId: string; input: Record<string, unknown>; label: string }> = {
+      "sync-inventory": { toolId: "sync_inventory", input: {}, label: "Inventory synced" },
+      "store-performance": { toolId: "get_store_performance", input: {}, label: "Performance data fetched" },
+      "bulk-push": { toolId: "push_bulk_to_store", input: { productIds: [] }, label: "Bulk push started" },
+      "optimize-listings": { toolId: "generate_listing", input: {}, label: "Listings optimized" },
+    };
+    const config = configs[action];
+    if (config) {
+      const result = await executeAITool(config.toolId, config.input);
+      if (result?.success) {
+        success(config.label);
+      } else {
+        toastError(result?.error || "Action failed. Please try again.");
+      }
+    }
     setAiLoading(null);
-  };
+  }, [executeAITool, success, toastError]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="h-5 w-5 text-accent animate-spin" />
+      </div>
+    );
+  }
+
+  if (stores.length === 0) {
+    return (
+      <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 px-3 sm:px-4 lg:px-6 pb-24">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-1 flex items-center gap-3">
+              <Store className="h-7 w-7 text-accent" /> Multi-Store Dashboard
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">
+              Unified view across all connected stores. Manage orders, sync inventory, and compare performance.
+            </p>
+          </div>
+        </div>
+
+        <div className="glass rounded-2xl p-12 text-center">
+          <Store className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+          <h3 className="font-display text-xl font-semibold text-foreground mb-2">No stores connected yet</h3>
+          <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
+            Connect your first store to start managing orders, inventory, and performance from one dashboard.
+          </p>
+          <Link
+            href="/store"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent-hover transition-all"
+          >
+            <Settings className="h-4 w-4" /> Connect Your First Store <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
       </div>
     );
   }
@@ -80,17 +148,23 @@ export default function MultiStorePage() {
             <Store className="h-3 w-3" />
             {stores.filter((s) => s.status === "connected").length} stores
           </span>
+          <Link
+            href="/store"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border text-[10px] sm:text-[11px] font-medium text-muted-foreground hover:text-foreground hover:border-accent/30 transition-all"
+          >
+            <Settings className="h-3 w-3" /> Manage Connections
+          </Link>
         </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiCard label="Total Orders" value={totalOrders} trend={5} icon={<ShoppingCart className="h-4 w-4 text-accent" />} delay={0} />
-        <KpiCard label="Total Revenue" value={`$${totalRevenue.toLocaleString()}`} trend={12} icon={<DollarSign className="h-4 w-4 text-emerald-400" />} delay={100} />
-        <KpiCard label="Total Profit" value={`$${totalProfit.toLocaleString()}`} trend={8} icon={<TrendingUp className="h-4 w-4 text-blue-400" />} delay={200} />
+        <KpiCard label="Total Orders" value={totalOrders} icon={<ShoppingCart className="h-4 w-4 text-accent" />} delay={0} />
+        <KpiCard label="Total Revenue" value={`$${totalRevenue.toLocaleString()}`} icon={<DollarSign className="h-4 w-4 text-emerald-400" />} delay={100} />
+        <KpiCard label="Total Profit" value={`$${totalProfit.toLocaleString()}`} icon={<TrendingUp className="h-4 w-4 text-blue-400" />} delay={200} />
         <KpiCard label="Active Stores" value={stores.filter((s) => s.status === "connected").length} icon={<Globe className="h-4 w-4 text-purple-400" />} delay={300} />
       </div>
 
-      <MultiStoreAIBar onAction={handleAIBarAction} loading={aiLoading} storeCount={stores.length} totalOrders={totalOrders} totalRevenue={totalRevenue} />
+      <StoreAIBar onAction={handleAIBarAction} loading={aiLoading} storeCount={stores.length} />
 
       <div className="flex gap-1 p-1 rounded-xl bg-surface border border-border overflow-x-auto">
         {[
@@ -222,7 +296,7 @@ export default function MultiStorePage() {
         </div>
       )}
 
-      <MultiStoreChatSidebar storeCount={stores.length} totalOrders={orders.length} totalRevenue={totalRevenue} storeNames={stores.map((s) => s.name)} />
+      <GlobalStoreChat connections={stores} pushedProducts={pushedProducts} orderCount={orders.length} totalRevenue={totalRevenue} />
     </div>
   );
 }

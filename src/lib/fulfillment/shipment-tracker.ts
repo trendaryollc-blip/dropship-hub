@@ -118,7 +118,8 @@ export async function syncTrackingToStore(
   platformOrderId: string,
   trackingNumber: string,
   carrier: string,
-  estimatedDelivery: string | null
+  estimatedDelivery: string | null,
+  uid?: string
 ): Promise<TrackingSyncToStore> {
   const result: TrackingSyncToStore = {
     storeId,
@@ -133,11 +134,11 @@ export async function syncTrackingToStore(
   try {
     switch (storePlatform.toLowerCase()) {
       case "shopify":
-        await updateShopifyTracking(storeId, platformOrderId, trackingNumber, carrier, estimatedDelivery);
+        await updateShopifyTracking(storeId, platformOrderId, trackingNumber, carrier, estimatedDelivery, uid);
         result.synced = true;
         break;
       case "woocommerce":
-        await updateWooCommerceTracking(storeId, platformOrderId, trackingNumber, carrier);
+        await updateWooCommerceTracking(storeId, platformOrderId, trackingNumber, carrier, uid);
         result.synced = true;
         break;
       case "ebay":
@@ -160,9 +161,10 @@ async function updateShopifyTracking(
   orderId: string,
   trackingNumber: string,
   carrier: string,
-  _estimatedDelivery: string | null
+  _estimatedDelivery: string | null,
+  uid?: string
 ): Promise<void> {
-  const storeSettings = await getStoreSettings(storeId);
+  const storeSettings = uid ? await getStoreSettings(uid, storeId) : null;
   if (!storeSettings?.accessToken || !storeSettings?.storeDomain) {
     throw new Error("Shopify store not configured");
   }
@@ -193,9 +195,10 @@ async function updateWooCommerceTracking(
   storeId: string,
   orderId: string,
   trackingNumber: string,
-  carrier: string
+  carrier: string,
+  uid?: string
 ): Promise<void> {
-  const storeSettings = await getStoreSettings(storeId);
+  const storeSettings = uid ? await getStoreSettings(uid, storeId) : null;
   if (!storeSettings?.apiUrl || !storeSettings?.consumerKey || !storeSettings?.consumerSecret) {
     throw new Error("WooCommerce store not configured");
   }
@@ -221,12 +224,22 @@ async function updateWooCommerceTracking(
   }
 }
 
-async function getStoreSettings(_storeId: string): Promise<Record<string, string> | null> {
-  return null;
+async function getStoreSettings(uid: string, storeId: string): Promise<Record<string, string> | null> {
+  try {
+    const { getAdminDB } = await import("@/lib/firebase-admin");
+    const db = await getAdminDB();
+    const doc = await db.collection("users").doc(uid).collection("storeConnections").doc(storeId).get();
+    if (!doc.exists) return null;
+    return doc.data() as Record<string, string>;
+  } catch (error) {
+    console.error("[shipment-tracker] Failed to get store settings:", error);
+    return null;
+  }
 }
 
 export async function pollAllShipments(
-  orders: Array<{ orderId: string; cjOrderNumber: string; storeId?: string; storePlatform?: string; platformOrderId?: string }>
+  orders: Array<{ orderId: string; cjOrderNumber: string; storeId?: string; storePlatform?: string; platformOrderId?: string }>,
+  uid?: string
 ): Promise<BulkTrackingUpdate[]> {
   const updates: BulkTrackingUpdate[] = [];
 
@@ -243,7 +256,8 @@ export async function pollAllShipments(
         order.platformOrderId,
         status.trackingNumber,
         status.carrier || "Unknown",
-        status.estimatedDelivery
+        status.estimatedDelivery,
+        uid
       );
     }
 

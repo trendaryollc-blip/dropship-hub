@@ -85,7 +85,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
       return NextResponse.json({ success: true, tracking: null, message: "No tracking yet" });
     }
 
-    const allOrders = getPollingOrders();
+    const allOrders = await getPollingOrders();
     const results = await pollAllTrackedOrders();
     let updated = 0;
 
@@ -111,7 +111,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
 
 export const GET = withAuth(async (_req: NextRequest, _uid: string) => {
   try {
-    const orders = getPollingOrders();
+    const orders = await getPollingOrders();
     return NextResponse.json({
       pollingOrders: orders,
       count: orders.length,

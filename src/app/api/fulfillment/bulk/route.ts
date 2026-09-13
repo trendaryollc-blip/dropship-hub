@@ -34,8 +34,8 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     }
 
     const db = await getAdminDB();
-    const operation = createBulkOperation({ orderIds, action });
-    startBulkOperation(operation.id);
+    const operation = await createBulkOperation({ orderIds, action });
+    await startBulkOperation(operation.id);
 
     if (action === "fulfill") {
       const rulesSnap = await db.collection("users").doc(uid).collection("fulfillmentRules").get();
@@ -50,7 +50,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
         try {
           const orderDoc = await db.collection("users").doc(uid).collection("fulfillmentOrders").doc(orderId).get();
           if (!orderDoc.exists) {
-            processBulkResult(operation.id, { orderId, success: false, error: "Order not found" });
+            await processBulkResult(operation.id, { orderId, success: false, error: "Order not found" });
             continue;
           }
 
@@ -100,12 +100,12 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
               }];
             }
             await db.collection("users").doc(uid).collection("fulfillmentOrders").doc(orderId).update(updateData);
-            processBulkResult(operation.id, { orderId, success: true });
+            await processBulkResult(operation.id, { orderId, success: true });
           } else {
-            processBulkResult(operation.id, { orderId, success: false, error: result.message });
+            await processBulkResult(operation.id, { orderId, success: false, error: result.message });
           }
         } catch (error) {
-          processBulkResult(operation.id, {
+          await processBulkResult(operation.id, {
             orderId,
             success: false,
             error: error instanceof Error ? error.message : "Unknown error",
@@ -119,9 +119,9 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
             status: "cancelled",
             updatedAt: new Date().toISOString(),
           });
-          processBulkResult(operation.id, { orderId, success: true });
+          await processBulkResult(operation.id, { orderId, success: true });
         } catch (error) {
-          processBulkResult(operation.id, {
+          await processBulkResult(operation.id, {
             orderId,
             success: false,
             error: error instanceof Error ? error.message : "Unknown error",
@@ -130,11 +130,11 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
       }
     } else {
       for (const orderId of orderIds) {
-        processBulkResult(operation.id, { orderId, success: false, error: `Action "${action}" not yet implemented` });
+        await processBulkResult(operation.id, { orderId, success: false, error: `Action "${action}" not yet implemented` });
       }
     }
 
-    const finalOp = getBulkOperation(operation.id);
+    const finalOp = await getBulkOperation(operation.id);
 
     return NextResponse.json({
       success: true,
@@ -152,12 +152,12 @@ export const GET = withAuth(async (req: NextRequest, _uid: string) => {
   try {
     const operationId = req.nextUrl.searchParams.get("operationId");
     if (operationId) {
-      const op = getBulkOperation(operationId);
+      const op = await getBulkOperation(operationId);
       if (!op) return NextResponse.json({ error: "Operation not found" }, { status: 404 });
       return NextResponse.json({ operation: op });
     }
 
-    const history = getBulkOperationHistory(20);
+    const history = await getBulkOperationHistory(20);
     return NextResponse.json({ operations: history });
   } catch (error) {
     return NextResponse.json(

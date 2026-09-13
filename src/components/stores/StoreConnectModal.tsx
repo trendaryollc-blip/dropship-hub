@@ -55,9 +55,10 @@ export default function StoreConnectModal({ platform, onClose, onConnected }: Pr
       const storeUrl = formData.url || formData.storeDomain || formData.storeUrl || "";
       if (storeUrl) payload.url = storeUrl;
 
+      const idToken = await user.getIdToken();
       await safeFetch<unknown>("/api/store/connections", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
         body: JSON.stringify(payload),
       });
 

@@ -1,6 +1,7 @@
 "use client";
 
-import { Loader2, Plus, LayoutTemplate } from "lucide-react";
+import { useState } from "react";
+import { Loader2, Plus, LayoutTemplate, Trash2, Play, AlertCircle } from "lucide-react";
 
 interface FulfillmentTemplate {
   id: string;
@@ -12,7 +13,46 @@ interface FulfillmentTemplate {
   createdAt: string;
 }
 
-export default function TemplatesTab({ templates, loading }: { templates: FulfillmentTemplate[]; loading: boolean }) {
+interface TemplatesTabProps {
+  templates: FulfillmentTemplate[];
+  loading: boolean;
+  onCreateClick: () => void;
+  onDelete: (id: string) => void;
+  authFetch: <T = unknown>(url: string, init?: RequestInit) => Promise<T>;
+}
+
+export default function FulfillmentTemplatesTab({ templates, loading, onCreateClick, onDelete, authFetch }: TemplatesTabProps) {
+  const [executingId, setExecutingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [executingResult, setExecutingResult] = useState<string | null>(null);
+
+  const handleExecute = async (templateId: string) => {
+    setExecutingId(templateId);
+    setExecutingResult(null);
+    try {
+      const res = await authFetch<{ success?: boolean; batch?: { id: string } }>("/api/fulfillment/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "execute", templateId }),
+      });
+      setExecutingResult(`Template executed — batch ${res?.batch?.id || "created"}`);
+    } catch {
+      setExecutingResult("Failed to execute template");
+    } finally {
+      setExecutingId(null);
+    }
+  };
+
+  const handleDelete = (templateId: string) => {
+    if (confirmDeleteId === templateId) {
+      onDelete(templateId);
+      setConfirmDeleteId(null);
+    } else {
+      setConfirmDeleteId(templateId);
+      setTimeout(() => setConfirmDeleteId(null), 3000);
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 text-accent animate-spin" /></div>;
   }
@@ -21,10 +61,20 @@ export default function TemplatesTab({ templates, loading }: { templates: Fulfil
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">{templates.length} templates saved</p>
-        <button className="flex items-center gap-1.5 px-3 py-1.5 bg-accent/20 text-accent rounded-lg text-xs font-medium hover:bg-accent/30 transition-all">
+        <button
+          onClick={onCreateClick}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-accent/20 text-accent rounded-lg text-xs font-medium hover:bg-accent/30 transition-all"
+        >
           <Plus className="h-3 w-3" /> New Template
         </button>
       </div>
+
+      {executingResult && (
+        <div className="flex items-center gap-2 p-2 rounded-lg bg-accent/10 border border-accent/20 text-xs text-accent">
+          <AlertCircle className="h-3 w-3 shrink-0" /> {executingResult}
+          <button onClick={() => setExecutingResult(null)} className="ml-auto text-muted-foreground hover:text-foreground">×</button>
+        </div>
+      )}
 
       {templates.length === 0 ? (
         <div className="text-center py-8">
@@ -59,6 +109,32 @@ export default function TemplatesTab({ templates, loading }: { templates: Fulfil
               <span className="text-[10px] text-muted-foreground">
                 Created {new Date(tpl.createdAt).toLocaleDateString()}
               </span>
+            </div>
+
+            <div className="flex items-center gap-2 mt-3">
+              <button
+                onClick={() => handleExecute(tpl.id)}
+                disabled={executingId === tpl.id}
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-accent/10 text-accent rounded-lg text-[10px] font-medium hover:bg-accent/20 transition-all disabled:opacity-50"
+              >
+                {executingId === tpl.id ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Play className="h-3 w-3" />
+                )}
+                Execute
+              </button>
+              <button
+                onClick={() => handleDelete(tpl.id)}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                  confirmDeleteId === tpl.id
+                    ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                    : "bg-surface text-muted-foreground hover:text-red-400 hover:bg-surface"
+                }`}
+              >
+                <Trash2 className="h-3 w-3" />
+                {confirmDeleteId === tpl.id ? "Confirm Delete" : "Delete"}
+              </button>
             </div>
           </div>
         ))

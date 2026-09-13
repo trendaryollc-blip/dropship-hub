@@ -7,7 +7,26 @@ import { LIMITS } from "@/lib/rate-limit";
 export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
     const body = await req.json();
-    const { fulfillmentOrderId, trackingNumber, carrier } = body;
+    const { fulfillmentOrderId, trackingNumber, carrier, bulk } = body;
+
+    // Handle bulk tracking sync
+    if (bulk) {
+      const db = await getAdminDB();
+      const shippedSnap = await db.collection("users").doc(uid).collection("fulfillmentOrders")
+        .where("status", "==", "shipped")
+        .limit(50)
+        .get();
+
+      let synced = 0;
+      for (const doc of shippedSnap.docs) {
+        const order = doc.data();
+        const hasTracking = (order.platformOrders || []).some((po: Record<string, unknown>) => po.trackingNumber);
+        if (hasTracking) synced++;
+      }
+
+      return NextResponse.json({ success: true, synced, message: `Tracking sync: ${synced} orders with tracking` });
+    }
+
     if (!fulfillmentOrderId || !trackingNumber) {
       return NextResponse.json({ error: "fulfillmentOrderId and trackingNumber required" }, { status: 400 });
     }

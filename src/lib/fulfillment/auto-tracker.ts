@@ -1,5 +1,6 @@
 import type { FulfillmentOrder } from "@/types/fulfillment";
 import { getCJOrderStatus } from "./cj-adapter";
+import { getAdminDB } from "@/lib/firebase-admin";
 
 interface TrackingResult {
   orderId: string;
@@ -16,29 +17,59 @@ interface _TrackingSyncResult {
   error?: string;
 }
 
-const pollingOrders: Map<string, { orderId: string; cjOrderNumber: string; retryCount: number; lastChecked: string }> = new Map();
+const COLLECTION = "pollingOrders";
 
-export function registerForTrackingPolling(orderId: string, cjOrderNumber: string): void {
-  pollingOrders.set(orderId, {
-    orderId,
-    cjOrderNumber,
-    retryCount: 0,
-    lastChecked: new Date().toISOString(),
-  });
+async function getCollection() {
+  const db = await getAdminDB();
+  return db.collection("system").doc("fulfillment").collection(COLLECTION);
 }
 
-export function unregisterFromTrackingPolling(orderId: string): boolean {
-  return pollingOrders.delete(orderId);
+interface PollingOrder {
+  orderId: string;
+  cjOrderNumber: string;
+  retryCount: number;
+  lastChecked: string;
 }
 
-export function getPollingOrders(): Array<{ orderId: string; cjOrderNumber: string; retryCount: number; lastChecked: string }> {
-  return Array.from(pollingOrders.values());
+export async function registerForTrackingPolling(orderId: string, cjOrderNumber: string): Promise<void> {
+  try {
+    const col = await getCollection();
+    await col.doc(orderId).set({
+      orderId,
+      cjOrderNumber,
+      retryCount: 0,
+      lastChecked: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("[auto-tracker] Failed to register:", error);
+  }
+}
+
+export async function unregisterFromTrackingPolling(orderId: string): Promise<boolean> {
+  try {
+    const col = await getCollection();
+    await col.doc(orderId).delete();
+    return true;
+  } catch (error) {
+    console.error("[auto-tracker] Failed to unregister:", error);
+    return false;
+  }
+}
+
+export async function getPollingOrders(): Promise<PollingOrder[]> {
+  try {
+    const col = await getCollection();
+    const snap = await col.get();
+    return snap.docs.map((d) => d.data() as PollingOrder);
+  } catch (error) {
+    console.error("[auto-tracker] Failed to get polling orders:", error);
+    return [];
+  }
 }
 
 export async function pollCJStatus(cjOrderNumber: string): Promise<TrackingResult> {
   try {
     const status = await getCJOrderStatus(cjOrderNumber);
-    const _hasTracking = status.trackingNumber !== null && status.trackingNumber !== "";
 
     return {
       orderId: "",
@@ -62,19 +93,27 @@ export async function pollCJStatus(cjOrderNumber: string): Promise<TrackingResul
 
 export async function pollAllTrackedOrders(): Promise<TrackingResult[]> {
   const results: TrackingResult[] = [];
+  const pollingOrders = await getPollingOrders();
 
-  for (const [orderId, order] of pollingOrders.entries()) {
+  for (const order of pollingOrders) {
     const result = await pollCJStatus(order.cjOrderNumber);
-    result.orderId = orderId;
+    result.orderId = order.orderId;
 
     order.retryCount++;
     order.lastChecked = new Date().toISOString();
-    pollingOrders.set(orderId, order);
 
-    if (result.found && result.trackingNumber) {
-      pollingOrders.delete(orderId);
-    } else if (order.retryCount >= 10) {
-      pollingOrders.delete(orderId);
+    try {
+      const col = await getCollection();
+
+      if (result.found && result.trackingNumber) {
+        await col.doc(order.orderId).delete();
+      } else if (order.retryCount >= 10) {
+        await col.doc(order.orderId).delete();
+      } else {
+        await col.doc(order.orderId).set(order);
+      }
+    } catch (error) {
+      console.error("[auto-tracker] Failed to update polling order:", error);
     }
 
     results.push(result);

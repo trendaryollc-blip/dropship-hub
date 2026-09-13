@@ -4,10 +4,18 @@ import { LIMITS } from "@/lib/rate-limit";
 import {
   getAutoSwitchRules, addAutoSwitchRule, updateAutoSwitchRule,
   deleteAutoSwitchRule, getSupplierScorecards, addSupplierSwitchLog,
+  getSupplierSwitchLogs,
 } from "@/lib/data/srm";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
+    const type = req.nextUrl.searchParams.get("type");
+
+    if (type === "logs") {
+      const logs = await getSupplierSwitchLogs(uid);
+      return NextResponse.json({ logs });
+    }
+
     const rules = await getAutoSwitchRules(uid);
     return NextResponse.json({ rules });
   } catch (error) {

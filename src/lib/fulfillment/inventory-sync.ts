@@ -105,7 +105,8 @@ export async function fetchCJInventory(productIds?: string[]): Promise<CJInvento
 export async function syncInventoryForStore(
   storeId: string,
   storePlatform: string,
-  productMappings: Array<{ internalProductId: string; platformProductId: string; cjProductId: string }>
+  productMappings: Array<{ internalProductId: string; platformProductId: string; cjProductId: string }>,
+  uid?: string
 ): Promise<InventorySyncResult> {
   const errors: string[] = [];
   let synced = 0;
@@ -125,7 +126,7 @@ export async function syncInventoryForStore(
           continue;
         }
 
-        const updateResult = await updateStoreInventory(storeId, storePlatform, mapping.platformProductId, cjInventory.stockLevel);
+        const updateResult = await updateStoreInventory(storeId, storePlatform, mapping.platformProductId, cjInventory.stockLevel, uid);
         if (updateResult.synced) {
           synced++;
         } else {
@@ -160,7 +161,8 @@ async function updateStoreInventory(
   storeId: string,
   storePlatform: string,
   platformProductId: string,
-  stockLevel: number
+  stockLevel: number,
+  uid?: string
 ): Promise<StoreInventoryUpdate> {
   const update: StoreInventoryUpdate = {
     storeId,
@@ -174,11 +176,11 @@ async function updateStoreInventory(
   try {
     switch (storePlatform.toLowerCase()) {
       case "shopify":
-        await updateShopifyInventory(storeId, platformProductId, stockLevel);
+        await updateShopifyInventory(storeId, platformProductId, stockLevel, uid);
         update.synced = true;
         break;
       case "woocommerce":
-        await updateWooCommerceInventory(storeId, platformProductId, stockLevel);
+        await updateWooCommerceInventory(storeId, platformProductId, stockLevel, uid);
         update.synced = true;
         break;
       case "ebay":
@@ -196,8 +198,8 @@ async function updateStoreInventory(
   return update;
 }
 
-async function updateShopifyInventory(storeId: string, productId: string, quantity: number): Promise<void> {
-  const storeSettings = await getStoreSettings(storeId);
+async function updateShopifyInventory(storeId: string, productId: string, quantity: number, uid?: string): Promise<void> {
+  const storeSettings = uid ? await getStoreSettings(uid, storeId) : null;
   if (!storeSettings?.accessToken || !storeSettings?.storeDomain) {
     throw new Error("Shopify store not configured");
   }
@@ -221,8 +223,8 @@ async function updateShopifyInventory(storeId: string, productId: string, quanti
   }
 }
 
-async function updateWooCommerceInventory(storeId: string, productId: string, stockQuantity: number): Promise<void> {
-  const storeSettings = await getStoreSettings(storeId);
+async function updateWooCommerceInventory(storeId: string, productId: string, stockQuantity: number, uid?: string): Promise<void> {
+  const storeSettings = uid ? await getStoreSettings(uid, storeId) : null;
   if (!storeSettings?.apiUrl || !storeSettings?.consumerKey || !storeSettings?.consumerSecret) {
     throw new Error("WooCommerce store not configured");
   }
@@ -245,8 +247,17 @@ async function updateWooCommerceInventory(storeId: string, productId: string, st
   }
 }
 
-async function getStoreSettings(_storeId: string): Promise<Record<string, string> | null> {
-  return null;
+async function getStoreSettings(uid: string, storeId: string): Promise<Record<string, string> | null> {
+  try {
+    const { getAdminDB } = await import("@/lib/firebase-admin");
+    const db = await getAdminDB();
+    const doc = await db.collection("users").doc(uid).collection("storeConnections").doc(storeId).get();
+    if (!doc.exists) return null;
+    return doc.data() as Record<string, string>;
+  } catch (error) {
+    console.error("[inventory-sync] Failed to get store settings:", error);
+    return null;
+  }
 }
 
 export function detectInventoryChanges(
