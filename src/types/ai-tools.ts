@@ -61,7 +61,7 @@ export const FEATURE_TOOL_MAP: Record<string, string[]> = {
   intelligence: ["get_health_score", "get_daily_digest", "get_daily_missions", "get_recommendations", "get_market_intel", "get_competitor_intel", "get_pricing_intel", "get_ad_recommendations", "generate_listing", "generate_creative"],
   monitoring: ["monitor_price", "monitor_stock", "monitor_competitor", "get_alerts", "set_alert"],
   shipping: ["compare_shipping_rates", "predict_delivery", "auto_select_shipping", "calculate_customs", "get_shipping_options"],
-  pricing: ["optimize_pricing", "evaluate_price_rule", "calculate_floor_price"],
+  pricing: ["optimize_pricing", "evaluate_price_rule", "calculate_floor_price", "counter_strategy"],
 };
 
 // ─── Tool ID Constants ──────────────────────────────────────────────────────
@@ -156,4 +156,5 @@ export const TOOL_IDS = {
   OPTIMIZE_PRICING: "optimize_pricing",
   EVALUATE_PRICE_RULE: "evaluate_price_rule",
   CALCULATE_FLOOR_PRICE: "calculate_floor_price",
+  COUNTER_STRATEGY: "counter_strategy",
 } as const;

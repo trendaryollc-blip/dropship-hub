@@ -16,6 +16,7 @@ import {
   optimizePricingTool,
   evaluatePriceRuleTool,
   calculateFloorPriceTool,
+  counterStrategyTool,
 } from "./pricing";
 
 // ─── Listing Tools ──────────────────────────────────────────────────────────
@@ -115,10 +116,11 @@ export function registerAllTools(): void {
     calculateOrderProfitTool,
     calculateAggregatedProfitTool,
 
-    // Pricing (3)
+    // Pricing (4)
     optimizePricingTool,
     evaluatePriceRuleTool,
     calculateFloorPriceTool,
+    counterStrategyTool,
 
     // Listings (2)
     generateListingTool,

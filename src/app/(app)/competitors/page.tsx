@@ -382,15 +382,23 @@ function CompetitorsContent() {
 
   const executeAITool = useCallback(async (toolId: string, input: Record<string, unknown>): Promise<AIResult> => {
     try {
+      const token = await user?.getIdToken();
       const res = await safeFetch<{ success: boolean; summary?: string; data?: unknown; error?: string }>(
         "/api/ai/execute",
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: toolId, input }) }
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ tool: toolId, input }),
+        }
       );
       return { tool: toolId, success: res.success, summary: res.summary || (res.success ? "Done" : "Failed"), data: res.data, error: res.error };
     } catch (e) {
       return { tool: toolId, success: false, summary: "Execution failed", error: String(e) };
     }
-  }, []);
+  }, [user]);
 
   const handleAIBarAction = useCallback(async (action: string) => {
     if (!marketData) return;
@@ -414,8 +422,28 @@ function CompetitorsContent() {
       },
       "counter-strategy": {
         title: "Counter-Strategy",
-        toolId: "evaluate_price_rule",
-        input: { query, platforms: marketData.platforms.map((p) => p.platform), avgPrice: marketData.avgPrice },
+        toolId: "counter_strategy",
+        input: {
+          query,
+          avgPrice: marketData.avgPrice,
+          minPrice: marketData.minPrice,
+          maxPrice: marketData.maxPrice,
+          platforms: marketData.platforms.map((p) => ({
+            platform: p.platform,
+            avgPrice: p.avgPrice,
+            minPrice: p.minPrice,
+            maxPrice: p.maxPrice,
+            sellerCount: p.sellerCount,
+            trend: p.trend,
+          })),
+          topSellers: marketData.topSellers.map((s) => ({
+            name: s.name,
+            price: s.price,
+            rating: s.rating,
+            threatLevel: s.threatLevel,
+            isDropshipper: s.isDropshipper,
+          })),
+        },
       },
     };
 

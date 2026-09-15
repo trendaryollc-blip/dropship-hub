@@ -205,6 +205,7 @@ export function toolIdToFeature(toolId: string): string {
     optimize_pricing: "pricing",
     evaluate_price_rule: "pricing",
     calculate_floor_price: "pricing",
+    counter_strategy: "pricing",
   };
 
   return featureMap[toolId] || "other";
