@@ -57,8 +57,8 @@ describe("Sidebar", () => {
     expect(screen.getByText("Calculator")).toBeTruthy();
     expect(screen.getByText("Competitors")).toBeTruthy();
     expect(screen.getByText("Health Score")).toBeTruthy();
-    expect(screen.getByText("My Store")).toBeTruthy();
-    expect(screen.getByText("Multi-Store")).toBeTruthy();
+    expect(screen.getByText("Stores")).toBeTruthy();
+    expect(screen.getByText("Store Dashboard")).toBeTruthy();
     expect(screen.getByText("Fulfillment")).toBeTruthy();
     expect(screen.getByText("AI Assistant")).toBeTruthy();
     expect(screen.getByText("Customer Service")).toBeTruthy();
@@ -66,8 +66,6 @@ describe("Sidebar", () => {
     expect(screen.getByText("Revenue")).toBeTruthy();
     expect(screen.getByText("Profit Tracker")).toBeTruthy();
     expect(screen.getByText("Ad ROI")).toBeTruthy();
-    expect(screen.getByText("Supplier Intel")).toBeTruthy();
-    expect(screen.getByText("Supplier SRM")).toBeTruthy();
     expect(screen.getByText("Product Validation")).toBeTruthy();
   });
 

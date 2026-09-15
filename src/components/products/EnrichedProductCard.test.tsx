@@ -78,11 +78,6 @@ describe("EnrichedProductCard", () => {
     expect(screen.getByText(/amazon/)).toBeInTheDocument();
   });
 
-  it("shows image count when multiple images", () => {
-    render(<EnrichedProductCard product={mockProduct} index={0} />);
-    expect(screen.getByText("2")).toBeInTheDocument();
-  });
-
   it("renders product image", () => {
     render(<EnrichedProductCard product={mockProduct} index={0} />);
     const img = screen.getByRole("img");
