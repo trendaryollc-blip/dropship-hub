@@ -9,6 +9,7 @@ vi.mock("lucide-react", () => ({
   AlertCircle: () => <div data-testid="alert-circle" />,
   CheckCircle2: () => <div data-testid="check-circle" />,
   XCircle: () => <div data-testid="x-circle" />,
+  Target: () => <div data-testid="target" />,
 }));
 
 const mockData: GoldenProductResult = {
@@ -28,12 +29,13 @@ const mockData: GoldenProductResult = {
 describe("GoldenScoreBoard", () => {
   it("renders score out of 100", () => {
     render(<GoldenScoreBoard data={mockData} />);
-    expect(screen.getByText("85/100")).toBeInTheDocument();
+    expect(screen.getByText("85")).toBeInTheDocument();
+    expect(screen.getByText("/ 100")).toBeInTheDocument();
   });
 
   it("renders rank letter and label", () => {
     render(<GoldenScoreBoard data={mockData} />);
-    expect(screen.getByText("A")).toBeInTheDocument();
+    expect(screen.getAllByText("A").length).toBeGreaterThan(0);
     expect(screen.getByText("A-Tier")).toBeInTheDocument();
   });
 
@@ -85,13 +87,13 @@ describe("GoldenScoreBoard", () => {
 
   it("renders S rank with correct color", () => {
     render(<GoldenScoreBoard data={{ ...mockData, rank: "S", score: 95 }} />);
-    expect(screen.getByText("S")).toBeInTheDocument();
+    expect(screen.getAllByText("S").length).toBeGreaterThan(0);
     expect(screen.getByText("S-Tier")).toBeInTheDocument();
   });
 
   it("renders D rank", () => {
     render(<GoldenScoreBoard data={{ ...mockData, rank: "D", score: 25 }} />);
-    expect(screen.getByText("D")).toBeInTheDocument();
+    expect(screen.getAllByText("D").length).toBeGreaterThan(0);
     expect(screen.getByText("D-Tier")).toBeInTheDocument();
   });
 });

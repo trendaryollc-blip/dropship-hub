@@ -9,6 +9,7 @@ vi.mock("lucide-react", () => ({
   ShieldCheck: () => <div data-testid="shield-check" />,
   ShieldAlert: () => <div data-testid="shield-alert" />,
   ShieldX: () => <div data-testid="shield-x" />,
+  BarChart3: () => <div data-testid="bar-chart-3" />,
 }));
 
 const mockData: SaturationResult = {

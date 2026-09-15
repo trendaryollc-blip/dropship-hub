@@ -5,6 +5,7 @@ import type { SeasonalDemandResult } from "@/types/product-validation";
 
 vi.mock("lucide-react", () => ({
   Calendar: () => <div data-testid="calendar" />,
+  BarChart3: () => <div data-testid="bar-chart-3" />,
 }));
 
 const mockData: SeasonalDemandResult = {

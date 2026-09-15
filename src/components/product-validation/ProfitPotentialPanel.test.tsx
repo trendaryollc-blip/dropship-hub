@@ -6,6 +6,8 @@ import type { ProfitPotentialResult } from "@/types/product-validation";
 vi.mock("lucide-react", () => ({
   DollarSign: () => <div data-testid="dollar-sign" />,
   AlertCircle: () => <div data-testid="alert-circle" />,
+  TrendingUp: () => <div data-testid="trending-up" />,
+  PieChart: () => <div data-testid="pie-chart" />,
 }));
 
 const mockData: ProfitPotentialResult = {
@@ -35,7 +37,7 @@ describe("ProfitPotentialPanel", () => {
 
   it("renders score badge", () => {
     render(<ProfitPotentialPanel data={mockData} />);
-    expect(screen.getByText("Score: 78")).toBeInTheDocument();
+    expect(screen.getByText("78")).toBeInTheDocument();
   });
 
   it("renders per unit profit", () => {
@@ -98,6 +100,6 @@ describe("ProfitPotentialPanel", () => {
 
   it("renders required icons", () => {
     render(<ProfitPotentialPanel data={mockData} />);
-    expect(screen.getByTestId("dollar-sign")).toBeInTheDocument();
+    expect(screen.getAllByTestId("dollar-sign").length).toBeGreaterThan(0);
   });
 });

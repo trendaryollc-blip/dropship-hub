@@ -9,6 +9,7 @@ vi.mock("lucide-react", () => ({
   Minus: () => <div data-testid="minus" />,
   Zap: () => <div data-testid="zap" />,
   AlertTriangle: () => <div data-testid="alert-triangle" />,
+  Activity: () => <div data-testid="activity" />,
 }));
 
 const mockData: TrendVelocityResult = {
