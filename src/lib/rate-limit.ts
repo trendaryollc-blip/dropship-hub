@@ -29,7 +29,16 @@ function getRedis(): Redis | null {
 function getRatelimit(): Ratelimit | null {
   if (ratelimit) return ratelimit;
   const r = getRedis();
-  if (!r) return null;
+  if (!r) {
+    if (process.env.NODE_ENV === "production") {
+      console.warn(
+        "[rate-limit] UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are not set. " +
+        "Rate limiting is using an in-memory fallback that does NOT persist across serverless cold starts. " +
+        "Configure Upstash Redis for reliable production rate limiting."
+      );
+    }
+    return null;
+  }
   ratelimit = new Ratelimit({
     redis: r,
     limiter: Ratelimit.slidingWindow(60, "60 s"),

@@ -9,31 +9,17 @@ export async function verifyAuth(request: NextRequest): Promise<string | null> {
   const token = authHeader.split("Bearer ")[1];
   if (!token) return null;
 
-  // Try Admin SDK verification first
   try {
     const adminAuth = getAdminAuth();
     if (adminAuth) {
-      const checkRevocation = process.env.CHECK_TOKEN_REVOCATION === "true";
+      const checkRevocation = process.env.CHECK_TOKEN_REVOCATION !== "false";
       const decoded = await adminAuth.verifyIdToken(token, checkRevocation);
       return decoded.uid;
     }
   } catch (err) {
-    console.warn("[auth] Admin SDK token verification failed, attempting unverified decode:", err instanceof Error ? err.message : err);
+    console.warn("[auth] Admin SDK token verification failed:", err instanceof Error ? err.message : err);
   }
 
-  // Fallback: decode JWT payload without verification
-  try {
-    const parts = token.split(".");
-    if (parts.length === 3) {
-      const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
-      if (payload.sub) {
-        console.warn("[auth] Using unverified UID from JWT payload:", payload.sub);
-        return payload.sub;
-      }
-    }
-  } catch {
-    // Failed to decode
-  }
   return null;
 }
 
@@ -46,10 +32,10 @@ export async function requireAuth(request: NextRequest): Promise<{ uid: string }
 }
 
 /**
- * Extract the verified-or-unverified `email` claim from the Bearer ID token in
- * the request. Firebase ID tokens include the user's email in the payload, so we
- * can identify the app owner without depending on the Firestore/Admin SDK being
- * healthy. Returns null if the token is missing, malformed, or has no email.
+ * Extract the `email` claim from the Bearer ID token in the request.
+ * This should only be called after verifyAuth() has succeeded, meaning
+ * the token has been cryptographically verified by the Admin SDK.
+ * Returns null if the token is missing, malformed, or has no email.
  */
 export function extractEmailFromRequest(request: NextRequest): string | null {
   const authHeader = request.headers.get("Authorization");

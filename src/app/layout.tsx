@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { DM_Sans, Outfit, JetBrains_Mono } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 import ThemeProvider from "@/components/theme/ThemeProvider";
 
@@ -28,15 +27,6 @@ export const metadata: Metadata = {
     "Find products, compare suppliers, calculate profits, and analyze competitors. Everything dropshippers need in one powerful platform.",
 };
 
-const themeScript = `
-(function() {
-  try {
-    var theme = localStorage.getItem('dropship-theme') || 'crimson-noir';
-    document.documentElement.setAttribute('data-theme', theme);
-  } catch(e) {}
-})()
-`;
-
 export default function RootLayout({
   children,
 }: {
@@ -45,10 +35,10 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${dmSans.variable} ${outfit.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
       <head>
-        <Script
-          id="theme-script"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{ __html: themeScript }}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('dropship-theme')||'crimson-noir';document.documentElement.setAttribute('data-theme',t)}catch(e){}})()`,
+          }}
         />
       </head>
       <body className="min-h-screen bg-background text-foreground antialiased">
