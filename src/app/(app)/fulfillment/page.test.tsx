@@ -8,23 +8,34 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-vi.mock("lucide-react", () => {
-  const identity = (props: any) => <span {...props} />;
+vi.mock("@/components/ui/Toast", () => ({
+  useToast: () => ({
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+  }),
+}));
+
+vi.mock("@/components/ai/VoiceInput", () => ({
+  default: ({ onTranscript }: any) => (
+    <input
+      data-testid="voice-input"
+      onChange={(e) => onTranscript?.(e.target.value)}
+    />
+  ),
+}));
+
+vi.mock("@/components/fulfillment/FulfillmentSkeleton", () => ({
+  OrderCardSkeleton: () => <div data-testid="order-card-skeleton" />,
+  TabSkeleton: () => <div data-testid="tab-skeleton" />,
+}));
+
+vi.mock("lucide-react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("lucide-react")>();
   return {
-    Package: identity,
-    Clock: identity,
-    Truck: identity,
-    CheckCircle2: identity,
-    Settings: identity,
+    ...actual,
     Loader2: (props: any) => <span data-testid="loader2" {...props} />,
-    Search: identity,
-    Globe: identity,
-    RefreshCw: identity,
-    X: identity,
-    FileText: identity,
-    Shield: identity,
-    LayoutTemplate: identity,
-    AlertCircle: identity,
   };
 });
 
@@ -148,7 +159,8 @@ describe("FulfillmentPage", () => {
   it("renders loading state", () => {
     mockUseAPI.mockReturnValue({ data: undefined, isLoading: true, mutate: vi.fn() });
     render(<FulfillmentPage />);
-    expect(screen.getByTestId("loader2")).toBeInTheDocument();
+    expect(screen.getByTestId("tab-skeleton")).toBeInTheDocument();
+    expect(screen.getAllByTestId("order-card-skeleton")).toHaveLength(3);
   });
 
   it("renders page header 'Fulfillment Center'", () => {

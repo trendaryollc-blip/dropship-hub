@@ -25,10 +25,27 @@ vi.mock("lucide-react", () => ({
   ShieldX: () => <div data-testid="shield-x" />,
   DollarSign: () => <div data-testid="dollar-sign" />,
   Calendar: () => <div data-testid="calendar" />,
+  Package: () => <div data-testid="package" />,
+  Truck: () => <div data-testid="truck" />,
+  AlertOctagon: () => <div data-testid="alert-octagon" />,
+  Globe: () => <div data-testid="globe" />,
+  ShoppingCart: () => <div data-testid="shopping-cart" />,
+  BarChart3: () => <div data-testid="bar-chart-3" />,
+  ArrowUpRight: () => <div data-testid="arrow-up-right" />,
+  Layers: () => <div data-testid="layers" />,
+  Download: () => <div data-testid="download" />,
+  FileText: () => <div data-testid="file-text" />,
+  Copy: () => <div data-testid="copy" />,
 }));
 
 vi.mock("@/hooks/useAPI", () => ({
   useAPI: vi.fn().mockReturnValue({ data: null }),
+}));
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: vi.fn().mockReturnValue({
+    get: vi.fn().mockReturnValue(null),
+  }),
 }));
 
 vi.mock("@/lib/firebase", () => ({
@@ -56,7 +73,7 @@ describe("ProductValidationPage", () => {
 
   it("renders Run Validation button", () => {
     render(<ProductValidationPage />);
-    expect(screen.getByText("Run Validation")).toBeInTheDocument();
+    expect(screen.getByText("Validate")).toBeInTheDocument();
   });
 
   it("renders reset button", () => {
@@ -73,13 +90,13 @@ describe("ProductValidationPage", () => {
     render(<ProductValidationPage />);
     const tags = screen.getAllByText("Trend Velocity");
     expect(tags.length).toBeGreaterThanOrEqual(1);
-    const saturationTags = screen.getAllByText("Saturation Index");
+    const saturationTags = screen.getAllByText("Profit Potential");
     expect(saturationTags.length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders Basic Info section open by default", () => {
     render(<ProductValidationPage />);
-    expect(screen.getByText("Product Title")).toBeInTheDocument();
+    expect(screen.getByText("Product Title *")).toBeInTheDocument();
   });
 
   it("renders collapsible sections", () => {
@@ -90,17 +107,17 @@ describe("ProductValidationPage", () => {
 
   it("shows validation error when title is empty and button clicked", () => {
     render(<ProductValidationPage />);
-    const button = screen.getByText("Run Validation").closest("button")!;
+    const button = screen.getByText("Validate").closest("button")!;
     expect(button).toBeDisabled();
   });
 
   it("renders form sections", () => {
     render(<ProductValidationPage />);
-    const saturation = screen.getAllByText("Saturation Index");
+    const saturation = screen.getAllByText("Saturation Data");
     expect(saturation.length).toBeGreaterThanOrEqual(1);
-    const profit = screen.getAllByText("Profit Potential");
+    const profit = screen.getAllByText("Profit Data");
     expect(profit.length).toBeGreaterThanOrEqual(1);
-    const seasonal = screen.getAllByText("Seasonal Demand");
+    const seasonal = screen.getAllByText("Seasonal Data");
     expect(seasonal.length).toBeGreaterThanOrEqual(1);
   });
 
@@ -108,7 +125,7 @@ describe("ProductValidationPage", () => {
     render(<ProductValidationPage />);
     const input = screen.getByPlaceholderText("e.g. Wireless Bluetooth Earbuds");
     fireEvent.change(input, { target: { value: "Test Product" } });
-    const button = screen.getByText("Run Validation").closest("button")!;
+    const button = screen.getByText("Validate").closest("button")!;
     expect(button).not.toBeDisabled();
   });
 });

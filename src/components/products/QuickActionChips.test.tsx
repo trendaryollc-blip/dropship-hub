@@ -2,16 +2,24 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import QuickActionChips from "./QuickActionChips";
 
-vi.mock("lucide-react", () => ({
-  Sparkles: (props: any) => <div data-testid="icon-sparkles" {...props} />,
-  Search: (props: any) => <div data-testid="icon-search" {...props} />,
-  Check: (props: any) => <div data-testid="icon-check" {...props} />,
-  FileText: (props: any) => <div data-testid="icon-file" {...props} />,
-  BarChart3: (props: any) => <div data-testid="icon-chart" {...props} />,
-  TrendingUp: (props: any) => <div data-testid="icon-trending" {...props} />,
-  Target: (props: any) => <div data-testid="icon-target" {...props} />,
-  Truck: (props: any) => <div data-testid="icon-truck" {...props} />,
+const mockPush = vi.fn();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: mockPush,
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+  useSearchParams: () => new URLSearchParams(),
 }));
+
+vi.mock("lucide-react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("lucide-react")>();
+  return { ...actual };
+});
 
 describe("QuickActionChips", () => {
   it("returns null when no query", () => {
@@ -24,17 +32,31 @@ describe("QuickActionChips", () => {
     expect(screen.getByText("Validate Products")).toBeInTheDocument();
     expect(screen.getByText("Find Suppliers")).toBeInTheDocument();
     expect(screen.getByText("Generate Listings")).toBeInTheDocument();
-    expect(screen.getByText("Market Analysis")).toBeInTheDocument();
+    expect(screen.getByText("Analyze Competitors")).toBeInTheDocument();
     expect(screen.getByText("Find Similar")).toBeInTheDocument();
     expect(screen.getByText("Calculate Profit")).toBeInTheDocument();
   });
 
   it("calls onAction with query interpolated", () => {
     const onAction = vi.fn();
-    render(<QuickActionChips query="wireless earbuds" onAction={onAction} />);
+    render(
+      <QuickActionChips
+        query="wireless earbuds"
+        onAction={onAction}
+        hasResults
+        selectedProduct={{
+          id: "1",
+          title: "wireless earbuds",
+          price: 29.99,
+          image: null,
+          link: "https://example.com",
+          source: "aliexpress",
+        }}
+      />
+    );
     fireEvent.click(screen.getByText("Validate Products"));
-    expect(onAction).toHaveBeenCalledWith(
-      expect.stringContaining("wireless earbuds")
+    expect(mockPush).toHaveBeenCalledWith(
+      expect.stringContaining("wireless+earbuds")
     );
   });
 

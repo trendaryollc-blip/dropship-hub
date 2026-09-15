@@ -14,6 +14,11 @@ export interface ProductValidationDoc {
   saturationIndex: number;
   profitScore: number;
   seasonalScore: number;
+  riskScore?: number;
+  supplierScore?: number;
+  competitionScore?: number;
+  authenticityScore?: number;
+  marketScore?: number;
   inputs: Record<string, unknown>;
   createdAt: Timestamp;
 }

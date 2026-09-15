@@ -712,6 +712,11 @@ export const ProductValidationDocSchema = z.object({
   saturationIndex: z.number(),
   profitScore: z.number(),
   seasonalScore: z.number(),
+  riskScore: z.number().optional(),
+  supplierScore: z.number().optional(),
+  competitionScore: z.number().optional(),
+  authenticityScore: z.number().optional(),
+  marketScore: z.number().optional(),
   inputs: z.record(z.string(), z.unknown()),
   createdAt: firestoreTimestamp,
 });
@@ -726,6 +731,11 @@ export const AddProductValidationInputSchema = z.object({
   saturationIndex: z.number().min(0).max(100),
   profitScore: z.number().min(0).max(100),
   seasonalScore: z.number().min(0).max(100),
+  riskScore: z.number().min(0).max(100).optional(),
+  supplierScore: z.number().min(0).max(100).optional(),
+  competitionScore: z.number().min(0).max(100).optional(),
+  authenticityScore: z.number().min(0).max(100).optional(),
+  marketScore: z.number().min(0).max(100).optional(),
   inputs: z.record(z.string(), z.unknown()),
 });
 

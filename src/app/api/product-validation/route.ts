@@ -13,6 +13,12 @@ import type {
   SaturationInput,
   ProfitPotentialInput,
   SeasonalDemandInput,
+  ProductAuthenticityInput,
+  SupplierValidationInput,
+  CompetitionAnalysisInput,
+  RiskAssessmentInput,
+  MarketIntelligenceInput,
+  BundleAnalysisInput,
 } from "@/types/product-validation";
 
 export const POST = withAuth(async (req: NextRequest, uid: string) => {
@@ -27,6 +33,12 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
       profitPotential: profitInput,
       seasonalDemand: seasonalInput,
       goldenExtras,
+      productAuthenticity: authenticityInput,
+      supplierValidation: supplierInput,
+      competitionAnalysis: competitionInput,
+      riskAssessment: riskInput,
+      marketIntelligence: marketInput,
+      bundleAnalysis: bundleInput,
     } = body as {
       productTitle: string;
       productImage?: string;
@@ -43,13 +55,23 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
         returnRate: number;
         competitionLevel: "low" | "medium" | "high" | "very-high";
       };
+      productAuthenticity?: ProductAuthenticityInput;
+      supplierValidation?: SupplierValidationInput;
+      competitionAnalysis?: CompetitionAnalysisInput;
+      riskAssessment?: RiskAssessmentInput;
+      marketIntelligence?: MarketIntelligenceInput;
+      bundleAnalysis?: BundleAnalysisInput;
     };
 
     if (!productTitle) {
       return NextResponse.json({ error: "productTitle is required" }, { status: 400 });
     }
 
-    const result = runFullValidation(trendInput, satInput, profitInput, seasonalInput, goldenExtras);
+    const result = runFullValidation(
+      trendInput, satInput, profitInput, seasonalInput, goldenExtras,
+      authenticityInput, supplierInput, competitionInput,
+      riskInput, marketInput, bundleInput,
+    );
 
     await addProductValidation(uid, {
       productTitle,
@@ -61,6 +83,11 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
       saturationIndex: result.saturation.index,
       profitScore: result.profitPotential.score,
       seasonalScore: result.seasonalDemand.score,
+      riskScore: result.riskAssessment?.score,
+      supplierScore: result.supplierValidation?.score,
+      competitionScore: result.competitionAnalysis?.score,
+      authenticityScore: result.productAuthenticity?.score,
+      marketScore: result.marketIntelligence?.score,
       inputs: body,
     });
 

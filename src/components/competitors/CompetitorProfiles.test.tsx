@@ -6,16 +6,10 @@ vi.mock("@/hooks/useInView", () => ({
   useInView: () => ({ ref: { current: null }, isInView: true }),
 }));
 
-vi.mock("lucide-react", () => ({
-  ChevronDown: () => <div data-testid="chevron-down" />,
-  Star: () => <div data-testid="star" />,
-  Shield: () => <div data-testid="shield" />,
-  ShoppingCart: () => <div data-testid="shopping-cart" />,
-  Clock: () => <div data-testid="clock" />,
-  RotateCcw: () => <div data-testid="rotate-ccw" />,
-  ExternalLink: () => <div data-testid="external-link" />,
-  Store: () => <div data-testid="store" />,
-}));
+vi.mock("lucide-react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("lucide-react")>();
+  return { ...actual };
+});
 
 const mockSellers = [
   {

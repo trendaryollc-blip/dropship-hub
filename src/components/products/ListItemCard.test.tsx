@@ -14,6 +14,17 @@ vi.mock("@/hooks/useInView", () => ({
   useInView: () => ({ ref: vi.fn(), isInView: true }),
 }));
 
+vi.mock("@/components/auth/AuthProvider", () => ({
+  useAuth: () => ({ user: null }),
+}));
+
+vi.mock("@/components/saved/SavedProductsProvider", () => ({
+  useSavedProducts: () => ({
+    isSaved: () => false,
+    toggleSave: vi.fn(),
+  }),
+}));
+
 const mockProduct = {
   id: "prod-1",
   title: "Wireless Headphones",

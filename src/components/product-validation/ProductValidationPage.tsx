@@ -1,13 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Loader2, Sparkles, ChevronDown, ChevronUp, RotateCcw, Clock, Package } from "lucide-react";
+import { Loader2, Sparkles, RotateCcw, Clock, ShieldCheck, Truck, AlertOctagon, Globe, ShoppingCart, BarChart3, Zap, TrendingUp, DollarSign, ChevronRight } from "lucide-react";
 import TrendVelocityCard from "./TrendVelocityCard";
 import SaturationGauge from "./SaturationGauge";
 import ProfitPotentialPanel from "./ProfitPotentialPanel";
 import SeasonalDemandChart from "./SeasonalDemandChart";
 import GoldenScoreBoard from "./GoldenScoreBoard";
+import ProductAuthenticityCard from "./ProductAuthenticityCard";
+import SupplierValidationCard from "./SupplierValidationCard";
+import CompetitionAnalysisCard from "./CompetitionAnalysisCard";
+import RiskAssessmentCard from "./RiskAssessmentCard";
+import MarketIntelligenceCard from "./MarketIntelligenceCard";
+import BundleOpportunityCard from "./BundleOpportunityCard";
+import ValidationHeader from "./ValidationHeader";
+import ValidationExportButton from "./ValidationExportButton";
+import RiskSummaryBar from "./RiskSummaryBar";
 import { useAPI } from "@/hooks/useAPI";
 import type { ProductValidationResult } from "@/types/product-validation";
 
@@ -54,6 +63,39 @@ interface FormData {
   supplierReliability: string;
   shippingSpeed: string;
   competitionLevel: "low" | "medium" | "high" | "very-high";
+  brand: string;
+  materials: string;
+  certifications: string;
+  supplierName: string;
+  supplierUrl: string;
+  yearsInBusiness: string;
+  fulfillmentRate: string;
+  communicationScore: string;
+  moq: string;
+  sampleAvailable: boolean;
+  avgMarketPrice: string;
+  comp1Name: string;
+  comp1Price: string;
+  comp1Rating: string;
+  comp1Reviews: string;
+  comp1Platform: string;
+  comp2Name: string;
+  comp2Price: string;
+  comp2Rating: string;
+  comp2Reviews: string;
+  comp2Platform: string;
+  targetMarkets: string;
+  shippingMethods: string;
+  weight: string;
+  dimLength: string;
+  dimWidth: string;
+  dimHeight: string;
+  isBranded: boolean;
+  hasVariants: boolean;
+  targetAudience: string;
+  monthlySalesEstimate: string;
+  avgOrderValue: string;
+  customerSegment: string;
 }
 
 const defaultForm: FormData = {
@@ -72,23 +114,19 @@ const defaultForm: FormData = {
   category: "Electronics",
   reviewScore: "4.3", reviewCount: "2500", supplierReliability: "88",
   shippingSpeed: "7", competitionLevel: "medium",
+  brand: "", materials: "", certifications: "",
+  supplierName: "", supplierUrl: "", yearsInBusiness: "3",
+  fulfillmentRate: "95", communicationScore: "80", moq: "50", sampleAvailable: true,
+  avgMarketPrice: "32.99",
+  comp1Name: "", comp1Price: "", comp1Rating: "", comp1Reviews: "", comp1Platform: "Amazon",
+  comp2Name: "", comp2Price: "", comp2Rating: "", comp2Reviews: "", comp2Platform: "eBay",
+  targetMarkets: "US,UK,CA", shippingMethods: "standard", weight: "2",
+  dimLength: "10", dimWidth: "8", dimHeight: "4", isBranded: false, hasVariants: true,
+  targetAudience: "25-44", monthlySalesEstimate: "100", avgOrderValue: "35", customerSegment: "general",
 };
 
 function parseList(s: string): number[] {
   return s.split(",").map((v) => parseFloat(v.trim())).filter((n) => !isNaN(n));
-}
-
-function Section({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="rounded-2xl border border-border overflow-hidden">
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-4 py-3 bg-surface/30 hover:bg-surface/50 transition-colors">
-        <span className="text-sm font-semibold text-foreground">{title}</span>
-        {open ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-      </button>
-      {open && <div className="p-4 space-y-3">{children}</div>}
-    </div>
-  );
 }
 
 function Input({ label, value, onChange, placeholder, type = "text" }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string }) {
@@ -105,6 +143,15 @@ function Input({ label, value, onChange, placeholder, type = "text" }: { label: 
     </div>
   );
 }
+
+type TabId = "core" | "product" | "supply" | "risk";
+
+const TABS: { id: TabId; label: string; icon: React.ElementType; color: string }[] = [
+  { id: "core", label: "Core Data", icon: BarChart3, color: "text-blue-400" },
+  { id: "product", label: "Product Details", icon: ShieldCheck, color: "text-emerald-400" },
+  { id: "supply", label: "Supply Chain", icon: Truck, color: "text-amber-400" },
+  { id: "risk", label: "Risk & Market", icon: AlertOctagon, color: "text-red-400" },
+];
 
 export default function ProductValidationPage() {
   const searchParams = useSearchParams();
@@ -128,12 +175,14 @@ export default function ProductValidationPage() {
   const [result, setResult] = useState<ProductValidationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [enginesRunning, setEnginesRunning] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<TabId>("core");
   const { data: historyData } = useAPI<{ validations?: ValidationDoc[] }>("/api/product-validation");
   const history = historyData?.validations || [];
 
   const hasProductContext = searchParams.get("productTitle") || searchParams.get("currentPrice");
 
-  const update = (key: keyof FormData, value: string) => setForm((prev) => ({ ...prev, [key]: value }));
+  const update = (key: keyof FormData, value: string | boolean) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const handleValidate = async () => {
     if (!form.productTitle.trim()) {
@@ -143,6 +192,7 @@ export default function ProductValidationPage() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setEnginesRunning(["Trend Velocity", "Saturation", "Profit", "Seasonal", "Golden Score"]);
 
     try {
       const token = await (await import("@/lib/firebase")).auth.currentUser?.getIdToken();
@@ -196,6 +246,85 @@ export default function ProductValidationPage() {
             returnRate: parseFloat(form.returnRate) || 0,
             competitionLevel: form.competitionLevel,
           },
+          productAuthenticity: form.brand || form.materials || form.certifications ? {
+            productTitle: form.productTitle,
+            productUrl: form.productUrl,
+            productImage: form.productImage,
+            brand: form.brand,
+            materials: form.materials.split(",").map(s => s.trim()).filter(Boolean),
+            certifications: form.certifications.split(",").map(s => s.trim()).filter(Boolean),
+            pricePoint: parseFloat(form.currentPrice) || 0,
+            category: form.category,
+          } : undefined,
+          supplierValidation: form.supplierName ? {
+            supplierName: form.supplierName,
+            supplierUrl: form.supplierUrl,
+            reliabilityScore: parseFloat(form.supplierReliability) || 0,
+            shippingSpeed: parseFloat(form.shippingSpeed) || 0,
+            returnRate: parseFloat(form.returnRate) || 0,
+            orderFulfillmentRate: parseFloat(form.fulfillmentRate) || 0,
+            communicationScore: parseFloat(form.communicationScore) || 0,
+            yearsInBusiness: parseFloat(form.yearsInBusiness) || 0,
+            certifications: form.certifications.split(",").map(s => s.trim()).filter(Boolean),
+            paymentMethods: ["PayPal", "Escrow"],
+            minOrderQuantity: parseFloat(form.moq) || 0,
+            sampleAvailable: form.sampleAvailable,
+          } : undefined,
+          competitionAnalysis: (form.comp1Name || form.comp2Name) ? {
+            productTitle: form.productTitle,
+            category: form.category,
+            currentPrice: parseFloat(form.currentPrice) || 0,
+            topCompetitors: [
+              form.comp1Name ? {
+                name: form.comp1Name,
+                price: parseFloat(form.comp1Price) || 0,
+                rating: parseFloat(form.comp1Rating) || 0,
+                reviewCount: parseFloat(form.comp1Reviews) || 0,
+                monthlySales: 0,
+                platform: form.comp1Platform,
+              } : null,
+              form.comp2Name ? {
+                name: form.comp2Name,
+                price: parseFloat(form.comp2Price) || 0,
+                rating: parseFloat(form.comp2Rating) || 0,
+                reviewCount: parseFloat(form.comp2Reviews) || 0,
+                monthlySales: 0,
+                platform: form.comp2Platform,
+              } : null,
+            ].filter(Boolean) as { name: string; price: number; rating: number; reviewCount: number; monthlySales: number; platform: string }[],
+            averageMarketPrice: parseFloat(form.avgMarketPrice) || 0,
+            marketShareData: [],
+          } : undefined,
+          riskAssessment: {
+            productTitle: form.productTitle,
+            category: form.category,
+            materials: form.materials.split(",").map(s => s.trim()).filter(Boolean),
+            targetMarkets: form.targetMarkets.split(",").map(s => s.trim()).filter(Boolean),
+            shippingMethods: form.shippingMethods.split(",").map(s => s.trim()).filter(Boolean),
+            pricePoint: parseFloat(form.currentPrice) || 0,
+            isBranded: form.isBranded,
+            hasVariants: form.hasVariants,
+            weight: parseFloat(form.weight) || 0,
+            dimensions: {
+              length: parseFloat(form.dimLength) || 0,
+              width: parseFloat(form.dimWidth) || 0,
+              height: parseFloat(form.dimHeight) || 0,
+            },
+          },
+          marketIntelligence: {
+            productTitle: form.productTitle,
+            category: form.category,
+            targetAudience: form.targetAudience,
+            pricePoint: parseFloat(form.currentPrice) || 0,
+            monthlySalesEstimate: parseFloat(form.monthlySalesEstimate) || 0,
+          },
+          bundleAnalysis: {
+            productTitle: form.productTitle,
+            category: form.category,
+            pricePoint: parseFloat(form.currentPrice) || 0,
+            averageOrderValue: parseFloat(form.avgOrderValue) || 0,
+            customerSegment: form.customerSegment,
+          },
         }),
       });
 
@@ -209,6 +338,7 @@ export default function ProductValidationPage() {
       setError("Network error — please try again.");
     } finally {
       setLoading(false);
+      setEnginesRunning([]);
     }
   };
 
@@ -219,126 +349,321 @@ export default function ProductValidationPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 pb-16 md:pb-24">
-      <div>
-        <h1 className="font-display text-2xl font-bold text-foreground mb-1">Product Validation Engine</h1>
-        <p className="text-sm text-muted-foreground">Score products on 10+ criteria and find your next winner</p>
+    <div className="max-w-7xl mx-auto space-y-6 pb-16 md:pb-24">
+      {/* Hero Header */}
+      <div className="text-center space-y-2">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/20 mb-2">
+          <Sparkles className="h-3.5 w-3.5 text-accent" />
+          <span className="text-[11px] font-medium text-accent">AI-Powered Analysis</span>
+        </div>
+        <h1 className="font-display text-3xl font-bold text-foreground">Product Validation Engine</h1>
+        <p className="text-sm text-muted-foreground max-w-lg mx-auto">
+          Score products on 10+ criteria across 11 engines. Get instant insights on trend, profit, risk, and market potential.
+        </p>
       </div>
 
-      {/* Product Context Banner */}
-      {hasProductContext && (
-        <div className="glass rounded-2xl p-4 border border-accent/10 bg-accent/5">
-          <div className="flex items-center gap-3">
-            {form.productImage && (
-              <div className="w-12 h-12 rounded-xl overflow-hidden bg-surface shrink-0">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={form.productImage} alt={form.productTitle} className="w-full h-full object-cover" />
-              </div>
-            )}
-            {!form.productImage && (
-              <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
-                <Package className="h-5 w-5 text-accent" />
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-muted-foreground">Validating product</p>
-              <p className="text-sm font-semibold text-foreground truncate">{form.productTitle || "Untitled"}</p>
+      {/* Quick Validate Bar */}
+      <div className="glass rounded-2xl p-4 border border-accent/10">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="lg:col-span-2">
+              <label className="text-[10px] text-muted-foreground mb-1 block">Product Title *</label>
+              <input
+                type="text"
+                value={form.productTitle}
+                onChange={(e) => update("productTitle", e.target.value)}
+                placeholder="e.g. Wireless Bluetooth Earbuds"
+                className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-accent/30 focus:border-accent/30 transition-all"
+              />
             </div>
-            {form.currentPrice && (
-              <div className="text-right shrink-0">
-                <p className="text-xs text-muted-foreground">Price</p>
-                <p className="text-sm font-bold text-accent">${parseFloat(form.currentPrice).toFixed(2)}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1 space-y-4">
-          <Section title="Basic Info" defaultOpen={true}>
-            <Input label="Product Title" value={form.productTitle} onChange={(v) => update("productTitle", v)} placeholder="e.g. Wireless Bluetooth Earbuds" />
-            <Input label="Product Image URL" value={form.productImage} onChange={(v) => update("productImage", v)} placeholder="https://..." />
-            <Input label="Product URL" value={form.productUrl} onChange={(v) => update("productUrl", v)} placeholder="https://..." />
-          </Section>
-
-          <Section title="Trend Velocity">
-            <Input label="Current Search Volume" value={form.searchVolume} onChange={(v) => update("searchVolume", v)} type="number" />
-            <Input label="Historical Volumes (comma-sep)" value={form.historicalVolumes} onChange={(v) => update("historicalVolumes", v)} placeholder="10000,15000,22000..." />
-            <Input label="Current Seller Count" value={form.sellerCount} onChange={(v) => update("sellerCount", v)} type="number" />
-            <Input label="Historical Sellers (comma-sep)" value={form.historicalSellers} onChange={(v) => update("historicalSellers", v)} placeholder="10,15,20..." />
-            <Input label="Current Price" value={form.currentPrice} onChange={(v) => update("currentPrice", v)} type="number" />
-            <Input label="Historical Prices (comma-sep)" value={form.historicalPrices} onChange={(v) => update("historicalPrices", v)} placeholder="34.99,32.99..." />
-          </Section>
-
-          <Section title="Saturation Index">
-            <Input label="Top Seller Market Share %" value={form.topSellerShare} onChange={(v) => update("topSellerShare", v)} type="number" />
-            <Input label="Avg Seller Rating" value={form.avgRating} onChange={(v) => update("avgRating", v)} type="number" />
-            <Input label="Avg Seller Reviews" value={form.avgReviews} onChange={(v) => update("avgReviews", v)} type="number" />
-            <div className="grid grid-cols-2 gap-2">
-              <Input label="Price Min" value={form.priceMin} onChange={(v) => update("priceMin", v)} type="number" />
-              <Input label="Price Max" value={form.priceMax} onChange={(v) => update("priceMax", v)} type="number" />
-            </div>
-            <Input label="Unique Variants" value={form.uniqueVariants} onChange={(v) => update("uniqueVariants", v)} type="number" />
-            <Input label="Platform Count" value={form.platformCount} onChange={(v) => update("platformCount", v)} type="number" />
-          </Section>
-
-          <Section title="Profit Potential">
-            <div className="grid grid-cols-2 gap-2">
-              <Input label="Product Cost" value={form.productCost} onChange={(v) => update("productCost", v)} type="number" />
-              <Input label="Selling Price" value={form.sellingPrice} onChange={(v) => update("sellingPrice", v)} type="number" />
-            </div>
-            <Input label="Shipping Cost" value={form.shippingCost} onChange={(v) => update("shippingCost", v)} type="number" />
-            <Input label="Platform Fee %" value={form.platformFee} onChange={(v) => update("platformFee", v)} type="number" />
-            <Input label="Ad Cost Per Click" value={form.adCostPerClick} onChange={(v) => update("adCostPerClick", v)} type="number" />
-            <Input label="Conversion Rate %" value={form.conversionRate} onChange={(v) => update("conversionRate", v)} type="number" />
-            <Input label="Return Rate %" value={form.returnRate} onChange={(v) => update("returnRate", v)} type="number" />
-            <Input label="Monthly Ad Budget" value={form.monthlyBudget} onChange={(v) => update("monthlyBudget", v)} type="number" />
-            <Input label="Est. Monthly Sales" value={form.monthlySales} onChange={(v) => update("monthlySales", v)} type="number" />
-          </Section>
-
-          <Section title="Seasonal Demand">
-            <Input label="Category" value={form.category} onChange={(v) => update("category", v)} placeholder="Electronics, Fashion..." />
-            <Input label="Monthly Search Volumes (12, comma-sep)" value={form.monthlySearchVolumes} onChange={(v) => update("monthlySearchVolumes", v)} />
-            <Input label="Monthly Sales Data (12, comma-sep)" value={form.monthlySalesData} onChange={(v) => update("monthlySalesData", v)} />
-            <Input label="Monthly Revenue (12, comma-sep)" value={form.monthlyRevenue} onChange={(v) => update("monthlyRevenue", v)} />
-          </Section>
-
-          <Section title="Additional Criteria">
-            <Input label="Review Score (0-5)" value={form.reviewScore} onChange={(v) => update("reviewScore", v)} type="number" />
-            <Input label="Review Count" value={form.reviewCount} onChange={(v) => update("reviewCount", v)} type="number" />
-            <Input label="Supplier Reliability (0-100)" value={form.supplierReliability} onChange={(v) => update("supplierReliability", v)} type="number" />
-            <Input label="Shipping Speed (days)" value={form.shippingSpeed} onChange={(v) => update("shippingSpeed", v)} type="number" />
             <div>
-              <label className="text-[10px] text-muted-foreground mb-1 block">Competition Level</label>
-              <select
-                value={form.competitionLevel}
-                onChange={(e) => update("competitionLevel", e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="very-high">Very High</option>
-              </select>
+              <label className="text-[10px] text-muted-foreground mb-1 block">Price</label>
+              <input
+                type="number"
+                value={form.currentPrice}
+                onChange={(e) => update("currentPrice", e.target.value)}
+                placeholder="29.99"
+                className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-accent/30 focus:border-accent/30 transition-all"
+              />
             </div>
-          </Section>
-
+            <div>
+              <label className="text-[10px] text-muted-foreground mb-1 block">Category</label>
+              <input
+                type="text"
+                value={form.category}
+                onChange={(e) => update("category", e.target.value)}
+                placeholder="Electronics"
+                className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-accent/30 focus:border-accent/30 transition-all"
+              />
+            </div>
+          </div>
           <div className="flex gap-2">
             <button
               onClick={handleValidate}
               disabled={loading || !form.productTitle.trim()}
-              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-accent hover:bg-accent-hover text-white font-semibold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-accent hover:bg-accent-hover text-white font-semibold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              {loading ? "Analyzing..." : "Run Validation"}
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+              {loading ? "Analyzing..." : "Validate"}
             </button>
-            <button onClick={handleReset} className="px-4 py-3 rounded-xl bg-surface border border-border text-muted-foreground hover:text-foreground transition-colors" title="Reset">
+            <button onClick={handleReset} className="px-3 py-2.5 rounded-xl bg-surface border border-border text-muted-foreground hover:text-foreground transition-colors" title="Reset">
               <RotateCcw className="h-4 w-4" />
             </button>
           </div>
         </div>
 
+        {/* Context Banner */}
+        {hasProductContext && (
+          <div className="mt-3 flex items-center gap-3 p-2.5 rounded-xl bg-accent/5 border border-accent/10">
+            {form.productImage && (
+              <div className="w-10 h-10 rounded-lg overflow-hidden bg-surface shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={form.productImage} alt={form.productTitle} className="w-full h-full object-cover" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground">Validating</p>
+              <p className="text-sm font-medium text-foreground truncate">{form.productTitle || "Untitled"}</p>
+            </div>
+            {form.currentPrice && (
+              <span className="text-sm font-bold text-accent shrink-0">${parseFloat(form.currentPrice).toFixed(2)}</span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left: Tabbed Form */}
+        <div className="lg:col-span-1 space-y-4">
+          {/* Tab Navigation */}
+          <div className="flex gap-1 p-1 rounded-xl bg-surface/50 border border-border">
+            {TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-[11px] font-medium transition-all ${
+                    isActive
+                      ? "bg-accent/10 text-accent border border-accent/20"
+                      : "text-muted-foreground hover:text-foreground hover:bg-surface/50"
+                  }`}
+                >
+                  <Icon className={`h-3.5 w-3.5 ${isActive ? tab.color : ""}`} />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Tab Content */}
+          <div className="glass rounded-2xl p-4 border border-border min-h-[400px]">
+            {activeTab === "core" && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-7 w-7 rounded-lg bg-blue-400/10 flex items-center justify-center">
+                    <BarChart3 className="h-3.5 w-3.5 text-blue-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Core Metrics</h3>
+                    <p className="text-[10px] text-muted-foreground">Essential data for validation</p>
+                  </div>
+                </div>
+
+                <Input label="Product Image URL" value={form.productImage} onChange={(v) => update("productImage", v)} placeholder="https://..." />
+                <Input label="Product URL" value={form.productUrl} onChange={(v) => update("productUrl", v)} placeholder="https://..." />
+
+                <div className="border-t border-border pt-3">
+                  <p className="text-[10px] text-muted-foreground font-semibold mb-2 uppercase tracking-wider">Trend Data</p>
+                  <Input label="Search Volume" value={form.searchVolume} onChange={(v) => update("searchVolume", v)} type="number" />
+                  <Input label="Historical Volumes" value={form.historicalVolumes} onChange={(v) => update("historicalVolumes", v)} placeholder="10k,15k,22k..." />
+                  <Input label="Seller Count" value={form.sellerCount} onChange={(v) => update("sellerCount", v)} type="number" />
+                  <Input label="Historical Sellers" value={form.historicalSellers} onChange={(v) => update("historicalSellers", v)} placeholder="10,15,20..." />
+                </div>
+
+                <div className="border-t border-border pt-3">
+                  <p className="text-[10px] text-muted-foreground font-semibold mb-2 uppercase tracking-wider">Saturation Data</p>
+                  <Input label="Top Seller Market Share %" value={form.topSellerShare} onChange={(v) => update("topSellerShare", v)} type="number" />
+                  <Input label="Avg Seller Rating" value={form.avgRating} onChange={(v) => update("avgRating", v)} type="number" />
+                  <Input label="Avg Seller Reviews" value={form.avgReviews} onChange={(v) => update("avgReviews", v)} type="number" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input label="Price Min" value={form.priceMin} onChange={(v) => update("priceMin", v)} type="number" />
+                    <Input label="Price Max" value={form.priceMax} onChange={(v) => update("priceMax", v)} type="number" />
+                  </div>
+                </div>
+
+                <div className="border-t border-border pt-3">
+                  <p className="text-[10px] text-muted-foreground font-semibold mb-2 uppercase tracking-wider">Profit Data</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input label="Product Cost" value={form.productCost} onChange={(v) => update("productCost", v)} type="number" />
+                    <Input label="Selling Price" value={form.sellingPrice} onChange={(v) => update("sellingPrice", v)} type="number" />
+                  </div>
+                  <Input label="Shipping Cost" value={form.shippingCost} onChange={(v) => update("shippingCost", v)} type="number" />
+                  <Input label="Platform Fee %" value={form.platformFee} onChange={(v) => update("platformFee", v)} type="number" />
+                  <Input label="Ad Cost Per Click" value={form.adCostPerClick} onChange={(v) => update("adCostPerClick", v)} type="number" />
+                  <Input label="Conversion Rate %" value={form.conversionRate} onChange={(v) => update("conversionRate", v)} type="number" />
+                  <Input label="Return Rate %" value={form.returnRate} onChange={(v) => update("returnRate", v)} type="number" />
+                  <Input label="Monthly Ad Budget" value={form.monthlyBudget} onChange={(v) => update("monthlyBudget", v)} type="number" />
+                  <Input label="Est. Monthly Sales" value={form.monthlySales} onChange={(v) => update("monthlySales", v)} type="number" />
+                </div>
+
+                <div className="border-t border-border pt-3">
+                  <p className="text-[10px] text-muted-foreground font-semibold mb-2 uppercase tracking-wider">Seasonal Data</p>
+                  <Input label="Monthly Search Volumes (12)" value={form.monthlySearchVolumes} onChange={(v) => update("monthlySearchVolumes", v)} />
+                  <Input label="Monthly Sales Data (12)" value={form.monthlySalesData} onChange={(v) => update("monthlySalesData", v)} />
+                  <Input label="Monthly Revenue (12)" value={form.monthlyRevenue} onChange={(v) => update("monthlyRevenue", v)} />
+                </div>
+
+                <div className="border-t border-border pt-3">
+                  <p className="text-[10px] text-muted-foreground font-semibold mb-2 uppercase tracking-wider">Additional Criteria</p>
+                  <Input label="Review Score (0-5)" value={form.reviewScore} onChange={(v) => update("reviewScore", v)} type="number" />
+                  <Input label="Review Count" value={form.reviewCount} onChange={(v) => update("reviewCount", v)} type="number" />
+                  <Input label="Supplier Reliability (0-100)" value={form.supplierReliability} onChange={(v) => update("supplierReliability", v)} type="number" />
+                  <Input label="Shipping Speed (days)" value={form.shippingSpeed} onChange={(v) => update("shippingSpeed", v)} type="number" />
+                  <div>
+                    <label className="text-[10px] text-muted-foreground mb-1 block">Competition Level</label>
+                    <select
+                      value={form.competitionLevel}
+                      onChange={(e) => update("competitionLevel", e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30"
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="very-high">Very High</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "product" && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-7 w-7 rounded-lg bg-emerald-400/10 flex items-center justify-center">
+                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Product Authenticity</h3>
+                    <p className="text-[10px] text-muted-foreground">Verify product legitimacy</p>
+                  </div>
+                </div>
+                <Input label="Brand" value={form.brand} onChange={(v) => update("brand", v)} placeholder="e.g. Sony, Nike, Generic" />
+                <Input label="Materials (comma-sep)" value={form.materials} onChange={(v) => update("materials", v)} placeholder="e.g. plastic, metal, silicone" />
+                <Input label="Certifications (comma-sep)" value={form.certifications} onChange={(v) => update("certifications", v)} placeholder="e.g. CE, FCC, UL" />
+              </div>
+            )}
+
+            {activeTab === "supply" && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-7 w-7 rounded-lg bg-amber-400/10 flex items-center justify-center">
+                    <Truck className="h-3.5 w-3.5 text-amber-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Supplier & Competition</h3>
+                    <p className="text-[10px] text-muted-foreground">Supply chain analysis</p>
+                  </div>
+                </div>
+
+                <div className="border-b border-border pb-3">
+                  <p className="text-[10px] text-muted-foreground font-semibold mb-2 uppercase tracking-wider">Supplier Details</p>
+                  <Input label="Supplier Name" value={form.supplierName} onChange={(v) => update("supplierName", v)} placeholder="e.g. Alibaba Supplier" />
+                  <Input label="Supplier URL" value={form.supplierUrl} onChange={(v) => update("supplierUrl", v)} placeholder="https://..." />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input label="Years in Business" value={form.yearsInBusiness} onChange={(v) => update("yearsInBusiness", v)} type="number" />
+                    <Input label="Fulfillment %" value={form.fulfillmentRate} onChange={(v) => update("fulfillmentRate", v)} type="number" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input label="Communication (0-100)" value={form.communicationScore} onChange={(v) => update("communicationScore", v)} type="number" />
+                    <Input label="Min Order Qty" value={form.moq} onChange={(v) => update("moq", v)} type="number" />
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <input type="checkbox" checked={form.sampleAvailable} onChange={(e) => update("sampleAvailable", e.target.checked)} className="rounded" />
+                    <label className="text-[10px] text-muted-foreground">Sample Available</label>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[10px] text-muted-foreground font-semibold mb-2 uppercase tracking-wider">Competition</p>
+                  <Input label="Average Market Price" value={form.avgMarketPrice} onChange={(v) => update("avgMarketPrice", v)} type="number" />
+
+                  <div className="mt-2 p-2.5 rounded-xl bg-surface/30">
+                    <p className="text-[10px] text-muted-foreground font-semibold mb-2">Competitor 1</p>
+                    <Input label="Name" value={form.comp1Name} onChange={(v) => update("comp1Name", v)} placeholder="Competitor name" />
+                    <div className="grid grid-cols-3 gap-2">
+                      <Input label="Price" value={form.comp1Price} onChange={(v) => update("comp1Price", v)} type="number" />
+                      <Input label="Rating" value={form.comp1Rating} onChange={(v) => update("comp1Rating", v)} type="number" />
+                      <Input label="Reviews" value={form.comp1Reviews} onChange={(v) => update("comp1Reviews", v)} type="number" />
+                    </div>
+                  </div>
+
+                  <div className="mt-2 p-2.5 rounded-xl bg-surface/30">
+                    <p className="text-[10px] text-muted-foreground font-semibold mb-2">Competitor 2</p>
+                    <Input label="Name" value={form.comp2Name} onChange={(v) => update("comp2Name", v)} placeholder="Competitor name" />
+                    <div className="grid grid-cols-3 gap-2">
+                      <Input label="Price" value={form.comp2Price} onChange={(v) => update("comp2Price", v)} type="number" />
+                      <Input label="Rating" value={form.comp2Rating} onChange={(v) => update("comp2Rating", v)} type="number" />
+                      <Input label="Reviews" value={form.comp2Reviews} onChange={(v) => update("comp2Reviews", v)} type="number" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "risk" && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-7 w-7 rounded-lg bg-red-400/10 flex items-center justify-center">
+                    <AlertOctagon className="h-3.5 w-3.5 text-red-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Risk & Market Intel</h3>
+                    <p className="text-[10px] text-muted-foreground">Compliance & market data</p>
+                  </div>
+                </div>
+
+                <div className="border-b border-border pb-3">
+                  <p className="text-[10px] text-muted-foreground font-semibold mb-2 uppercase tracking-wider">Shipping & Compliance</p>
+                  <Input label="Target Markets (comma-sep)" value={form.targetMarkets} onChange={(v) => update("targetMarkets", v)} placeholder="US,UK,CA" />
+                  <Input label="Shipping Methods (comma-sep)" value={form.shippingMethods} onChange={(v) => update("shippingMethods", v)} placeholder="standard,express" />
+                  <Input label="Weight (lbs)" value={form.weight} onChange={(v) => update("weight", v)} type="number" />
+                  <div className="grid grid-cols-3 gap-2">
+                    <Input label="Length (in)" value={form.dimLength} onChange={(v) => update("dimLength", v)} type="number" />
+                    <Input label="Width (in)" value={form.dimWidth} onChange={(v) => update("dimWidth", v)} type="number" />
+                    <Input label="Height (in)" value={form.dimHeight} onChange={(v) => update("dimHeight", v)} type="number" />
+                  </div>
+                  <div className="flex items-center gap-4 mt-2">
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox" checked={form.isBranded} onChange={(e) => update("isBranded", e.target.checked)} className="rounded" />
+                      <label className="text-[10px] text-muted-foreground">Branded</label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox" checked={form.hasVariants} onChange={(e) => update("hasVariants", e.target.checked)} className="rounded" />
+                      <label className="text-[10px] text-muted-foreground">Has Variants</label>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[10px] text-muted-foreground font-semibold mb-2 uppercase tracking-wider">Market Intelligence</p>
+                  <Input label="Target Audience" value={form.targetAudience} onChange={(v) => update("targetAudience", v)} placeholder="e.g. 25-44, fitness enthusiasts" />
+                  <Input label="Monthly Sales Estimate" value={form.monthlySalesEstimate} onChange={(v) => update("monthlySalesEstimate", v)} type="number" />
+                </div>
+
+                <div>
+                  <p className="text-[10px] text-muted-foreground font-semibold mb-2 uppercase tracking-wider">Bundle & Upsell</p>
+                  <Input label="Average Order Value" value={form.avgOrderValue} onChange={(v) => update("avgOrderValue", v)} type="number" />
+                  <Input label="Customer Segment" value={form.customerSegment} onChange={(v) => update("customerSegment", v)} placeholder="e.g. general, premium, budget" />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right: Results */}
         <div className="lg:col-span-2 space-y-4">
           {error && (
             <div className="glass rounded-2xl p-4 border border-red-400/20 bg-red-400/5">
@@ -350,58 +675,138 @@ export default function ProductValidationPage() {
             <div className="glass rounded-2xl p-12 text-center">
               <Loader2 className="h-12 w-12 text-accent mx-auto mb-4 animate-spin" />
               <h3 className="font-display text-lg font-semibold text-foreground mb-2">Running Validation...</h3>
-              <p className="text-sm text-muted-foreground">Analyzing 10+ criteria across 5 engines</p>
+              <p className="text-sm text-muted-foreground mb-4">Analyzing 10+ criteria across 11 engines</p>
+              <div className="flex flex-wrap justify-center gap-2">
+                {["Trend", "Saturation", "Profit", "Seasonal", "Score",
+                  "Auth", "Supplier", "Competition", "Risk", "Market", "Bundle"
+                ].map((e) => (
+                  <span key={e} className={`text-[10px] px-3 py-1.5 rounded-full border transition-all ${
+                    enginesRunning.includes(e)
+                      ? "bg-accent/20 text-accent border-accent/40 animate-pulse"
+                      : "bg-surface/50 text-muted-foreground border-border"
+                  }`}>{e}</span>
+                ))}
+              </div>
             </div>
           )}
 
           {!loading && !result && (
             <div className="glass rounded-2xl p-12 text-center">
-              <Sparkles className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
+              <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-4">
+                <Sparkles className="h-8 w-8 text-accent/40" />
+              </div>
               <h3 className="font-display text-lg font-semibold text-foreground mb-2">Ready to Validate</h3>
-              <p className="text-sm text-muted-foreground mb-4">Enter your product details on the left and click &quot;Run Validation&quot; to get a comprehensive analysis</p>
-              <div className="flex flex-wrap justify-center gap-2">
-                {["Trend Velocity", "Saturation Index", "Profit Potential", "Seasonal Demand", "Golden Score"].map((e) => (
-                  <span key={e} className="text-[10px] px-3 py-1.5 rounded-full bg-accent/10 text-accent border border-accent/20">{e}</span>
-                ))}
+              <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
+                Enter your product details and click &quot;Validate&quot; to get a comprehensive analysis across trend, profit, risk, and market dimensions.
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-lg mx-auto">
+                {[
+                  { icon: TrendingUp, label: "Trend Velocity", color: "text-emerald-400" },
+                  { icon: DollarSign, label: "Profit Potential", color: "text-amber-400" },
+                  { icon: AlertOctagon, label: "Risk Assessment", color: "text-red-400" },
+                  { icon: ShieldCheck, label: "Authenticity", color: "text-blue-400" },
+                  { icon: Globe, label: "Market Intel", color: "text-cyan-400" },
+                  { icon: ShoppingCart, label: "Bundle Analysis", color: "text-purple-400" },
+                ].map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={item.label} className="flex items-center gap-2 p-2.5 rounded-xl bg-surface/30 border border-border">
+                      <Icon className={`h-4 w-4 ${item.color}`} />
+                      <span className="text-[10px] text-muted-foreground">{item.label}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
 
           {result && (
             <>
+              <ValidationHeader
+                title={form.productTitle}
+                imageUrl={form.productImage}
+                price={parseFloat(form.currentPrice) || undefined}
+                rank={result.goldenProduct.rank}
+                overallScore={result.goldenProduct.score}
+              />
+
+              <RiskSummaryBar
+                authenticityScore={result.productAuthenticity?.score ?? 0}
+                supplierScore={result.supplierValidation?.score ?? 0}
+                riskScore={result.riskAssessment?.score ?? 0}
+                marketScore={result.marketIntelligence?.score ?? 0}
+              />
+
               <GoldenScoreBoard data={result.goldenProduct} />
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <TrendVelocityCard data={result.trendVelocity} />
                 <SaturationGauge data={result.saturation} />
               </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <ProfitPotentialPanel data={result.profitPotential} />
                 <SeasonalDemandChart data={result.seasonalDemand} />
+              </div>
+
+              {result.productAuthenticity && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <ProductAuthenticityCard data={result.productAuthenticity} />
+                  {result.supplierValidation && <SupplierValidationCard data={result.supplierValidation} />}
+                </div>
+              )}
+
+              {result.competitionAnalysis && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <CompetitionAnalysisCard data={result.competitionAnalysis} />
+                  {result.riskAssessment && <RiskAssessmentCard data={result.riskAssessment} />}
+                </div>
+              )}
+
+              {result.marketIntelligence && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <MarketIntelligenceCard data={result.marketIntelligence} />
+                  {result.bundleAnalysis && <BundleOpportunityCard data={result.bundleAnalysis} />}
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <ValidationExportButton data={result as unknown as Record<string, unknown>} />
               </div>
             </>
           )}
         </div>
       </div>
 
+      {/* Recent Validations */}
       {history.length > 0 && (
-        <div className="mt-8">
-          <div className="flex items-center gap-2 mb-4">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <h3 className="font-display text-sm font-semibold text-foreground">Recent Validations</h3>
+        <div className="glass rounded-2xl p-4 border border-border">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <h3 className="font-display text-sm font-semibold text-foreground">Recent Validations</h3>
+            </div>
+            <span className="text-[10px] text-muted-foreground">{history.length} total</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {history.slice(0, 6).map((v) => (
-              <div key={v.id} className="glass rounded-xl p-3 hover:border-accent/20 transition-colors cursor-pointer" onClick={() => {
+              <div key={v.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-surface/50 transition-colors cursor-pointer group" onClick={() => {
                 update("productTitle", v.productTitle);
               }}>
-                <p className="text-sm font-medium text-foreground truncate mb-1">{v.productTitle}</p>
-                <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                  v.goldenRank === "S" ? "bg-yellow-400/10" : v.goldenRank === "A" ? "bg-emerald-400/10" :
+                  v.goldenRank === "B" ? "bg-blue-400/10" : v.goldenRank === "C" ? "bg-amber-400/10" : "bg-red-400/10"
+                }`}>
                   <span className={`text-xs font-bold ${
                     v.goldenRank === "S" ? "text-yellow-400" : v.goldenRank === "A" ? "text-emerald-400" :
                     v.goldenRank === "B" ? "text-blue-400" : v.goldenRank === "C" ? "text-amber-400" : "text-red-400"
-                  }`}>{v.goldenRank}-Tier</span>
-                  <span className="text-[10px] text-muted-foreground">{v.goldenScore}/100</span>
+                  }`}>{v.goldenRank}</span>
                 </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-foreground truncate">{v.productTitle}</p>
+                  <p className="text-[10px] text-muted-foreground">{v.goldenScore}/100</p>
+                </div>
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             ))}
           </div>

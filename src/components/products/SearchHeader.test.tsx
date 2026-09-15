@@ -30,7 +30,7 @@ describe("SearchHeader", () => {
         onRecentClick={vi.fn()}
       />
     );
-    expect(screen.getByPlaceholderText(/search/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/looking for/i)).toBeInTheDocument();
   });
 
   it("renders platform chips", () => {
@@ -166,7 +166,7 @@ describe("SearchHeader", () => {
       />
     );
 
-    const input = screen.getByPlaceholderText(/search/i);
+    const input = screen.getByPlaceholderText(/looking for/i);
     fireEvent.focus(input);
 
     expect(screen.getByText("earbuds")).toBeInTheDocument();
@@ -215,7 +215,7 @@ describe("SearchHeader", () => {
       />
     );
 
-    const input = screen.getByPlaceholderText(/search/i);
+    const input = screen.getByPlaceholderText(/looking for/i);
     fireEvent.focus(input);
 
     const recentItem = screen.getByText("earbuds");
@@ -263,7 +263,7 @@ describe("SearchHeader", () => {
       />
     );
 
-    const input = screen.getByPlaceholderText(/search/i);
+    const input = screen.getByPlaceholderText(/looking for/i);
     fireEvent.keyDown(input, { key: "Enter" });
 
     expect(onSearch).toHaveBeenCalled();
