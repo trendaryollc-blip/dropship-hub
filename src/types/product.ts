@@ -77,6 +77,10 @@ export interface ProductLifecycle {
   stageEnteredAt: string;
   daysInStage: number;
   totalDaysTracked: number;
+  supplierUrl: string;
+  storeUrl: string;
+  notes: string;
+  archived: boolean;
   snapshots: LifecycleSnapshot[];
   metrics: {
     totalOrders: number;
@@ -89,6 +93,7 @@ export interface ProductLifecycle {
   };
   alerts: LifecycleAlert[];
   recommendations: string[];
+  createdAt?: string;
 }
 
 export interface LifecycleSnapshot {
@@ -109,6 +114,7 @@ export interface LifecycleAlert {
   title: string;
   description: string;
   detectedAt: string;
+  read?: boolean;
 }
 
 export interface LifecycleStageInfo {

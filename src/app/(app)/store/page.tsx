@@ -1,19 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAPI } from "@/hooks/useAPI";
 import { useToast } from "@/components/ui/Toast";
 import {
-  Settings, Loader2, Package, Store as StoreIcon, Link2, ArrowRight, LayoutDashboard,
+  Settings, Package, Store as StoreIcon, Link2, ArrowRight, LayoutDashboard, Clock, Bell,
 } from "lucide-react";
 import ConnectedStoresList, { type ConnectedStore } from "@/components/stores/ConnectedStoresList";
 import { type PushedProduct } from "@/components/stores/PushedProductsList";
 import StoreCuratedTab from "@/components/stores/StoreCuratedTab";
 import StoreStatsBar from "@/components/stores/StoreStatsBar";
 import StoreHealthPanel from "@/components/stores/StoreHealthPanel";
-import GlobalStoreChat from "@/components/stores/GlobalStoreChat";
+import StoreChat from "@/components/stores/StoreChat";
+import PriceRulesPanel from "@/components/stores/PriceRulesPanel";
+import ScheduledActions from "@/components/stores/ScheduledActions";
+import { SWR_REFRESH_INTERVALS } from "@/components/stores/constants";
+import { StorePageSkeleton } from "@/components/stores/StoreSkeletons";
+import { PageErrorBoundary } from "@/components/ui/PageErrorBoundary";
 import { safeFetch } from "@/lib/safe-fetch";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
@@ -21,15 +26,27 @@ export default function StorePage() {
   const { user } = useAuth();
   const { success, error: toastError } = useToast();
   const uid = user?.uid || "";
-  const { data: connData, mutate: refetchConnections } = useAPI<{ connections?: ConnectedStore[] }>(uid ? `/api/store/connections?uid=${uid}` : null);
-  const { data: pushData } = useAPI<{ products?: PushedProduct[] }>(uid ? `/api/store/push?uid=${uid}` : null);
+  const { data: connData, mutate: refetchConnections } = useAPI<{ connections?: ConnectedStore[] }>(uid ? `/api/store/connections?uid=${uid}` : null, { refreshInterval: SWR_REFRESH_INTERVALS.connections });
+  const { data: pushData } = useAPI<{ products?: PushedProduct[] }>(uid ? `/api/store/push?uid=${uid}` : null, { refreshInterval: SWR_REFRESH_INTERVALS.connections });
   const connections = connData?.connections || [];
   const pushedProducts = pushData?.products || [];
   const loading = !user || (!connData && !pushData);
   const [syncing, setSyncing] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"stores" | "products">("stores");
+  const [activeTab, setActiveTab] = useState<"stores" | "products" | "automation" | "alerts">("stores");
   const [disconnectTarget, setDisconnectTarget] = useState<string | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [reorderedConnections, setReorderedConnections] = useState<ConnectedStore[] | null>(null);
+
+  const displayConnections = reorderedConnections || connections;
+
+  const handleReorder = useCallback((reordered: ConnectedStore[]) => {
+    setReorderedConnections(reordered);
+  }, []);
+
+  // Reset reorder when connections change from server
+  useEffect(() => {
+    setReorderedConnections(null);
+  }, [connData]);
 
   const handleDisconnect = (storeId: string) => { setDisconnectTarget(storeId); };
 
@@ -56,7 +73,7 @@ export default function StorePage() {
     setSyncing(store.id);
     try {
       const token = await user.getIdToken();
-      const result = await safeFetch<{ error?: string; success?: boolean }>("/api/store/trendaryo", {
+      const _result = await safeFetch<{ error?: string; success?: boolean }>("/api/store/trendaryo", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ action: "syncProducts", authToken: store.apiKey }),
@@ -71,10 +88,11 @@ export default function StorePage() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-5 w-5 text-accent animate-spin" /></div>;
+    return <StorePageSkeleton />;
   }
 
   return (
+    <PageErrorBoundary>
     <div className="max-w-7xl mx-auto space-y-5 pb-24">
       <div className="flex items-start justify-between">
         <div>
@@ -112,12 +130,18 @@ export default function StorePage() {
         </Link>
       )}
 
-      <div className="flex gap-1 p-1 rounded-xl bg-surface border border-border max-w-md">
+      <div className="flex gap-1 p-1 rounded-xl bg-surface border border-border max-w-lg">
         <button onClick={() => setActiveTab("stores")} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "stores" ? "bg-accent text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background/50"}`}>
           <Link2 className="h-3.5 w-3.5" /> Connected Stores
         </button>
         <button onClick={() => setActiveTab("products")} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "products" ? "bg-accent text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background/50"}`}>
           <Package className="h-3.5 w-3.5" /> Pushed Products ({pushedProducts.length})
+        </button>
+        <button onClick={() => setActiveTab("automation")} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "automation" ? "bg-accent text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background/50"}`}>
+          <Clock className="h-3.5 w-3.5" /> Automation
+        </button>
+        <button onClick={() => setActiveTab("alerts")} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "alerts" ? "bg-accent text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background/50"}`}>
+          <Bell className="h-3.5 w-3.5" /> Price Alerts
         </button>
       </div>
 
@@ -126,7 +150,7 @@ export default function StorePage() {
           {connections.length > 0 && (
             <div>
               <h2 className="font-display text-lg font-semibold text-foreground mb-4">Your Connected Stores</h2>
-              <ConnectedStoresList stores={connections} syncing={syncing} onRefresh={refetchConnections} onSync={handleSync} onDisconnect={handleDisconnect} />
+              <ConnectedStoresList stores={displayConnections} syncing={syncing} onRefresh={refetchConnections} onSync={handleSync} onDisconnect={handleDisconnect} onReorder={handleReorder} />
             </div>
           )}
           <StoreHealthPanel connections={connections} />
@@ -185,7 +209,15 @@ export default function StorePage() {
         </div>
       )}
 
-      <GlobalStoreChat connections={connections} pushedProducts={pushedProducts} />
+      {activeTab === "automation" && (
+        <ScheduledActions connections={connections} />
+      )}
+
+      {activeTab === "alerts" && (
+        <PriceRulesPanel connections={connections} />
+      )}
+
+      <StoreChat mode="global" connections={connections} pushedProducts={pushedProducts} />
       <ConfirmDialog
         open={!!disconnectTarget}
         title="Disconnect this store?"
@@ -196,5 +228,6 @@ export default function StorePage() {
         onCancel={() => { setDisconnectTarget(null); setDisconnecting(false); }}
       />
     </div>
+    </PageErrorBoundary>
   );
 }

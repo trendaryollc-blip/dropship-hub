@@ -16,7 +16,10 @@ vi.mock("@/lib/firebase-admin", () => ({
 }));
 
 function buildMockDocs(data: any[]) {
-  return data.map((d) => ({ id: d.id || "doc-1", data: () => d }));
+  return data.map((d) => {
+    const ref = { update: vi.fn() };
+    return { id: d.id || "doc-1", data: () => d, ref };
+  });
 }
 
 function buildQueryChain(docs: any[]) {
@@ -82,6 +85,7 @@ describe("POST /api/monitoring/reprice", () => {
                 productTitle: "Widget",
                 currentPrice: 10,
                 repricingRule: { type: "maintain_margin", value: 30 },
+                priceHistory: [{ date: "2025-01-01", price: 12 }],
                 storeConnections: [],
               }),
             }],
@@ -96,7 +100,7 @@ describe("POST /api/monitoring/reprice", () => {
       collection: vi.fn().mockReturnValue({
         doc: vi.fn().mockReturnValue(userDocRef),
       }),
-      batch: vi.fn().mockReturnValue({ set: vi.fn(), commit: batchCommit }),
+      batch: vi.fn().mockReturnValue({ set: vi.fn(), update: vi.fn(), commit: batchCommit }),
     };
     (getAdminDB as any).mockResolvedValue(mockDb);
 
@@ -121,7 +125,7 @@ describe("POST /api/monitoring/reprice", () => {
         }
         return {};
       }),
-      batch: vi.fn().mockReturnValue({ set: vi.fn(), commit: vi.fn() }),
+      batch: vi.fn().mockReturnValue({ set: vi.fn(), update: vi.fn(), commit: vi.fn() }),
     };
     (getAdminDB as any).mockResolvedValue(mockDb);
 

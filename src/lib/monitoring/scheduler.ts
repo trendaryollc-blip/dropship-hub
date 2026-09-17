@@ -5,6 +5,7 @@ import type { MonitoredProduct, NotificationPayload } from "./types";
 import { dispatchNotifications } from "./notification-dispatcher";
 import { autoDelistProduct } from "./delister";
 import { appendPriceSnapshot } from "./price-history";
+import { checkAndAlertCompetitorUndercuts } from "./competitor-tracker";
 
 interface PriceCheckResult {
   price: number | null;
@@ -190,6 +191,10 @@ export async function runPriceCheckForUser(uid: string): Promise<{
         if (newStockStatus === "out_of_stock" && freshProduct.stockStatus === "in_stock" && product.autoDelist) {
           await autoDelistProduct(uid, doc.id, freshProduct).catch(() => {});
         }
+
+        if (product.competitorUrls && product.competitorUrls.length > 0 && result.price !== null) {
+          await checkAndAlertCompetitorUndercuts(uid, doc.id, freshProduct.productTitle, result.price, product.competitorUrls).catch(() => {});
+        }
       } catch {
         errors++;
         batch.update(doc.ref, { lastChecked: now });
@@ -245,6 +250,10 @@ export async function runPriceCheckForProduct(uid: string, monitoredId: string):
 
     if (stockChanged && newStockStatus === "out_of_stock" && product.autoDelist) {
       await autoDelistProduct(uid, monitoredId, product).catch(() => {});
+    }
+
+    if (product.competitorUrls && product.competitorUrls.length > 0 && result.price !== null) {
+      await checkAndAlertCompetitorUndercuts(uid, monitoredId, product.productTitle, result.price, product.competitorUrls).catch(() => {});
     }
 
     return { priceChanged, stockChanged, newAlerts: notifications.length };

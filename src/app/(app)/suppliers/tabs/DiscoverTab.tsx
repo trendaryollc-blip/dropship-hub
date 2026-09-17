@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import VoiceInput from "@/components/ai/VoiceInput";
 import { useInView } from "@/hooks/useInView";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import type { SupplierProfile } from "@/types/supplier";
 import { badgeConfig, ScoreRing, dataSourceConfig } from "@/components/suppliers/supplier-shared";
 import SupplierFilterPanel, { type SupplierFilters } from "@/components/suppliers/SupplierFilterPanel";
@@ -341,6 +342,8 @@ function DiscoverContent() {
   const aiInputRef = useRef<HTMLInputElement>(null);
   const [activeQuickAction, setActiveQuickAction] = useState<{ id: string; label: string; prompt: string } | null>(null);
 
+  const debouncedSearch = useDebouncedValue(filters.search, 300);
+
   useEffect(() => {
     if (showAIInput && aiInputRef.current) {
       aiInputRef.current.focus();
@@ -386,8 +389,8 @@ function DiscoverContent() {
 
   const filtered = useMemo(() => {
     let result = [...suppliers];
-    if (filters.search) {
-      const q = filters.search.toLowerCase();
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase();
       result = result.filter((s) => s.name.toLowerCase().includes(q) || s.specializations.some((c) => c.toLowerCase().includes(q)) || s.location.toLowerCase().includes(q));
     }
     if (filters.badges.length > 0) result = result.filter((s) => filters.badges.includes(s.trustBadge));
@@ -420,7 +423,7 @@ function DiscoverContent() {
       });
     }
     return result;
-  }, [filters, sortBy, suppliers, hasProductContext]);
+  }, [filters, debouncedSearch, sortBy, suppliers, hasProductContext]);
 
   const hasFilters = filters.badges.length > 0 || filters.locations.length > 0 || filters.minRating > 0 ||
     filters.shippingSpeed !== "" || filters.specializations.length > 0 ||
@@ -633,17 +636,39 @@ function DiscoverContent() {
       {!loading && !error && (
         <div className="flex gap-6">
           {showFilters && (
-            <div className="w-64 shrink-0 hidden lg:block">
-              <SupplierFilterPanel
-                filters={filters}
-                setFilters={setFilters}
-                uniqueLocations={uniqueLocations}
-                allSpecializations={allSpecializations}
-                allCertifications={allCertifications}
-                resultCount={suppliers.length}
-                filteredCount={filtered.length}
-              />
-            </div>
+            <>
+              <div className="w-64 shrink-0 hidden lg:block">
+                <SupplierFilterPanel
+                  filters={filters}
+                  setFilters={setFilters}
+                  uniqueLocations={uniqueLocations}
+                  allSpecializations={allSpecializations}
+                  allCertifications={allCertifications}
+                  resultCount={suppliers.length}
+                  filteredCount={filtered.length}
+                />
+              </div>
+              <div className="lg:hidden fixed inset-0 z-50 flex">
+                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowFilters(false)} />
+                <div className="relative ml-auto w-80 max-w-[85vw] h-full overflow-y-auto bg-background border-l border-border p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-display text-sm font-semibold text-foreground">Filters</h3>
+                    <button onClick={() => setShowFilters(false)} className="p-1.5 rounded-lg hover:bg-surface transition-colors">
+                      <X className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                  </div>
+                  <SupplierFilterPanel
+                    filters={filters}
+                    setFilters={setFilters}
+                    uniqueLocations={uniqueLocations}
+                    allSpecializations={allSpecializations}
+                    allCertifications={allCertifications}
+                    resultCount={suppliers.length}
+                    filteredCount={filtered.length}
+                  />
+                </div>
+              </div>
+            </>
           )}
 
           <div className="flex-1 space-y-4">

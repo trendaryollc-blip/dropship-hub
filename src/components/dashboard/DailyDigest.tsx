@@ -121,7 +121,7 @@ function TrendIndicator({ trend }: { trend: DigestData["weeklyTrend"] }) {
 
 export default function DailyDigest() {
   const { ref, isInView } = useInView({ threshold: 0.1 });
-  const { digest, loading, error, generateDigest } = useDigest();
+  const { currentDigest: digest, generating: loading, generateDigest } = useDigest();
 
   useEffect(() => {
     if (!digest && !loading) {
@@ -169,12 +169,6 @@ export default function DailyDigest() {
           </button>
         </div>
       </div>
-
-      {error && (
-        <div className="p-4 bg-red-400/10 border-b border-red-400/20">
-          <p className="text-xs text-red-400">{error}</p>
-        </div>
-      )}
 
       {digest && (
         <div className="max-h-[520px] overflow-y-auto">

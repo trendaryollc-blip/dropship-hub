@@ -30,6 +30,9 @@ import {
   FileText,
   Heart,
   RotateCcw,
+  ShieldCheck,
+  Share2,
+  Star,
 } from "lucide-react";
 
 const navItems = [
@@ -138,6 +141,12 @@ const navItems = [
 ];
 
 const moreItems = [
+  { label: "Content Engine", href: "/social-content", icon: Share2 },
+  { label: "Review Importer", href: "/reviews", icon: Star },
+  { label: "Tracking Page", href: "/tracking-page", icon: Package },
+  { label: "Cash Flow", href: "/cash-flow", icon: DollarSign },
+  { label: "Refund Cascade", href: "/refund-cascade", icon: RotateCcw },
+  { label: "Compliance Checker", href: "/compliance", icon: ShieldCheck },
   { label: "AI Listings", href: "/product-listings", icon: FileText },
   { label: "Price War Bot", href: "/price-war", icon: DollarSign },
   { label: "Trend Predictor", href: "/trends", icon: TrendingUp },

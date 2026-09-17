@@ -1,10 +1,10 @@
 import jwt from "jsonwebtoken";
-import type { StoreAdapter, StoreConfig, StoreOrder } from "./interface";
+import type { StoreAdapter, StoreConfig, StoreOrder, HealthResult } from "./interface";
 
 export const trendaryoAdapter: StoreAdapter = {
   platform: "trendaryo",
 
-  async fetchOrders(config: StoreConfig): Promise<StoreOrder[]> {
+  async fetchOrders(config: StoreConfig, since?: string): Promise<StoreOrder[]> {
     const backendUrl = config.url;
     const apiKey = config.apiKey;
     const jwtSecret = process.env.TRENDARYO_JWT_SECRET || "";
@@ -18,7 +18,12 @@ export const trendaryoAdapter: StoreAdapter = {
       headers["x-api-key"] = apiKey;
     }
 
-    const res = await fetch(`${backendUrl}/api/orders`, {
+    const url = new URL(`${backendUrl}/api/orders`);
+    if (since) {
+      url.searchParams.set("since", since);
+    }
+
+    const res = await fetch(url.toString(), {
       headers,
       signal: AbortSignal.timeout(15000),
     });
@@ -81,6 +86,28 @@ export const trendaryoAdapter: StoreAdapter = {
 
   async getOrderStatus(_config: StoreConfig, _orderId: string): Promise<string> {
     return "unknown";
+  },
+
+  async healthCheck(config: StoreConfig): Promise<HealthResult> {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (config.apiKey) headers["x-api-key"] = config.apiKey;
+    const start = Date.now();
+    try {
+      const res = await fetch(`${config.url}/api/health`, {
+        headers,
+        signal: AbortSignal.timeout(10_000),
+      });
+      const responseTimeMs = Date.now() - start;
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          return { status: "credentials_expired", message: `Authentication failed (${res.status})`, responseTimeMs };
+        }
+        return { status: "error", message: `API returned ${res.status}`, responseTimeMs };
+      }
+      return { status: "healthy", message: "Connected to Trendaryo store", responseTimeMs };
+    } catch (err) {
+      return { status: "error", message: err instanceof Error ? err.message : "Connection failed", responseTimeMs: Date.now() - start };
+    }
   },
 };
 

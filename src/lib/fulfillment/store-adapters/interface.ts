@@ -34,6 +34,14 @@ export interface StoreAdapter {
   fetchOrders(config: StoreConfig, since?: string): Promise<StoreOrder[]>;
   pushTracking(config: StoreConfig, orderId: string, trackingNumber: string, carrier: string): Promise<boolean>;
   getOrderStatus(config: StoreConfig, orderId: string): Promise<string>;
+  healthCheck(config: StoreConfig): Promise<HealthResult>;
+}
+
+export interface HealthResult {
+  status: "healthy" | "degraded" | "error" | "credentials_expired";
+  message: string;
+  responseTimeMs?: number;
+  storeInfo?: Record<string, unknown>;
 }
 
 export interface StoreConfig {

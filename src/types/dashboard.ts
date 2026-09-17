@@ -19,9 +19,10 @@ export interface AIDailyPick {
   category: string;
   image: string;
   description: string;
-  radarScores: AIRadarScores;
+  radarScores: AIRadarScores | null;
   sourcePrice: number;
   sellPrice: number;
+  profit: number;
   margin: number;
   risk: "low" | "medium" | "high";
   reason: string;
@@ -33,7 +34,7 @@ export interface AIDailyPick {
   reasonPoints: string[];
   sourceUrl?: string;
   expiresAt: string;
-  yesterdayPick?: { title: string; result: string; up: boolean };
+  yesterdayPick?: { title: string; result: string; up: boolean } | null;
 }
 
 export interface RevenuePoint {
@@ -68,7 +69,8 @@ export interface SmartAlert {
 
 export interface AIBriefing {
   insights: string[];
-  sentiment: number;
+  /** The route can emit null while degraded (see /api/dashboard fallbacks). */
+  sentiment: number | null;
   sentimentLabel: string;
   opportunities: number;
   risks: number;
@@ -119,6 +121,7 @@ export interface NicheCard {
 
 export interface SupplierStatus {
   name: string;
+  productCount: number;
   trustBadge: "gold" | "silver" | "bronze";
   responseTime: string;
   responseLevel: "fast" | "moderate" | "slow";

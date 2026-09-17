@@ -1,149 +1,179 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { Search, ArrowUp, ArrowDown, CornerDownLeft, Command } from "lucide-react";
-import { useCommandPalette } from "@/hooks/useCommandPalette";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { Command } from "cmdk";
+import {
+  Store, Package, RefreshCw, BarChart3, Send, Settings, Search,
+  ShoppingCart, Globe, Zap, X,
+} from "lucide-react";
 
-const categoryLabels = {
-  pages: "Pages",
-  actions: "Quick Actions",
-  products: "Products",
-  settings: "Settings",
-};
+interface CommandPaletteProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
 
-const categoryColors = {
-  pages: "text-blue-400",
-  actions: "text-emerald-400",
-  products: "text-amber-400",
-  settings: "text-purple-400",
-};
-
-export default function CommandPalette() {
-  const {
-    isOpen,
-    query,
-    results,
-    selectedIndex,
-    close,
-    setQuery,
-    selectNext,
-    selectPrev,
-    executeSelected,
-  } = useCommandPalette();
-
-  const inputRef = useRef<HTMLInputElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
+export default function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
+  const router = useRouter();
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 50);
-    }
-  }, [isOpen]);
+    const down = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        onOpenChange(!open);
+      }
+      if (e.key === "Escape") {
+        onOpenChange(false);
+      }
+    };
+    document.addEventListener("keydown", down);
+    return () => document.removeEventListener("keydown", down);
+  }, [open, onOpenChange]);
 
   useEffect(() => {
-    const selected = listRef.current?.children[selectedIndex] as HTMLElement;
-    selected?.scrollIntoView({ block: "nearest" });
-  }, [selectedIndex]);
+    if (!open) setSearch("");
+  }, [open]);
 
-  if (!isOpen) return null;
+  const navigate = useCallback((path: string) => {
+    router.push(path);
+    onOpenChange(false);
+  }, [router, onOpenChange]);
 
-  const grouped = results.reduce(
-    (acc, cmd) => {
-      if (!acc[cmd.category]) acc[cmd.category] = [];
-      acc[cmd.category].push(cmd);
-      return acc;
-    },
-    {} as Record<string, typeof results>
-  );
+  const runAction = useCallback((action: () => void) => {
+    action();
+    onOpenChange(false);
+  }, [onOpenChange]);
 
-  let flatIndex = -1;
+  if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh]">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={close} />
-
-      {/* Palette */}
-      <div className="relative w-full max-w-lg surface-floating rounded-2xl overflow-hidden animate-spring-in">
-        {/* Search Input */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]">
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => onOpenChange(false)} />
+      <Command
+        value={search}
+        onValueChange={setSearch}
+        className="relative w-full max-w-lg glass rounded-2xl border border-border shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+      >
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
           <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "ArrowDown") { e.preventDefault(); selectNext(); }
-              if (e.key === "ArrowUp") { e.preventDefault(); selectPrev(); }
-              if (e.key === "Enter") { e.preventDefault(); executeSelected(); }
-            }}
-            placeholder="Search pages, actions, settings..."
-            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none font-display"
+          <Command.Input
+            autoFocus
+            placeholder="Search commands..."
+            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
           />
-          <kbd className="hidden sm:inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-surface border border-border rounded px-1.5 py-0.5">
-            ESC
-          </kbd>
+          <button onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-foreground">
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
-        {/* Results */}
-        <div ref={listRef} className="max-h-80 overflow-y-auto p-2">
-          {results.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              No results found for &quot;{query}&quot;
-            </div>
-          ) : (
-            Object.entries(grouped).map(([category, cmds]) => (
-              <div key={category} className="mb-2">
-                <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                  {categoryLabels[category as keyof typeof categoryLabels]}
-                </div>
-                {cmds.map((cmd) => {
-                  flatIndex++;
-                  const isSelected = flatIndex === selectedIndex;
-                  const Icon = cmd.icon;
-                  const _idx = flatIndex;
-                  return (
-                    <button
-                      key={cmd.id}
-                      onClick={() => {
-                        if (cmd.href) window.location.href = cmd.href;
-                        close();
-                      }}
-                      onMouseEnter={() => {}}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors ${
-                        isSelected
-                          ? "bg-accent/10 text-foreground"
-                          : "text-muted-foreground hover:bg-surface-hover hover:text-foreground"
-                      }`}
-                    >
-                      <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-surface border border-border ${isSelected ? "border-accent/20" : ""}`}>
-                        <Icon className={`h-4 w-4 ${isSelected ? "text-accent" : categoryColors[cmd.category]}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{cmd.label}</p>
-                        {cmd.description && (
-                          <p className="text-[11px] text-muted-foreground truncate">{cmd.description}</p>
-                        )}
-                      </div>
-                      {isSelected && (
-                        <CornerDownLeft className="h-3 w-3 text-accent shrink-0" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            ))
-          )}
-        </div>
+        <Command.List className="max-h-[300px] overflow-y-auto p-2">
+          <Command.Empty className="text-center py-6 text-xs text-muted-foreground">
+            No results found.
+          </Command.Empty>
 
-        {/* Footer */}
-        <div className="flex items-center gap-4 px-4 py-2 border-t border-border text-[10px] text-muted-foreground">
-          <span className="flex items-center gap-1"><ArrowUp size={10} /><ArrowDown size={10} /> Navigate</span>
-          <span className="flex items-center gap-1"><CornerDownLeft size={10} /> Select</span>
-          <span className="flex items-center gap-1"><Command size={10} /> K to toggle</span>
+          <Command.Group heading="Navigation" className="mb-2">
+            <CommandItem
+              icon={<Store className="h-4 w-4" />}
+              label="My Stores"
+              description="Manage store connections"
+              onSelect={() => navigate("/store")}
+            />
+            <CommandItem
+              icon={<Globe className="h-4 w-4" />}
+              label="Multi-Store Dashboard"
+              description="Unified view across all stores"
+              onSelect={() => navigate("/multi-store")}
+            />
+            <CommandItem
+              icon={<Package className="h-4 w-4" />}
+              label="Products"
+              description="Browse product catalog"
+              onSelect={() => navigate("/products")}
+            />
+            <CommandItem
+              icon={<Settings className="h-4 w-4" />}
+              label="Settings"
+              description="Manage your account"
+              onSelect={() => navigate("/settings")}
+            />
+          </Command.Group>
+
+          <Command.Group heading="Quick Actions" className="mb-2">
+            <CommandItem
+              icon={<Store className="h-4 w-4" />}
+              label="Connect New Store"
+              description="Add a new store connection"
+              onSelect={() => navigate("/store")}
+            />
+            <CommandItem
+              icon={<Send className="h-4 w-4" />}
+              label="Bulk Push Products"
+              description="Push products to multiple stores"
+              onSelect={() => navigate("/multi-store?tab=bulk-push")}
+            />
+            <CommandItem
+              icon={<RefreshCw className="h-4 w-4" />}
+              label="Sync Inventory"
+              description="Sync stock levels across stores"
+              onSelect={() => navigate("/multi-store?tab=inventory")}
+            />
+            <CommandItem
+              icon={<BarChart3 className="h-4 w-4" />}
+              label="View Performance"
+              description="Compare store performance"
+              onSelect={() => navigate("/multi-store?tab=performance")}
+            />
+            <CommandItem
+              icon={<ShoppingCart className="h-4 w-4" />}
+              label="View Orders"
+              description="Manage unified orders"
+              onSelect={() => navigate("/multi-store?tab=orders")}
+            />
+          </Command.Group>
+
+          <Command.Group heading="AI">
+            <CommandItem
+              icon={<Zap className="h-4 w-4" />}
+              label="AI Store Assistant"
+              description="Ask anything about your stores"
+              onSelect={() => runAction(() => {
+                const btn = document.querySelector('[title="AI Store Assistant"]') as HTMLButtonElement;
+                btn?.click();
+              })}
+            />
+          </Command.Group>
+        </Command.List>
+
+        <div className="flex items-center justify-between px-4 py-2 border-t border-border">
+          <span className="text-[10px] text-muted-foreground">
+            <kbd className="px-1.5 py-0.5 rounded bg-surface border border-border text-[9px]">Enter</kbd> to select
+          </span>
+          <span className="text-[10px] text-muted-foreground">
+            <kbd className="px-1.5 py-0.5 rounded bg-surface border border-border text-[9px]">Esc</kbd> to close
+          </span>
         </div>
-      </div>
+      </Command>
     </div>
+  );
+}
+
+function CommandItem({ icon, label, description, onSelect }: {
+  icon: React.ReactNode;
+  label: string;
+  description: string;
+  onSelect: () => void;
+}) {
+  return (
+    <Command.Item
+      onSelect={onSelect}
+      className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors data-[selected=true]:bg-accent/10 data-[selected=true]:text-accent"
+    >
+      <div className="p-1.5 rounded-lg bg-surface">{icon}</div>
+      <div>
+        <p className="text-xs font-medium text-foreground">{label}</p>
+        <p className="text-[10px] text-muted-foreground">{description}</p>
+      </div>
+    </Command.Item>
   );
 }

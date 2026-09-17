@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useId } from "react";
 import { MessageSquare, Send, X, Sparkles, Loader2 } from "lucide-react";
 import { safeFetch } from "@/lib/safe-fetch";
 import type { ConnectedStore } from "./ConnectedStoresList";
@@ -25,7 +25,7 @@ function formatMessage(content: string): string {
 }
 
 let msgIdCounter = 0;
-function uid(): string { return `store-chat-${Date.now()}-${++msgIdCounter}`; }
+function uid(baseId: string): string { return `${baseId}-${Date.now()}-${++msgIdCounter}`; }
 
 interface StoreChatSidebarProps {
   connections: ConnectedStore[];
@@ -33,6 +33,7 @@ interface StoreChatSidebarProps {
 }
 
 export default function StoreChatSidebar({ connections, pushedProducts }: StoreChatSidebarProps) {
+  const baseId = useId();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -60,7 +61,7 @@ export default function StoreChatSidebar({ connections, pushedProducts }: StoreC
   const handleSend = useCallback(async (text?: string) => {
     const content = text || input.trim();
     if (!content || isTyping) return;
-    const userMsg: ChatMessage = { id: uid(), role: "user", content, timestamp: new Date() };
+    const userMsg: ChatMessage = { id: uid(baseId), role: "user", content, timestamp: new Date() };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setIsTyping(true);
@@ -77,13 +78,13 @@ export default function StoreChatSidebar({ connections, pushedProducts }: StoreC
       const res = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: apiMessages, stream: true }) });
       if (!res.ok || !res.body) {
         const retry = await safeFetch<{ response?: string }>("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: apiMessages, stream: false }) });
-        if (retry.response) setMessages((prev) => [...prev, { id: uid(), role: "assistant", content: retry.response!, timestamp: new Date() }]);
+        if (retry.response) setMessages((prev) => [...prev, { id: uid(baseId), role: "assistant", content: retry.response!, timestamp: new Date() }]);
         return;
       }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let full = "";
-      const msgId = uid();
+      const msgId = uid(baseId);
       setMessages((prev) => [...prev, { id: msgId, role: "assistant", content: "", timestamp: new Date() }]);
       while (true) {
         const { done, value } = await reader.read();
@@ -99,9 +100,9 @@ export default function StoreChatSidebar({ connections, pushedProducts }: StoreC
         }
       }
     } catch {
-      setMessages((prev) => [...prev, { id: uid(), role: "assistant", content: "Sorry, something went wrong.", timestamp: new Date() }]);
+      setMessages((prev) => [...prev, { id: uid(baseId), role: "assistant", content: "Sorry, something went wrong.", timestamp: new Date() }]);
     } finally { setIsTyping(false); }
-  }, [input, isTyping, messages, buildSystemContext]);
+  }, [input, isTyping, messages, buildSystemContext, baseId]);
 
   return (
     <>

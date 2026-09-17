@@ -36,6 +36,6 @@ export const chartTooltipStyle = {
     color: "var(--foreground, #FAFAFA)",
     boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
     backdropFilter: "blur(12px)",
-  },
+  } as React.CSSProperties,
   cursor: { stroke: "var(--border-color, #341111)", strokeWidth: 1, strokeDasharray: "4 4" },
 };

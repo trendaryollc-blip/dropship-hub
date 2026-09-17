@@ -32,11 +32,23 @@ function buildQueryChain(docs: any[]) {
 function buildMockDb(collectionMap: Record<string, any[]>) {
   const userDoc: any = {};
   userDoc.collection = vi.fn().mockImplementation((name: string) => {
+    if (name === "gamification") {
+      return {
+        doc: vi.fn().mockReturnValue({
+          get: vi.fn().mockResolvedValue({ exists: false, data: () => undefined }),
+          set: vi.fn().mockResolvedValue(undefined),
+        }),
+      };
+    }
     return buildQueryChain(collectionMap[name] || []);
   });
   return {
     collection: vi.fn().mockReturnValue({
       doc: vi.fn().mockReturnValue(userDoc),
+    }),
+    batch: vi.fn().mockReturnValue({
+      set: vi.fn(),
+      commit: vi.fn().mockResolvedValue(undefined),
     }),
   };
 }

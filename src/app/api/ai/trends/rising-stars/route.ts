@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
-import { generateMockSignals, detectRisingStars } from "@/lib/trend-analyzer";
+import { fetchRealSignals } from "@/lib/data-sources/aggregator";
+import { detectRisingStars } from "@/lib/trend-analyzer";
+import type { TrendSignal } from "@/types/trend-predictor";
 
 export const GET = withAuth(async (_request: NextRequest, _uid: string) => {
   try {
@@ -12,11 +14,21 @@ export const GET = withAuth(async (_request: NextRequest, _uid: string) => {
       "reusable water bottle", "bamboo products",
     ];
 
-    const allSignals = trendingKeywords.flatMap((kw) =>
-      generateMockSignals(kw, "general").slice(0, 1)
+    const allSignals = await Promise.allSettled(
+      trendingKeywords.map(async (kw) => {
+        const signals = await fetchRealSignals(kw, "general", ["google_trends", "tiktok"], "7d");
+        return signals[0] || null;
+      })
     );
 
-    const risingStars = detectRisingStars(allSignals);
+    const validSignals: TrendSignal[] = [];
+    for (const result of allSignals) {
+      if (result.status === "fulfilled" && result.value !== null) {
+        validSignals.push(result.value);
+      }
+    }
+
+    const risingStars = detectRisingStars(validSignals);
 
     return NextResponse.json({ risingStars });
   } catch (error) {

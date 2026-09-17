@@ -59,9 +59,12 @@ export interface RoutingHistory {
   orderId: string;
   productTitle: string;
   customerLocation: string;
+  customerName?: string;
   selectedSupplier: string;
   shippingDays: number;
   shippingCost: number;
+  totalCost: number;
   reason: string;
+  status: "routed" | "pending" | "fallback" | "failed";
   routedAt: string;
 }

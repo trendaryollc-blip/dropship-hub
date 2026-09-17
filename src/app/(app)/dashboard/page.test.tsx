@@ -26,6 +26,7 @@ vi.mock("@/components/saved/SavedProductsProvider", () => ({
   useSavedProducts: () => ({
     toggleSave: vi.fn(),
     isSaved: () => false,
+    savedProducts: [],
   }),
 }));
 
@@ -142,7 +143,7 @@ vi.mock("lucide-react", () => {
     Bell: I("Bell"), ChevronRight: I("ChevronRight"), Sparkles: I("Sparkles"),
     Target: I("Target"), Shield: I("Shield"), Clock: I("Clock"), CheckCircle2: I("CheckCircle2"),
     Star: I("Star"), BookmarkPlus: I("BookmarkPlus"), BookmarkCheck: I("BookmarkCheck"),
-    AlertTriangle: I("AlertTriangle"), Plus: I("Plus"), RefreshCw: I("RefreshCw"),
+    Bookmark: I("Bookmark"), AlertTriangle: I("AlertTriangle"), Plus: I("Plus"), RefreshCw: I("RefreshCw"),
     ArrowUpRight: I("ArrowUpRight"), Flame: I("Flame"), Minus: I("Minus"),
     BarChart3: I("BarChart3"), Globe: I("Globe"), Users: I("Users"), RotateCcw: I("RotateCcw"),
     Mic: I("Mic"), FileText: I("FileText"), Calculator: I("Calculator"),
@@ -693,6 +694,43 @@ describe("Dashboard Page", () => {
       });
       render(<DashboardHome />);
       expect(screen.queryByText("Market Ticker")).toBeNull();
+    });
+  });
+
+  describe("Error handling", () => {
+    it("shows a full-page error with retry when the first load fails", () => {
+      const refresh = vi.fn();
+      vi.mocked(useDashboardDataModule.useDashboardData).mockReturnValue({
+        data: defaultData,
+        loading: false,
+        error: new Error("HTTP 503: Service Unavailable"),
+        hasData: false,
+        refresh,
+        markAlertRead: vi.fn(), markAllAlertsRead: vi.fn(),
+        addToCompare: vi.fn(), removeFromCompare: vi.fn(), clearCompare: vi.fn(),
+      });
+      render(<DashboardHome />);
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+      expect(screen.getByText("Dashboard couldn't load")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: /try again/i }));
+      expect(refresh).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows an inline banner with data intact when a background refresh fails", () => {
+      vi.mocked(useDashboardDataModule.useDashboardData).mockReturnValue({
+        data: defaultData,
+        loading: false,
+        error: new Error("network hiccup"),
+        hasData: true,
+        refresh: vi.fn(),
+        markAlertRead: vi.fn(), markAllAlertsRead: vi.fn(),
+        addToCompare: vi.fn(), removeFromCompare: vi.fn(), clearCompare: vi.fn(),
+      });
+      render(<DashboardHome />);
+      expect(screen.getByRole("status")).toBeInTheDocument();
+      expect(screen.getByText(/last successful data/i)).toBeInTheDocument();
+      // Dashboard content still renders below the banner
+      expect(screen.getByText("Market Ticker")).toBeInTheDocument();
     });
   });
 });

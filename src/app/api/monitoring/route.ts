@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { computeMonitoringMetrics, getMonitoringHealth } from "@/lib/monitoring/metrics";
 import { getRepriceStats, getRepriceAuditLog } from "@/lib/monitoring/reprice-audit";
+import { getPriceHistory } from "@/lib/monitoring/price-history";
 
 interface MonitoredProduct {
   id?: string;
@@ -21,6 +22,7 @@ interface MonitoredProduct {
   repricingRule?: RepricingRule;
   priceDropThreshold?: number;
   competitorUrls?: string[];
+  competitorSnapshots?: Array<{ url: string; price: number | null; inStock: boolean; scrapedAt: string }>;
   autoDelist?: boolean;
   storeConnections?: Array<{ storeId: string; platform: "shopify" | "woocommerce"; storeUrl: string; apiKey: string; apiSecret: string }>;
 }
@@ -37,7 +39,7 @@ interface PriceAlert {
 
 interface RepricingRule {
   enabled: boolean;
-  type: "margin_floor" | "undercut_competitor" | "fixed_price";
+  type: "maintain_margin" | "undercut" | "fixed_price";
   value: number;
 }
 
@@ -263,16 +265,52 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
       return NextResponse.json({ auditLog });
     }
 
-    const snap = await db
+    if (type === "history") {
+      const monitoredId = searchParams.get("monitoredId");
+      const days = Number(searchParams.get("days")) || 30;
+      if (!monitoredId) {
+        return NextResponse.json({ error: "monitoredId is required" }, { status: 400 });
+      }
+      const history = await getPriceHistory(uid, monitoredId, days);
+      return NextResponse.json({ history });
+    }
+
+    if (type === "competitors") {
+      const monitoredId = searchParams.get("monitoredId");
+      if (!monitoredId) {
+        return NextResponse.json({ error: "monitoredId is required" }, { status: 400 });
+      }
+      const doc = await db.collection("users").doc(uid).collection("monitoredProducts").doc(monitoredId).get();
+      if (!doc.exists) {
+        return NextResponse.json({ error: "Product not found" }, { status: 404 });
+      }
+      const product = doc.data() as MonitoredProduct;
+      return NextResponse.json({
+        competitorUrls: product.competitorUrls || [],
+        competitorSnapshots: product.competitorSnapshots || [],
+      });
+    }
+
+    const cursor = searchParams.get("cursor");
+    const limit = Math.min(Number(searchParams.get("limit")) || 20, 100);
+
+    let query = db
       .collection("users")
       .doc(uid)
       .collection("monitoredProducts")
       .orderBy("lastChecked", "desc")
-      .limit(100)
-      .get();
+      .limit(limit + 1);
 
-    const products = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    return NextResponse.json({ products });
+    if (cursor) {
+      query = query.startAfter(cursor);
+    }
+
+    const snap = await query.get();
+    const hasMore = snap.docs.length > limit;
+    const products = snap.docs.slice(0, limit).map((d) => ({ id: d.id, ...d.data() }));
+    const nextCursor = hasMore ? snap.docs[limit - 1].id : null;
+
+    return NextResponse.json({ products, nextCursor, hasMore });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed" },

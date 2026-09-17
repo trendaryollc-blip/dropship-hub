@@ -3,10 +3,18 @@ import { searchCJProducts } from "@/lib/platform-search";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { getAdminDB } from "@/lib/firebase-admin";
+import { logger } from "@/lib/logger";
+import type {
+  TickerItem, AIDailyPick, SmartAlert, NicheCard, SupplierStatus,
+  HeatmapCategory, TrendingProduct, AIBriefing, QuickActionStat,
+} from "@/types/dashboard";
 
 interface CacheEntry<T> { data: T; expires: number; }
+const MAX_CACHE_ENTRIES = 100;
 const dashboardCache = new Map<string, CacheEntry<unknown>>();
 const CACHE_TTL_MS = 5 * 60 * 1000;
+// Per-user payload: short private browser cache, bypass shared caches.
+const CLIENT_CACHE_HEADERS = { "Cache-Control": "private, max-age=15, stale-while-revalidate=45" } as const;
 
 function getCached<T>(key: string): T | null {
   const entry = dashboardCache.get(key);
@@ -18,132 +26,11 @@ function getCached<T>(key: string): T | null {
 }
 
 function setCache<T>(key: string, data: T): void {
+  if (dashboardCache.size >= MAX_CACHE_ENTRIES) {
+    const firstKey = dashboardCache.keys().next().value;
+    if (firstKey) dashboardCache.delete(firstKey);
+  }
   dashboardCache.set(key, { data, expires: Date.now() + CACHE_TTL_MS });
-}
-
-interface TickerItem {
-  name: string;
-  platform: string;
-  price: number;
-  change: number;
-  sparkline: number[];
-}
-
-interface SmartAlert {
-  id: string;
-  type: "opportunity" | "risk" | "info" | "warning";
-  title: string;
-  description: string;
-  action: string;
-  actionHref: string;
-  timestamp: string;
-  read: boolean;
-  confidence: number;
-  aiAnalysis: string;
-  sparkline: number[];
-}
-
-interface AIDailyPick {
-  title: string;
-  category: string;
-  image: string;
-  description: string;
-  radarScores: null;
-  sourcePrice: number;
-  sellPrice: number;
-  profit: number;
-  margin: number;
-  risk: "low" | "medium" | "high";
-  reason: string;
-  platform: string;
-  ordersPerMonth: number;
-  saturation: number;
-  overallScore: number;
-  earningsPreview: { profitPerOrder: number; ordersPerMonth: number; monthlyRevenue: number };
-  reasonPoints: string[];
-  expiresAt: string;
-  yesterdayPick: null;
-  sourceUrl?: string;
-}
-
-interface NicheCard {
-  name: string;
-  category: string;
-  scores: { demand: number; profit: number; competition: number; trend: number; seasonality: number };
-  overallScore: number;
-  grade: "A+" | "A" | "B+" | "B" | "C+" | "C";
-  productCount: number;
-  avgMargin: number;
-  growth: number;
-  aiInsight: string;
-  demandSparkline: number[];
-  topProduct: string;
-}
-
-interface SupplierStatus {
-  name: string;
-  productCount: number;
-  trustBadge: "gold" | "silver" | "bronze";
-  responseTime: string;
-  responseLevel: "fast" | "moderate" | "slow";
-  completionRate: number;
-  status: "online" | "busy" | "offline";
-  rating: number;
-  location: string;
-}
-
-interface HeatmapCategory {
-  category: string;
-  heat: number;
-  productCount: number;
-  avgMargin: number;
-  trend: "up" | "down" | "stable";
-  weeklyData: number[];
-  topProduct: string;
-  topProductMargin: number;
-  aiInsight: string;
-  velocity: number;
-}
-
-interface TrendingProduct {
-  name: string;
-  platform: string;
-  image: string;
-  price: number;
-  sellPrice: number;
-  profit: number;
-  margin: number;
-  trend: number;
-  sparkline: number[];
-  confidence: number;
-  whyTrending: string;
-  demandLevel: "low" | "medium" | "high";
-  competitionLevel: "low" | "medium" | "high";
-  supplierReliability: number;
-  monthlyVolume: number;
-  shippingDays: string;
-  sourceUrl: string;
-  competitors: { name: string; price: number }[];
-  listingSuggestion: { title: string; description: string };
-}
-
-interface AIBriefing {
-  insights: string[];
-  sentiment: number;
-  sentimentLabel: string;
-  opportunities: number;
-  risks: number;
-  trends: number;
-  lastScan: string;
-}
-
-interface QuickActionStat {
-  label: string;
-  description: string;
-  href: string;
-  color: string;
-  stat: string;
-  statLabel: string;
 }
 
 interface RevenueEntry {
@@ -163,6 +50,8 @@ interface FulfillmentOrderDoc {
   createdAt: string;
   updatedAt: string;
 }
+
+
 
 export const GET = withAuth(async (_request: Request) => {
   try {
@@ -206,23 +95,27 @@ export const GET = withAuth(async (_request: Request) => {
     try {
       const db = await getAdminDB();
       if (uid) {
-        // Store connections
-        const connectionsSnap = await db.collection("users").doc(uid).collection("storeConnections").get();
+        // Fetch all per-user Firestore data in parallel (3 round trips → 1).
+        const userDoc = db.collection("users").doc(uid);
+        const [connectionsSnap, revenueSnap, ordersSnap] = await Promise.all([
+          userDoc.collection("storeConnections").get(),
+          // 90 docs ordered desc: enough to cover the 30-day window and the
+          // 60-day comparison baseline even with multiple entries per day.
+          userDoc.collection("revenue").orderBy("date", "desc").limit(90).get(),
+          userDoc.collection("fulfillmentOrders").orderBy("createdAt", "desc").limit(50).get(),
+        ]);
+
         const connections = connectionsSnap.docs.map((d) => d.data() as { status?: string });
         storesCount = connections.filter((c) => c.status === "connected").length;
-
-        // Revenue entries (last 30 days)
-        const revenueSnap = await db.collection("users").doc(uid).collection("revenue")
-          .orderBy("date", "desc").limit(30).get();
         revenueEntries = revenueSnap.docs.map((d) => d.data() as RevenueEntry);
-
-        // Fulfillment orders (last 50)
-        const ordersSnap = await db.collection("users").doc(uid).collection("fulfillmentOrders")
-          .orderBy("createdAt", "desc").limit(50).get();
         fulfillmentOrders = ordersSnap.docs.map((d) => d.data() as FulfillmentOrderDoc);
       }
-    } catch {
-      // Firestore read failed — continue with defaults
+    } catch (error) {
+      logger.error("[dashboard] Firestore read failed", {
+        error: error instanceof Error ? error.message : String(error),
+        uid,
+        section: "firestore-read",
+      });
     }
 
     if (allProducts.length === 0) {
@@ -243,7 +136,7 @@ export const GET = withAuth(async (_request: Request) => {
         contextualActions: [],
         storesCount,
         healthScore,
-      });
+      }, { headers: CLIENT_CACHE_HEADERS });
     }
 
     // ── Fix #2: Compute real revenue stats from Firestore ────────────────
@@ -263,7 +156,6 @@ export const GET = withAuth(async (_request: Request) => {
     const totalRevenue = recentRevenue.reduce((s, e) => s + (e.amount || 0), 0);
     const prevTotalRevenue = prevRevenue.reduce((s, e) => s + (e.amount || 0), 0);
     const totalOrders = recentRevenue.reduce((s, e) => s + (e.orders || 0), 0);
-    const totalProfit = recentRevenue.reduce((s, e) => s + (e.profit || 0), 0);
     const avgOrder = totalOrders > 0 ? totalRevenue / totalOrders : 0;
     const growth = prevTotalRevenue > 0
       ? Math.round(((totalRevenue - prevTotalRevenue) / prevTotalRevenue) * 100)
@@ -321,11 +213,17 @@ export const GET = withAuth(async (_request: Request) => {
       const sameCategory = allProducts.filter((ap) => ap.category === p.category);
       const sparkline = sameCategory.slice(0, 7).map((sp) => Number((sp.price ?? 0).toFixed(2)));
       while (sparkline.length < 7) sparkline.push(Number((p.price ?? 0).toFixed(2)));
+      // Change = price vs the category average — the honest, derivable signal
+      // (we have no price history, so a true time-series delta is impossible).
+      const catAvg = sameCategory.reduce((s, ap) => s + (ap.price ?? 0), 0) / Math.max(1, sameCategory.length);
+      const change = catAvg > 0
+        ? Math.max(-99, Math.min(99, Number((((p.price ?? 0) - catAvg) / catAvg * 100).toFixed(1))))
+        : 0;
       return {
         name: p.title.length > 40 ? p.title.slice(0, 37) + "..." : p.title,
         platform: "CJ Dropshipping",
         price: Number((p.price ?? 0).toFixed(2)),
-        change: Number((((p.price ?? 0) - (sameCategory[0]?.price ?? p.price ?? 0)) / (sameCategory[0]?.price ?? 1) * 100).toFixed(1)),
+        change,
         sparkline,
       };
     });
@@ -393,14 +291,6 @@ export const GET = withAuth(async (_request: Request) => {
 
     const totalProducts = allProducts.length;
     const avgPrice = Number((allProducts.reduce((s, p) => s + (p.price ?? 0), 0) / totalProducts).toFixed(2));
-
-    // ── Fix #10: Replace misleading revenueStats with meaningful product stats ──
-    // (revenueStats is now the real revenue object above; these are extra product insights)
-    const productInsights = {
-      totalScanned: totalProducts,
-      avgSourcePrice: avgPrice,
-      activeCategories: Object.keys(categoryData).length,
-    };
 
     // ── Fix #8: Niche growth derived from real product data ──────────────
     const nicheCards: NicheCard[] = Object.entries(categoryData).slice(0, 5).map(([cat, data], idx) => {
@@ -615,7 +505,7 @@ export const GET = withAuth(async (_request: Request) => {
     ];
 
     // ── Fix #6: Alerts use /ai not /intelligence ────────────────────────
-    const ts = (mins: number) => `${mins}m ago`;
+    // All alerts are generated at request time — "just now" is the honest timestamp.
     const alerts: SmartAlert[] = [
       ...trendingProducts.filter((p) => p.margin > 50).slice(0, 2).map((p, i) => ({
         id: `opp-${i}`,
@@ -624,7 +514,7 @@ export const GET = withAuth(async (_request: Request) => {
         description: `${p.margin}% margin with ${p.demandLevel} demand. Selling at $${p.sellPrice.toFixed(2)} from $${p.price.toFixed(2)} source.`,
         action: "View Product",
         actionHref: "/products",
-        timestamp: ts(5 + i * 3),
+        timestamp: "just now",
         read: false,
         confidence: p.confidence,
         aiAnalysis: `This product shows strong signals. ${p.whyTrending || "Trending with high demand and competitive pricing."} Consider adding to your store.`,
@@ -637,7 +527,7 @@ export const GET = withAuth(async (_request: Request) => {
         description: `Heat score ${c.heat}/100. ${c.velocity > 0 ? `Growing ${c.velocity}% per week.` : "Cooling trend detected."} Competition rising.`,
         action: "Analyze Niche",
         actionHref: "/products/niches",
-        timestamp: ts(12 + i * 5),
+        timestamp: "just now",
         read: false,
         confidence: Math.min(c.heat + 10, 99),
         aiAnalysis: `${c.category} is showing signs of market saturation. ${c.aiInsight} Monitor closely before investing more inventory.`,
@@ -650,25 +540,35 @@ export const GET = withAuth(async (_request: Request) => {
         description: `${p.trend > 0 ? "+" : ""}${p.trend}% trend score. ${p.monthlyVolume} monthly volume on ${p.platform}.`,
         action: "Explore",
         actionHref: "/products",
-        timestamp: ts(20 + i * 7),
+        timestamp: "just now",
         read: true,
         confidence: p.confidence,
         aiAnalysis: `Steady demand detected. ${p.demandLevel} demand level with ${p.competitionLevel} competition. Good candidate for store listing.`,
         sparkline: p.sparkline,
       })),
-      ...aiBriefing.insights.slice(0, 2).map((insight: string, i: number) => ({
-        id: `warn-${i}`,
-        type: "warning" as const,
-        title: `AI Alert: ${insight.slice(0, 50)}`,
-        description: insight,
-        action: "View Details",
-        actionHref: "/ai",  // Fixed: was /intelligence
-        timestamp: ts(30 + i * 10),
-        read: i > 0,
-        confidence: 75 + Math.round(Math.random() * 20),
-        aiAnalysis: `Automated intelligence briefing. ${insight}`,
-        sparkline: Array.from({ length: 7 }, () => Math.round(40 + Math.random() * 40)),
-      })),
+      ...aiBriefing.insights.slice(0, 2).map((insight: string, i: number) => {
+        // Deterministic values derived from insight content and sentiment
+        const insightHash = insight.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+        const sentimentValue = aiBriefing.sentiment ?? 50;
+        const deterministicConfidence = Math.min(95, Math.round(sentimentValue * 0.7 + (insightHash % 20) + 10));
+        const baseValue = 40 + (insightHash % 30);
+        const deterministicSparkline = Array.from({ length: 7 }, (_, idx) =>
+          Math.round(baseValue + Math.sin(insightHash + idx) * 10)
+        );
+        return {
+          id: `warn-${i}`,
+          type: "warning" as const,
+          title: `AI Alert: ${insight.slice(0, 50)}`,
+          description: insight,
+          action: "View Details",
+          actionHref: "/ai",
+          timestamp: "just now",
+          read: i > 0,
+          confidence: deterministicConfidence,
+          aiAnalysis: `Automated intelligence briefing. ${insight}`,
+          sparkline: deterministicSparkline,
+        };
+      }),
     ];
 
     // ── Fix #5: Health score from real signals ───────────────────────────
@@ -683,8 +583,13 @@ export const GET = withAuth(async (_request: Request) => {
       // Bonus for consistent activity
       if (revenueEntries.length >= 7) score += 5;
       if (deliveredOrders.length > 0) score += 5;
-      healthScore = Math.min(99, score);
-    } catch {
+      healthScore = Math.min(100, score);
+    } catch (error) {
+      logger.error("[dashboard] Health score computation failed", {
+        error: error instanceof Error ? error.message : String(error),
+        uid,
+        section: "health-score",
+      });
       healthScore = null;
     }
 
@@ -713,8 +618,15 @@ export const GET = withAuth(async (_request: Request) => {
       contextualActions: filteredContextualActions,
       storesCount,
       healthScore,  // Fix #5: Now computed from real signals
+    }, { headers: CLIENT_CACHE_HEADERS });
+  } catch (error) {
+    logger.error("[dashboard] Top-level handler failure", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      section: "top-level",
     });
-  } catch {
+    // Signal a real outage (5xx) so the client can show an error state and
+    // retry, instead of silently rendering an empty dashboard.
     return NextResponse.json({
       ticker: [],
       aiDailyPick: null,
@@ -726,13 +638,13 @@ export const GET = withAuth(async (_request: Request) => {
       heatmap: [],
       trending: [],
       briefing: { insights: ["System recovering — please try again"], sentiment: null, sentimentLabel: "Neutral", opportunities: 0, risks: 0, trends: 0, lastScan: "retrying..." },
-      pulse: null,
+      pulse: [],
       actionStats: [],
       fulfillmentPipeline: { pending: 0, processing: 0, shipped: 0, delivered: 0, totalRevenue: 0, totalProfit: 0, recentOrders: [] },
       contextualActions: [],
       storesCount: 0,
       healthScore: null,
-    });
+    }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 }, LIMITS.DEFAULT);
 

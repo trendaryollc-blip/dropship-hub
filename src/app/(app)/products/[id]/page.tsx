@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft, ExternalLink, Star, ShoppingCart, Package,
   Shield, Clock, ChevronLeft, ChevronRight, Images, Barcode, Layers,
-  Search, Truck, DollarSign, BarChart3, AlertTriangle, RefreshCw,
+  Search, Truck, DollarSign, BarChart3, AlertTriangle, RefreshCw, ShieldCheck,
 } from "lucide-react";
 import Image from "next/image";
 import { useInView } from "@/hooks/useInView";
@@ -650,7 +650,7 @@ function ProductDetailContent() {
       {/* Next Steps */}
       <div className="glass rounded-2xl p-4 border border-border">
         <h3 className="font-display text-xs font-semibold text-muted-foreground mb-3">Next Steps</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
           <Link href={`/suppliers?product=${encodeURIComponent(title)}&category=${encodeURIComponent(category || "")}&source=${encodeURIComponent(source)}&price=${priceNum || ""}`} className="flex items-center gap-2 p-3 rounded-xl bg-surface/50 border border-border hover:border-accent/20 hover:bg-surface-hover transition-all group">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-400/10 shrink-0">
               <Truck className="h-3.5 w-3.5 text-amber-400" />
@@ -678,6 +678,28 @@ function ProductDetailContent() {
               <p className="text-[10px] text-muted-foreground">Analyze the market</p>
             </div>
           </Link>
+          <button
+            onClick={() => {
+              const params = new URLSearchParams();
+              params.set("productTitle", title);
+              if (priceNum != null) params.set("currentPrice", String(priceNum));
+              if (image) params.set("productImage", image);
+              if (link) params.set("productUrl", link);
+              if (category) params.set("category", category);
+              if (ratingNum != null) params.set("rating", String(ratingNum));
+              if (reviewsNum != null) params.set("reviews", String(reviewsNum));
+              window.open(`/product-validation?${params.toString()}`, "_blank");
+            }}
+            className="flex items-center gap-2 p-3 rounded-xl bg-surface/50 border border-border hover:border-amber-400/20 hover:bg-surface-hover transition-all group cursor-pointer text-left"
+          >
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-400/10 shrink-0">
+              <ShieldCheck className="h-3.5 w-3.5 text-amber-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-foreground group-hover:text-amber-400 transition-colors truncate">Validate Product</p>
+              <p className="text-[10px] text-muted-foreground">Full validation report</p>
+            </div>
+          </button>
         </div>
       </div>
 

@@ -12,6 +12,10 @@ vi.mock("@/lib/safe-fetch", () => ({
   safeFetch: vi.fn().mockResolvedValue({}),
 }));
 
+function clickTab(name: string) {
+  fireEvent.click(screen.getAllByText(name)[0]);
+}
+
 describe("ShippingOptimizerPanel", () => {
   it("renders shipment details heading", () => {
     render(<ShippingOptimizerPanel />);
@@ -26,15 +30,15 @@ describe("ShippingOptimizerPanel", () => {
 
   it("renders tab buttons", () => {
     render(<ShippingOptimizerPanel />);
-    expect(screen.getByText("Compare Rates")).toBeInTheDocument();
-    expect(screen.getByText("Auto-Select")).toBeInTheDocument();
-    expect(screen.getByText("Predictions")).toBeInTheDocument();
-    expect(screen.getByText("Customs")).toBeInTheDocument();
+    expect(screen.getAllByText("Compare Rates").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Auto-Select").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Predictions").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Customs").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders compare button on default tab", () => {
     render(<ShippingOptimizerPanel />);
-    expect(screen.getByText("Compare All Carriers")).toBeInTheDocument();
+    expect(screen.getAllByText("Compare All Carriers").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders form labels", () => {
@@ -54,23 +58,23 @@ describe("ShippingOptimizerPanel", () => {
 
   it("switches to customs tab", async () => {
     render(<ShippingOptimizerPanel />);
-    fireEvent.click(screen.getByText("Customs"));
+    clickTab("Customs");
     await waitFor(() => {
-      expect(screen.getByText("Items (JSON Array)")).toBeInTheDocument();
+      expect(screen.getByText("Shipment Items")).toBeInTheDocument();
     });
   });
 
   it("switches to predictions tab", async () => {
     render(<ShippingOptimizerPanel />);
-    fireEvent.click(screen.getByText("Predictions"));
+    clickTab("Predictions");
     await waitFor(() => {
-      expect(screen.getByText("Select Carrier & Service")).toBeInTheDocument();
+      expect(screen.getByText("Select Carrier & Service Level")).toBeInTheDocument();
     });
   });
 
   it("switches to auto-select tab", async () => {
     render(<ShippingOptimizerPanel />);
-    fireEvent.click(screen.getByText("Auto-Select"));
+    clickTab("Auto-Select");
     await waitFor(() => {
       expect(screen.getByText("Optimization Mode")).toBeInTheDocument();
     });
@@ -78,7 +82,7 @@ describe("ShippingOptimizerPanel", () => {
 
   it("shows optimization mode buttons", async () => {
     render(<ShippingOptimizerPanel />);
-    fireEvent.click(screen.getByText("Auto-Select"));
+    clickTab("Auto-Select");
     await waitFor(() => {
       expect(screen.getByText("Cheapest")).toBeInTheDocument();
       expect(screen.getByText("Fastest")).toBeInTheDocument();

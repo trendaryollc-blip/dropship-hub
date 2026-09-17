@@ -95,13 +95,13 @@ describe("CarrierComparisonCard", () => {
   it("calls onClick when clicked", () => {
     const handleClick = vi.fn();
     render(<CarrierComparisonCard rate={mockRate} onClick={handleClick} />);
-    screen.getByRole("button").click();
+    screen.getByRole("button", { name: /DHL Express express/ }).click();
     expect(handleClick).toHaveBeenCalled();
   });
 
   it("shows selected state", () => {
     render(<CarrierComparisonCard rate={mockRate} isSelected />);
-    const btn = screen.getByRole("button");
+    const btn = screen.getByRole("button", { name: /DHL Express express/ });
     expect(btn.className).toContain("ring-accent");
   });
 

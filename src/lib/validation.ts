@@ -67,9 +67,37 @@ export const StoreConnectionUpdateSchema = z.object({
 export const ProductLifecycleSchema = z.object({
   productId: z.string().min(1).max(200),
   productTitle: z.string().min(1).max(500),
+  productImage: z.string().max(2000).optional().default(""),
+  category: z.string().max(200).optional().default(""),
   currentStage: z.enum(["discovery", "testing", "winning", "scaling", "saturation", "sunset"]),
   stageEnteredAt: z.string(),
   totalDaysTracked: z.number().min(0).max(3650),
+  supplierUrl: z.string().max(2000).optional().default(""),
+  storeUrl: z.string().max(2000).optional().default(""),
+  notes: z.string().max(5000).optional().default(""),
+});
+
+export const UpdateLifecycleStageSchema = z.object({
+  productId: z.string().min(1).max(200),
+  newStage: z.enum(["discovery", "testing", "winning", "scaling", "saturation", "sunset"]),
+});
+
+export const UpdateLifecycleProductSchema = z.object({
+  productId: z.string().min(1).max(200),
+  productTitle: z.string().min(1).max(500).optional(),
+  productImage: z.string().max(2000).optional(),
+  category: z.string().max(200).optional(),
+  supplierUrl: z.string().max(2000).optional(),
+  storeUrl: z.string().max(2000).optional(),
+  notes: z.string().max(5000).optional(),
+});
+
+export const DeleteLifecycleProductSchema = z.object({
+  productId: z.string().min(1).max(200),
+});
+
+export const MarkAlertsReadSchema = z.object({
+  alertIds: z.array(z.string()).min(1).max(100),
 });
 
 export const MonitoredProductSchema = z.object({
@@ -98,6 +126,29 @@ export function validateBody<T>(schema: z.ZodSchema<T>, body: unknown): { succes
     ),
   };
 }
+
+export const SavePreferencesSchema = z.object({
+  optimization: z.enum(["speed", "cost", "balanced"]),
+  maxShippingDays: z.number().int().min(1).max(365),
+  minQualityScore: z.number().min(0).max(100),
+  preferLocalWarehouse: z.boolean(),
+  autoFallback: z.boolean(),
+  maxFallbackAttempts: z.number().int().min(0).max(10).optional(),
+});
+
+export const RouteOrderSchema = z.object({
+  orderId: z.string().min(1).max(100),
+  customerLocation: z.string().min(1).max(200),
+  productTitle: z.string().min(1).max(500),
+  customerName: z.string().min(1).max(200).optional().default("Customer"),
+  quantity: z.number().int().min(1).max(10000).optional().default(1),
+  totalPrice: z.number().min(0).max(100000).optional().default(0),
+});
+
+export const ReRouteSchema = z.object({
+  decisionId: z.string().min(1),
+  reason: z.string().max(500).optional(),
+});
 
 export const AIChatSchema = z.object({
   messages: z.array(z.object({

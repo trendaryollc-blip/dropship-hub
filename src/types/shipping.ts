@@ -374,8 +374,8 @@ export const ShippingRateCacheSchema = z.object({
     estimatedDaysMin: z.number(),
     estimatedDaysMax: z.number(),
   })),
-  createdAt: z.any(),
-  expiresAt: z.any(),
+  createdAt: z.string(),
+  expiresAt: z.string(),
 });
 
 // ── Carrier Configurations ────────────────────────────────────────────────────

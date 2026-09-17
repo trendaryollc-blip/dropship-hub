@@ -3,12 +3,13 @@
 import { RefreshCw, BarChart3, Upload, FileText, Sparkles } from "lucide-react";
 
 interface StoreAIBarProps {
-  onAction: (action: string) => void;
+  onAction: (action: string, context?: { productIds?: string[]; storeIds?: string[] }) => void;
   loading: string | null;
   storeCount: number;
+  selectedProductCount?: number;
 }
 
-export default function StoreAIBar({ onAction, loading, storeCount }: StoreAIBarProps) {
+export default function StoreAIBar({ onAction, loading, storeCount, selectedProductCount = 0 }: StoreAIBarProps) {
   if (storeCount === 0) return null;
 
   const actions = [
@@ -35,7 +36,7 @@ export default function StoreAIBar({ onAction, loading, storeCount }: StoreAIBar
     {
       id: "bulk-push",
       label: "Bulk Push",
-      description: "Push saved products to stores",
+      description: selectedProductCount > 0 ? `Push ${selectedProductCount} selected products` : "Push saved products to stores",
       icon: Upload,
       gradient: "from-purple-500/20 to-purple-600/10",
       border: "border-purple-400/20 hover:border-purple-400/40",

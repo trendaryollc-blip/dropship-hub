@@ -1,5 +1,5 @@
 export interface MonitoredProduct {
-  id?: string;
+  id: string;
   productId: string;
   productTitle: string;
   productImage?: string;
@@ -15,8 +15,11 @@ export interface MonitoredProduct {
   repricingRule?: RepricingRule;
   priceDropThreshold?: number;
   competitorUrls?: string[];
+  competitorSnapshots?: CompetitorSnapshot[];
   autoDelist?: boolean;
   storeConnections?: StoreConnectionRef[];
+  autoDelisted?: boolean;
+  autoDelistedAt?: string | null;
 }
 
 export interface PriceHistoryEntry {
@@ -109,3 +112,10 @@ export const DEFAULT_RETRY_CONFIG: RetryConfig = {
 export const DEFAULT_PRICE_DROP_THRESHOLD = 5;
 
 export const MAX_PRICE_HISTORY_DAYS = 90;
+
+export interface MonitoringHealth {
+  status: "healthy" | "degraded" | "critical";
+  lastCheckAge: number | null;
+  productsNeedingAttention: number;
+  recommendations: string[];
+}

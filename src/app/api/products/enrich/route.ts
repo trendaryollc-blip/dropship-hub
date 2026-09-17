@@ -11,6 +11,7 @@ interface PlatformPrice {
   reviews: number;
   inStock: boolean;
   url: string;
+  brand?: string;
   isMock?: boolean;
 }
 
@@ -24,7 +25,7 @@ interface EnrichmentResult {
 }
 
 async function searchPlatformSafely(
-  searchFn: (q: string) => Promise<{ search_results: { title: string; price: number | null; rating?: number; reviews?: number; link: string }[] }>,
+  searchFn: (q: string) => Promise<{ search_results: { title: string; price: number | null; rating?: number; reviews?: number; link: string; brand?: string }[] }>,
   query: string,
   platformName: string
 ): Promise<PlatformPrice[]> {
@@ -37,6 +38,7 @@ async function searchPlatformSafely(
       reviews: item.reviews || 0,
       inStock: item.price !== null && item.price > 0,
       url: item.link || "#",
+      brand: item.brand || undefined,
     }));
   } catch {
     return [];

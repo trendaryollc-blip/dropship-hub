@@ -87,6 +87,25 @@ export const MissionEntrySchema = z.object({
   done: z.boolean(),
   date: z.string(),
   createdAt: firestoreTimestamp,
+  type: z.enum(["daily", "weekly", "achievement", "bonus"]).optional(),
+  priority: z.enum(["high", "medium", "low"]).optional(),
+  category: z.string().optional(),
+  impact: z.string().optional(),
+  source: z.string().optional(),
+  aiGenerated: z.boolean().optional(),
+  completedAt: z.string().optional(),
+  progress: z.number().optional(),
+  totalSteps: z.number().optional(),
+  xpAwarded: z.number().optional(),
+  expiresAt: z.string().optional(),
+});
+
+export const AddCustomMissionInputSchema = z.object({
+  text: z.string().min(1).max(500),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  priority: z.enum(["high", "medium", "low"]).optional(),
+  category: z.string().optional(),
+  type: z.enum(["daily", "weekly", "achievement", "bonus"]).optional(),
 });
 
 // ── Watchlist ────────────────────────────────────────────────────────────────
@@ -1392,4 +1411,38 @@ export const AddTrendWatchlistInputSchema = z.object({
   alertOnRising: z.boolean(),
   alertOnPeak: z.boolean(),
   alertOnSaturation: z.boolean(),
+});
+
+// ── Compliance Checker ───────────────────────────────────────────────────────
+
+export const ComplianceCheckInputSchema = z.object({
+  productTitle: z.string().min(1).max(500),
+  productImage: z.string().max(2000).optional(),
+  productUrl: z.string().max(2000).optional(),
+  productDescription: z.string().max(10000).optional(),
+  brand: z.string().max(200).optional(),
+  category: z.string().min(1).max(200),
+  materials: z.array(z.string()),
+  targetMarkets: z.array(z.string()),
+  sellingPrice: z.number().min(0),
+  productImages: z.array(z.string()),
+  supplierUrl: z.string().max(2000).optional(),
+  checkTypes: z.array(z.enum(["trademark", "dmca", "restricted_item", "ad_policy", "image_originality", "brand_registry", "patent", "export_control"])),
+  beforeAfterClaims: z.string().max(500).optional(),
+  healthClaims: z.array(z.string()).optional(),
+});
+
+export const ComplianceDocSchema = z.object({
+  productTitle: z.string(),
+  productImage: z.string().optional(),
+  productUrl: z.string().optional(),
+  category: z.string(),
+  overallScore: z.number().min(0).max(100),
+  riskLevel: z.enum(["safe", "low", "medium", "high", "blocked"]),
+  canList: z.boolean(),
+  checkTypes: z.array(z.string()),
+  flagCount: z.number().int().min(0),
+  violationCount: z.number().int().min(0),
+  inputs: z.record(z.string(), z.unknown()),
+  createdAt: firestoreTimestamp,
 });

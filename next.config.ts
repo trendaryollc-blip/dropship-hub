@@ -58,6 +58,9 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "**.cjdropshipping.com" },
       { protocol: "https", hostname: "**.aliyuncs.com" },
+      { protocol: "https", hostname: "**.aliexpress-media.com" },
+      { protocol: "https", hostname: "ae01.alicdn.com" },
+      { protocol: "https", hostname: "img.alicdn.com" },
     ],
   },
   headers: async () => [

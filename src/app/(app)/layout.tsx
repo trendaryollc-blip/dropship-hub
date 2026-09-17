@@ -62,6 +62,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -99,7 +100,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
             {children}
           </main>
         </div>
-        <CommandPalette />
+        <CommandPalette open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} />
         <MobileNav />
         {/* Bottom padding for mobile nav */}
         <div className="h-16 md:hidden" />

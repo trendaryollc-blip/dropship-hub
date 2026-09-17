@@ -27,6 +27,17 @@ vi.mock("lucide-react", () => ({
   ShoppingCart: () => <div />,
   Users: () => <div />,
   Globe: () => <div />,
+  Clock: () => <div />,
+  DollarSign: () => <div />,
+  RotateCcw: () => <div />,
+  Package: () => <div />,
+  Star: () => <div />,
+  MapPin: () => <div />,
+  Calendar: () => <div />,
+  AlertTriangle: () => <div />,
+  Eye: () => <div />,
+  BookmarkPlus: () => <div />,
+  Sparkles: () => <div />,
 }));
 
 const mockNiche = {
@@ -57,11 +68,28 @@ const mockNiche = {
   seasonality: "Year-round",
   riskLevel: "low" as const,
   topSuppliers: [
-    { name: "CJ Dropshipping", badge: "gold" as const, reliability: 95 },
-    { name: "AliExpress", badge: "silver" as const, reliability: 85 },
+    { name: "CJ Dropshipping", badge: "gold" as const, reliability: 95, avgShippingDays: 7, price: 8.5, moq: 1, responseRate: 98 },
+    { name: "AliExpress", badge: "silver" as const, reliability: 85, avgShippingDays: 12, price: 7.2, moq: 5, responseRate: 90 },
   ],
   relatedNiches: ["Bluetooth Speakers", "Phone Accessories"],
   keywords: ["earbuds", "wireless", "bluetooth"],
+  estimatedMonthlyRevenue: 12500,
+  profitPerUnit: 12.5,
+  avgShippingDays: 8,
+  avgReturnRate: 3.2,
+  topProducts: [
+    { id: "p1", name: "Pro Earbuds X1", image: "", sellPrice: 25, costPrice: 12, margin: 52, orders: 150, rating: 4.5, shippingDays: 7, returnRate: 2.1 },
+  ],
+  competition: { storeCount: 150, avgStoreRating: 4.2, priceRange: { min: 10, max: 50, avg: 35 }, topPlatforms: ["Amazon", "Shopify"], saturationLevel: "medium" as const },
+  geographicDemand: [
+    { country: "United States", demand: 85, avgOrderValue: 32 },
+    { country: "United Kingdom", demand: 60, avgOrderValue: 28 },
+  ],
+  seasonalTrend: [
+    { month: "Jan", demand: 50, isPeak: false },
+    { month: "Nov", demand: 85, isPeak: true },
+    { month: "Dec", demand: 90, isPeak: true },
+  ],
 };
 
 describe("NicheDetail", () => {

@@ -35,7 +35,7 @@ describe("DailyMission", () => {
   it("renders with mission data", () => {
     mockUseAPI.mockReturnValue({
       data: {
-        stats: { totalXP: 1250, level: 3, currentXP: 250, nextLevelXP: 500, streak: 5 },
+        stats: { totalXP: 1250, level: 3, currentXP: 250, nextLevelXP: 500, streak: 5, longestStreak: 5, totalMissionsCompleted: 10, badges: ["first_mission"], weeklyXP: 200, todayXP: 50 },
         completed: 2,
         total: 5,
       },
@@ -51,7 +51,7 @@ describe("DailyMission", () => {
   it("shows streak count", () => {
     mockUseAPI.mockReturnValue({
       data: {
-        stats: { totalXP: 500, level: 2, currentXP: 100, nextLevelXP: 300, streak: 7 },
+        stats: { totalXP: 500, level: 2, currentXP: 100, nextLevelXP: 300, streak: 7, longestStreak: 7, totalMissionsCompleted: 5, badges: [], weeklyXP: 100, todayXP: 25 },
         completed: 1,
         total: 3,
       },
@@ -65,7 +65,7 @@ describe("DailyMission", () => {
   it("shows XP and level", () => {
     mockUseAPI.mockReturnValue({
       data: {
-        stats: { totalXP: 3200, level: 5, currentXP: 200, nextLevelXP: 400, streak: 12 },
+        stats: { totalXP: 3200, level: 5, currentXP: 200, nextLevelXP: 400, streak: 12, longestStreak: 12, totalMissionsCompleted: 25, badges: ["first_mission", "ten_missions"], weeklyXP: 300, todayXP: 75 },
         completed: 4,
         total: 4,
       },
@@ -79,7 +79,7 @@ describe("DailyMission", () => {
   it("shows missions progress", () => {
     mockUseAPI.mockReturnValue({
       data: {
-        stats: { totalXP: 800, level: 2, currentXP: 150, nextLevelXP: 400, streak: 3 },
+        stats: { totalXP: 800, level: 2, currentXP: 150, nextLevelXP: 400, streak: 3, longestStreak: 3, totalMissionsCompleted: 8, badges: [], weeklyXP: 150, todayXP: 40 },
         completed: 3,
         total: 5,
       },
@@ -102,7 +102,7 @@ describe("DailyMission", () => {
   it("shows 'Generate today's AI missions' when 0 total", () => {
     mockUseAPI.mockReturnValue({
       data: {
-        stats: { totalXP: 0, level: 1, currentXP: 0, nextLevelXP: 500, streak: 0 },
+        stats: { totalXP: 0, level: 1, currentXP: 0, nextLevelXP: 500, streak: 0, longestStreak: 0, totalMissionsCompleted: 0, badges: [], weeklyXP: 0, todayXP: 0 },
         completed: 0,
         total: 0,
       },
@@ -117,7 +117,7 @@ describe("DailyMission", () => {
   it("shows completion ratio when missions exist", () => {
     mockUseAPI.mockReturnValue({
       data: {
-        stats: { totalXP: 600, level: 2, currentXP: 100, nextLevelXP: 300, streak: 4 },
+        stats: { totalXP: 600, level: 2, currentXP: 100, nextLevelXP: 300, streak: 4, longestStreak: 4, totalMissionsCompleted: 6, badges: [], weeklyXP: 100, todayXP: 30 },
         completed: 3,
         total: 4,
       },

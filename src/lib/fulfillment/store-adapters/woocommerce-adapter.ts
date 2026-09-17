@@ -1,4 +1,4 @@
-import type { StoreAdapter, StoreConfig, StoreOrder } from "./interface";
+import type { StoreAdapter, StoreConfig, StoreOrder, HealthResult } from "./interface";
 
 export const woocommerceAdapter: StoreAdapter = {
   platform: "woocommerce",
@@ -73,6 +73,28 @@ export const woocommerceAdapter: StoreAdapter = {
 
   async getOrderStatus(_config: StoreConfig, _orderId: string): Promise<string> {
     return "unknown";
+  },
+
+  async healthCheck(config: StoreConfig): Promise<HealthResult> {
+    const baseUrl = config.url.replace(/\/$/, "");
+    const auth = Buffer.from(`${config.apiKey}:${config.apiSecret}`).toString("base64");
+    const start = Date.now();
+    try {
+      const res = await fetch(`${baseUrl}/wp-json/wc/v3/system_status`, {
+        headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(10_000),
+      });
+      const responseTimeMs = Date.now() - start;
+      if (res.status === 401 || res.status === 403) {
+        return { status: "credentials_expired", message: "API credentials are invalid or expired", responseTimeMs };
+      }
+      if (!res.ok) {
+        return { status: "error", message: `API returned ${res.status}`, responseTimeMs };
+      }
+      return { status: "healthy", message: `Connected to WooCommerce at ${baseUrl}`, responseTimeMs };
+    } catch (err) {
+      return { status: "error", message: err instanceof Error ? err.message : "Connection failed", responseTimeMs: Date.now() - start };
+    }
   },
 };
 

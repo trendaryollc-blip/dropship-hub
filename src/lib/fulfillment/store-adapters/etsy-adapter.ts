@@ -1,4 +1,4 @@
-import type { StoreAdapter, StoreConfig, StoreOrder } from "./interface";
+import type { StoreAdapter, StoreConfig, StoreOrder, HealthResult } from "./interface";
 
 export const etsyAdapter: StoreAdapter = {
   platform: "etsy",
@@ -23,7 +23,7 @@ export const etsyAdapter: StoreAdapter = {
       return {
         id: String(receipt.receipt_id),
         orderNumber: `#${receipt.receipt_id}`,
-        customerName: String(addr.first_name + " " + addr.last_name || "Customer"),
+        customerName: `${addr.first_name || ""} ${addr.last_name || ""}`.trim() || "Customer",
         customerEmail: String(receipt.buyer_email || ""),
         shippingAddress: {
           fullName: `${addr.first_name || ""} ${addr.last_name || ""}`.trim(),
@@ -74,6 +74,35 @@ export const etsyAdapter: StoreAdapter = {
 
   async getOrderStatus(_config: StoreConfig, _orderId: string): Promise<string> {
     return "unknown";
+  },
+
+  async healthCheck(config: StoreConfig): Promise<HealthResult> {
+    const headers: Record<string, string> = {
+      "x-api-key": config.apiKey || "",
+    };
+    const start = Date.now();
+    try {
+      const res = await fetch(`https://openapi.etsy.com/v3/application/shops/${config.apiSecret}`, {
+        headers,
+        signal: AbortSignal.timeout(10_000),
+      });
+      const responseTimeMs = Date.now() - start;
+      if (res.status === 401 || res.status === 403) {
+        return { status: "credentials_expired", message: "API key is invalid or expired", responseTimeMs };
+      }
+      if (!res.ok) {
+        return { status: "error", message: `API returned ${res.status}`, responseTimeMs };
+      }
+      const data = await res.json();
+      return {
+        status: "healthy",
+        message: `Connected to Etsy shop: ${data.shop_name || config.apiSecret}`,
+        responseTimeMs,
+        storeInfo: { shopName: data.shop_name, shopId: config.apiSecret },
+      };
+    } catch (err) {
+      return { status: "error", message: err instanceof Error ? err.message : "Connection failed", responseTimeMs: Date.now() - start };
+    }
   },
 };
 

@@ -291,7 +291,7 @@ describe("/api/dashboard", () => {
       const data = await response.json();
 
       expect(data.healthScore).toBeGreaterThanOrEqual(20);
-      expect(data.healthScore).toBeLessThanOrEqual(99);
+      expect(data.healthScore).toBeLessThanOrEqual(100);
     });
   });
 

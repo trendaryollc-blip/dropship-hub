@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Trophy, Flame, Zap, ChevronRight } from "lucide-react";
+import { Trophy, Flame, Zap, ChevronRight, Award } from "lucide-react";
 import { useAPI } from "@/hooks/useAPI";
 
 interface MissionStats {
@@ -10,6 +10,11 @@ interface MissionStats {
   currentXP: number;
   nextLevelXP: number;
   streak: number;
+  longestStreak: number;
+  totalMissionsCompleted: number;
+  badges: string[];
+  weeklyXP: number;
+  todayXP: number;
 }
 
 function ProgressRing({ progress, size = 56 }: { progress: number; size?: number }) {
@@ -21,15 +26,9 @@ function ProgressRing({ progress, size = 56 }: { progress: number; size?: number
     <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full">
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="4" />
       <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={r}
-        fill="none"
-        stroke="url(#missionGradient)"
-        strokeWidth="4"
-        strokeLinecap="round"
-        strokeDasharray={circumference}
-        strokeDashoffset={offset}
+        cx={size / 2} cy={size / 2} r={r} fill="none"
+        stroke="url(#missionGradient)" strokeWidth="4" strokeLinecap="round"
+        strokeDasharray={circumference} strokeDashoffset={offset}
         className="transition-all duration-1000 -rotate-90"
       />
       <defs>
@@ -44,7 +43,7 @@ function ProgressRing({ progress, size = 56 }: { progress: number; size?: number
 
 export default function DailyMission() {
   const { data } = useAPI<{ stats: MissionStats; completed: number; total: number }>("/api/ai/missions");
-  const stats = data?.stats || { totalXP: 0, level: 1, currentXP: 0, nextLevelXP: 500, streak: 0 };
+  const stats = data?.stats || { totalXP: 0, level: 1, currentXP: 0, nextLevelXP: 500, streak: 0, longestStreak: 0, totalMissionsCompleted: 0, badges: [], weeklyXP: 0, todayXP: 0 };
   const completedCount = data?.completed ?? 0;
   const totalCount = data?.total ?? 0;
 
@@ -72,9 +71,17 @@ export default function DailyMission() {
               ? `${completedCount}/${totalCount} AI missions completed today`
               : "Generate today's AI missions to get started"}
           </Link>
-          <div className="flex items-center gap-1.5 mt-1">
-            <Zap className="h-3 w-3 text-accent" />
-            <span className="text-[10px] font-semibold text-accent">Lv.{stats.level} · {stats.totalXP.toLocaleString()} XP</span>
+          <div className="flex items-center gap-3 mt-1">
+            <div className="flex items-center gap-1">
+              <Zap className="h-3 w-3 text-accent" />
+              <span className="text-[10px] font-semibold text-accent">Lv.{stats.level} · {stats.totalXP.toLocaleString()} XP</span>
+            </div>
+            {stats.badges.length > 0 && (
+              <div className="flex items-center gap-1">
+                <Award className="h-3 w-3 text-purple-400" />
+                <span className="text-[10px] font-semibold text-purple-400">{stats.badges.length} badges</span>
+              </div>
+            )}
           </div>
         </div>
 

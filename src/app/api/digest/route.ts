@@ -3,6 +3,7 @@ import { getAdminDB } from "@/lib/firebase-admin";
 import { sendDigestEmail } from "@/lib/email-digest";
 import { withAuth } from "@/lib/auth";
 import { DocumentData } from "firebase-admin/firestore";
+import { safeNum, safeStr } from "@/lib/utils-helpers";
 
 interface DigestMetrics {
   orders: number;
@@ -10,6 +11,18 @@ interface DigestMetrics {
   profit: number;
   stockAlerts: number;
   supplierDelays: number;
+}
+
+interface TopProduct {
+  name: string;
+  revenue: number;
+  units: number;
+}
+
+interface TopCampaign {
+  name: string;
+  roas: number;
+  spend: number;
 }
 
 const _modelCache = new Map<string, { models: string[]; ts: number }>();
@@ -81,6 +94,7 @@ interface DigestResponse {
   date: string;
   summary: string;
   metrics: DigestMetrics;
+  previousMetrics: DigestMetrics;
   alerts: DigestAlert[];
   recommendations: string[];
   weeklyTrend: {
@@ -88,15 +102,21 @@ interface DigestResponse {
     percentage: number;
     insight: string;
   };
+  topProducts: TopProduct[];
+  topCampaigns: TopCampaign[];
 }
 
-async function fetchRealMetrics(db: Awaited<ReturnType<typeof getAdminDB>>, uid: string, digestDate: string): Promise<DigestMetrics> {
+async function fetchRealMetrics(db: Awaited<ReturnType<typeof getAdminDB>>, uid: string, digestDate: string): Promise<{ current: DigestMetrics; prev: DigestMetrics; topProducts: TopProduct[]; topCampaigns: TopCampaign[] }> {
   const userRef = db.collection("users").doc(uid);
+
+  const dateObj = new Date(digestDate);
+  const prevDate = new Date(dateObj.getTime() - 86400000).toISOString().split("T")[0];
   const dayAgo = new Date(Date.now() - 86400000).toISOString();
 
-  const [ordersSnap, profitSnap, monitoredSnap, supplierAlertsSnap] = await Promise.all([
+  const [ordersSnap, profitSnap, prevProfitSnap, monitoredSnap, supplierAlertsSnap] = await Promise.all([
     userRef.collection("fulfillmentOrders").where("createdAt", ">=", dayAgo).get(),
     userRef.collection("profitEntries").where("date", "==", digestDate).get(),
+    userRef.collection("profitEntries").where("date", "==", prevDate).get(),
     userRef.collection("monitoredProducts").get(),
     userRef.collection("supplierAlerts").where("read", "==", false).get(),
   ]);
@@ -111,6 +131,16 @@ async function fetchRealMetrics(db: Awaited<ReturnType<typeof getAdminDB>>, uid:
     return sum + (typeof data.profit === "number" ? data.profit : 0);
   }, 0);
 
+  const prevOrders = prevProfitSnap.size;
+  const prevRevenue = prevProfitSnap.docs.reduce((sum, doc) => {
+    const data = doc.data() as DocumentData;
+    return sum + (typeof data.revenue === "number" ? data.revenue : 0);
+  }, 0);
+  const prevProfit = prevProfitSnap.docs.reduce((sum, doc) => {
+    const data = doc.data() as DocumentData;
+    return sum + (typeof data.profit === "number" ? data.profit : 0);
+  }, 0);
+
   const stockAlerts = monitoredSnap.docs.filter((doc) => {
     const data = doc.data() as DocumentData;
     return data.stockStatus === "out_of_stock";
@@ -118,7 +148,45 @@ async function fetchRealMetrics(db: Awaited<ReturnType<typeof getAdminDB>>, uid:
 
   const supplierDelays = supplierAlertsSnap.size;
 
-  return { orders, revenue: Number(revenue.toFixed(2)), profit: Number(profit.toFixed(2)), stockAlerts, supplierDelays };
+  const productMap = new Map<string, { revenue: number; units: number }>();
+  for (const doc of profitSnap.docs) {
+    const data = doc.data() as DocumentData;
+    const name = safeStr(data.productName, "Unknown");
+    const existing = productMap.get(name) || { revenue: 0, units: 0 };
+    existing.revenue += safeNum(data.revenue);
+    existing.units += 1;
+    productMap.set(name, existing);
+  }
+  const topProducts = Array.from(productMap.entries())
+    .map(([name, d]) => ({ name, ...d }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 5);
+
+  const campaignMap = new Map<string, { spend: number; revenue: number }>();
+  for (const doc of profitSnap.docs) {
+    const data = doc.data() as DocumentData;
+    const name = safeStr(data.campaignName, "Organic");
+    const existing = campaignMap.get(name) || { spend: 0, revenue: 0 };
+    existing.spend += safeNum(data.adSpend);
+    existing.revenue += safeNum(data.revenue);
+    campaignMap.set(name, existing);
+  }
+  const topCampaigns = Array.from(campaignMap.entries())
+    .map(([name, d]) => ({
+      name,
+      roas: d.spend > 0 ? +(d.revenue / d.spend).toFixed(2) : 0,
+      spend: d.spend,
+    }))
+    .filter((c) => c.spend > 0)
+    .sort((a, b) => b.roas - a.roas)
+    .slice(0, 3);
+
+  return {
+    current: { orders, revenue: Number(revenue.toFixed(2)), profit: Number(profit.toFixed(2)), stockAlerts, supplierDelays },
+    prev: { orders: prevOrders, revenue: Number(prevRevenue.toFixed(2)), profit: Number(prevProfit.toFixed(2)), stockAlerts: 0, supplierDelays: 0 },
+    topProducts,
+    topCampaigns,
+  };
 }
 
 function generateAlertsFromMetrics(metrics: DigestMetrics): DigestAlert[] {
@@ -329,7 +397,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     const digestDate = date || new Date().toISOString().split("T")[0];
     const db = await getAdminDB();
 
-    const metrics = await fetchRealMetrics(db, uid, digestDate);
+    const { current: metrics, prev: previousMetrics, topProducts, topCampaigns } = await fetchRealMetrics(db, uid, digestDate);
     const alerts = generateAlertsFromMetrics(metrics);
     const recommendations = generateRecommendations(metrics, alerts);
     const summary = await generateAISummary(metrics, alerts, recommendations);
@@ -339,9 +407,12 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
       date: digestDate,
       summary,
       metrics,
+      previousMetrics,
       alerts,
       recommendations,
       weeklyTrend,
+      topProducts,
+      topCampaigns,
     };
 
     const userRef = db.collection("users").doc(uid);
@@ -389,5 +460,20 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ digests });
   } catch {
     return NextResponse.json({ error: "Failed to fetch digests" }, { status: 500 });
+  }
+});
+
+export const DELETE = withAuth(async (request: NextRequest, uid: string) => {
+  try {
+    const url = new URL(request.url);
+    const date = url.searchParams.get("date");
+    if (!date) {
+      return NextResponse.json({ error: "Date parameter required" }, { status: 400 });
+    }
+    const db = await getAdminDB();
+    await db.collection("users").doc(uid).collection("digests").doc(date).delete();
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json({ error: "Failed to delete digest" }, { status: 500 });
   }
 });

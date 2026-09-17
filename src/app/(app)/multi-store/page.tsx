@@ -5,20 +5,26 @@ import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAPI } from "@/hooks/useAPI";
 import {
-  Store, Package, RefreshCw, Send, BarChart3, Loader2, Globe, Zap,
+  Store, Package, RefreshCw, Send, BarChart3, Globe, Zap,
   ShoppingCart, DollarSign, TrendingUp, ArrowRight, Settings,
 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import type { UnifiedOrder, StorePerformance, BulkPushJob, StoreInventoryItem } from "@/types/multi-store";
 import type { ConnectedStore } from "@/components/stores/ConnectedStoresList";
 import type { PushedProduct } from "@/components/stores/PushedProductsList";
+import { BULK_JOBS_DISPLAY_LIMIT, SWR_REFRESH_INTERVALS, ORDER_PAGE_SIZE } from "@/components/stores/constants";
+import { MultiStorePageSkeleton } from "@/components/stores/StoreSkeletons";
+import { PageErrorBoundary } from "@/components/ui/PageErrorBoundary";
+import Pagination from "@/components/ui/Pagination";
 import KpiCard from "@/components/multi-store/KpiCard";
 import UnifiedOrderRow from "@/components/multi-store/UnifiedOrderRow";
 import StorePerformanceCard from "@/components/multi-store/StorePerformanceCard";
+import PerformanceCharts from "@/components/multi-store/PerformanceCharts";
 import BulkPushPanel from "@/components/multi-store/BulkPushPanel";
 import InventorySyncPanel from "@/components/multi-store/InventorySyncPanel";
+import OrderFilters, { type OrderFilterState } from "@/components/multi-store/OrderFilters";
 import StoreAIBar from "@/components/stores/StoreAIBar";
-import GlobalStoreChat from "@/components/stores/GlobalStoreChat";
+import StoreChat from "@/components/stores/StoreChat";
 import { safeFetch } from "@/lib/safe-fetch";
 
 export default function MultiStorePage() {
@@ -26,32 +32,63 @@ export default function MultiStorePage() {
   const { success, error: toastError } = useToast();
   const uid = user?.uid || "";
   const [activeTab, setActiveTab] = useState<"orders" | "inventory" | "performance" | "bulk-push">("orders");
-  const [orderFilter, setOrderFilter] = useState<{ storeId?: string; status?: string }>({});
+  const [orderFilters, setOrderFilters] = useState<OrderFilterState>({ search: "", sortBy: "date", sortOrder: "desc" });
+  const [orderPage, setOrderPage] = useState(1);
   const [performancePeriod, setPerformancePeriod] = useState<"7d" | "30d" | "90d">("30d");
   const [aiLoading, setAiLoading] = useState<string | null>(null);
 
-  const { data: connData, mutate: refetchConnections } = useAPI<{ connections?: ConnectedStore[] }>(uid ? `/api/store/connections?uid=${uid}` : null);
-  const { data: orderData } = useAPI<{ orders?: UnifiedOrder[] }>(uid ? `/api/multi-store/orders?uid=${uid}` : null);
-  const { data: invData } = useAPI<{ inventory?: StoreInventoryItem[] }>(uid ? `/api/multi-store/inventory?uid=${uid}` : null);
-  const { data: perfData, mutate: refetchPerf } = useAPI<{ performances?: StorePerformance[] }>(uid ? `/api/multi-store/performance?uid=${uid}&period=${performancePeriod}` : null);
-  const { data: pushData } = useAPI<{ jobs?: BulkPushJob[] }>(uid ? `/api/multi-store/bulk-push?uid=${uid}` : null);
-  const { data: pushedData } = useAPI<{ products?: PushedProduct[] }>(uid ? `/api/store/push?uid=${uid}` : null);
+  const { data: connData, mutate: refetchConnections } = useAPI<{ connections?: ConnectedStore[] }>(uid ? `/api/store/connections?uid=${uid}` : null, { refreshInterval: SWR_REFRESH_INTERVALS.connections });
+  const { data: orderData } = useAPI<{ orders?: UnifiedOrder[] }>(uid ? `/api/multi-store/orders?uid=${uid}` : null, { refreshInterval: SWR_REFRESH_INTERVALS.orders });
+  const { data: invData } = useAPI<{ inventory?: StoreInventoryItem[] }>(uid ? `/api/multi-store/inventory?uid=${uid}` : null, { refreshInterval: SWR_REFRESH_INTERVALS.inventory });
+  const { data: perfData, mutate: refetchPerf } = useAPI<{ performances?: StorePerformance[] }>(uid ? `/api/multi-store/performance?uid=${uid}&period=${performancePeriod}` : null, { refreshInterval: SWR_REFRESH_INTERVALS.performance });
+  const { data: pushData } = useAPI<{ jobs?: BulkPushJob[] }>(uid ? `/api/multi-store/bulk-push?uid=${uid}` : null, { refreshInterval: SWR_REFRESH_INTERVALS.connections });
+  const { data: pushedData } = useAPI<{ products?: PushedProduct[] }>(uid ? `/api/store/push?uid=${uid}` : null, { refreshInterval: SWR_REFRESH_INTERVALS.connections });
 
-  const stores = connData?.connections || [];
+  const stores = useMemo(() => connData?.connections || [], [connData]);
   const orders = useMemo(() => orderData?.orders || [], [orderData]);
-  const inventory = invData?.inventory || [];
-  const performances = perfData?.performances || [];
-  const bulkJobs = pushData?.jobs || [];
-  const pushedProducts = pushedData?.products || [];
+  const inventory = useMemo(() => invData?.inventory || [], [invData]);
+  const performances = useMemo(() => perfData?.performances || [], [perfData]);
+  const bulkJobs = useMemo(() => pushData?.jobs || [], [pushData]);
+  const pushedProducts = useMemo(() => pushedData?.products || [], [pushedData]);
   const loading = !user || (!connData && !orderData);
 
   const filteredOrders = useMemo(() => {
-    return orders.filter((o) => {
-      if (orderFilter.storeId && o.storeId !== orderFilter.storeId) return false;
-      if (orderFilter.status && o.status !== orderFilter.status) return false;
+    const result = orders.filter((o) => {
+      if (orderFilters.storeId && o.storeId !== orderFilters.storeId) return false;
+      if (orderFilters.status && o.status !== orderFilters.status) return false;
+      if (orderFilters.fulfillmentStatus && o.fulfillmentStatus !== orderFilters.fulfillmentStatus) return false;
+      if (orderFilters.dateFrom && new Date(o.createdAt) < new Date(orderFilters.dateFrom)) return false;
+      if (orderFilters.dateTo && new Date(o.createdAt) > new Date(orderFilters.dateTo + "T23:59:59")) return false;
+      if (orderFilters.search) {
+        const q = orderFilters.search.toLowerCase();
+        const match = o.orderNumber.toLowerCase().includes(q) ||
+          o.customerName.toLowerCase().includes(q) ||
+          o.customerEmail.toLowerCase().includes(q) ||
+          o.storeName.toLowerCase().includes(q);
+        if (!match) return false;
+      }
       return true;
     });
-  }, [orders, orderFilter]);
+
+    result.sort((a, b) => {
+      const dir = orderFilters.sortOrder === "asc" ? 1 : -1;
+      switch (orderFilters.sortBy) {
+        case "amount": return (a.totalAmount - b.totalAmount) * dir;
+        case "store": return a.storeName.localeCompare(b.storeName) * dir;
+        case "date":
+        default: return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * dir;
+      }
+    });
+
+    return result;
+  }, [orders, orderFilters]);
+
+  const paginatedOrders = useMemo(() => {
+    const start = (orderPage - 1) * ORDER_PAGE_SIZE;
+    return filteredOrders.slice(start, start + ORDER_PAGE_SIZE);
+  }, [filteredOrders, orderPage]);
+
+  const totalOrderPages = Math.ceil(filteredOrders.length / ORDER_PAGE_SIZE);
 
   const totalRevenue = performances.reduce((sum, p) => sum + p.metrics.totalRevenue, 0);
   const totalOrders = performances.reduce((sum, p) => sum + p.metrics.totalOrders, 0);
@@ -73,13 +110,14 @@ export default function MultiStorePage() {
     } catch { return { success: false, summary: "Failed" }; }
   }, [user]);
 
-  const handleAIBarAction = useCallback(async (action: string) => {
+  const handleAIBarAction = useCallback(async (action: string, context?: { productIds?: string[]; storeIds?: string[] }) => {
     setAiLoading(action);
+    const storeIds = context?.storeIds || stores.map((s) => s.id);
     const configs: Record<string, { toolId: string; input: Record<string, unknown>; label: string }> = {
-      "sync-inventory": { toolId: "sync_inventory", input: {}, label: "Inventory synced" },
-      "store-performance": { toolId: "get_store_performance", input: {}, label: "Performance data fetched" },
-      "bulk-push": { toolId: "push_bulk_to_store", input: { productIds: [] }, label: "Bulk push started" },
-      "optimize-listings": { toolId: "generate_listing", input: {}, label: "Listings optimized" },
+      "sync-inventory": { toolId: "sync_inventory", input: { storeId: storeIds[0] || "" }, label: "Inventory synced" },
+      "store-performance": { toolId: "get_store_performance", input: { storeId: storeIds[0] || "", period: "30d" }, label: "Performance data fetched" },
+      "bulk-push": { toolId: "push_bulk_to_store", input: { productIds: context?.productIds || [], storeIds }, label: "Bulk push started" },
+      "optimize-listings": { toolId: "generate_listing", input: { productIds: context?.productIds || [] }, label: "Listings optimized" },
     };
     const config = configs[action];
     if (config) {
@@ -91,18 +129,15 @@ export default function MultiStorePage() {
       }
     }
     setAiLoading(null);
-  }, [executeAITool, success, toastError]);
+  }, [executeAITool, success, toastError, stores]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-5 w-5 text-accent animate-spin" />
-      </div>
-    );
+    return <MultiStorePageSkeleton />;
   }
 
   if (stores.length === 0) {
     return (
+      <PageErrorBoundary>
       <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 px-3 sm:px-4 lg:px-6 pb-24">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
@@ -129,10 +164,12 @@ export default function MultiStorePage() {
           </Link>
         </div>
       </div>
+      </PageErrorBoundary>
     );
   }
 
   return (
+    <PageErrorBoundary>
     <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 px-3 sm:px-4 lg:px-6 pb-24">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
@@ -187,44 +224,37 @@ export default function MultiStorePage() {
 
       {activeTab === "orders" && (
         <div className="space-y-4">
-          <div className="flex flex-wrap gap-2">
-            <select
-              value={orderFilter.storeId || ""}
-              onChange={(e) => setOrderFilter((prev) => ({ ...prev, storeId: e.target.value || undefined }))}
-              className="px-3 py-1.5 rounded-lg bg-surface border border-border text-[10px] text-foreground focus:outline-none focus:border-accent/50"
-            >
-              <option value="">All Stores</option>
-              {stores.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-            <select
-              value={orderFilter.status || ""}
-              onChange={(e) => setOrderFilter((prev) => ({ ...prev, status: e.target.value || undefined }))}
-              className="px-3 py-1.5 rounded-lg bg-surface border border-border text-[10px] text-foreground focus:outline-none focus:border-accent/50"
-            >
-              <option value="">All Statuses</option>
-              <option value="pending">Pending</option>
-              <option value="processing">Processing</option>
-              <option value="shipped">Shipped</option>
-              <option value="delivered">Delivered</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-          </div>
+          <OrderFilters
+            stores={stores.map((s) => ({ id: s.id, name: s.name }))}
+            filters={orderFilters}
+            onFiltersChange={(f) => { setOrderFilters(f); setOrderPage(1); }}
+          />
 
-          {filteredOrders.length === 0 ? (
+          {paginatedOrders.length === 0 ? (
             <div className="glass rounded-2xl p-12 text-center">
               <Package className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
               <p className="text-sm font-medium text-foreground mb-1">No orders found</p>
-              <p className="text-xs text-muted-foreground">Orders from all connected stores will appear here.</p>
+              <p className="text-xs text-muted-foreground">
+                {filteredOrders.length === 0
+                  ? "Orders from all connected stores will appear here."
+                  : "No orders match your filters. Try adjusting them."}
+              </p>
             </div>
           ) : (
             <div className="space-y-2">
-              {filteredOrders.map((order, i) => (
-                <UnifiedOrderRow key={order.id} order={order} delay={i * 50} />
+              {paginatedOrders.map((order, i) => (
+                <UnifiedOrderRow key={order.id} order={order} delay={i * 50} onOrderUpdated={() => refetchConnections()} />
               ))}
             </div>
           )}
+
+          <Pagination
+            currentPage={orderPage}
+            totalPages={totalOrderPages}
+            totalItems={filteredOrders.length}
+            pageSize={ORDER_PAGE_SIZE}
+            onPageChange={setOrderPage}
+          />
         </div>
       )}
 
@@ -254,18 +284,21 @@ export default function MultiStorePage() {
               <p className="text-xs text-muted-foreground">Store performance metrics will appear here once orders are tracked.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-              {performances.map((perf, i) => (
-                <StorePerformanceCard key={perf.storeId} perf={perf} delay={i * 100} />
-              ))}
-            </div>
+            <>
+              <PerformanceCharts performances={performances} />
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {performances.map((perf, i) => (
+                  <StorePerformanceCard key={perf.storeId} perf={perf} delay={i * 100} />
+                ))}
+              </div>
+            </>
           )}
         </div>
       )}
 
       {activeTab === "bulk-push" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <BulkPushPanel stores={stores} onPushComplete={() => refetchConnections()} />
+          <BulkPushPanel stores={stores} pushedProducts={pushedProducts} onPushComplete={() => refetchConnections()} />
           <div className="glass rounded-2xl p-4 sm:p-5">
             <h3 className="font-display text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
               <Zap className="h-4 w-4 text-accent" /> Recent Push Jobs
@@ -274,7 +307,7 @@ export default function MultiStorePage() {
               <p className="text-[10px] text-muted-foreground text-center py-4">No push jobs yet.</p>
             ) : (
               <div className="space-y-2">
-                {bulkJobs.slice(0, 10).map((job) => (
+                {bulkJobs.slice(0, BULK_JOBS_DISPLAY_LIMIT).map((job) => (
                   <div key={job.id} className="flex items-center justify-between p-2 rounded-lg bg-surface/50">
                     <div className="min-w-0 flex-1">
                       <p className="text-[10px] font-semibold text-foreground truncate">{job.productTitle}</p>
@@ -296,7 +329,8 @@ export default function MultiStorePage() {
         </div>
       )}
 
-      <GlobalStoreChat connections={stores} pushedProducts={pushedProducts} orderCount={orders.length} totalRevenue={totalRevenue} />
+      <StoreChat mode="global" connections={stores} pushedProducts={pushedProducts} orderCount={orders.length} totalRevenue={totalRevenue} />
     </div>
+    </PageErrorBoundary>
   );
 }

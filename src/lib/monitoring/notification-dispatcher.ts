@@ -40,16 +40,61 @@ function shouldNotify(type: NotificationPayload["type"], prefs: UserNotification
 }
 
 async function sendFCMNotification(
-  _uid: string,
-  _payload: NotificationPayload
+  uid: string,
+  payload: NotificationPayload
 ): Promise<boolean> {
-  const serverKey = process.env.FIREBASE_MESSAGING_SERVER_KEY;
-  if (!serverKey) return false;
+  try {
+    const { getMessaging } = await import("firebase-admin/messaging");
+    const messaging = getMessaging();
+    const db = await getAdminDB();
 
-  // In a real implementation, this would fetch the user's FCM tokens from Firestore
-  // and send via Firebase Admin Messaging. Since we don't have admin messaging setup,
-  // we store the notification for the client to pick up via onForegroundMessage.
-  return true;
+    const tokensSnap = await db.collection("users").doc(uid).collection("fcmTokens").get();
+    if (tokensSnap.empty) return false;
+
+    const tokens = tokensSnap.docs.map((d) => d.data().token as string).filter(Boolean);
+    if (tokens.length === 0) return false;
+
+    const subject =
+      payload.type === "price_drop" ? `Price Drop: ${payload.productTitle}` :
+      payload.type === "price_increase" ? `Price Increase: ${payload.productTitle}` :
+      payload.type === "out_of_stock" ? `Out of Stock: ${payload.productTitle}` :
+      payload.type === "back_in_stock" ? `Back in Stock: ${payload.productTitle}` :
+      `Alert: ${payload.productTitle}`;
+
+    const message = {
+      notification: {
+        title: subject,
+        body: payload.message,
+      },
+      data: {
+        type: payload.type,
+        productId: payload.productId,
+        url: "/monitoring",
+      },
+      tokens,
+    };
+
+    const response = await messaging.sendEachForMulticast(message);
+    const failedTokens: string[] = [];
+    response.responses.forEach((resp, idx) => {
+      if (!resp.success && resp.error?.code === "messaging/registration-token-not-registered") {
+        failedTokens.push(tokens[idx]);
+      }
+    });
+
+    if (failedTokens.length > 0) {
+      const batch = db.batch();
+      for (const token of failedTokens) {
+        const snap = await db.collection("users").doc(uid).collection("fcmTokens").where("token", "==", token).get();
+        snap.docs.forEach((doc) => batch.delete(doc.ref));
+      }
+      await batch.commit();
+    }
+
+    return response.successCount > 0;
+  } catch {
+    return false;
+  }
 }
 
 async function sendEmailAlert(
@@ -126,10 +171,10 @@ export async function dispatchNotifications(
     }
 
     try {
-      await sendFCMNotification(uid, payload);
+      const fcmSent = await sendFCMNotification(uid, payload);
       await savePendingNotification(uid, payload);
 
-      if (prefs.email && (payload.type === "out_of_stock" || payload.type === "price_drop")) {
+      if (prefs.email && (payload.type === "out_of_stock" || payload.type === "price_drop" || payload.type === "competitor_undercut")) {
         await sendEmailAlert(uid, prefs, payload).catch(() => {});
       }
 

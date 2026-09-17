@@ -16,6 +16,11 @@ vi.mock("lucide-react", () => ({
   Minus: () => <div />,
   Flame: () => <div />,
   ArrowRight: () => <div />,
+  Target: () => <div />,
+  Clock: () => <div />,
+  BookmarkPlus: () => <div />,
+  Sparkles: () => <div />,
+  GitCompare: () => <div />,
 }));
 
 const mockNiche = {
@@ -31,7 +36,7 @@ const mockNiche = {
   trend: "up" as const,
   trendDirection: "rising" as const,
   weeklyData: [10, 20, 30, 40, 50, 60, 70],
-  demandSparkline: null,
+  demandSparkline: [10, 20, 30, 40, 50],
   scores: { demand: 80, profit: 70, competition: 60, trend: 75, seasonality: 50 },
   overallScore: 75,
   grade: "A" as const,
@@ -48,6 +53,14 @@ const mockNiche = {
   topSuppliers: [],
   relatedNiches: [],
   keywords: [],
+  estimatedMonthlyRevenue: 12500,
+  profitPerUnit: 12.5,
+  avgShippingDays: 8,
+  avgReturnRate: 3.2,
+  topProducts: [],
+  competition: { storeCount: 150, avgStoreRating: 4.2, priceRange: { min: 10, max: 50, avg: 35 }, topPlatforms: ["Amazon"], saturationLevel: "medium" as const },
+  geographicDemand: [],
+  seasonalTrend: [],
 };
 
 describe("NicheHeatmapCard", () => {
@@ -68,8 +81,9 @@ describe("NicheHeatmapCard", () => {
 
   it("calls onSelect on click", () => {
     const onSelect = vi.fn();
-    render(<NicheHeatmapCard niche={mockNiche} index={0} onSelect={onSelect} />);
-    fireEvent.click(screen.getByText("Wireless Earbuds"));
+    const { container } = render(<NicheHeatmapCard niche={mockNiche} index={0} onSelect={onSelect} />);
+    const card = container.firstChild as HTMLElement;
+    fireEvent.click(card);
     expect(onSelect).toHaveBeenCalledWith("n1");
   });
 });

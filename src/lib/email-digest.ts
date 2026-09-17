@@ -1,30 +1,4 @@
-interface DigestMetrics {
-  orders: number;
-  revenue: number;
-  profit: number;
-  stockAlerts: number;
-  supplierDelays: number;
-}
-
-interface DigestAlert {
-  type: "stock" | "supplier" | "adSpend" | "trend";
-  title: string;
-  description: string;
-  severity: "low" | "medium" | "high";
-}
-
-interface DigestData {
-  date: string;
-  summary: string;
-  metrics: DigestMetrics;
-  alerts: DigestAlert[];
-  recommendations: string[];
-  weeklyTrend: {
-    direction: "up" | "down" | "stable";
-    percentage: number;
-    insight: string;
-  };
-}
+import type { DigestData } from "@/types/digest";
 
 import { logger } from "@/lib/logger";
 

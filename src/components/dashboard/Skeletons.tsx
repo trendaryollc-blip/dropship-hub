@@ -104,6 +104,31 @@ export function NicheSkeleton() {
   );
 }
 
+export function HeroSkeleton() {
+  return (
+    <div className="-mx-4 md:-mx-6">
+      <div className="hero-skeleton border-y md:border border-white/[0.06] p-6 md:p-8 lg:p-10">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-8">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-white/[0.05] animate-pulse" />
+            <div className="space-y-2">
+              <div className="h-8 w-72 bg-white/[0.05] rounded-lg animate-pulse" />
+              <div className="h-4 w-48 bg-white/[0.03] rounded animate-pulse" />
+            </div>
+          </div>
+          <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-white/[0.04] animate-pulse" />
+        </div>
+        <div className="h-14 w-full max-w-3xl mx-auto bg-white/[0.04] rounded-2xl animate-pulse mb-6" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-12 bg-white/[0.04] rounded-xl animate-pulse" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function HeatmapSkeleton() {
   return (
     <div className="surface-raised rounded-2xl p-5 animate-pulse">

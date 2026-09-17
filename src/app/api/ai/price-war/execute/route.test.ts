@@ -25,6 +25,7 @@ vi.doMock("@/lib/data/price-war", () => ({
   ]),
   updatePriceRule: vi.fn().mockResolvedValue(undefined),
   addPriceAdjustmentLog: vi.fn().mockResolvedValue(undefined),
+  addPriceSnapshot: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.doMock("@/lib/price-war-engine", () => ({
@@ -39,6 +40,23 @@ vi.doMock("@/lib/price-war-engine", () => ({
   }),
   shouldCheckRule: vi.fn().mockReturnValue(true),
   calculateMargin: vi.fn().mockReturnValue(20),
+}));
+
+vi.doMock("@/lib/competitor-price-fetcher", () => ({
+  fetchAllCompetitorPrices: vi.fn().mockResolvedValue([
+    {
+      id: "comp-1",
+      ruleId: "r1",
+      platform: "amazon",
+      seller: "Test Seller",
+      price: 29,
+      url: "https://example.com",
+      shipping: 0,
+      totalLanded: 29,
+      inStock: true,
+      lastSeen: new Date().toISOString(),
+    },
+  ]),
 }));
 
 describe("POST /api/ai/price-war/execute", () => {

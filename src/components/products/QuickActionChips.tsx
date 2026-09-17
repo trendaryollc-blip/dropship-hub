@@ -12,6 +12,14 @@ interface Product {
   source: string;
   rating?: number;
   reviews?: number;
+  brand?: string;
+  competitorCount?: number;
+  estimatedMargin?: number;
+  goldenScore?: number;
+  trendPhase?: string;
+  saturationLevel?: string;
+  bestPrice?: number | null;
+  platforms?: Array<{ platform: string; price: number | null; link: string }>;
   [key: string]: unknown;
 }
 
@@ -118,6 +126,19 @@ function buildProductParams(product: Product, destination: string): string {
     if (product.image) params.set("productImage", product.image);
     if (product.link) params.set("productUrl", product.link);
     if (product.source) params.set("category", product.source);
+    if (product.rating != null) params.set("rating", String(product.rating));
+    if (product.reviews != null) params.set("reviews", String(product.reviews));
+    if (product.brand) params.set("brand", product.brand);
+    const platforms = product.platforms as Array<{ platform: string; price: number | null; link: string }> | undefined;
+    if (platforms && platforms.length > 0) {
+      params.set("platformPrices", JSON.stringify(platforms.slice(0, 5)));
+    }
+    if (product.competitorCount != null) params.set("competitorCount", String(product.competitorCount));
+    if (product.estimatedMargin != null) params.set("estimatedMargin", String(product.estimatedMargin));
+    if (product.goldenScore != null) params.set("existingGoldenScore", String(product.goldenScore));
+    if (product.trendPhase) params.set("trendPhase", product.trendPhase);
+    if (product.saturationLevel) params.set("saturationLevel", product.saturationLevel);
+    if (product.bestPrice != null) params.set("bestPrice", String(product.bestPrice));
   } else if (destination === "/suppliers") {
     if (product.title) params.set("product", product.title);
     if (product.source) params.set("source", product.source);

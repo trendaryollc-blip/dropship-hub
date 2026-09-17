@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
-import { getPriceRules, updatePriceRule, addPriceAdjustmentLog } from "@/lib/data/price-war";
+import { getPriceRules, updatePriceRule, addPriceAdjustmentLog, addPriceSnapshot } from "@/lib/data/price-war";
 import { evaluatePriceRule, shouldCheckRule } from "@/lib/price-war-engine";
-import type { CompetitorPrice, PriceRule } from "@/types/price-war";
+import { fetchAllCompetitorPrices } from "@/lib/competitor-price-fetcher";
+import type { PriceRule } from "@/types/price-war";
 
 export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -29,30 +30,32 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
       suggestedPrice: number;
       reason: string;
       applied: boolean;
+      competitorCount: number;
     }> = [];
 
     let adjusted = 0;
 
     for (const rule of rulesToCheck) {
-      const mockCompetitors: CompetitorPrice[] = [
-        {
-          id: `comp-${Date.now()}-1`,
-          ruleId: rule.id,
-          platform: rule.platforms[0] || "amazon",
-          seller: "Competitor A",
-          price: rule.myPrice * (0.85 + Math.random() * 0.3),
-          url: rule.competitorUrls[0] || "",
-          shipping: 0,
-          totalLanded: rule.myPrice * (0.85 + Math.random() * 0.3),
-          inStock: true,
-          lastSeen: new Date().toISOString(),
-        },
-      ];
-
-      const result = evaluatePriceRule(
-        rule as unknown as PriceRule,
-        mockCompetitors
+      const competitors = await fetchAllCompetitorPrices(
+        rule.id,
+        rule.competitorUrls,
+        rule.platforms
       );
+
+      await addPriceSnapshot(uid, {
+        ruleId: rule.id,
+        myPrice: rule.myPrice,
+        lowestCompetitorPrice: competitors.length > 0
+          ? Math.min(...competitors.filter((c) => c.inStock).map((c) => c.totalLanded))
+          : undefined,
+        competitorPrices: competitors.map((c) => ({
+          url: c.url,
+          price: c.totalLanded,
+          seller: c.seller,
+        })),
+      });
+
+      const result = evaluatePriceRule(rule as unknown as PriceRule, competitors);
 
       if (result.shouldAdjust && !dryRun) {
         await updatePriceRule(uid, rule.id, {
@@ -88,6 +91,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
         suggestedPrice: result.suggestedPrice,
         reason: result.reason,
         applied: result.shouldAdjust && !dryRun,
+        competitorCount: competitors.length,
       });
     }
 

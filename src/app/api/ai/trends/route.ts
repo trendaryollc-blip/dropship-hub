@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { validateBody, TrendAnalysisInputSchema } from "@/lib/validation";
-import { predictTrend, detectRisingStars, generateMockSignals } from "@/lib/trend-analyzer";
+import { analyzeKeyword, getTrendingKeywords } from "@/lib/data-sources/aggregator";
 import { addTrendPrediction } from "@/lib/data/trend-predictor";
+import type { TrendPlatform } from "@/types/trend-predictor";
 
 export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -14,41 +15,39 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
       return validation.response;
     }
 
-    const { keyword, category } = validation.data;
+    const { keyword, category, platforms, timeframe } = validation.data;
     const cat = category || "general";
 
-    const startTime = Date.now();
-    const signals = generateMockSignals(keyword, cat);
-    const prediction = predictTrend(signals);
-    const risingStars = detectRisingStars(signals);
+    const result = await analyzeKeyword(
+      keyword,
+      cat,
+      platforms as TrendPlatform[] | undefined,
+      timeframe
+    );
 
     await addTrendPrediction(uid, {
-      productIdea: prediction.productIdea,
-      category: prediction.category,
-      trendScore: prediction.trendScore,
-      confidence: prediction.confidence,
-      direction: prediction.direction,
-      predictedPeak: prediction.predictedPeak,
-      timeToPeak: prediction.timeToPeak,
-      saturationRisk: prediction.saturationRisk,
-      competitionLevel: prediction.competitionLevel,
-      reasoning: prediction.reasoning,
-      relatedKeywords: prediction.relatedKeywords,
-      suggestedPlatforms: prediction.suggestedPlatforms,
-      estimatedMargin: prediction.estimatedMargin,
+      productIdea: result.prediction.productIdea,
+      category: result.prediction.category,
+      trendScore: result.prediction.trendScore,
+      confidence: result.prediction.confidence,
+      direction: result.prediction.direction,
+      predictedPeak: result.prediction.predictedPeak,
+      timeToPeak: result.prediction.timeToPeak,
+      saturationRisk: result.prediction.saturationRisk,
+      competitionLevel: result.prediction.competitionLevel,
+      reasoning: result.prediction.reasoning,
+      relatedKeywords: result.prediction.relatedKeywords,
+      suggestedPlatforms: result.prediction.suggestedPlatforms,
+      estimatedMargin: result.prediction.estimatedMargin,
     });
 
     return NextResponse.json({
-      signals,
-      prediction,
-      risingStars,
-      relatedTrends: signals.slice(0, 5).map((s) => ({
-        keyword: s.keyword,
-        growth: s.growthRate,
-        platform: s.platform,
-      })),
-      analysisTime: Date.now() - startTime,
-      provider: "trend-analyzer",
+      signals: result.signals,
+      prediction: result.prediction,
+      risingStars: result.risingStars,
+      relatedTrends: result.relatedTrends,
+      analysisTime: result.analysisTime,
+      provider: result.provider,
     });
   } catch (error) {
     return NextResponse.json(
@@ -58,29 +57,35 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
   }
 }, LIMITS.AI_CHAT);
 
-export const GET = withAuth(async (_request: NextRequest, _uid: string) => {
+export const GET = withAuth(async (request: NextRequest, _uid: string) => {
   try {
-    const trendingKeywords = [
-      "wireless earbuds", "smart home devices", "pet accessories",
-      "posture corrector", "led strip lights", "portable charger",
-      "yoga mat", "resistance bands", "phone accessories", "travel organizer",
-    ];
+    const { searchParams } = new URL(request.url);
+    const keyword = searchParams.get("keyword");
 
-    const signals = trendingKeywords.slice(0, 5).flatMap((kw) =>
-      generateMockSignals(kw, "general").slice(0, 1)
-    );
+    if (keyword) {
+      const { fetchRealSignals } = await import("@/lib/data-sources/aggregator");
+      const signals = await fetchRealSignals(keyword, "general");
+      const { detectRisingStars } = await import("@/lib/trend-analyzer");
+      const risingStars = detectRisingStars(signals);
 
-    const risingStars = detectRisingStars(signals);
+      return NextResponse.json({
+        trending: [],
+        risingStars,
+        alerts: [],
+      });
+    }
 
+    const trendingKeywords = await getTrendingKeywords();
     return NextResponse.json({
-      trending: trendingKeywords.slice(0, 10).map((kw, i) => ({
+      trending: trendingKeywords.map((t, i) => ({
         id: `trend-${i}`,
-        keyword: kw,
-        growth: Math.round(Math.random() * 200 - 50),
-        volume: Math.floor(Math.random() * 50000) + 5000,
+        keyword: t.keyword,
+        growth: t.growth,
+        volume: t.volume,
+        direction: t.direction,
         category: "general",
       })),
-      risingStars,
+      risingStars: [],
       alerts: [],
     });
   } catch (error) {

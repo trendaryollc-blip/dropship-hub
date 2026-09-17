@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Package, Heart, Star, Images, Check, Send, Loader2, Store, X, ExternalLink,
   Sparkles, TrendingUp, BarChart3, Search, GitCompare, Truck, AlertTriangle,
-  MessageSquare, ShoppingCart, Clock, Users,
+  MessageSquare, ShoppingCart, Clock, Users, ShieldCheck,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -467,6 +467,34 @@ export default function EnrichedProductCard({
             >
               <ShoppingCart className="h-3 w-3" />
               Sample
+            </button>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const params = new URLSearchParams();
+                if (product.title) params.set("productTitle", product.title);
+                if (product.price != null) params.set("currentPrice", String(product.price));
+                if (product.image) params.set("productImage", product.image);
+                if (product.link) params.set("productUrl", product.link);
+                if (product.source) params.set("category", product.source);
+                if (product.rating != null) params.set("rating", String(product.rating));
+                if (product.reviews != null) params.set("reviews", String(product.reviews));
+                if (product.brand) params.set("brand", product.brand);
+                if (product.platforms && product.platforms.length > 0) {
+                  params.set("platformPrices", JSON.stringify(product.platforms.slice(0, 5)));
+                }
+                if (product.competitorCount != null) params.set("competitorCount", String(product.competitorCount));
+                if (product.estimatedMargin != null) params.set("estimatedMargin", String(product.estimatedMargin));
+                if (product.goldenScore != null) params.set("existingGoldenScore", String(product.goldenScore));
+                if (product.trendPhase) params.set("trendPhase", product.trendPhase);
+                if (product.saturationLevel) params.set("saturationLevel", product.saturationLevel);
+                window.open(`/product-validation?${params.toString()}`, "_blank");
+              }}
+              className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg text-[10px] font-medium transition-all opacity-100 sm:opacity-70 sm:group-hover:opacity-100"
+            >
+              <ShieldCheck className="h-3 w-3" />
+              Validate
             </button>
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowNotes(!showNotes); }}

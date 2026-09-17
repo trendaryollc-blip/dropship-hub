@@ -15,6 +15,7 @@ interface MonitoredProduct {
   source: string;
   currentPrice: number;
   repricingRule?: RepricingRule;
+  priceHistory?: Array<{ date: string; price: number; source?: string }>;
   storeConnections?: Array<{ storeId: string; platform: "shopify" | "woocommerce"; storeUrl: string; apiKey: string; apiSecret: string }>;
 }
 
@@ -122,7 +123,8 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
 async function processRepricing(
   db: Awaited<ReturnType<typeof getAdminDB>>,
   userRef: { collection: (name: string) => CollectionReference<DocumentData> },
-  docs: Array<{ id: string; data: () => DocumentData }>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  docs: any[],
   uid: string
 ) {
   const results: Array<{
@@ -140,9 +142,9 @@ async function processRepricing(
     const product = doc.data() as MonitoredProduct;
     if (!product.repricingRule || !product.currentPrice) continue;
 
-    // Get the last known sell price from price history
-    const sellPriceDoc = await db.collection("users").doc(uid).collection("monitoredProducts").doc(doc.id).collection("priceHistory").orderBy("date", "desc").limit(1).get();
-    const lastSellPrice = sellPriceDoc.empty ? undefined : sellPriceDoc.docs[0].data().sellPrice;
+    // Get the last known sell price from embedded price history
+    const history = product.priceHistory || [];
+    const lastSellPrice = history.length > 0 ? history[history.length - 1].price : undefined;
 
     const newPrice = calculateNewPrice(product.currentPrice, product.repricingRule, lastSellPrice);
     if (!newPrice || newPrice === lastSellPrice) continue;
@@ -161,14 +163,21 @@ async function processRepricing(
       }
     }
 
-    // Log the repricing event
-    const historyRef = db.collection("users").doc(uid).collection("monitoredProducts").doc(doc.id).collection("priceHistory").doc();
-    batch.set(historyRef, {
-      date: new Date().toISOString().split("T")[0],
-      sellPrice: newPrice,
-      supplierPrice: product.currentPrice,
-      type: "auto_reprice",
-      storeUpdated,
+    // Log the repricing event to embedded price history array
+    const today = new Date().toISOString().split("T")[0];
+    const updatedHistory = [...history];
+    const lastEntry = updatedHistory[updatedHistory.length - 1];
+    if (lastEntry && lastEntry.date === today) {
+      lastEntry.price = newPrice;
+      lastEntry.source = "reprice";
+    } else {
+      updatedHistory.push({ date: today, price: newPrice, source: "reprice" });
+      if (updatedHistory.length > 90) updatedHistory.splice(0, updatedHistory.length - 90);
+    }
+    batch.update(doc.ref, {
+      priceHistory: updatedHistory,
+      currentPrice: newPrice,
+      lastChecked: new Date().toISOString(),
     });
 
     // Add alert

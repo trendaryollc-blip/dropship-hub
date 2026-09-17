@@ -5,11 +5,21 @@ import { StoreConnectionSchema, StoreConnectionUpdateSchema, validateBody } from
 import { LIMITS } from "@/lib/rate-limit";
 import { unregisterShopifyWebhooks } from "@/lib/shopify/webhooks";
 
+const SENSITIVE_FIELDS = ["apiKey", "apiSecret", "accessToken", "consumerKey", "consumerSecret", "password"];
+
+function sanitizeConnection(doc: Record<string, unknown>) {
+  const clean = { ...doc };
+  for (const field of SENSITIVE_FIELDS) {
+    delete clean[field];
+  }
+  return clean;
+}
+
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
     const db = await getAdminDB();
     const snap = await db.collection("users").doc(uid).collection("storeConnections").orderBy("connectedAt", "desc").get();
-    const connections = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const connections = snap.docs.map((d) => ({ id: d.id, ...sanitizeConnection(d.data() as Record<string, unknown>) }));
     return NextResponse.json({ connections });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch connections", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
@@ -28,6 +38,31 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
       ...store,
       status: "connected",
       connectedAt: new Date().toISOString(),
+    });
+
+    // Auto-sync: trigger initial product/inventory sync for the new connection
+    // Non-blocking — runs in background, errors are logged but don't block the response
+    const connId = ref.id;
+    import("@/lib/fulfillment/store-adapters").then(({ getStoreAdapter }) => {
+      const adapter = getStoreAdapter(store.platform);
+      if (adapter?.healthCheck) {
+        adapter.healthCheck({
+          platform: store.platform,
+          url: store.url,
+          apiKey: store.apiKey,
+          accessToken: store.accessToken,
+        }).then(async (result) => {
+          // Update lastSyncAt after initial health probe
+          await db.collection("users").doc(uid).collection("storeConnections").doc(connId).update({
+            lastSyncAt: new Date().toISOString(),
+            healthStatus: result.status,
+          });
+        }).catch((err) => {
+          console.error(`Auto-sync failed for new connection ${connId}:`, err);
+        });
+      }
+    }).catch(() => {
+      // Adapter import failed — skip auto-sync silently
     });
 
     return NextResponse.json({ id: ref.id, ...store, status: "connected" });

@@ -106,8 +106,24 @@ const defaults = {
   healthScore: null as number | null,
 };
 
-export function useDashboardData() {
-  const { data: apiData, isLoading, mutate } = useAPI<{
+export interface UseDashboardDataResult {
+  data: DashboardData;
+  loading: boolean;
+  /** Set when the last fetch failed; undefined on success. */
+  error?: unknown;
+  /** True once at least one successful response has been received. */
+  hasData?: boolean;
+  /** Manually revalidate the dashboard feed. */
+  refresh?: () => void;
+  markAlertRead: (id: string) => void;
+  markAllAlertsRead: () => void;
+  addToCompare: (item: { name: string; price: number; margin: number; image: string }) => void;
+  removeFromCompare: (name: string) => void;
+  clearCompare: () => void;
+}
+
+export function useDashboardData(): UseDashboardDataResult {
+  const { data: apiData, isLoading, mutate, error } = useAPI<{
     ticker?: TickerItem[];
     aiDailyPick?: AIDailyPick | null;
     revenueStats?: RevenueStats;
@@ -126,6 +142,14 @@ export function useDashboardData() {
     healthScore?: number | null;
   }>("/api/dashboard", {
     refreshInterval: 60000,
+    refreshWhenHidden: false,
+    refreshWhenOffline: false,
+    // The 60s interval keeps data fresh; don't refetch the full payload on
+    // every tab focus (SWR dedupes within 5s, but it's still a full request).
+    revalidateOnFocus: false,
+    // One automatic retry on transient failures, then surface the error.
+    shouldRetryOnError: true,
+    errorRetryCount: 1,
   });
 
   const data: DashboardData = {
@@ -186,6 +210,9 @@ export function useDashboardData() {
   return {
     data: { ...data, compareItems },
     loading: isLoading,
+    error: error as unknown,
+    hasData: apiData !== undefined,
+    refresh: mutate,
     markAlertRead,
     markAllAlertsRead,
     addToCompare,

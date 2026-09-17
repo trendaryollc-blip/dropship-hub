@@ -16,6 +16,8 @@ vi.mock("lucide-react", () => ({
   Minus: () => <div />,
   Flame: () => <div />,
   ArrowRight: () => <div />,
+  DollarSign: () => <div />,
+  GitCompare: () => <div />,
 }));
 
 const mockNiche = {
@@ -48,6 +50,14 @@ const mockNiche = {
   topSuppliers: [],
   relatedNiches: [],
   keywords: [],
+  estimatedMonthlyRevenue: 12500,
+  profitPerUnit: 12.5,
+  avgShippingDays: 8,
+  avgReturnRate: 3.2,
+  topProducts: [],
+  competition: { storeCount: 150, avgStoreRating: 4.2, priceRange: { min: 10, max: 50, avg: 35 }, topPlatforms: ["Amazon"], saturationLevel: "medium" as const },
+  geographicDemand: [],
+  seasonalTrend: [],
 };
 
 describe("NicheListItem", () => {

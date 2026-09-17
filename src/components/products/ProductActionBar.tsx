@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Heart, BarChart3, ExternalLink, Calculator, Award, ShoppingCart, Rocket, Loader2, Activity } from "lucide-react";
+import { Heart, BarChart3, ExternalLink, Calculator, Award, ShoppingCart, Rocket, Loader2, Activity, ShieldCheck } from "lucide-react";
 import { useSavedProducts, type SavedProduct } from "@/components/saved/SavedProductsProvider";
 import { safeFetch } from "@/lib/safe-fetch";
 import OrderSampleModal from "./OrderSampleModal";
@@ -163,6 +163,23 @@ export default function ProductActionBar({ platform, platformUrl, productTitle, 
             {monitoring ? <Loader2 className="h-4 w-4 animate-spin" /> : <Activity className="h-4 w-4" />}
             <span className="hidden lg:inline">{monitorAdded ? "Monitoring" : "Monitor"}</span>
           </button>
+          <button
+            onClick={() => {
+              const params = new URLSearchParams();
+              params.set("productTitle", productTitle);
+              if (price != null) params.set("currentPrice", String(price));
+              if (image) params.set("productImage", image);
+              if (platformUrl) params.set("productUrl", platformUrl);
+              if (category) params.set("category", category);
+              if (rating != null) params.set("rating", String(rating));
+              if (reviews != null) params.set("reviews", String(reviews));
+              window.open(`/product-validation?${params.toString()}`, "_blank");
+            }}
+            className="action-btn bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+          >
+            <ShieldCheck className="h-4 w-4" />
+            <span className="hidden lg:inline">Validate</span>
+          </button>
           <a href={platformUrl || "#"} target="_blank" rel="noopener noreferrer" className="action-btn">
             <ExternalLink className="h-4 w-4" />
             <span className="hidden lg:inline">{platform}</span>
@@ -200,6 +217,23 @@ export default function ProductActionBar({ platform, platformUrl, productTitle, 
           >
             {monitoring ? <Loader2 className="h-4 w-4 animate-spin" /> : <Activity className="h-4 w-4" />}
             <span className="text-[9px]">{monitorAdded ? "Watching" : "Monitor"}</span>
+          </button>
+          <button
+            onClick={() => {
+              const params = new URLSearchParams();
+              params.set("productTitle", productTitle);
+              if (price != null) params.set("currentPrice", String(price));
+              if (image) params.set("productImage", image);
+              if (platformUrl) params.set("productUrl", platformUrl);
+              if (category) params.set("category", category);
+              if (rating != null) params.set("rating", String(rating));
+              if (reviews != null) params.set("reviews", String(reviews));
+              window.open(`/product-validation?${params.toString()}`, "_blank");
+            }}
+            className="flex-1 flex flex-col items-center gap-0.5 py-2 rounded-xl text-amber-400 active:bg-surface"
+          >
+            <ShieldCheck className="h-4 w-4" />
+            <span className="text-[9px]">Validate</span>
           </button>
           <a href={platformUrl || "#"} target="_blank" rel="noopener noreferrer" className="flex-1 flex flex-col items-center gap-0.5 py-2 rounded-xl text-muted-foreground active:bg-surface">
             <ExternalLink className="h-4 w-4" />

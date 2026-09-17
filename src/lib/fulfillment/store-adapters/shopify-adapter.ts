@@ -1,4 +1,4 @@
-import type { StoreAdapter, StoreConfig, StoreOrder } from "./interface";
+import type { StoreAdapter, StoreConfig, StoreOrder, HealthResult } from "./interface";
 
 export const shopifyAdapter: StoreAdapter = {
   platform: "shopify",
@@ -77,6 +77,38 @@ export const shopifyAdapter: StoreAdapter = {
 
   async getOrderStatus(_config: StoreConfig, _orderId: string): Promise<string> {
     return "unknown";
+  },
+
+  async healthCheck(config: StoreConfig): Promise<HealthResult> {
+    const domain = config.url.replace("https://", "").replace("http://", "").replace(/\/$/, "");
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "X-Shopify-Access-Token": config.accessToken || config.apiKey || "",
+    };
+    const start = Date.now();
+    try {
+      const res = await fetch(`https://${domain}/admin/api/2024-01/shop.json`, {
+        headers,
+        signal: AbortSignal.timeout(10_000),
+      });
+      const responseTimeMs = Date.now() - start;
+      if (res.status === 401 || res.status === 403) {
+        return { status: "credentials_expired", message: "Access token is invalid or expired", responseTimeMs };
+      }
+      if (!res.ok) {
+        return { status: "error", message: `API returned ${res.status}`, responseTimeMs };
+      }
+      const data = await res.json();
+      const shop = data.shop;
+      return {
+        status: "healthy",
+        message: `Connected to ${shop?.name || domain}`,
+        responseTimeMs,
+        storeInfo: { name: shop?.name, domain: shop?.domain, email: shop?.email },
+      };
+    } catch (err) {
+      return { status: "error", message: err instanceof Error ? err.message : "Connection failed", responseTimeMs: Date.now() - start };
+    }
   },
 };
 

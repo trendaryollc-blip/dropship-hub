@@ -642,7 +642,7 @@ function ProductsContent() {
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
-  const [availablePlatforms, setAvailablePlatforms] = useState<PlatformInfo[]>(DEFAULT_PLATFORMS);
+  const [availablePlatforms, setAvailablePlatforms] = useState<PlatformInfo[]>([]);
   const [sortBy, setSortBy] = useState<"relevance" | "price-asc" | "price-desc" | "rating" | "reviews" | "margin" | "golden">("relevance");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showFilters, setShowFilters] = useState(false);
@@ -654,6 +654,7 @@ function ProductsContent() {
   const { user } = useAuth();
   const { trackSearch } = useSearchTracking();
   const searchAbortRef = useRef<AbortController | null>(null);
+  const imageFetchAbortRef = useRef<AbortController | null>(null);
   const {
     history, addSearch, markProductClicked,
     getInterestedProducts, getInterestProfile, getSmartRecommendations, clearHistory,
@@ -702,6 +703,7 @@ function ProductsContent() {
     if (!q) return;
 
     searchAbortRef.current?.abort();
+    imageFetchAbortRef.current?.abort();
     const controller = new AbortController();
     searchAbortRef.current = controller;
 
@@ -834,16 +836,21 @@ function ProductsContent() {
       // Background image fetching
       const missingImages = allResults.filter((r) => !r.image && r.link && r.link !== "#");
       if (missingImages.length > 0) {
+        const imageController = new AbortController();
+        imageFetchAbortRef.current = imageController;
         const urlsToFetch = missingImages.map((r) => r.link);
         const authHeaders2 = await getAuthHeaders();
         safeFetch<{ images?: (string | undefined)[] }>("/api/platforms/batch-images", {
           method: "POST",
           headers: { "Content-Type": "application/json", ...authHeaders2 },
           body: JSON.stringify({ urls: urlsToFetch }),
+          signal: imageController.signal,
         })
           .then((imgData) => {
             if (!imgData.images) return;
             setResults((prev) => {
+              const currentQuery = cacheRef.current.query;
+              if (currentQuery !== q) return prev;
               const updated = prev.map((item) => {
                 if (item.image) return item;
                 const idx = missingImages.findIndex((m) => m.link === item.link);
@@ -859,7 +866,10 @@ function ProductsContent() {
               return updated;
             });
           })
-          .catch((e) => { console.warn("[ProductsPage] Error:", e instanceof Error ? e.message : e); });
+          .catch((e) => {
+          if (e instanceof DOMException && e.name === "AbortError") return;
+          console.warn("[ProductsPage] Error:", e instanceof Error ? e.message : e);
+        });
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
@@ -1013,13 +1023,33 @@ function ProductsContent() {
 
   // AI action handler
   const handleAIAction = useCallback((action: string, product: SearchResult) => {
+    if (action === "validate") {
+      const params = new URLSearchParams();
+      if (product.title) params.set("productTitle", product.title);
+      if (product.price != null) params.set("currentPrice", String(product.price));
+      if (product.image) params.set("productImage", product.image);
+      if (product.link) params.set("productUrl", product.link);
+      if (product.source) params.set("category", product.source);
+      if (product.brand) params.set("brand", product.brand);
+      if (product.rating != null) params.set("rating", String(product.rating));
+      if (product.reviews != null) params.set("reviews", String(product.reviews));
+      if (product.bestPrice != null) params.set("bestPrice", String(product.bestPrice));
+      if (product.platforms && product.platforms.length > 0) {
+        params.set("platformPrices", JSON.stringify(product.platforms.slice(0, 5)));
+      }
+      if (product.competitorCount != null) params.set("competitorCount", String(product.competitorCount));
+      if (product.estimatedMargin != null) params.set("estimatedMargin", String(product.estimatedMargin));
+      if (product.goldenScore != null) params.set("existingGoldenScore", String(product.goldenScore));
+      if (product.trendPhase) params.set("trendPhase", product.trendPhase);
+      if (product.saturationLevel) params.set("saturationLevel", product.saturationLevel);
+      window.open(`/product-validation?${params.toString()}`, "_blank");
+      return;
+    }
     const prompts: Record<string, string> = {
       analyze: `Analyze this product for dropshipping viability: "${product.title}" priced at $${product.price || "unknown"} on ${product.source}. Check market demand, competition, profit potential, and give recommendations.`,
       suppliers: `Find the best suppliers for "${product.title}" - compare pricing, shipping times, and reliability across CJ Dropshipping, AliExpress, and other platforms.`,
       listing: `Generate an optimized product listing for "${product.title}" - include title, description, bullet points, and SEO tags for my dropshipping store.`,
-      validate: `Validate this product for my dropshipping store: "${product.title}" on ${product.source}. Give it a Golden Score based on demand, competition, margins, and trend.`,
     };
-
     const prompt = prompts[action] || `Analyze "${product.title}" for my dropshipping store.`;
     window.open(`/ai?q=${encodeURIComponent(prompt)}`, "_blank");
   }, []);

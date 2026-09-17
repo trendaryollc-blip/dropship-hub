@@ -22,8 +22,8 @@ export default function StoreConnectModal({ platform, onClose, onConnected }: Pr
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [storeName, setStoreName] = useState("");
   const [connecting, setConnecting] = useState(false);
-  const [_testing, _setTesting] = useState(false);
-  const [testResult, _setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [error, setError] = useState("");
   const [showGuide, setShowGuide] = useState(true);
 
@@ -36,6 +36,37 @@ export default function StoreConnectModal({ platform, onClose, onConnected }: Pr
   const canOAuth =
     platform.oauthFields?.filter((f) => f.required).every((f) => formData[f.key]?.trim()) &&
     !!user;
+
+  const handleTestConnection = async () => {
+    if (!user) return;
+    setTesting(true);
+    setTestResult(null);
+    setError("");
+    try {
+      const idToken = await user.getIdToken();
+      const payload: Record<string, string> = {
+        platform: platform.id,
+      };
+      for (const field of platform.fields) {
+        if (formData[field.key]) {
+          payload[field.key] = formData[field.key];
+        }
+      }
+      const storeUrl = formData.url || formData.storeDomain || formData.storeUrl || "";
+      if (storeUrl) payload.url = storeUrl;
+
+      const result = await safeFetch<{ ok: boolean; message: string }>("/api/store/test-connection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify(payload),
+      });
+      setTestResult({ ok: result.ok, msg: result.message });
+    } catch (e) {
+      setTestResult({ ok: false, msg: e instanceof Error ? e.message : "Connection test failed" });
+    } finally {
+      setTesting(false);
+    }
+  };
 
   const handleConnect = async () => {
     if (!user) return;
@@ -268,6 +299,20 @@ export default function StoreConnectModal({ platform, onClose, onConnected }: Pr
           >
             Cancel
           </button>
+          {!isOAuth && (
+            <button
+              onClick={handleTestConnection}
+              disabled={testing || connecting}
+              className="py-3 px-4 rounded-xl bg-surface border border-border text-sm text-muted-foreground hover:text-foreground transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {testing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4" />
+              )}
+              Test
+            </button>
+          )}
           {isOAuth ? (
             <button
               onClick={handleOAuthConnect}

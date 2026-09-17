@@ -83,11 +83,11 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
       saturationIndex: result.saturation.index,
       profitScore: result.profitPotential.score,
       seasonalScore: result.seasonalDemand.score,
-      riskScore: result.riskAssessment?.score,
-      supplierScore: result.supplierValidation?.score,
-      competitionScore: result.competitionAnalysis?.score,
-      authenticityScore: result.productAuthenticity?.score,
-      marketScore: result.marketIntelligence?.score,
+      riskScore: result.riskAssessment?.score ?? 0,
+      supplierScore: result.supplierValidation?.score ?? 0,
+      competitionScore: result.competitionAnalysis?.score ?? 0,
+      authenticityScore: result.productAuthenticity?.score ?? 0,
+      marketScore: result.marketIntelligence?.score ?? 0,
       inputs: body,
     });
 
