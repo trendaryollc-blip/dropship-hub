@@ -4,6 +4,7 @@ import { validateBody } from "@/lib/validation";
 import { generateCreatives } from "@/lib/ad-creatives/generator";
 import { addAdCreative } from "@/lib/data/ad-creatives";
 import { GenerateCreativeInputSchema } from "@/lib/data/schemas";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -45,7 +46,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to generate creatives", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to generate creatives", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { getAdminDB } from "@/lib/firebase-admin";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 interface ProfitSummary {
   totalRevenue: number;
@@ -182,7 +183,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ summary });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to calculate profit" },
+      { error: safeErrorMessage(error, "Failed to calculate profit") },
       { status: 500 }
     );
   }
@@ -257,7 +258,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed" },
+      { error: safeErrorMessage(error, "Failed") },
       { status: 500 }
     );
   }

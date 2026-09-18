@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { searchAmazon, searchGoogleShopping, searchCJProducts, searchKeepaProducts, searchAliExpress, type SearchResult } from "@/lib/platform-search";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 // Types
 interface CompetitorListing {
@@ -416,7 +417,7 @@ export const POST = withAuth(async (request: NextRequest) => {
 
     return NextResponse.json(data);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal server error";
+    const message = safeErrorMessage(error, "Internal server error");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }, LIMITS.DEFAULT);

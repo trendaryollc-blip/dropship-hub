@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { addAuditEntry, getAuditEntries, getAuditStats } from "@/lib/data/audit";
 import type { AuditAction, AuditFilter } from "@/types/business-health";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -23,7 +24,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ entries });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed" },
+      { error: safeErrorMessage(error, "Failed") },
       { status: 500 }
     );
   }
@@ -50,7 +51,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: true, id });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed" },
+      { error: safeErrorMessage(error, "Failed") },
       { status: 500 }
     );
   }

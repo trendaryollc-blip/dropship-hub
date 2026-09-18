@@ -1,5 +1,6 @@
 // Server-side only — never import this in client components
 import { initializeApp, cert, getApps, type ServiceAccount } from "firebase-admin/app";
+import { logger } from "./logger";
 import { getFirestore } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -139,7 +140,7 @@ function buildServiceAccount(): ServiceAccount {
   const repairedPem = trimDerTrailingBytes(cleanedPem);
   obj.private_key = repairedPem;
 
-  console.log("[firebase-admin] Service account loaded, project:", obj.project_id);
+  logger.info("[firebase-admin] Service account loaded", { project: obj.project_id });
 
   return obj as unknown as ServiceAccount;
 }
@@ -149,7 +150,7 @@ function ensureApp() {
     try {
       const serviceAccount = buildServiceAccount();
       initializeApp({ credential: cert(serviceAccount) });
-      console.log("[firebase-admin] Firebase Admin SDK initialized successfully");
+      logger.info("[firebase-admin] Firebase Admin SDK initialized successfully");
     } catch (err) {
       initError = err instanceof Error ? err.message : String(err);
       console.error("[firebase-admin] Failed to initialize:", initError);

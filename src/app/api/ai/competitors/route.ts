@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { DocumentData } from "firebase-admin/firestore";
 import { safeNum, safeStr } from "@/lib/utils-helpers";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 function safeDateParse(value: unknown): Date {
   if (!value) return new Date(0);
@@ -158,7 +159,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to monitor competitors", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to monitor competitors", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

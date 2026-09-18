@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { getSuppliers } from "@/lib/supplier-service";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest) => {
   try {
@@ -69,7 +70,7 @@ export const GET = withAuth(async (request: NextRequest) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to find suppliers", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to find suppliers", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

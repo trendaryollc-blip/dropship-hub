@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 function calculateMatchScore(
   supplier: Record<string, unknown>,
@@ -87,7 +88,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ result });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed" },
+      { error: safeErrorMessage(error, "Failed") },
       { status: 500 }
     );
   }

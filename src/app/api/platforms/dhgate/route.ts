@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY;
 const ZENROWS_API_KEY = process.env.ZENROWS_API_KEY;
@@ -61,7 +62,7 @@ export const POST = withAuth(async (request: NextRequest, _uid: string) => {
     const products = extractProducts(html, "DHgate");
     return NextResponse.json({ data: { search_results: products }, source: "dhgate", query });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "DHgate search failed", scraperError: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "DHgate search failed"), scraperError: safeErrorMessage(error, "Unknown error") }, { status: 500 });
   }
 });
 

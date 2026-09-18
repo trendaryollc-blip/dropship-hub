@@ -16,6 +16,7 @@ import {
 import { getGuardrailStatus } from "@/lib/ai/safety/guardrails";
 import { ToolRegistry } from "@/lib/ai/tools/registry";
 import type { AutonomyLevel } from "@/lib/ai/types";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 // ─── GET /api/ai/modes ──────────────────────────────────────────────────────
 // Get current mode preferences, available tools, and guardrail status
@@ -39,7 +40,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     const preferences = await getModePreferences(uid);
     return NextResponse.json({ preferences });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal error";
+    const message = safeErrorMessage(error, "Internal error");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }, LIMITS.AI_CHAT);
@@ -133,7 +134,7 @@ export const PUT = withAuth(async (request: NextRequest, uid: string) => {
         return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal error";
+    const message = safeErrorMessage(error, "Internal error");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }, LIMITS.AI_CHAT);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSuppliers, getSupplierById, searchSuppliers } from "@/lib/supplier-service";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest) => {
   try {
@@ -26,7 +27,7 @@ export const GET = withAuth(async (request: NextRequest) => {
     return NextResponse.json({ suppliers, total: suppliers.length });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch suppliers", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch suppliers", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

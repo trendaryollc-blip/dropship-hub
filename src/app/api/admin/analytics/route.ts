@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireOwner } from "@/lib/auth";
 import { getAdminDB } from "@/lib/firebase-admin";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = requireOwner(async (request: NextRequest, uid: string) => {
   try {
@@ -76,7 +77,7 @@ export const GET = requireOwner(async (request: NextRequest, uid: string) => {
   } catch (error) {
     console.error("[AdminAnalytics] Error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to fetch analytics" },
+      { error: safeErrorMessage(error, "Failed to fetch analytics") },
       { status: 500 }
     );
   }

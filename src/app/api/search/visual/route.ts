@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { createLogger } from "@/lib/logger";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 const logger = createLogger({ route: "api/search/visual" });
 
@@ -95,7 +96,7 @@ export const POST = withAuth(async (request: NextRequest, _uid: string) => {
     }
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Visual search failed" },
+      { error: safeErrorMessage(error, "Visual search failed") },
       { status: 500 }
     );
   }

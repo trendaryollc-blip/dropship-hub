@@ -14,6 +14,7 @@ import { orchestrateOrder, createOrchestrationInput } from "@/lib/fulfillment/or
 import { createDefaultRules } from "@/lib/fulfillment/rules-engine";
 import type { FulfillmentOrder } from "@/types/fulfillment";
 import type { FulfillmentRule } from "@/types/automation";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -108,7 +109,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
           await processBulkResult(operation.id, {
             orderId,
             success: false,
-            error: error instanceof Error ? error.message : "Unknown error",
+            error: safeErrorMessage(error, "Unknown error"),
           });
         }
       }
@@ -124,7 +125,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
           await processBulkResult(operation.id, {
             orderId,
             success: false,
-            error: error instanceof Error ? error.message : "Unknown error",
+            error: safeErrorMessage(error, "Unknown error"),
           });
         }
       }
@@ -142,7 +143,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Bulk operation failed", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Bulk operation failed", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }
@@ -161,7 +162,7 @@ export const GET = withAuth(async (req: NextRequest, _uid: string) => {
     return NextResponse.json({ operations: history });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch operations", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to fetch operations", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { deleteAdConnection } from "@/lib/data/ad-connections";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const DELETE = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -11,7 +12,7 @@ export const DELETE = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to delete connection", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to delete connection", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

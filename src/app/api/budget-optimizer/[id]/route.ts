@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { updateBudgetRecommendation } from "@/lib/data/budget-recommendations";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const PATCH = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -19,7 +20,7 @@ export const PATCH = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to update recommendation", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to update recommendation", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

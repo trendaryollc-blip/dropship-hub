@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { isUrlSafe } from "@/lib/url-allowlist";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 interface CustomStoreRequest {
   action: "test" | "products" | "orders" | "customers" | "sync";
@@ -65,7 +66,7 @@ async function testConnection(
   } catch (error) {
     return {
       connected: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: safeErrorMessage(error, "Unknown error"),
     };
   }
 }
@@ -174,7 +175,7 @@ export const POST = withAuth(async (request: NextRequest) => {
     return NextResponse.json({ data, source: "custom", storeUrl });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Custom store request failed" },
+      { error: safeErrorMessage(error, "Custom store request failed") },
       { status: 500 }
     );
   }

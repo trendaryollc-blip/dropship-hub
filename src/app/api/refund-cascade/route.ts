@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { createRefundCascade, advanceRefundStep, generateDisputeResponse } from "@/lib/refund-cascade";
 import type { RefundReason } from "@/types/refund-cascade";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -41,7 +42,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed" },
+      { error: safeErrorMessage(error, "Failed") },
       { status: 500 }
     );
   }
@@ -51,6 +52,6 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
     return NextResponse.json({ message: "Refund Cascade API" });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed") }, { status: 500 });
   }
 });

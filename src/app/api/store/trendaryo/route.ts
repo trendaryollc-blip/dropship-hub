@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 const BACKEND_URL = process.env.TRENDARYO_API_URL || "https://trendaryo-llc-backend.vercel.app";
 const API_KEY = process.env.TRENDARYO_API_KEY || "";
@@ -89,7 +90,7 @@ export const GET = withAuth(async (request: NextRequest) => {
     }
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Trendaryo request failed" },
+      { error: safeErrorMessage(error, "Trendaryo request failed") },
       { status: 500 },
     );
   }
@@ -139,7 +140,7 @@ export const POST = withAuth(async (request: NextRequest) => {
     }
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Trendaryo request failed" },
+      { error: safeErrorMessage(error, "Trendaryo request failed") },
       { status: 500 },
     );
   }

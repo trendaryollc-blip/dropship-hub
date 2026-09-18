@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, isOwner } from "@/lib/auth";
 import { getAllPlatforms } from "@/lib/platform-config";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export async function POST(request: NextRequest) {
   const uid = await verifyAuth(request);
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
         id: platform.id,
         name: platform.name,
         status: "error",
-        message: error instanceof Error ? error.message : "Test failed",
+        message: safeErrorMessage(error, "Test failed"),
       });
     }
   }

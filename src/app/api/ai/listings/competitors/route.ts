@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import type { CompetitorIntelligence, CompetitorListing, MarketInsights } from "@/types/listing-intelligence";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 function calculateMarketInsights(competitors: CompetitorListing[]): MarketInsights {
   const prices = competitors.map((c) => c.price).filter((p) => p > 0);
@@ -203,7 +204,7 @@ export const POST = withAuth(async (request: NextRequest) => {
   } catch (error) {
     console.error("[listings/competitors] Error:", error instanceof Error ? error.message : error);
     return NextResponse.json(
-      { error: "Failed to fetch competitor data", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch competitor data", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

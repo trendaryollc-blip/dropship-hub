@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 interface ShippingItem {
   weight?: number;
@@ -102,7 +103,7 @@ export const POST = withAuth(async (req: NextRequest, _uid: string) => {
     return NextResponse.json(estimate);
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to compute shipping estimate", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to compute shipping estimate", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

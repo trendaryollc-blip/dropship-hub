@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { validateBody } from "@/lib/validation";
 import { getABTests, addABTest } from "@/lib/data/ab-tests";
 import { AddABTestInputSchema } from "@/lib/data/schemas";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -18,7 +19,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ tests });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch A/B tests", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch A/B tests", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -34,7 +35,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true, id: testId });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to create A/B test", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to create A/B test", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

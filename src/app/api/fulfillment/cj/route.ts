@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { placeCJOrder, getCJOrderStatus } from "@/lib/fulfillment/cj-adapter";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const POST = withAuth(async (req: NextRequest) => {
   try {
@@ -26,6 +27,6 @@ export const POST = withAuth(async (req: NextRequest) => {
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
-    return NextResponse.json({ error: "CJ request failed", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
+    return NextResponse.json({ error: "CJ request failed", details: safeErrorMessage(error, "Unknown") }, { status: 500 });
   }
 }, LIMITS.FULFILLMENT);

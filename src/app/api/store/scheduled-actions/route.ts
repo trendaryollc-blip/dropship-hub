@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -10,7 +11,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     const actions = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     return NextResponse.json({ actions });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch scheduled actions", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch scheduled actions", details: safeErrorMessage(error, "Unknown") }, { status: 500 });
   }
 }, LIMITS.DEFAULT);
 
@@ -67,7 +68,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     const ref = await db.collection("users").doc(uid).collection("scheduledActions").add(actionData);
     return NextResponse.json({ success: true, id: ref.id, ...actionData });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to create scheduled action", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to create scheduled action", details: safeErrorMessage(error, "Unknown") }, { status: 500 });
   }
 }, LIMITS.DEFAULT);
 
@@ -91,7 +92,7 @@ export const PATCH = withAuth(async (req: NextRequest, uid: string) => {
     await db.collection("users").doc(uid).collection("scheduledActions").doc(actionId).update(allowed);
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to update scheduled action", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to update scheduled action", details: safeErrorMessage(error, "Unknown") }, { status: 500 });
   }
 }, LIMITS.DEFAULT);
 
@@ -108,6 +109,6 @@ export const DELETE = withAuth(async (req: NextRequest, uid: string) => {
     await db.collection("users").doc(uid).collection("scheduledActions").doc(actionId).delete();
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to delete scheduled action", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to delete scheduled action", details: safeErrorMessage(error, "Unknown") }, { status: 500 });
   }
 }, LIMITS.DEFAULT);

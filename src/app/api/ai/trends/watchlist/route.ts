@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { validateBody, TrendWatchlistInputSchema } from "@/lib/validation";
 import { addTrendWatchlistEntry, getTrendWatchlist, deleteTrendWatchlistEntry } from "@/lib/data/trend-predictor";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -10,7 +11,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ entries });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch watchlist", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch watchlist", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -35,7 +36,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ id: entryId, success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to add to watchlist", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to add to watchlist", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -57,7 +58,7 @@ export const DELETE = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to remove from watchlist", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to remove from watchlist", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

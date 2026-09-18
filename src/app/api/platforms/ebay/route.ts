@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 const EBAY_APP_ID = process.env.EBAY_APP_ID;
 
@@ -49,7 +50,7 @@ export const POST = withAuth(async (request: NextRequest, _uid: string) => {
 
     return NextResponse.json({ data: { search_results: items }, source: "ebay", query });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "eBay search failed" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "eBay search failed") }, { status: 500 });
   }
 });
 

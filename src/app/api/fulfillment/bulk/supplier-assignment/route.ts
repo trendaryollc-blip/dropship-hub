@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -66,14 +67,14 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
 
         updated++;
       } catch (error) {
-        errors.push({ orderId, error: error instanceof Error ? error.message : "Unknown error" });
+        errors.push({ orderId, error: safeErrorMessage(error, "Unknown error") });
       }
     }
 
     return NextResponse.json({ success: true, updated, errors });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to assign supplier", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to assign supplier", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

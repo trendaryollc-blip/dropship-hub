@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { getAdCampaignById, updateAdCampaign, deleteAdCampaign } from "@/lib/data/ad-campaigns";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -13,7 +14,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ campaign });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch campaign", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch campaign", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -29,7 +30,7 @@ export const PATCH = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to update campaign", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to update campaign", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -44,7 +45,7 @@ export const DELETE = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to delete campaign", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to delete campaign", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

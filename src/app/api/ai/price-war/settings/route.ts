@@ -4,6 +4,7 @@ import { LIMITS } from "@/lib/rate-limit";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { handleFirestoreError } from "@/lib/data/utils";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 interface PriceWarSettingsDoc {
   enabled: boolean;
@@ -45,7 +46,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ settings });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch settings", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch settings", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -67,7 +68,7 @@ export const PUT = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ settings: updated, success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to update settings", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to update settings", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

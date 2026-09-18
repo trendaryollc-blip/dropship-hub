@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { validateRule, createDefaultRules } from "@/lib/fulfillment/rules-engine";
 import type { FulfillmentRule } from "@/types/automation";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -22,7 +23,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ rules });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch rules", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to fetch rules", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }
@@ -58,7 +59,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: true, rule: savedRule });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to save rule", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to save rule", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }
@@ -97,7 +98,7 @@ export const PUT = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: true, rule: updatedRule });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to update rule", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to update rule", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }
@@ -116,7 +117,7 @@ export const DELETE = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to delete rule", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to delete rule", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

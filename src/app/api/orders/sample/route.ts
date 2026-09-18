@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { placeCJOrder, getCJOrderStatus } from "@/lib/fulfillment/cj-adapter";
 import { getAdminDB } from "@/lib/firebase-admin";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 interface SampleOrderRequest {
   productId: string;
@@ -78,7 +79,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
           results.push({
             productId: product.productId,
             success: false,
-            error: error instanceof Error ? error.message : "Order failed",
+            error: safeErrorMessage(error, "Order failed"),
           });
         }
       }
@@ -142,7 +143,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to place sample order" },
+      { error: safeErrorMessage(error, "Failed to place sample order") },
       { status: 500 }
     );
   }
@@ -174,7 +175,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ orders });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to fetch orders" },
+      { error: safeErrorMessage(error, "Failed to fetch orders") },
       { status: 500 }
     );
   }

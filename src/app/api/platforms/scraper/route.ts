@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { validateBody, ScraperSchema } from "@/lib/validation";
+import { PublicError, safeErrorMessage } from "@/lib/api-errors";
 
 const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY;
 const ZENROWS_API_KEY = process.env.ZENROWS_API_KEY;
@@ -77,13 +78,13 @@ async function scrapePlatform(platformId: string, query: string) {
       if (ZENROWS_API_KEY) {
         html = await scrapeWithZenRows(url);
       } else {
-        throw new Error("No scraper available");
+        throw new PublicError("No scraper available");
       }
     }
   } else if (ZENROWS_API_KEY) {
     html = await scrapeWithZenRows(url);
   } else {
-    throw new Error("No scraper API configured");
+    throw new PublicError("No scraper API configured");
   }
 
   // Basic HTML parsing to extract product-like data
@@ -118,7 +119,7 @@ export const POST = withAuth(async (request: NextRequest, _uid: string) => {
     const data = await scrapePlatform(platform, query);
     return NextResponse.json({ data, source: platform, query });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Scrape failed" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Scrape failed") }, { status: 500 });
   }
 });
 

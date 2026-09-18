@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { DocumentData } from "firebase-admin/firestore";
 import { withAuth } from "@/lib/auth";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -73,7 +74,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ stats, conversations });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch CS data", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch CS data", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -152,7 +153,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to process message", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to process message", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

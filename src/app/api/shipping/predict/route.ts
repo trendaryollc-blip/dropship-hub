@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { DeliveryPredictionInputSchema } from "@/types/shipping";
 import { predictDelivery, predictDeliveryForAllCarriers } from "@/lib/shipping/delivery-prediction";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (req: NextRequest, _uid: string) => {
   try {
@@ -49,7 +50,7 @@ export const GET = withAuth(async (req: NextRequest, _uid: string) => {
     return NextResponse.json({ prediction });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to predict delivery", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to predict delivery", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

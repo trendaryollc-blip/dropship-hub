@@ -3,6 +3,7 @@ import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { getStoreAdapter } from "@/lib/fulfillment/store-adapters";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -97,7 +98,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: true, order: { id: updatedDoc.id, ...updatedDoc.data() } });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to process order action", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to process order action", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

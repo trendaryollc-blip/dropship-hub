@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { sendDigestEmail } from "@/lib/email-digest";
-import { withAuth } from "@/lib/auth";
+import { withAuth, withAuthOrCron } from "@/lib/auth";
 import { DocumentData } from "firebase-admin/firestore";
 import { safeNum, safeStr } from "@/lib/utils-helpers";
+import { PublicError } from "@/lib/api-errors";
 
 interface DigestMetrics {
   orders: number;
@@ -78,8 +79,8 @@ async function _resolveGeminiModel(apiKey: string): Promise<string> {
       try { const j = JSON.parse(body); lastErrorMsg = j.error?.message || body.slice(0, 200); } catch { lastErrorMsg = body.slice(0, 200); }
     } catch { /* try next */ }
   }
-  if (lastStatus === 403) throw new Error("Gemini API access denied. Enable Gemini API at https://aistudio.google.com/apikey");
-  if (lastStatus === 400 && lastErrorMsg.includes("location")) throw new Error("Gemini API is not available in your region.");
+  if (lastStatus === 403) throw new PublicError("Gemini API access denied. Enable Gemini API at https://aistudio.google.com/apikey");
+  if (lastStatus === 400 && lastErrorMsg.includes("location")) throw new PublicError("Gemini API is not available in your region.");
   throw new Error(`Gemini: No available models found. Last error: ${lastErrorMsg.slice(0, 200)}`);
 }
 
@@ -391,7 +392,10 @@ async function computeWeeklyTrend(db: Awaited<ReturnType<typeof getAdminDB>>, ui
   return { direction: "stable", percentage: Math.abs(changePercent), insight: "Revenue holding steady. Maintain current strategy while exploring new opportunities." };
 }
 
-export const POST = withAuth(async (request: NextRequest, uid: string) => {
+// POST accepts either a user ID token (withAuth) or the server-to-server
+// CRON_SECRET (withAuthOrCron) so scheduled jobs can trigger digest
+// generation — see .github/workflows/daily-digest.yml.
+export const POST = withAuthOrCron(async (request: NextRequest, uid: string) => {
   try {
     const { date, email, notify } = await request.json();
     const digestDate = date || new Date().toISOString().split("T")[0];

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 const PRICECHARTING_API_KEY = process.env.PRICECHARTING_API_KEY;
 
@@ -43,7 +44,7 @@ export const POST = withAuth(async (request: NextRequest, _uid: string) => {
     const data = await searchPriceCharting(query);
     return NextResponse.json({ data, source: "pricecharting", query });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "PriceCharting search failed" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "PriceCharting search failed") }, { status: 500 });
   }
 });
 

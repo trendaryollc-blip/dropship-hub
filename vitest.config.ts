@@ -28,7 +28,6 @@ export default defineConfig({
         "src/__tests__/",
         "src/**/*.test.{ts,tsx}",
         "src/**/*.spec.{ts,tsx}",
-        "src/app/**",
         "public/**",
       ],
     },

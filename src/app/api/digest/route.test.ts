@@ -4,6 +4,9 @@ vi.mock("@/lib/auth", () => ({
   withAuth: vi.fn((handler: any) => async (req: any) => {
     return handler(req, "test-user-123");
   }),
+  withAuthOrCron: vi.fn((handler: any) => async (req: any) => {
+    return handler(req, "test-user-123");
+  }),
 }));
 
 vi.mock("@/lib/rate-limit", () => ({

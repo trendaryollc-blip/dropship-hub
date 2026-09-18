@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { getAdminDB } from "@/lib/firebase-admin";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 interface StartSellingRequest {
   productTitle: string;
@@ -177,7 +178,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Start selling failed" },
+      { error: safeErrorMessage(error, "Start selling failed") },
       { status: 500 }
     );
   }

@@ -7,6 +7,7 @@ import {
   deleteSupplierTerms,
   getSupplierTermsSummary,
 } from "@/lib/data/supplier-terms";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -22,7 +23,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ terms });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed" },
+      { error: safeErrorMessage(error, "Failed") },
       { status: 500 }
     );
   }
@@ -35,7 +36,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: true, id });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed" },
+      { error: safeErrorMessage(error, "Failed") },
       { status: 500 }
     );
   }
@@ -52,7 +53,7 @@ export const PATCH = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed" },
+      { error: safeErrorMessage(error, "Failed") },
       { status: 500 }
     );
   }
@@ -69,7 +70,7 @@ export const DELETE = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed" },
+      { error: safeErrorMessage(error, "Failed") },
       { status: 500 }
     );
   }

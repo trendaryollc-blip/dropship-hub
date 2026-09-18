@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, isOwner } from "@/lib/auth";
 import { markKeyHealthy, markKeyError } from "@/lib/platform-config";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 const _CHAT_EXCLUDE = /embed|tts|whisper|dall|vision|audio|realtime|moderation|image/i;
 
@@ -306,7 +307,7 @@ async function testPlatformKey(
   } catch (error) {
     return {
       success: false,
-      message: error instanceof Error ? error.message : "Connection test failed",
+      message: safeErrorMessage(error, "Connection test failed"),
     };
   }
 }
@@ -339,7 +340,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
-      { success: false, message: error instanceof Error ? error.message : "Test failed" },
+      { success: false, message: safeErrorMessage(error, "Test failed") },
       { status: 500 }
     );
   }

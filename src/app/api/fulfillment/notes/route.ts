@@ -3,6 +3,7 @@ import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import type { OrderNote } from "@/types/fulfillment";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 const COLLECTION = "orderNotes";
 
@@ -26,7 +27,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ notes, total: notes.length });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch notes", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to fetch notes", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }
@@ -65,7 +66,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: true, note });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to create note", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to create note", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

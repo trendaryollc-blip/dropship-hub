@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { getPriceAdjustmentLogs } from "@/lib/data/price-war";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -12,7 +13,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ logs });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch price history", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch price history", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

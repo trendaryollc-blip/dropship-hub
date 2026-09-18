@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { validateBody, PriceRuleInputSchema } from "@/lib/validation";
 import { addPriceRule, getPriceRules, deletePriceRule, updatePriceRule, getPriceWarStats } from "@/lib/data/price-war";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -19,7 +20,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ rules });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch price war data", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch price war data", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -47,7 +48,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ id: ruleId, success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to create price rule", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to create price rule", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -69,7 +70,7 @@ export const DELETE = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to delete rule", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to delete rule", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -109,7 +110,7 @@ export const PUT = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to update rule", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to update rule", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -142,7 +143,7 @@ export const PATCH = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true, affected });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to perform bulk action", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to perform bulk action", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

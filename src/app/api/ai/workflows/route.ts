@@ -5,6 +5,7 @@ import { validateBody } from "@/lib/validation";
 import { z } from "zod";
 import { executeWorkflow } from "@/lib/ai/workflows/runner";
 import { getWorkflowTemplate, getWorkflowTemplates } from "@/lib/ai/workflows/templates";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 // ─── POST /api/ai/workflows ──────────────────────────────────────────────────
 // Execute a workflow or get workflow templates
@@ -68,7 +69,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal error";
+    const message = safeErrorMessage(error, "Internal error");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }, LIMITS.AI_CHAT);

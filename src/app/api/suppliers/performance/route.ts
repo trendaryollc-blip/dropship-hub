@@ -3,6 +3,7 @@ import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { SupplierPerformanceSchema, validateBody } from "@/lib/validation";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -81,7 +82,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ suppliers });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch supplier performance", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch supplier performance", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -103,7 +104,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true, id: ref.id });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to save supplier performance", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to save supplier performance", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

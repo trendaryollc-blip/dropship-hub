@@ -4,6 +4,7 @@ import { sendTrendDigest, sendAlertEmail, sendWeeklyReport } from "@/lib/trends/
 import { getTrendPredictions, getTrendAlerts } from "@/lib/data/trend-predictor";
 import { getNotifications } from "@/lib/trends/notifications";
 import type { TrendPrediction, TrendAlert, PredictionConfidence, TrendDirection } from "@/types/trend-predictor";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 function castPrediction(p: {
   id: string;
@@ -124,7 +125,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to send email", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to send email", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

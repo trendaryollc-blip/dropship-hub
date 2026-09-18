@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { getAdminDB, getAdminAuth } from "@/lib/firebase-admin";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 async function deleteCollectionCompletely(userRef: FirebaseFirestore.DocumentReference, collName: string, db: FirebaseFirestore.Firestore) {
   const BATCH_SIZE = 500;
@@ -55,6 +56,6 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed") }, { status: 500 });
   }
 }, LIMITS.DEFAULT);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { getListings, deleteListing, getListingStats } from "@/lib/data/product-listings";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -17,7 +18,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ listings });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch listings", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch listings", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -39,7 +40,7 @@ export const DELETE = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to delete listing", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to delete listing", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

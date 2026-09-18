@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { getStorePerformances, saveStorePerformance } from "@/lib/data/multi-store";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -12,7 +13,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ performances });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch store performances", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to fetch store performances", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }
@@ -39,7 +40,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to save store performance", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to save store performance", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

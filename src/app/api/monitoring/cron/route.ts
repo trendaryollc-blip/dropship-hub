@@ -3,6 +3,7 @@ import { getAdminDB } from "@/lib/firebase-admin";
 import { logger } from "@/lib/logger";
 import { runPriceCheckForUser } from "@/lib/monitoring/scheduler";
 import { computeMonitoringMetrics } from "@/lib/monitoring/metrics";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     logger.error("Cron job failed", { job, error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json(
-      { error: "Cron job failed", details: err instanceof Error ? err.message : "Unknown error" },
+      { error: "Cron job failed", details: safeErrorMessage(err, "Unknown error") },
       { status: 500 }
     );
   }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { searchCJProducts } from "@/lib/platform-search";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 interface Category {
   id: string;
@@ -91,7 +92,7 @@ export const GET = withAuth(async () => {
     return NextResponse.json({ categories, count: categories.length });
   } catch (error) {
     return NextResponse.json(
-      { categories: [], error: error instanceof Error ? error.message : "Unknown error"       },
+      { categories: [], error: safeErrorMessage(error, "Unknown error")       },
     );
   }
 }, LIMITS.DEFAULT);

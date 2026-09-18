@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { RoutingDecisionSchema, SavePreferencesSchema, RouteOrderSchema, ReRouteSchema, validateBody } from "@/lib/validation";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -200,7 +201,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ error: "Invalid type parameter" }, { status: 400 });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch routing data", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch routing data", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -258,7 +259,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to route order", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to route order", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -283,7 +284,7 @@ export const PUT = withAuth(async (request: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to save preferences", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to save preferences", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -317,7 +318,7 @@ export const PATCH = withAuth(async (request: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to re-route order", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to re-route order", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -347,7 +348,7 @@ export const DELETE = withAuth(async (request: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to delete decision", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to delete decision", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

@@ -8,6 +8,7 @@ import {
 import { useInView } from "@/hooks/useInView";
 import type { NicheData } from "@/types/niches";
 import { useAPI } from "@/hooks/useAPI";
+import { logger } from "@/lib/logger";
 import NicheHeatmapCard from "@/components/niches/NicheHeatmapCard";
 import NicheListItem from "@/components/niches/NicheListItem";
 import NicheDetail from "@/components/niches/NicheDetail";
@@ -309,9 +310,9 @@ export default function NichesPage() {
           {selectedNiche && (
             <NicheDetail
               niche={selectedNiche}
-              onMission={(id) => { console.log("Start mission for", id); }}
-              onWatchlist={(id) => { console.log("Add to watchlist", id); }}
-              onListing={(id) => { console.log("Generate listing for", id); }}
+              onMission={(id) => { logger.debug("Niche action", { action: "mission", id }); }}
+              onWatchlist={(id) => { logger.debug("Niche action", { action: "watchlist", id }); }}
+              onListing={(id) => { logger.debug("Niche action", { action: "listing", id }); }}
             />
           )}
 
@@ -326,9 +327,9 @@ export default function NichesPage() {
                   index={i}
                   onSelect={(id) => setSelectedNicheId(id === selectedNicheId ? null : id)}
                   onCompare={toggleCompare}
-                  onMission={(id) => { console.log("Start mission for", id); }}
-                  onWatchlist={(id) => { console.log("Add to watchlist", id); }}
-                  onListing={(id) => { console.log("Generate listing for", id); }}
+                  onMission={(id) => { logger.debug("Niche action", { action: "mission", id }); }}
+                  onWatchlist={(id) => { logger.debug("Niche action", { action: "watchlist", id }); }}
+                  onListing={(id) => { logger.debug("Niche action", { action: "listing", id }); }}
                   compareIds={compareIds}
                 />
               ))}

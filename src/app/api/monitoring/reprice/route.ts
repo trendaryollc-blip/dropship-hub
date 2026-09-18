@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { LIMITS } from "@/lib/rate-limit";
 import { DocumentData, CollectionReference } from "firebase-admin/firestore";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 interface RepricingRule {
   type: "maintain_margin" | "undercut" | "fixed_price";
@@ -114,7 +115,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     return processRepricing(db, userRef, snap.docs, uid);
   } catch (error) {
     return NextResponse.json(
-      { error: "Repricing failed", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Repricing failed", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -232,7 +233,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ products, count: products.length });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to get repricing status", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to get repricing status", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

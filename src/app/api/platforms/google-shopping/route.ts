@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchGoogleShopping } from "@/lib/platform-search";
 import { withAuth } from "@/lib/auth";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const POST = withAuth(async (request: NextRequest, _uid: string) => {
   try {
@@ -15,7 +16,7 @@ export const POST = withAuth(async (request: NextRequest, _uid: string) => {
     const data = await searchGoogleShopping(query);
     return NextResponse.json({ data, source: "google_shopping", query });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Google Shopping search failed" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Google Shopping search failed") }, { status: 500 });
   }
 });
 

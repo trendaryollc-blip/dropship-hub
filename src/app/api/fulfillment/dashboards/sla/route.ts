@@ -3,6 +3,7 @@ import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import type { SLADashboardData } from "@/types/fulfillment";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -132,7 +133,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json(data);
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch SLA dashboard", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to fetch SLA dashboard", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

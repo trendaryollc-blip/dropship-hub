@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 const COLLECTION = "notifications";
 
@@ -29,7 +30,7 @@ export const PATCH = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: true, notification: { id: updated.id, ...updated.data() } });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to update notification", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to update notification", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }
@@ -56,7 +57,7 @@ export const DELETE = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to delete notification", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to delete notification", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

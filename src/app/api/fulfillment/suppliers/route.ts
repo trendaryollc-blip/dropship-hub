@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 function sanitizeProductId(id: string): string {
   return id.replace(/\//g, "__SLASH__");
@@ -23,7 +24,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     const assignments = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     return NextResponse.json({ assignments });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch supplier assignments", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch supplier assignments", details: safeErrorMessage(error, "Unknown") }, { status: 500 });
   }
 }, LIMITS.FULFILLMENT);
 
@@ -49,7 +50,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to save supplier assignment", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to save supplier assignment", details: safeErrorMessage(error, "Unknown") }, { status: 500 });
   }
 }, LIMITS.FULFILLMENT);
 
@@ -63,6 +64,6 @@ export const DELETE = withAuth(async (req: NextRequest, uid: string) => {
     await db.collection("users").doc(uid).collection("productSuppliers").doc(docId).delete();
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to delete supplier assignment", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to delete supplier assignment", details: safeErrorMessage(error, "Unknown") }, { status: 500 });
   }
 }, LIMITS.FULFILLMENT);

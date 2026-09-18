@@ -7,6 +7,7 @@ import {
 } from "@/lib/platform-search";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 interface TrendingProduct {
   id: string;
@@ -118,12 +119,12 @@ export const GET = withAuth(async () => {
     return NextResponse.json({ products: [], count: 0 });
   } catch (error) {
     if (cachedTrending && cachedTrending.products.length > 0) {
-      return NextResponse.json({ products: cachedTrending.products, cached: true, error: error instanceof Error ? error.message : "Unknown error" });
+      return NextResponse.json({ products: cachedTrending.products, cached: true, error: safeErrorMessage(error, "Unknown error") });
     }
     return NextResponse.json(
       {
         products: [],
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: safeErrorMessage(error, "Unknown error"),
       }
     );
   }

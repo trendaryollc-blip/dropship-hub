@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { getPriceSnapshots } from "@/lib/data/price-war";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -16,7 +17,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ snapshots });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch price snapshots", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch price snapshots", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

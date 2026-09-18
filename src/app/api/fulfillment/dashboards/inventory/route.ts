@@ -3,6 +3,7 @@ import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import type { InventoryDashboardData } from "@/types/fulfillment";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -115,7 +116,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ summary, alerts, topProducts: topProducts.slice(0, 20) });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch inventory dashboard", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to fetch inventory dashboard", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

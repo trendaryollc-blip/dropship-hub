@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { generateProfitSummary, generateProfitAlerts, calculateProfitByProduct, calculateProfitByPlatform } from "@/lib/finance/realtime-profit";
+import { PublicError, safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -56,12 +57,12 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch profit data", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch profit data", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
 });
 
 function getAdminDB(): FirebaseFirestore.Firestore {
-  throw new Error("Not implemented");
+  throw new PublicError("Not implemented");
 }

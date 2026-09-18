@@ -3,6 +3,7 @@ import { getAdminDB } from "@/lib/firebase-admin";
 import { pushTrackingToStore } from "@/lib/fulfillment/store-adapters";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -82,6 +83,6 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
 
     return NextResponse.json({ success: synced, platform: storePlatform });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to sync tracking", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to sync tracking", details: safeErrorMessage(error, "Unknown") }, { status: 500 });
   }
 }, LIMITS.FULFILLMENT);

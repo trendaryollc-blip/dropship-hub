@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { getSupplierScorecards, saveSupplierScorecard } from "@/lib/data/srm";
 import type { SupplierScorecard } from "@/types/srm";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 const GRADE_THRESHOLDS = [
   { min: 97, grade: "A+" as const },
@@ -44,7 +45,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ scorecards });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch scorecards", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to fetch scorecards", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }
@@ -135,7 +136,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: true, scorecard });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to save scorecard", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to save scorecard", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

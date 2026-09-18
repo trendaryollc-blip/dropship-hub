@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireOwner } from "@/lib/auth";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 const COLLECTION = "system";
 const DOC_ID = "supplierProviderKeys";
@@ -52,7 +53,7 @@ export const GET = requireOwner(async () => {
   } catch (error) {
     console.error("[AdminSupplierKeys] GET error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to fetch supplier keys" },
+      { error: safeErrorMessage(error, "Failed to fetch supplier keys") },
       { status: 500 }
     );
   }
@@ -167,7 +168,7 @@ export const POST = requireOwner(async (request: NextRequest) => {
   } catch (error) {
     console.error("[AdminSupplierKeys] POST error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed" },
+      { error: safeErrorMessage(error, "Failed") },
       { status: 500 }
     );
   }

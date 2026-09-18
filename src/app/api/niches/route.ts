@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { getCJAccessToken } from "@/lib/cj-auth";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 const CJ_API_KEY = process.env.CJ_API_KEY;
 
@@ -440,7 +441,7 @@ export const GET = withAuth(async () => {
   } catch (error) {
     const fallbackNiches = getFallbackNiches();
     return NextResponse.json(
-      { niches: fallbackNiches, source: "fallback", isFallback: true, error: error instanceof Error ? error.message : "Unknown error" },
+      { niches: fallbackNiches, source: "fallback", isFallback: true, error: safeErrorMessage(error, "Unknown error") },
     );
   }
 });

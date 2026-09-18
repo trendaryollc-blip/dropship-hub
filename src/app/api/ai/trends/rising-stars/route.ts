@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { fetchRealSignals } from "@/lib/data-sources/aggregator";
 import { detectRisingStars } from "@/lib/trend-analyzer";
 import type { TrendSignal } from "@/types/trend-predictor";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (_request: NextRequest, _uid: string) => {
   try {
@@ -33,7 +34,7 @@ export const GET = withAuth(async (_request: NextRequest, _uid: string) => {
     return NextResponse.json({ risingStars });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch rising stars", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch rising stars", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

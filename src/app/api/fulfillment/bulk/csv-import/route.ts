@@ -3,6 +3,7 @@ import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import type { CSVImportRow, CSVImportResult } from "@/types/fulfillment";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -97,7 +98,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
         await db.collection("users").doc(uid).collection("fulfillmentOrders").doc(orderId).set(orderData);
         importedOrders.push(orderId);
       } catch (error) {
-        errors.push({ row: i + 1, message: error instanceof Error ? error.message : "Unknown error" });
+        errors.push({ row: i + 1, message: safeErrorMessage(error, "Unknown error") });
       }
     }
 
@@ -112,7 +113,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: true, result });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to import CSV", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to import CSV", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

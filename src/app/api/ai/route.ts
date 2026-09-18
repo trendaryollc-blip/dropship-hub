@@ -3,6 +3,8 @@ import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { validateBody, AIChatSchema } from "@/lib/validation";
 import { getSupplierById } from "@/lib/supplier-service";
+import { logger } from "@/lib/logger";
+import { PublicError, safeErrorMessage } from "@/lib/api-errors";
 
 interface AIMessage {
   role: "user" | "assistant" | "system";
@@ -279,15 +281,15 @@ async function _resolveGeminiModel(apiKey: string): Promise<string> {
       if (r.ok) { _modelCache.set(cacheKey, { models: [model], ts: Date.now() }); return model; }
       lastStatus = r.status;
       try { const j = JSON.parse(body); lastErrorMsg = j.error?.message || body.slice(0, 200); } catch { lastErrorMsg = body.slice(0, 200); }
-      console.log(`[Gemini] ${model}: ${r.status} ${lastErrorMsg.slice(0, 200)}`);
-    } catch (e) { console.log(`[Gemini] ${model}: ERROR ${e}`); }
+      logger.debug("[Gemini] model probe failed", { model, status: r.status, error: lastErrorMsg.slice(0, 200) });
+    } catch (e) { logger.debug("[Gemini] model probe error", { model, error: e instanceof Error ? e.message : String(e) }); }
   }
 
   if (lastStatus === 403) {
-    throw new Error("Gemini API access denied. Your API key's Google Cloud project does not have Gemini API enabled. Enable it at https://aistudio.google.com/apikey");
+    throw new PublicError("Gemini API access denied. Your API key's Google Cloud project does not have Gemini API enabled. Enable it at https://aistudio.google.com/apikey");
   }
   if (lastStatus === 400 && lastErrorMsg.includes("location")) {
-    throw new Error("Gemini API is not available in your region. Use a VPN or check supported regions at https://ai.google.dev/gemini-api/docs/available-regions");
+    throw new PublicError("Gemini API is not available in your region. Use a VPN or check supported regions at https://ai.google.dev/gemini-api/docs/available-regions");
   }
   throw new Error(`Gemini: No available models found. Last error: ${lastErrorMsg.slice(0, 200)}`);
 }
@@ -462,12 +464,12 @@ async function callHuggingFace(messages: AIMessage[], apiKey: string, systemProm
     let parsed: Record<string, unknown> | null = null;
     try { parsed = JSON.parse(raw); } catch { /* not JSON */ }
     if (res.status === 503 && parsed && typeof parsed.error === "string" && parsed.error.includes("loading")) {
-      throw new Error(`HuggingFace model is loading, please try again in a few seconds`);
+      throw new PublicError(`HuggingFace model is loading, please try again in a few seconds`);
     }
     throw new Error(`HuggingFace ${res.status}: ${raw}`);
   }
   let data: Record<string, unknown> | null = null;
-  try { data = JSON.parse(raw); } catch { throw new Error(`HuggingFace: invalid response`); }
+  try { data = JSON.parse(raw); } catch { throw new PublicError(`HuggingFace: invalid response`); }
   if (data && typeof data === "object") {
     if (typeof data.error === "string") throw new Error(`HuggingFace API error: ${data.error}`);
     if (data.error && typeof data.error === "object") throw new Error(`HuggingFace API error: ${(data.error as { message?: string }).message || JSON.stringify(data.error)}`);
@@ -533,7 +535,7 @@ async function* streamOpenAICompatible(
   });
   if (!res.ok) throw new Error(`Provider ${res.status}`);
   const reader = res.body?.getReader();
-  if (!reader) throw new Error("No response body");
+  if (!reader) throw new PublicError("No response body");
   const decoder = new TextDecoder();
   let buffer = "";
   while (true) {
@@ -604,7 +606,7 @@ async function* streamGemini(messages: AIMessage[], apiKey: string, systemPrompt
     throw new Error(msg);
   }
   const reader = res.body?.getReader();
-  if (!reader) throw new Error("No response body");
+  if (!reader) throw new PublicError("No response body");
   const decoder = new TextDecoder();
   let buffer = "";
   while (true) {
@@ -702,7 +704,7 @@ async function getUserApiKeys(uid: string): Promise<Record<string, string[]>> {
       console.warn("[getUserApiKeys] Failed to load admin AI keys:", adminErr);
     }
 
-    console.log("[getUserApiKeys] uid:", uid, "providers with keys:", Object.keys(keys));
+    logger.debug("[getUserApiKeys] loaded API keys", { uid, providers: Object.keys(keys) });
     return keys;
   } catch (e) {
     console.error("[getUserApiKeys] FAILED to load user API keys:", e instanceof Error ? e.message : e);
@@ -799,7 +801,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
             try {
               await nonStreamingProvider.callAPI([{ role: "user", content: "Say hi" }], apiKey, systemPrompt);
             } catch (error) {
-              const errorMsg = error instanceof Error ? error.message : "Test failed";
+              const errorMsg = safeErrorMessage(error, "Test failed");
               
               // Check for rate limit errors
               const isRateLimitError = 
@@ -833,7 +835,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
                   controller.enqueue(encoder.encode(JSON.stringify({ type: "done" }) + "\n"));
                   controller.close();
                 } catch (error) {
-                  const errMsg = error instanceof Error ? error.message : "Stream error";
+                  const errMsg = safeErrorMessage(error, "Stream error");
                   controller.enqueue(encoder.encode(JSON.stringify({ type: "error", message: `${provider.name}: ${errMsg}` }) + "\n"));
                   controller.close();
                 }
@@ -848,7 +850,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
               },
             });
           } catch (error) {
-            const errorMsg = error instanceof Error ? error.message : "Unknown error";
+            const errorMsg = safeErrorMessage(error, "Unknown error");
             
             // Check for rate limit errors
             const isRateLimitError = 
@@ -902,7 +904,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
           const response = await provider.callAPI(messages, apiKey, systemPrompt);
           return NextResponse.json({ response, provider: provider.name, providerId: provider.id, keyUsed: keyLabel });
         } catch (error) {
-          const errorMsg = error instanceof Error ? error.message : "Unknown error";
+          const errorMsg = safeErrorMessage(error, "Unknown error");
           
           // Check for rate limit errors
           const isRateLimitError = 

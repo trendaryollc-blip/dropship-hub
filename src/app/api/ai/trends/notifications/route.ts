@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { getNotifications, markNotificationRead, markAllNotificationsRead, getUnreadCount } from "@/lib/trends/notifications";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -18,7 +19,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ notifications });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch notifications", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch notifications", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -42,7 +43,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to update notification", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to update notification", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

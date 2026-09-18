@@ -5,6 +5,7 @@ import { validateBody, TrendAnalysisInputSchema } from "@/lib/validation";
 import { analyzeKeyword, getTrendingKeywords } from "@/lib/data-sources/aggregator";
 import { addTrendPrediction } from "@/lib/data/trend-predictor";
 import type { TrendPlatform } from "@/types/trend-predictor";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -51,7 +52,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to analyze trend", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to analyze trend", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -90,7 +91,7 @@ export const GET = withAuth(async (request: NextRequest, _uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch trends", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch trends", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

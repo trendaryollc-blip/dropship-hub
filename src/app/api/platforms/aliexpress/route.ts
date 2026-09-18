@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchAliExpress } from "@/lib/platform-search";
 import { withAuth } from "@/lib/auth";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const POST = withAuth(async (request: NextRequest, _uid: string) => {
   try {
@@ -18,7 +19,7 @@ export const POST = withAuth(async (request: NextRequest, _uid: string) => {
     return NextResponse.json({ data, source: "aliexpress", query });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "AliExpress search failed" },
+      { error: safeErrorMessage(error, "AliExpress search failed") },
       { status: 500 }
     );
   }

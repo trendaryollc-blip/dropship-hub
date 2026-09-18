@@ -13,7 +13,7 @@ interface BulkPushPanelProps {
   onPushComplete: () => void;
 }
 
-export default function BulkPushPanel({ stores, pushedProducts, onPushComplete }: BulkPushPanelProps) {
+export default function BulkPushPanel({ stores, pushedProducts = [], onPushComplete }: BulkPushPanelProps) {
   const [mode, setMode] = useState<"new" | "existing">("new");
   const [selectedStores, setSelectedStores] = useState<string[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<PushedProduct[]>([]);

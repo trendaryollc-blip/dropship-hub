@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { getAdminDB } from "@/lib/firebase-admin";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 interface BriefingProduct {
   id: string;
@@ -243,7 +244,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ briefing });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to generate briefing" },
+      { error: safeErrorMessage(error, "Failed to generate briefing") },
       { status: 500 }
     );
   }

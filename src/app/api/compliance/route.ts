@@ -10,6 +10,7 @@ import {
 } from "@/lib/data/compliance";
 import { ComplianceCheckInputSchema } from "@/lib/data/schemas";
 import type { ComplianceCheckInput, BatchComplianceInput } from "@/types/compliance";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -110,7 +111,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: true, report });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Compliance check failed" },
+      { error: safeErrorMessage(error, "Compliance check failed") },
       { status: 500 }
     );
   }
@@ -194,7 +195,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ checks });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to fetch compliance data" },
+      { error: safeErrorMessage(error, "Failed to fetch compliance data") },
       { status: 500 }
     );
   }
@@ -217,7 +218,7 @@ export const DELETE = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to delete" },
+      { error: safeErrorMessage(error, "Failed to delete") },
       { status: 500 }
     );
   }

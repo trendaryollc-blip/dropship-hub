@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireOwner } from "@/lib/auth";
 import { getAdminDB } from "@/lib/firebase-admin";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 const SETTINGS_DOC = "system/settings";
 
@@ -34,7 +35,7 @@ export const GET = requireOwner(async (request: NextRequest, uid: string) => {
   } catch (error) {
     console.error("[AdminSettings] GET error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to fetch settings" },
+      { error: safeErrorMessage(error, "Failed to fetch settings") },
       { status: 500 }
     );
   }
@@ -61,7 +62,7 @@ export const POST = requireOwner(async (request: NextRequest, uid: string) => {
   } catch (error) {
     console.error("[AdminSettings] POST error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to save settings" },
+      { error: safeErrorMessage(error, "Failed to save settings") },
       { status: 500 }
     );
   }

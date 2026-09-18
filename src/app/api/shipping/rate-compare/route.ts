@@ -4,6 +4,7 @@ import { LIMITS } from "@/lib/rate-limit";
 import { RateComparisonInputSchema } from "@/types/shipping";
 import { compareRates } from "@/lib/shipping/carrier-rates";
 import { saveRateComparison } from "@/lib/data/shipping-rates";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -52,7 +53,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ result });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to compare rates", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to compare rates", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

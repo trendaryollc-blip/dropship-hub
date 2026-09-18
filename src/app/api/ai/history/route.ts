@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -19,7 +20,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ messages });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to load chat history", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to load chat history", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -45,7 +46,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to save message", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to save message", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -76,7 +77,7 @@ export const DELETE = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to clear history", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to clear history", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

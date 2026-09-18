@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseIntentLocally, parseIntentWithAI } from "@/lib/search/intent-parser";
+import { PublicError } from "@/lib/api-errors";
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
             signal: AbortSignal.timeout(5000),
           });
 
-          if (!res.ok) throw new Error("AI API failed");
+          if (!res.ok) throw new PublicError("AI API failed");
           const data = await res.json();
           return data.choices?.[0]?.message?.content || "";
         });

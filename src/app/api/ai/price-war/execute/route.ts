@@ -5,6 +5,7 @@ import { getPriceRules, updatePriceRule, addPriceAdjustmentLog, addPriceSnapshot
 import { evaluatePriceRule, shouldCheckRule } from "@/lib/price-war-engine";
 import { fetchAllCompetitorPrices } from "@/lib/competitor-price-fetcher";
 import type { PriceRule } from "@/types/price-war";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -104,7 +105,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to execute price check", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to execute price check", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

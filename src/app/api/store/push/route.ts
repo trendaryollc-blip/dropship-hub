@@ -4,6 +4,7 @@ import { signTrendaryoToken } from "@/lib/jwt";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { validateBody, StorePushInputSchema } from "@/lib/validation";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 interface PushProductPayload {
   uid: string;
@@ -209,7 +210,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
       error: result.error,
     });
   } catch (error) {
-    return NextResponse.json({ error: "Push failed", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
+    return NextResponse.json({ error: "Push failed", details: safeErrorMessage(error, "Unknown") }, { status: 500 });
   }
 }, LIMITS.STORE_PUSH);
 
@@ -220,7 +221,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     const products = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     return NextResponse.json({ products });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch pushed products", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch pushed products", details: safeErrorMessage(error, "Unknown") }, { status: 500 });
   }
 }, LIMITS.STORE_PUSH);
 
@@ -233,6 +234,6 @@ export const DELETE = withAuth(async (req: NextRequest, uid: string) => {
     await db.collection("users").doc(uid).collection("pushedProducts").doc(productId).delete();
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to delete pushed product", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to delete pushed product", details: safeErrorMessage(error, "Unknown") }, { status: 500 });
   }
 }, LIMITS.STORE_PUSH);

@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { getAdCampaigns } from "@/lib/data/ad-campaigns";
 import { getBudgetRecommendations, addBudgetRecommendation } from "@/lib/data/budget-recommendations";
 import { generateRecommendations } from "@/lib/ad-platforms/optimizer";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (_request: NextRequest, uid: string) => {
   try {
@@ -10,7 +11,7 @@ export const GET = withAuth(async (_request: NextRequest, uid: string) => {
     return NextResponse.json({ recommendations });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch recommendations", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch recommendations", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -43,7 +44,7 @@ export const POST = withAuth(async (_request: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to generate recommendations", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to generate recommendations", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

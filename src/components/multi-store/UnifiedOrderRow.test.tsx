@@ -7,6 +7,20 @@ vi.mock("@/hooks/useInView", () => ({
   useInView: () => ({ ref: vi.fn(), isInView: true }),
 }));
 
+// UnifiedOrderRow uses the auth context (to send the ID token) and toasts
+// (action feedback) — mock both, plus the nested TrackingInput form.
+vi.mock("@/components/auth/AuthProvider", () => ({
+  useAuth: () => ({ user: null }),
+}));
+
+vi.mock("@/components/ui/Toast", () => ({
+  useToast: () => ({ success: vi.fn(), error: vi.fn() }),
+}));
+
+vi.mock("./TrackingInput", () => ({
+  default: () => <div data-testid="tracking-input" />,
+}));
+
 const baseOrder: UnifiedOrder = {
   id: "o1",
   orderId: "ord-1",

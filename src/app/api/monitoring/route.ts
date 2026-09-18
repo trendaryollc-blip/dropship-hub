@@ -4,6 +4,7 @@ import { getAdminDB } from "@/lib/firebase-admin";
 import { computeMonitoringMetrics, getMonitoringHealth } from "@/lib/monitoring/metrics";
 import { getRepriceStats, getRepriceAuditLog } from "@/lib/monitoring/reprice-audit";
 import { getPriceHistory } from "@/lib/monitoring/price-history";
+import { PublicError, safeErrorMessage } from "@/lib/api-errors";
 
 interface MonitoredProduct {
   id?: string;
@@ -91,7 +92,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
         const snap = await transaction.get(docRef);
 
         if (!snap.exists) {
-          throw new Error("NOT_FOUND");
+          throw new PublicError("NOT_FOUND");
         }
 
         const product = snap.data() as MonitoredProduct;
@@ -217,7 +218,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed" },
+      { error: safeErrorMessage(error, "Failed") },
       { status: 500 }
     );
   }
@@ -313,7 +314,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ products, nextCursor, hasMore });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed" },
+      { error: safeErrorMessage(error, "Failed") },
       { status: 500 }
     );
   }
@@ -335,7 +336,7 @@ export const PATCH = withAuth(async (request: NextRequest, uid: string) => {
       const snap = await transaction.get(docRef);
 
       if (!snap.exists) {
-        throw new Error("NOT_FOUND");
+        throw new PublicError("NOT_FOUND");
       }
 
       const product = snap.data() as MonitoredProduct;
@@ -348,7 +349,7 @@ export const PATCH = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed" },
+      { error: safeErrorMessage(error, "Failed") },
       { status: 500 }
     );
   }

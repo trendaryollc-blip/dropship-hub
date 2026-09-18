@@ -3,6 +3,7 @@ import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { getStoreAdapter } from "@/lib/fulfillment/store-adapters";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -59,7 +60,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ health: healthResults });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to check store health", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to check store health", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

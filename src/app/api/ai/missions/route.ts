@@ -8,6 +8,7 @@ import {
   XP_PER_CATEGORY, calculateLevel, BADGE_DEFINITIONS,
   type GamificationStats, type MissionType, type BadgeContext,
 } from "@/lib/data/missions";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 interface AIMission {
   id: string;
@@ -365,7 +366,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to generate missions", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to generate missions", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -540,7 +541,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch missions", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch missions", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -637,7 +638,7 @@ export const PATCH = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true, xpAwarded, category: cat });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to complete mission", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to complete mission", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

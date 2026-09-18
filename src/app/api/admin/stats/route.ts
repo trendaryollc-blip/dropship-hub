@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireOwner } from "@/lib/auth";
 import { getAdminDB } from "@/lib/firebase-admin";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = requireOwner(async (request: NextRequest, uid: string) => {
   try {
@@ -13,6 +14,7 @@ export const GET = requireOwner(async (request: NextRequest, uid: string) => {
 
     // Count active subscriptions
     let activeSubscriptions = 0;
+    let activeSubscriptionsEstimated = false;
     try {
       const subsSnapshot = await db.collectionGroup("settings")
         .where("tier", "in", ["pro", "enterprise"])
@@ -21,10 +23,11 @@ export const GET = requireOwner(async (request: NextRequest, uid: string) => {
         .get();
       activeSubscriptions = subsSnapshot.data().count;
     } catch {
-      // Fallback: count from users collection
+      // Fallback: rough estimate from the users collection (flagged below)
       try {
         const proUsers = await db.collection("users").count().get();
-        activeSubscriptions = Math.floor(proUsers.data().count * 0.1); // Estimate
+        activeSubscriptions = Math.floor(proUsers.data().count * 0.1);
+        activeSubscriptionsEstimated = true;
       } catch { /* ignore */ }
     }
 
@@ -34,6 +37,7 @@ export const GET = requireOwner(async (request: NextRequest, uid: string) => {
 
     // Count healthy platforms
     let healthyPlatforms = 0;
+    let healthyPlatformsEstimated = false;
     try {
       const healthySnapshot = await db.collection("platforms")
         .where("lastHealth", "==", "healthy")
@@ -41,7 +45,8 @@ export const GET = requireOwner(async (request: NextRequest, uid: string) => {
         .get();
       healthyPlatforms = healthySnapshot.data().count;
     } catch {
-      healthyPlatforms = totalPlatforms; // Estimate
+      healthyPlatforms = totalPlatforms;
+      healthyPlatformsEstimated = true;
     }
 
     // Count total API keys across all platforms
@@ -56,8 +61,9 @@ export const GET = requireOwner(async (request: NextRequest, uid: string) => {
       }
     } catch { /* ignore */ }
 
-    // Estimate revenue from active subscriptions
-    const monthlyRevenue = activeSubscriptions * 49; // Rough estimate
+    // Rough revenue estimate: average $49/plan. Always flagged as an
+    // estimate so the admin UI never presents it as real revenue.
+    const monthlyRevenue = activeSubscriptions * 49;
 
     return NextResponse.json({
       totalUsers,
@@ -66,11 +72,16 @@ export const GET = requireOwner(async (request: NextRequest, uid: string) => {
       healthyPlatforms,
       totalApiKeys,
       monthlyRevenue,
+      estimates: {
+        activeSubscriptions: activeSubscriptionsEstimated,
+        healthyPlatforms: healthyPlatformsEstimated,
+        monthlyRevenue: true,
+      },
     });
   } catch (error) {
     console.error("[AdminStats] Error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to fetch stats" },
+      { error: safeErrorMessage(error, "Failed to fetch stats") },
       { status: 500 }
     );
   }

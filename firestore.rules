@@ -2,24 +2,72 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper: check if the signed-in user is the app owner
+    // Helper: check if the signed-in user is the app owner.
+    // NOTE: Security rules cannot read environment variables, so the owner UID
+    // is hardcoded here. Keep it in sync with the OWNER_UID env var used by
+    // src/lib/auth.ts. Long-term improvement: move to Firebase custom claims.
     function isOwner() {
       return request.auth != null && request.auth.uid == "WBH7KDGxsaOPTYrYXjd4oZLgu5T2";
+    }
+
+    function isSelf(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // ──────────────────────────────────────────────────
+    // Protected profile-field helpers.
+    //
+    // `role`, `banned` and `tier` decide privileges and billing limits
+    // (see src/lib/roles.ts and src/lib/auth.ts). Clients may never set
+    // or change them — they are only written by the server via the
+    // Admin SDK, which bypasses these rules entirely. On create the
+    // defaults apply; on update the existing value must be preserved
+    // (or the field left untouched).
+    // ──────────────────────────────────────────────────
+    function fieldUnchanged(field, before, after, defaultValue) {
+      return !(field in after) || after[field] == (field in before ? before[field] : defaultValue);
+    }
+
+    function profileFieldsAllowedOnCreate() {
+      return fieldUnchanged('role', {}, request.resource.data, 'user')
+        && fieldUnchanged('banned', {}, request.resource.data, false)
+        && fieldUnchanged('tier', {}, request.resource.data, 'free');
+    }
+
+    function profileFieldsUnchanged() {
+      return fieldUnchanged('role', resource.data, request.resource.data, 'user')
+        && fieldUnchanged('banned', resource.data, request.resource.data, false)
+        && fieldUnchanged('tier', resource.data, request.resource.data, 'free');
     }
 
     // ──────────────────────────────────────────────────
     // USER PROFILES — self read/write, owner full access
     // ──────────────────────────────────────────────────
     match /users/{userId} {
-      allow read: if request.auth != null && (request.auth.uid == userId || isOwner());
-      allow create: if request.auth != null && request.auth.uid == userId;
-      allow update: if request.auth != null && (request.auth.uid == userId || isOwner());
+      allow read: if isSelf(userId) || isOwner();
+      allow create: if isSelf(userId) && profileFieldsAllowedOnCreate();
+      allow update: if isOwner() || (isSelf(userId) && profileFieldsUnchanged());
       allow delete: if isOwner();
 
-      // User subcollections (settings, usage, etc.)
-      match /{document=**} {
-        allow read: if request.auth != null && (request.auth.uid == userId || isOwner());
-        allow write: if request.auth != null && (request.auth.uid == userId || isOwner());
+      // ──────────────────────────────────────────────
+      // USER SUBCOLLECTIONS (settings, usage, savedProducts, ...)
+      // Users manage their own documents, EXCEPT billing state:
+      // users/{uid}/settings/subscription is written exclusively by the
+      // server (Stripe webhook / Admin SDK). Without this guard a client
+      // could self-upgrade its subscription tier and unlock paid limits.
+      // ──────────────────────────────────────────────
+      match /{collection}/{docId} {
+        function isBillingDoc() {
+          return collection == 'settings' && docId == 'subscription';
+        }
+        allow read: if isSelf(userId) || isOwner();
+        allow create, update, delete: if isOwner() || (isSelf(userId) && !isBillingDoc());
+      }
+
+      // Documents nested deeper inside user subcollections
+      match /{collection}/{docId}/{rest=**} {
+        allow read: if isSelf(userId) || isOwner();
+        allow create, update, delete: if isOwner() || (isSelf(userId) && !(collection == 'settings' && docId == 'subscription'));
       }
     }
 

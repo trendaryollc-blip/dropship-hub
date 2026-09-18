@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { ProfitEntrySchema, validateBody } from "@/lib/validation";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -126,7 +127,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch profit data", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch profit data", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -148,7 +149,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true, id: ref.id });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to log profit entry", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to log profit entry", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { executeBulkOrderPlacement, getBulkOrderResult, validateBulkOrderPlacementInput, getBulkOrderStats, getActiveBulkOperations, getBulkOperationHistory } from "@/lib/fulfillment/bulk-processor";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, _uid: string) => {
   try {
@@ -35,7 +36,7 @@ export const GET = withAuth(async (request: NextRequest, _uid: string) => {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch bulk order data", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch bulk order data", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -68,7 +69,7 @@ export const POST = withAuth(async (request: NextRequest, _uid: string) => {
     return NextResponse.json({ success: true, result });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to execute bulk order placement", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to execute bulk order placement", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

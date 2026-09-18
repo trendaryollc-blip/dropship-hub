@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { getBulkPushJobs, addBulkPushJob, updateBulkPushJob } from "@/lib/data/multi-store";
 import { getAdminDB } from "@/lib/firebase-admin";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -10,7 +11,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ jobs });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch bulk push jobs", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to fetch bulk push jobs", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }
@@ -63,7 +64,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: true, jobId });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to create bulk push job", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to create bulk push job", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }
@@ -79,7 +80,7 @@ export const PUT = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to update bulk push job", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to update bulk push job", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

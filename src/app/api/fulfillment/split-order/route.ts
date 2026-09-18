@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 interface SplitEntry {
   itemIndices: number[];
@@ -131,7 +132,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to split order", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to split order", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

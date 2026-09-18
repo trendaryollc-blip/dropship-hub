@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { generateSingleContent, generateBatchContent, generateUGCCreation, generateContentIdeas } from "@/lib/social-content";
 import { addSocialContent, getSocialContent, deleteSocialContent, getContentStats } from "@/lib/data/social-content";
 import type { SocialPlatform, ContentType, ContentTone, UGCCreation } from "@/types/social-content";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -57,7 +58,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed" },
+      { error: safeErrorMessage(error, "Failed") },
       { status: 500 }
     );
   }
@@ -78,7 +79,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ contents });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed" },
+      { error: safeErrorMessage(error, "Failed") },
       { status: 500 }
     );
   }
@@ -93,7 +94,7 @@ export const DELETE = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: deleted });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed" },
+      { error: safeErrorMessage(error, "Failed") },
       { status: 500 }
     );
   }

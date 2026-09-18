@@ -5,6 +5,7 @@ import { LIMITS } from "@/lib/rate-limit";
 import { pollAllTrackedOrders, getPollingOrders } from "@/lib/fulfillment/auto-tracker";
 import { logAuditEvent } from "@/lib/fulfillment/audit-logger";
 import { pushTrackingToStore } from "@/lib/fulfillment/store-adapters";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -103,7 +104,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Status polling failed", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Status polling failed", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }
@@ -118,7 +119,7 @@ export const GET = withAuth(async (_req: NextRequest, _uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch polling status", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to fetch polling status", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

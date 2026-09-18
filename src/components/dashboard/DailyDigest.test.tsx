@@ -5,11 +5,15 @@ vi.mock("@/hooks/useInView", () => ({
   useInView: vi.fn(() => ({ ref: { current: null }, isInView: true })),
 }));
 
+// The component consumes the CURRENT useDigest API:
+//   { currentDigest, generating, generateDigest, ... }
+// (it maps currentDigest→digest and generating→loading internally and has
+// no error UI — failures surface as the empty state; hook-level error
+// handling is covered in src/hooks/useDigest.test.ts)
 vi.mock("@/hooks/useDigest", () => ({
   useDigest: vi.fn(() => ({
-    digest: null,
-    loading: false,
-    error: null,
+    currentDigest: null,
+    generating: false,
     generateDigest: vi.fn().mockResolvedValue(undefined),
   })),
 }));
@@ -43,8 +47,8 @@ beforeEach(() => {
 describe("DailyDigest", () => {
   it("renders loading state", () => {
     mockUseDigest.mockReturnValue({
-      digest: null,
-      loading: true,
+      currentDigest: null,
+      generating: true,
       error: null,
       generateDigest: vi.fn().mockResolvedValue(undefined),
     });
@@ -52,21 +56,10 @@ describe("DailyDigest", () => {
     expect(screen.getByText("...")).toBeInTheDocument();
   });
 
-  it("renders error state", () => {
-    mockUseDigest.mockReturnValue({
-      digest: null,
-      loading: false,
-      error: "Failed to fetch digest",
-      generateDigest: vi.fn().mockResolvedValue(undefined),
-    });
-    render(<DailyDigest />);
-    expect(screen.getByText("Failed to fetch digest")).toBeInTheDocument();
-  });
-
   it("renders 'No digest available' when no digest and not loading", () => {
     mockUseDigest.mockReturnValue({
-      digest: null,
-      loading: false,
+      currentDigest: null,
+      generating: false,
       error: null,
       generateDigest: vi.fn().mockResolvedValue(undefined),
     });
@@ -80,8 +73,8 @@ describe("DailyDigest", () => {
     (localStorage.getItem as any).mockReturnValue(today);
     const generateDigest = vi.fn().mockResolvedValue(undefined);
     mockUseDigest.mockReturnValue({
-      digest: null,
-      loading: false,
+      currentDigest: null,
+      generating: false,
       error: null,
       generateDigest,
     });
@@ -92,8 +85,8 @@ describe("DailyDigest", () => {
 
   it("renders digest summary", () => {
     mockUseDigest.mockReturnValue({
-      digest: makeDigest({ summary: "Orders are climbing steadily this week." }),
-      loading: false,
+      currentDigest: makeDigest({ summary: "Orders are climbing steadily this week." }),
+      generating: false,
       error: null,
       generateDigest: vi.fn(),
     });
@@ -103,10 +96,10 @@ describe("DailyDigest", () => {
 
   it("renders metrics (orders, revenue, profit, stock alerts, delays)", () => {
     mockUseDigest.mockReturnValue({
-      digest: makeDigest({
+      currentDigest: makeDigest({
         metrics: { orders: 42, revenue: 3500, profit: 890, stockAlerts: 3, supplierDelays: 1 },
       }),
-      loading: false,
+      generating: false,
       error: null,
       generateDigest: vi.fn(),
     });
@@ -125,8 +118,8 @@ describe("DailyDigest", () => {
 
   it("renders MetricCard with prefix", () => {
     mockUseDigest.mockReturnValue({
-      digest: makeDigest({ metrics: { orders: 10, revenue: 1000, profit: 250, stockAlerts: 0, supplierDelays: 0 } }),
-      loading: false,
+      currentDigest: makeDigest({ metrics: { orders: 10, revenue: 1000, profit: 250, stockAlerts: 0, supplierDelays: 0 } }),
+      generating: false,
       error: null,
       generateDigest: vi.fn(),
     });
@@ -137,8 +130,8 @@ describe("DailyDigest", () => {
 
   it("renders weekly trend indicator (up)", () => {
     mockUseDigest.mockReturnValue({
-      digest: makeDigest({ weeklyTrend: { direction: "up", percentage: 15, insight: "Strong growth" } }),
-      loading: false,
+      currentDigest: makeDigest({ weeklyTrend: { direction: "up", percentage: 15, insight: "Strong growth" } }),
+      generating: false,
       error: null,
       generateDigest: vi.fn(),
     });
@@ -150,8 +143,8 @@ describe("DailyDigest", () => {
 
   it("renders weekly trend indicator (down)", () => {
     mockUseDigest.mockReturnValue({
-      digest: makeDigest({ weeklyTrend: { direction: "down", percentage: 8, insight: "Slight decline" } }),
-      loading: false,
+      currentDigest: makeDigest({ weeklyTrend: { direction: "down", percentage: 8, insight: "Slight decline" } }),
+      generating: false,
       error: null,
       generateDigest: vi.fn(),
     });
@@ -162,8 +155,8 @@ describe("DailyDigest", () => {
 
   it("renders weekly trend indicator (stable)", () => {
     mockUseDigest.mockReturnValue({
-      digest: makeDigest({ weeklyTrend: { direction: "stable", percentage: 0, insight: "No change" } }),
-      loading: false,
+      currentDigest: makeDigest({ weeklyTrend: { direction: "stable", percentage: 0, insight: "No change" } }),
+      generating: false,
       error: null,
       generateDigest: vi.fn(),
     });
@@ -174,14 +167,14 @@ describe("DailyDigest", () => {
 
   it("renders alerts with different types and severities", () => {
     mockUseDigest.mockReturnValue({
-      digest: makeDigest({
+      currentDigest: makeDigest({
         alerts: [
           { type: "stock", title: "Low stock warning", description: "Widget X running low", severity: "high" },
           { type: "supplier", title: "Supplier delay", description: "Shipment delayed 2 days", severity: "medium" },
           { type: "adSpend", title: "Ad budget low", description: "Campaign budget 80% spent", severity: "low" },
         ],
       }),
-      loading: false,
+      generating: false,
       error: null,
       generateDigest: vi.fn(),
     });
@@ -200,8 +193,8 @@ describe("DailyDigest", () => {
 
   it("does not render alerts section when no alerts", () => {
     mockUseDigest.mockReturnValue({
-      digest: makeDigest({ alerts: [] }),
-      loading: false,
+      currentDigest: makeDigest({ alerts: [] }),
+      generating: false,
       error: null,
       generateDigest: vi.fn(),
     });
@@ -211,8 +204,8 @@ describe("DailyDigest", () => {
 
   it("renders recommendations", () => {
     mockUseDigest.mockReturnValue({
-      digest: makeDigest({ recommendations: ["Restock popular items", "Adjust ad spend"] }),
-      loading: false,
+      currentDigest: makeDigest({ recommendations: ["Restock popular items", "Adjust ad spend"] }),
+      generating: false,
       error: null,
       generateDigest: vi.fn(),
     });
@@ -225,8 +218,8 @@ describe("DailyDigest", () => {
   it("shows Refresh button and handles refresh click", () => {
     const generateDigest = vi.fn().mockResolvedValue(undefined);
     mockUseDigest.mockReturnValue({
-      digest: makeDigest(),
-      loading: false,
+      currentDigest: makeDigest(),
+      generating: false,
       error: null,
       generateDigest,
     });
@@ -239,8 +232,8 @@ describe("DailyDigest", () => {
 
   it("disables refresh button and shows spinner when loading with digest", () => {
     mockUseDigest.mockReturnValue({
-      digest: makeDigest(),
-      loading: true,
+      currentDigest: makeDigest(),
+      generating: true,
       error: null,
       generateDigest: vi.fn().mockResolvedValue(undefined),
     });
@@ -250,8 +243,8 @@ describe("DailyDigest", () => {
 
   it("renders heading 'Daily Intelligence Digest'", () => {
     mockUseDigest.mockReturnValue({
-      digest: null,
-      loading: false,
+      currentDigest: null,
+      generating: false,
       error: null,
       generateDigest: vi.fn().mockResolvedValue(undefined),
     });
@@ -261,8 +254,8 @@ describe("DailyDigest", () => {
 
   it("renders AI Summary label", () => {
     mockUseDigest.mockReturnValue({
-      digest: makeDigest({ summary: "All metrics healthy." }),
-      loading: false,
+      currentDigest: makeDigest({ summary: "All metrics healthy." }),
+      generating: false,
       error: null,
       generateDigest: vi.fn(),
     });
@@ -272,8 +265,8 @@ describe("DailyDigest", () => {
 
   it("renders Key Metrics label", () => {
     mockUseDigest.mockReturnValue({
-      digest: makeDigest(),
-      loading: false,
+      currentDigest: makeDigest(),
+      generating: false,
       error: null,
       generateDigest: vi.fn(),
     });
@@ -284,8 +277,8 @@ describe("DailyDigest", () => {
   it("auto-generates digest when not generated today", async () => {
     const generateDigest = vi.fn().mockResolvedValue(undefined);
     mockUseDigest.mockReturnValue({
-      digest: null,
-      loading: false,
+      currentDigest: null,
+      generating: false,
       error: null,
       generateDigest,
     });
@@ -300,8 +293,8 @@ describe("DailyDigest", () => {
     (localStorage.getItem as any).mockReturnValue(today);
     const generateDigest = vi.fn().mockResolvedValue(undefined);
     mockUseDigest.mockReturnValue({
-      digest: null,
-      loading: false,
+      currentDigest: null,
+      generating: false,
       error: null,
       generateDigest,
     });
@@ -311,8 +304,8 @@ describe("DailyDigest", () => {
 
   it("renders trend percentage for up direction with plus prefix", () => {
     mockUseDigest.mockReturnValue({
-      digest: makeDigest({ weeklyTrend: { direction: "up", percentage: 20, insight: "Great" } }),
-      loading: false,
+      currentDigest: makeDigest({ weeklyTrend: { direction: "up", percentage: 20, insight: "Great" } }),
+      generating: false,
       error: null,
       generateDigest: vi.fn(),
     });
@@ -322,8 +315,8 @@ describe("DailyDigest", () => {
 
   it("renders trend percentage for down direction with minus prefix", () => {
     mockUseDigest.mockReturnValue({
-      digest: makeDigest({ weeklyTrend: { direction: "down", percentage: 5, insight: "Dip" } }),
-      loading: false,
+      currentDigest: makeDigest({ weeklyTrend: { direction: "down", percentage: 5, insight: "Dip" } }),
+      generating: false,
       error: null,
       generateDigest: vi.fn(),
     });
@@ -333,14 +326,14 @@ describe("DailyDigest", () => {
 
   it("renders alert severity badges", () => {
     mockUseDigest.mockReturnValue({
-      digest: makeDigest({
+      currentDigest: makeDigest({
         alerts: [
           { type: "stock", title: "Low", description: "desc", severity: "low" },
           { type: "supplier", title: "Med", description: "desc", severity: "medium" },
           { type: "trend", title: "High", description: "desc", severity: "high" },
         ],
       }),
-      loading: false,
+      generating: false,
       error: null,
       generateDigest: vi.fn(),
     });
@@ -352,8 +345,8 @@ describe("DailyDigest", () => {
 
   it("shows '...' instead of 'Refresh' text when loading with no digest", () => {
     mockUseDigest.mockReturnValue({
-      digest: null,
-      loading: true,
+      currentDigest: null,
+      generating: true,
       error: null,
       generateDigest: vi.fn().mockResolvedValue(undefined),
     });

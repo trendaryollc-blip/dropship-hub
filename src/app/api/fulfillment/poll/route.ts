@@ -3,6 +3,7 @@ import { getAdminDB } from "@/lib/firebase-admin";
 import { fetchOrdersFromStore } from "@/lib/fulfillment/store-adapters";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 function sanitizeProductId(id: string): string {
   return id.replace(/\//g, "__SLASH__");
@@ -82,6 +83,6 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
 
     return NextResponse.json({ success: true, newOrders: allOrders.length, orders: allOrders });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to poll orders", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to poll orders", details: safeErrorMessage(error, "Unknown") }, { status: 500 });
   }
 }, LIMITS.FULFILLMENT);

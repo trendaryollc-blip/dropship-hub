@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { calculateCashFlowForecast, calculateCashFlowSnapshot, generateCashFlowAlerts } from "@/lib/cash-flow";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -55,6 +56,6 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     });
     return NextResponse.json({ snapshot });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed") }, { status: 500 });
   }
 });

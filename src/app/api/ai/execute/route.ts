@@ -9,6 +9,7 @@ import { executeToolCalls, parseToolCalls } from "@/lib/ai/engine/executor";
 import { getAutonomyLevel } from "@/lib/ai/modes/user-prefs";
 import { evaluateToolExecution, toolIdToFeature } from "@/lib/ai/modes/evaluator";
 import { getModePreferences } from "@/lib/ai/modes/user-prefs";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 // ─── POST /api/ai/execute ───────────────────────────────────────────────────
 // Execute a tool call, or execute tool calls parsed from LLM response
@@ -106,7 +107,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
 
     return NextResponse.json({ error: "Provide either 'tool' or 'llmResponse'" }, { status: 400 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal error";
+    const message = safeErrorMessage(error, "Internal error");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }, LIMITS.AI_CHAT);
@@ -128,7 +129,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     const executions = await getRecentExecutions(uid, limit);
     return NextResponse.json({ executions });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal error";
+    const message = safeErrorMessage(error, "Internal error");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }, LIMITS.AI_CHAT);

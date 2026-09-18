@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 async function testShopifyConnection(domain: string, accessToken: string): Promise<{ ok: boolean; message: string }> {
   const cleanDomain = domain.replace("https://", "").replace("http://", "").replace(/\/$/, "");
@@ -86,7 +87,7 @@ export const POST = withAuth(async (req: NextRequest) => {
 
     return NextResponse.json(result);
   } catch (error) {
-    const msg = error instanceof Error ? error.message : "Connection test failed";
+    const msg = safeErrorMessage(error, "Connection test failed");
     return NextResponse.json({ ok: false, message: msg }, { status: 500 });
   }
 }, LIMITS.DEFAULT);

@@ -4,6 +4,7 @@ import { LIMITS } from "@/lib/rate-limit";
 import { CustomsCalculationInputSchema } from "@/types/shipping";
 import { calculateCustoms, lookupHSCode } from "@/lib/shipping/customs-calculator";
 import { saveCustomsEstimate, getCustomsEstimateHistory } from "@/lib/data/shipping-rates";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -87,7 +88,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to calculate customs", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to calculate customs", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { LIMITS } from "@/lib/rate-limit";
 import { DocumentData } from "firebase-admin/firestore";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -40,7 +41,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ [resultKey]: entries });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch search history", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch search history", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -77,7 +78,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to save search", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to save search", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

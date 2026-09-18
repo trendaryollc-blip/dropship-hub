@@ -11,17 +11,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Generate Daily Digest
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          APP_URL="${{ secrets.APP_URL }}"
-
           if [ -z "$APP_URL" ]; then
             echo "ERROR: APP_URL secret not set. Go to GitHub repo → Settings → Secrets → Actions and add APP_URL"
+            exit 1
+          fi
+
+          if [ -z "$CRON_SECRET" ]; then
+            echo "ERROR: CRON_SECRET secret not set. Go to GitHub repo → Settings → Secrets → Actions and add CRON_SECRET (must match the CRON_SECRET env var configured on the deployment)."
             exit 1
           fi
 
           echo "Triggering digest generation for $APP_URL..."
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$APP_URL/api/digest" \
             -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $CRON_SECRET" \
             -d '{"date":"'$(date -u +%Y-%m-%d)'"}')
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)

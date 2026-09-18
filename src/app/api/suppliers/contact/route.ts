@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 interface ContactFormData {
   supplierId: string;
@@ -60,7 +61,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
   } catch (error) {
     console.error("Failed to submit supplier inquiry:", error);
     return NextResponse.json(
-      { error: "Failed to submit inquiry", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to submit inquiry", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

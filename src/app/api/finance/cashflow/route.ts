@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { addCashFlowEntry, getAllCashFlowEntries, getCashFlowEntriesByDateRange, updateCashFlowEntry, deleteCashFlowEntry, generateCashFlowProjection, getCashFlowSummary, getUpcomingPayments, validateCashFlowInput } from "@/lib/finance/cashflow-projection";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, _uid: string) => {
   try {
@@ -30,7 +31,7 @@ export const GET = withAuth(async (request: NextRequest, _uid: string) => {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch cash flow data", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch cash flow data", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -87,7 +88,7 @@ export const POST = withAuth(async (request: NextRequest, _uid: string) => {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to process cash flow request", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to process cash flow request", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

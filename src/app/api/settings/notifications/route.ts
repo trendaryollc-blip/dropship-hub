@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -16,7 +17,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     };
     return NextResponse.json({ preferences });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed") }, { status: 500 });
   }
 }, LIMITS.DEFAULT);
 
@@ -31,6 +32,6 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     await db.collection("users").doc(uid).collection("settings").doc("notifications").set(preferences, { merge: true });
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed") }, { status: 500 });
   }
 }, LIMITS.DEFAULT);

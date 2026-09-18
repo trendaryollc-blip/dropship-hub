@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { getSupplierMessages, addSupplierMessage, markMessageRead, deleteSupplierMessage } from "@/lib/data/srm";
 import { getCJAccessToken } from "@/lib/cj-auth";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -13,7 +14,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ messages });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch messages", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to fetch messages", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }
@@ -68,7 +69,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: true, id: messageId, status });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to send message", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to send message", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }
@@ -87,7 +88,7 @@ export const PUT = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to update message", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to update message", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }
@@ -102,7 +103,7 @@ export const DELETE = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to delete message", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to delete message", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

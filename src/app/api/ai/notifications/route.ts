@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { DocumentData } from "firebase-admin/firestore";
 import { safeNum, safeStr } from "@/lib/utils-helpers";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 interface NotificationPayload {
   title: string;
@@ -191,7 +192,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Notification scan failed", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Notification scan failed", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -215,7 +216,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ notifications, unreadCount });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch notifications", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch notifications", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -254,7 +255,7 @@ export const PATCH = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ error: "Provide markAll: true or notificationIds: string[]" }, { status: 400 });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to mark notifications", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to mark notifications", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

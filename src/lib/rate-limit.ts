@@ -15,7 +15,11 @@ interface RateLimitEntry {
 }
 
 let redis: Redis | null = null;
-let ratelimit: Ratelimit | null = null;
+// Upstash Ratelimit instances are built per (maxRequests, windowSeconds) pair
+// so each tier/route limit actually applies when Redis is configured. A single
+// shared instance would silently enforce only its own hardcoded limiter.
+const ratelimitCache = new Map<string, Ratelimit>();
+let warnedNoRedis = false;
 
 function getRedis(): Redis | null {
   if (redis) return redis;
@@ -26,11 +30,11 @@ function getRedis(): Redis | null {
   return redis;
 }
 
-function getRatelimit(): Ratelimit | null {
-  if (ratelimit) return ratelimit;
+function getRatelimit(config: RateLimitConfig): Ratelimit | null {
   const r = getRedis();
   if (!r) {
-    if (process.env.NODE_ENV === "production") {
+    if (process.env.NODE_ENV === "production" && !warnedNoRedis) {
+      warnedNoRedis = true;
       console.warn(
         "[rate-limit] UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are not set. " +
         "Rate limiting is using an in-memory fallback that does NOT persist across serverless cold starts. " +
@@ -39,13 +43,19 @@ function getRatelimit(): Ratelimit | null {
     }
     return null;
   }
-  ratelimit = new Ratelimit({
-    redis: r,
-    limiter: Ratelimit.slidingWindow(60, "60 s"),
-    analytics: true,
-    prefix: "dropship:rl",
-  });
-  return ratelimit;
+  const windowSeconds = Math.max(1, Math.ceil(config.windowMs / 1000));
+  const cacheKey = `${config.maxRequests}:${windowSeconds}`;
+  let rl = ratelimitCache.get(cacheKey);
+  if (!rl) {
+    rl = new Ratelimit({
+      redis: r,
+      limiter: Ratelimit.slidingWindow(config.maxRequests, `${windowSeconds} s`),
+      analytics: true,
+      prefix: "dropship:rl",
+    });
+    ratelimitCache.set(cacheKey, rl);
+  }
+  return rl;
 }
 
 const store = new Map<string, RateLimitEntry>();
@@ -54,12 +64,28 @@ function getStore(): Map<string, RateLimitEntry> {
   return store;
 }
 
+// Periodically drop expired entries so the in-memory fallback (used when
+// Upstash Redis is not configured) cannot grow without bound in
+// long-lived server processes.
+const SWEEP_INTERVAL_MS = 60_000;
+const SWEEP_MAX_SIZE = 10_000;
+let lastSweep = 0;
+
+function sweepExpired(now: number): void {
+  if (now - lastSweep < SWEEP_INTERVAL_MS && store.size < SWEEP_MAX_SIZE) return;
+  lastSweep = now;
+  for (const [key, entry] of store) {
+    if (now > entry.resetTime) store.delete(key);
+  }
+}
+
 function getRateLimitKey(identifier: string, route: string): string {
   return `${route}:${identifier}`;
 }
 
 function checkLimit(key: string, config: RateLimitConfig): { allowed: boolean; remaining: number; resetTime: number } {
   const now = Date.now();
+  sweepExpired(now);
   const map = getStore();
   const entry = map.get(key);
 
@@ -128,7 +154,7 @@ export function getTierLimits(tier: UserTier): Record<string, RateLimitConfig> {
 }
 
 async function checkRedisLimit(key: string, config: RateLimitConfig): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {
-  const rl = getRatelimit();
+  const rl = getRatelimit(config);
   if (!rl) return checkLimit(key, config);
 
   try {
@@ -186,22 +212,27 @@ export async function getRateLimitStatus(
   key: string,
   config: RateLimitConfig
 ): Promise<{ remaining: number; limit: number; resetTime: number }> {
-  const rl = getRatelimit();
-  if (!rl) {
-    const map = getStore();
-    const entry = map.get(key);
-    if (!entry || Date.now() > entry.resetTime) {
-      return { remaining: config.maxRequests, limit: config.maxRequests, resetTime: Date.now() + config.windowMs };
+  const rl = getRatelimit(config);
+  if (rl) {
+    try {
+      // getRemaining() is read-only — unlike limit() it does NOT consume quota.
+      const status = await rl.getRemaining(key);
+      return {
+        remaining: status.remaining,
+        limit: config.maxRequests,
+        resetTime: status.reset || Date.now() + config.windowMs,
+      };
+    } catch {
+      // Fall through to the in-memory store below.
     }
-    return { remaining: config.maxRequests - entry.count, limit: config.maxRequests, resetTime: entry.resetTime };
   }
 
-  try {
-    const result = await rl.limit(key);
-    return { remaining: result.remaining, limit: config.maxRequests, resetTime: result.reset };
-  } catch {
+  const map = getStore();
+  const entry = map.get(key);
+  if (!entry || Date.now() > entry.resetTime) {
     return { remaining: config.maxRequests, limit: config.maxRequests, resetTime: Date.now() + config.windowMs };
   }
+  return { remaining: config.maxRequests - entry.count, limit: config.maxRequests, resetTime: entry.resetTime };
 }
 
 export const LIMITS = {

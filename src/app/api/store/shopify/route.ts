@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
+import { PublicError, safeErrorMessage } from "@/lib/api-errors";
 
 const SHOPIFY_STORE_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN;
 const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
 
 async function shopifyFetch(endpoint: string, options?: RequestInit) {
   if (!SHOPIFY_STORE_DOMAIN || !SHOPIFY_ACCESS_TOKEN) {
-    throw new Error("Shopify credentials not configured");
+    throw new PublicError("Shopify credentials not configured");
   }
 
   const res = await fetch(`https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-01${endpoint}`, {
@@ -112,7 +113,7 @@ export const POST = withAuth(async (request: NextRequest) => {
     return NextResponse.json({ data, source: "shopify" });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Shopify API request failed" },
+      { error: safeErrorMessage(error, "Shopify API request failed") },
       { status: 500 }
     );
   }

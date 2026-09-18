@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireOwner } from "@/lib/auth";
 import { listUsers, setUserRole, setUserBanned } from "@/lib/roles";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = requireOwner(async (request: NextRequest, uid: string) => {
   try {
@@ -9,7 +10,7 @@ export const GET = requireOwner(async (request: NextRequest, uid: string) => {
   } catch (error) {
     console.error("[AdminUsers] GET error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to fetch users" },
+      { error: safeErrorMessage(error, "Failed to fetch users") },
       { status: 500 }
     );
   }
@@ -45,7 +46,7 @@ export const PATCH = requireOwner(async (request: NextRequest, uid: string) => {
   } catch (error) {
     console.error("[AdminUsers] PATCH error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to update user" },
+      { error: safeErrorMessage(error, "Failed to update user") },
       { status: 500 }
     );
   }

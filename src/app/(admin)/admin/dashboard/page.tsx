@@ -16,6 +16,11 @@ interface AdminStats {
   healthyPlatforms: number;
   totalApiKeys: number;
   monthlyRevenue: number;
+  estimates?: {
+    activeSubscriptions?: boolean;
+    healthyPlatforms?: boolean;
+    monthlyRevenue?: boolean;
+  };
 }
 
 export default function AdminDashboardPage() {
@@ -54,11 +59,11 @@ export default function AdminDashboardPage() {
 
   const statCards = [
     { label: "Total Users", value: stats?.totalUsers ?? 0, icon: Users, color: "text-blue-400", bg: "bg-blue-400/10", border: "border-blue-400/20" },
-    { label: "Active Subscriptions", value: stats?.activeSubscriptions ?? 0, icon: DollarSign, color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/20" },
+    { label: stats?.estimates?.activeSubscriptions ? "Active Subs (est.)" : "Active Subscriptions", value: stats?.activeSubscriptions ?? 0, icon: DollarSign, color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/20" },
     { label: "Platforms", value: stats?.totalPlatforms ?? 0, icon: Globe, color: "text-purple-400", bg: "bg-purple-400/10", border: "border-purple-400/20" },
-    { label: "Healthy Platforms", value: stats?.healthyPlatforms ?? 0, icon: Activity, color: "text-cyan-400", bg: "bg-cyan-400/10", border: "border-cyan-400/20" },
+    { label: stats?.estimates?.healthyPlatforms ? "Healthy Platforms (est.)" : "Healthy Platforms", value: stats?.healthyPlatforms ?? 0, icon: Activity, color: "text-cyan-400", bg: "bg-cyan-400/10", border: "border-cyan-400/20" },
     { label: "API Keys", value: stats?.totalApiKeys ?? 0, icon: Key, color: "text-amber-400", bg: "bg-amber-400/10", border: "border-amber-400/20" },
-    { label: "Monthly Revenue", value: `$${stats?.monthlyRevenue ?? 0}`, icon: TrendingUp, color: "text-pink-400", bg: "bg-pink-400/10", border: "border-pink-400/20" },
+    { label: stats?.estimates?.monthlyRevenue ? "Monthly Revenue (est.)" : "Monthly Revenue", value: `$${stats?.monthlyRevenue ?? 0}`, icon: TrendingUp, color: "text-pink-400", bg: "bg-pink-400/10", border: "border-pink-400/20" },
   ];
 
   const quickActions = [
@@ -144,7 +149,7 @@ export default function AdminDashboardPage() {
           />
           <StatusRow
             label="Subscriptions"
-            value={`${stats?.activeSubscriptions ?? 0} active paid plans`}
+            value={`${stats?.activeSubscriptions ?? 0} active paid plans${stats?.estimates?.activeSubscriptions ? " (estimated)" : ""}`}
             status="active"
           />
         </div>

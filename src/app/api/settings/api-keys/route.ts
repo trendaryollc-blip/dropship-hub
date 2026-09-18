@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 function maskKey(key: string): string {
   if (!key || key.length <= 8) return "••••••••";
@@ -45,7 +46,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
 
     return NextResponse.json({ keys: masked });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed") }, { status: 500 });
   }
 }, LIMITS.DEFAULT);
 
@@ -97,7 +98,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
 
     return NextResponse.json({ success: true, masked: maskKey(key) });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed") }, { status: 500 });
   }
 }, LIMITS.DEFAULT);
 
@@ -129,6 +130,6 @@ export const DELETE = withAuth(async (request: NextRequest, uid: string) => {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed") }, { status: 500 });
   }
 }, LIMITS.DEFAULT);

@@ -49,3 +49,10 @@ next-env.d.ts
 
 # local scripts
 update_app_url.ps1
+
+# local AI tooling / agent worktrees
+.kilo/
+.kilocode/
+
+# playwright artifacts
+playwright-report/

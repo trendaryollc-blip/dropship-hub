@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchKeepaProducts } from "@/lib/platform-search";
 import { withAuth } from "@/lib/auth";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 const KEEPA_API_KEY = process.env.KEEPA_API_KEY;
 
@@ -42,7 +43,7 @@ export const POST = withAuth(async (request: NextRequest, _uid: string) => {
     const data = await searchKeepaProducts(query);
     return NextResponse.json({ data, source: "keepa", query });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Keepa search failed" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Keepa search failed") }, { status: 500 });
   }
 });
 

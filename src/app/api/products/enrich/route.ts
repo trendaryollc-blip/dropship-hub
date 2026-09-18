@@ -3,6 +3,7 @@ import { searchAmazon, searchGoogleShopping, searchCJProducts, searchKeepaProduc
 import { getSuppliers } from "@/lib/supplier-service";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 interface PlatformPrice {
   platform: string;
@@ -164,7 +165,7 @@ export const POST = withAuth(async (request: NextRequest) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Enrichment failed", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Enrichment failed", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

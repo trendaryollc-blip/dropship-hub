@@ -4,6 +4,7 @@ import { getAdminDB } from "@/lib/firebase-admin";
 import { LIMITS } from "@/lib/rate-limit";
 import { DocumentData } from "firebase-admin/firestore";
 import { runPriceCheckForUser, runPriceCheckForProduct } from "@/lib/monitoring/scheduler";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 // POST: Run automated stock/price check for all monitored products
 export const POST = withAuth(async (request: NextRequest, uid: string) => {
@@ -30,7 +31,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Auto-check failed", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Auto-check failed", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -69,7 +70,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to get status", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to get status", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

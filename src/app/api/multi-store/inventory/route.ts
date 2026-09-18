@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { getStoreInventory, upsertStoreInventory, syncInventoryAcrossStores, addInventorySyncLog, getInventorySyncLogs } from "@/lib/data/multi-store";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -17,7 +18,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ inventory });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch inventory", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to fetch inventory", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }
@@ -64,7 +65,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to process inventory action", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to process inventory action", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

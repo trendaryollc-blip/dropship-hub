@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { getAdCreatives, addAdCreative } from "@/lib/data/ad-creatives";
 import { validateBody } from "@/lib/validation";
 import { AddAdCreativeInputSchema } from "@/lib/data/schemas";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -18,7 +19,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ creatives });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch creatives", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch creatives", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -34,7 +35,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true, id: creativeId });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to save creative", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to save creative", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

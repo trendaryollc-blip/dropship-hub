@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { createTemplate, getTemplate, getAllTemplates, updateTemplate, deleteTemplate, duplicateTemplate, executeTemplate, getBatch, getAllBatches, validateTemplate, getTemplateStats } from "@/lib/fulfillment/sample-templates";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, _uid: string) => {
   try {
@@ -45,7 +46,7 @@ export const GET = withAuth(async (request: NextRequest, _uid: string) => {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch template data", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch template data", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -107,7 +108,7 @@ export const POST = withAuth(async (request: NextRequest, _uid: string) => {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to process template request", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to process template request", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -130,7 +131,7 @@ export const DELETE = withAuth(async (request: NextRequest, _uid: string) => {
     return NextResponse.json({ success: true, message: "Template deleted" });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to delete template", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to delete template", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

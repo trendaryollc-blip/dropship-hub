@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { getAdminDB } from "@/lib/firebase-admin";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 interface ProductScore {
   productId: string;
@@ -146,7 +147,7 @@ export const POST = withAuth(async (request: NextRequest, _uid: string) => {
     return NextResponse.json({ products: scored });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to score products" },
+      { error: safeErrorMessage(error, "Failed to score products") },
       { status: 500 }
     );
   }
@@ -254,7 +255,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ products: scored.slice(0, 20) });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed" },
+      { error: safeErrorMessage(error, "Failed") },
       { status: 500 }
     );
   }

@@ -3,6 +3,7 @@ import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import type { SupplierPerformanceData } from "@/types/fulfillment";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 interface SupplierStats {
   supplierId: string;
@@ -163,7 +164,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ suppliers, summary });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch supplier performance", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to fetch supplier performance", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

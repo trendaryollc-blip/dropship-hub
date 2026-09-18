@@ -3,6 +3,7 @@ import { getAdminDB } from "@/lib/firebase-admin";
 import { DEFAULT_FULFILLMENT_SETTINGS } from "@/types/fulfillment";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -11,7 +12,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     const settings = doc.exists ? { ...DEFAULT_FULFILLMENT_SETTINGS, ...doc.data() } : DEFAULT_FULFILLMENT_SETTINGS;
     return NextResponse.json({ settings });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch settings", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch settings", details: safeErrorMessage(error, "Unknown") }, { status: 500 });
   }
 }, LIMITS.FULFILLMENT);
 
@@ -25,6 +26,6 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     await db.collection("users").doc(uid).collection("fulfillmentSettings").doc("config").set(settings, { merge: true });
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to save settings", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to save settings", details: safeErrorMessage(error, "Unknown") }, { status: 500 });
   }
 }, LIMITS.FULFILLMENT);

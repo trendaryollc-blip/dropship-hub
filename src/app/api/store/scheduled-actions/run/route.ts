@@ -3,6 +3,7 @@ import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { getStoreAdapter } from "@/lib/fulfillment/store-adapters";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -81,6 +82,6 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
 
     return NextResponse.json({ success: true, ranAt: now.toISOString() });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to run action", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to run action", details: safeErrorMessage(error, "Unknown") }, { status: 500 });
   }
 }, LIMITS.DEFAULT);

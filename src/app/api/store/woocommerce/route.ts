@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
+import { PublicError, safeErrorMessage } from "@/lib/api-errors";
 
 const WOOCOMMERCE_URL = process.env.WOOCOMMERCE_URL;
 const WOOCOMMERCE_CONSUMER_KEY = process.env.WOOCOMMERCE_CONSUMER_KEY;
@@ -8,7 +9,7 @@ const WOOCOMMERCE_CONSUMER_SECRET = process.env.WOOCOMMERCE_CONSUMER_SECRET;
 
 async function wooCommerceFetch(endpoint: string, options?: RequestInit) {
   if (!WOOCOMMERCE_URL || !WOOCOMMERCE_CONSUMER_KEY || !WOOCOMMERCE_CONSUMER_SECRET) {
-    throw new Error("WooCommerce credentials not configured");
+    throw new PublicError("WooCommerce credentials not configured");
   }
 
   const url = new URL(`${WOOCOMMERCE_URL}/wp-json/wc/v3${endpoint}`);
@@ -123,7 +124,7 @@ export const POST = withAuth(async (request: NextRequest) => {
     return NextResponse.json({ data, source: "woocommerce" });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "WooCommerce API request failed" },
+      { error: safeErrorMessage(error, "WooCommerce API request failed") },
       { status: 500 }
     );
   }

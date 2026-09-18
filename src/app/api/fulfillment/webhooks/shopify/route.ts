@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { getAdminDB } from "@/lib/firebase-admin";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 const SHOPIFY_WEBHOOK_SECRET = process.env.SHOPIFY_WEBHOOK_SECRET || "";
 
@@ -114,7 +115,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true, orderId: data.id });
   } catch (error) {
     return NextResponse.json(
-      { error: "Webhook processing failed", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Webhook processing failed", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export async function POST(req: NextRequest) {
   try {
@@ -100,7 +101,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true, receiptId });
   } catch (error) {
     return NextResponse.json(
-      { error: "Webhook processing failed", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Webhook processing failed", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

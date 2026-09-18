@@ -8,6 +8,7 @@ import { mergeProducts, type SearchResult as DedupSearchResult } from "@/lib/sea
 import { enrichProducts } from "@/lib/search/enrichment";
 import { parseIntentLocally, buildSearchKeywords, applyIntentToFilters, type ParsedIntent } from "@/lib/search/intent-parser";
 import { rankProducts } from "@/lib/search/semantic-rank";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 const logger = createLogger({ route: "api/search-all" });
 
@@ -93,7 +94,7 @@ async function searchAllStreaming(
             
             return { platform: platformId, name: platformName, data, error: undefined };
           } catch (error) {
-            const errorMsg = error instanceof Error ? error.message : "Unknown error";
+            const errorMsg = safeErrorMessage(error, "Unknown error");
             sendEvent({
               type: "platform:error",
               platform: platformId,
@@ -175,7 +176,7 @@ async function searchAllStreaming(
       } catch (error) {
         sendEvent({
           type: "error",
-          error: error instanceof Error ? error.message : "Streaming search failed",
+          error: safeErrorMessage(error, "Streaming search failed"),
         });
         controller.close();
       }
@@ -377,7 +378,7 @@ export const POST = withAuth(async (request: NextRequest, _uid: string) => {
       searchKeywords,
     });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Multi-search failed" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Multi-search failed") }, { status: 500 });
   }
 }, LIMITS.PLATFORM_SEARCH);
 

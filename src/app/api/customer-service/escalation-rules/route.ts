@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { validateBody, EscalationRuleInputSchema } from "@/lib/validation";
 import { addEscalationRule, getEscalationRules, updateEscalationRule, deleteEscalationRule } from "@/lib/data/cs-enhanced";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -10,7 +11,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ rules });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch escalation rules", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch escalation rules", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -35,7 +36,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ id: ruleId, success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to create escalation rule", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to create escalation rule", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -58,7 +59,7 @@ export const PUT = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to update rule", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to update rule", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -80,7 +81,7 @@ export const DELETE = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to delete rule", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to delete rule", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

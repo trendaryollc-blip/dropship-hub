@@ -4,6 +4,7 @@ import { LIMITS } from "@/lib/rate-limit";
 import { doc, collection, query, orderBy, getDocs, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { handleFirestoreError } from "@/lib/data/utils";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export interface PendingAdjustment {
   id: string;
@@ -40,7 +41,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ adjustments });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch pending adjustments", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch pending adjustments", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -95,7 +96,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true, affected });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to process adjustments", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to process adjustments", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

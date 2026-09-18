@@ -11,6 +11,7 @@ import {
   validateBody,
 } from "@/lib/validation";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -88,7 +89,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ products: lifecycleProducts });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch lifecycle data", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch lifecycle data", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -122,7 +123,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true, id: ref.id });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to save lifecycle data", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to save lifecycle data", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -147,7 +148,7 @@ export const PUT = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to update product", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to update product", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -220,7 +221,7 @@ export const PATCH = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to perform action", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to perform action", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -252,7 +253,7 @@ export const DELETE = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to delete product", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to delete product", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

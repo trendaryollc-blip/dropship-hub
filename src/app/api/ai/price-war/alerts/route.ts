@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { getPriceAlerts, markAlertsRead, getUnreadAlertCount } from "@/lib/data/price-war";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -17,7 +18,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ alerts });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch alerts", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch alerts", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -41,7 +42,7 @@ export const PATCH = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to update alerts", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to update alerts", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

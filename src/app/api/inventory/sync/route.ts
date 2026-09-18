@@ -8,6 +8,7 @@ import { autoDelistProduct } from "@/lib/monitoring/delister";
 import { appendPriceSnapshot } from "@/lib/monitoring/price-history";
 import { dispatchNotifications } from "@/lib/monitoring/notification-dispatcher";
 import type { MonitoredProduct, NotificationPayload } from "@/lib/monitoring/types";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 // POST: Sync inventory for all monitored products
 export const POST = withAuth(async (request: NextRequest, uid: string) => {
@@ -148,7 +149,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Inventory sync failed", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Inventory sync failed", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -187,7 +188,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to get sync status", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to get sync status", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

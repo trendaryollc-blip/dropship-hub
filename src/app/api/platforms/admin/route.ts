@@ -12,6 +12,7 @@ import {
   resetKeyUsage,
   type PlatformInput,
 } from "@/lib/platform-config";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 // GET — list all platforms
 export async function GET(request: NextRequest) {
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("[platforms/admin] GET error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to fetch platforms" },
+      { error: safeErrorMessage(error, "Failed to fetch platforms") },
       { status: 500 }
     );
   }
@@ -122,7 +123,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("[platforms/admin] POST error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to create platform" },
+      { error: safeErrorMessage(error, "Failed to create platform") },
       { status: 500 }
     );
   }
@@ -146,7 +147,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to update platform" },
+      { error: safeErrorMessage(error, "Failed to update platform") },
       { status: 500 }
     );
   }
@@ -169,7 +170,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to delete platform" },
+      { error: safeErrorMessage(error, "Failed to delete platform") },
       { status: 500 }
     );
   }

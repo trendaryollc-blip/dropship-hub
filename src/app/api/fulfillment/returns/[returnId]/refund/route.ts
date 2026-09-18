@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { logAuditEvent } from "@/lib/fulfillment/audit-logger";
 import type { ReturnRequest } from "@/types/fulfillment";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 const COLLECTION = "returnRequests";
 
@@ -74,7 +75,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: true, returnRequest: { id: updated.id, ...updated.data() } });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to process refund", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to process refund", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

@@ -20,6 +20,7 @@ import type {
   MarketIntelligenceInput,
   BundleAnalysisInput,
 } from "@/types/product-validation";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -94,7 +95,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ result });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Validation failed" },
+      { error: safeErrorMessage(error, "Validation failed") },
       { status: 500 }
     );
   }
@@ -106,7 +107,7 @@ export const GET = withAuth(async (_req: NextRequest, uid: string) => {
     return NextResponse.json({ validations });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to fetch validations" },
+      { error: safeErrorMessage(error, "Failed to fetch validations") },
       { status: 500 }
     );
   }
@@ -123,7 +124,7 @@ export const DELETE = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to delete" },
+      { error: safeErrorMessage(error, "Failed to delete") },
       { status: 500 }
     );
   }

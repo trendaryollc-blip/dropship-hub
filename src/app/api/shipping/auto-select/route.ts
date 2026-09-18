@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { AutoSelectInputSchema } from "@/types/shipping";
 import { autoSelectCarrier } from "@/lib/shipping/auto-selector";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (req: NextRequest, _uid: string) => {
   try {
@@ -50,7 +51,7 @@ export const GET = withAuth(async (req: NextRequest, _uid: string) => {
     return NextResponse.json({ result });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to auto-select carrier", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to auto-select carrier", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

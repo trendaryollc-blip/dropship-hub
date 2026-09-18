@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { validateBody } from "@/lib/validation";
 import { getAdCampaigns, addAdCampaign } from "@/lib/data/ad-campaigns";
 import { AddAdCampaignInputSchema } from "@/lib/data/schemas";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -18,7 +19,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ campaigns });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch campaigns", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch campaigns", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -34,7 +35,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true, id: campaignId });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to create campaign", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to create campaign", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

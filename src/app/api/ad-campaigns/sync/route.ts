@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { getAdCampaigns, updateAdCampaign } from "@/lib/data/ad-campaigns";
 import { getAdConnectionByPlatform } from "@/lib/data/ad-connections";
 import { getAdapter } from "@/lib/ad-platforms";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -29,13 +30,13 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
       return NextResponse.json({ success: true, metrics });
     } catch (apiError) {
       return NextResponse.json(
-        { error: "Failed to sync from platform", details: apiError instanceof Error ? apiError.message : "Unknown error" },
+        { error: "Failed to sync from platform", details: safeErrorMessage(apiError, "Unknown error") },
         { status: 502 }
       );
     }
   } catch (error) {
     return NextResponse.json(
-      { error: "Sync failed", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Sync failed", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -61,14 +62,14 @@ export const POST_SYNC_ALL = withAuth(async (_request: NextRequest, uid: string)
         await updateAdCampaign(uid, campaign.id, { metrics });
         results.push({ campaignId: campaign.id, success: true });
       } catch (error) {
-        results.push({ campaignId: campaign.id, success: false, error: error instanceof Error ? error.message : "Unknown" });
+        results.push({ campaignId: campaign.id, success: false, error: safeErrorMessage(error, "Unknown") });
       }
     }
 
     return NextResponse.json({ success: true, results });
   } catch (error) {
     return NextResponse.json(
-      { error: "Sync all failed", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Sync all failed", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

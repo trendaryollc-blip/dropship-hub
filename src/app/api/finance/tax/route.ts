@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { addTaxRate, getTaxRatesByCountry, getTaxRatesByState, getAllTaxRates, updateTaxRate, deleteTaxRate, calculateTax, estimateTaxForOrder, generateTaxReport, getTaxCalculationHistory, initializeDefaultTaxRates } from "@/lib/finance/tax-estimator";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 initializeDefaultTaxRates();
 
@@ -29,7 +30,7 @@ export const GET = withAuth(async (request: NextRequest, _uid: string) => {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch tax data", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch tax data", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -99,7 +100,7 @@ export const POST = withAuth(async (request: NextRequest, _uid: string) => {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to process tax request", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to process tax request", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

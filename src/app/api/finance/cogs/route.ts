@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { addCOGSEntry, getCOGSByProduct, getAllCOGSEntries, updateCOGSEntry, deleteCOGSEntry, getCOGSSummary, bulkUpdateCOGS } from "@/lib/finance/cogs-tracker";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, _uid: string) => {
   try {
@@ -29,7 +30,7 @@ export const GET = withAuth(async (request: NextRequest, _uid: string) => {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch COGS data", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch COGS data", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -81,7 +82,7 @@ export const POST = withAuth(async (request: NextRequest, _uid: string) => {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to process COGS request", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to process COGS request", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { getNegotiations, addNegotiation, updateNegotiation } from "@/lib/data/srm";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -12,7 +13,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ negotiations });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch negotiations", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to fetch negotiations", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }
@@ -98,7 +99,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: true, id: negotiationId });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to process negotiation", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to process negotiation", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }
@@ -114,7 +115,7 @@ export const PUT = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to update negotiation", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to update negotiation", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

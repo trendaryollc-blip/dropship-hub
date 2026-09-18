@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { validateBody, KnowledgeBaseInputSchema } from "@/lib/validation";
 import { addKnowledgeBaseEntry, getKnowledgeBaseEntries, deleteKnowledgeBaseEntry } from "@/lib/data/cs-enhanced";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -13,7 +14,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ entries });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch knowledge base", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch knowledge base", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -38,7 +39,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ id: entryId, success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to create knowledge base entry", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to create knowledge base entry", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -60,7 +61,7 @@ export const DELETE = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to delete entry", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to delete entry", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

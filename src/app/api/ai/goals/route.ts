@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { DocumentData } from "firebase-admin/firestore";
 import { safeNum, safeStr } from "@/lib/utils-helpers";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 interface BusinessGoal {
   id: string;
@@ -179,7 +180,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to compute goals", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to compute goals", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

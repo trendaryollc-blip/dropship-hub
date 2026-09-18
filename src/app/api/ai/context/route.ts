@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { DocumentData } from "firebase-admin/firestore";
 import { safeNum, safeStr } from "@/lib/utils-helpers";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export interface BusinessContext {
   revenue: {
@@ -519,7 +520,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json(context);
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to build context", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to build context", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

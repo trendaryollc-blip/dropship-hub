@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireOwner } from "@/lib/auth";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 const COLLECTION = "system";
 const DOC_ID = "aiProviderKeys";
@@ -66,7 +67,7 @@ export const GET = requireOwner(async () => {
   } catch (error) {
     console.error("[AdminAiKeys] GET error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to fetch AI keys" },
+      { error: safeErrorMessage(error, "Failed to fetch AI keys") },
       { status: 500 }
     );
   }
@@ -181,7 +182,7 @@ export const POST = requireOwner(async (request: NextRequest) => {
   } catch (error) {
     console.error("[AdminAiKeys] POST error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed" },
+      { error: safeErrorMessage(error, "Failed") },
       { status: 500 }
     );
   }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { getAdminAuth, getAdminDB } from "@/lib/firebase-admin";
 import { rateLimitByUser, LIMITS, type UserTier } from "@/lib/rate-limit";
 import { getUserRole } from "@/lib/roles";
@@ -88,6 +89,44 @@ export function withAuth(
     if (!userRl.allowed) return userRl.response!;
 
     return handler(request, result.uid);
+  };
+}
+
+/**
+ * Wrap a handler so it accepts EITHER a regular user ID token (via withAuth)
+ * OR a server-to-server cron secret: `Authorization: Bearer <CRON_SECRET>`.
+ *
+ * This lets scheduled jobs (e.g. the GitHub Actions "Daily Intelligence
+ * Digest" workflow) call protected endpoints without a human session. The
+ * cron request runs as the OWNER_UID account. The comparison is
+ * timing-safe so the secret cannot be recovered via response timing.
+ */
+/**
+ * Constant-time string comparison that is safe for unequal lengths
+ * (Node's timingSafeEqual throws when buffer lengths differ).
+ */
+function secretsMatch(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
+
+export function withAuthOrCron(
+  handler: (request: NextRequest, uid: string) => Promise<Response | NextResponse>
+) {
+  return async (request: NextRequest): Promise<Response | NextResponse> => {
+    const cronSecret = process.env.CRON_SECRET;
+    const authHeader = request.headers.get("Authorization");
+    if (
+      cronSecret &&
+      authHeader?.startsWith("Bearer ") &&
+      secretsMatch(authHeader.slice("Bearer ".length), cronSecret)
+    ) {
+      const uid = process.env.OWNER_UID || "cron";
+      return handler(request, uid);
+    }
+    return withAuth(handler)(request);
   };
 }
 

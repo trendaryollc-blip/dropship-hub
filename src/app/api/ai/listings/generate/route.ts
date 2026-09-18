@@ -5,6 +5,7 @@ import { validateBody, ListingGenerateSchema } from "@/lib/validation";
 import { generateListing } from "@/lib/listing-generator";
 import { addListing } from "@/lib/data/product-listings";
 import type { ListingGenerationRequest } from "@/types/product-listing";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -43,7 +44,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to generate listing", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to generate listing", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -20,7 +21,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     const refunds = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     return NextResponse.json({ refunds });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch refunds", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch refunds", details: safeErrorMessage(error, "Unknown") }, { status: 500 });
   }
 }, LIMITS.RETURNS);
 
@@ -118,6 +119,6 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to process refund", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to process refund", details: safeErrorMessage(error, "Unknown") }, { status: 500 });
   }
 }, LIMITS.RETURNS);

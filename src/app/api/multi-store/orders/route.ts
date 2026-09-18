@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { getUnifiedOrders, addUnifiedOrder, updateUnifiedOrder } from "@/lib/data/multi-store";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -19,7 +20,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ orders });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch unified orders", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to fetch unified orders", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }
@@ -55,7 +56,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: true, id: orderId });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to create unified order", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to create unified order", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }
@@ -71,7 +72,7 @@ export const PUT = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to update order", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to update order", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

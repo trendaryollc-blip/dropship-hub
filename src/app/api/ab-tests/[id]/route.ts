@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { updateABTest, getABTests } from "@/lib/data/ab-tests";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -14,7 +15,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ test });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch test", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to fetch test", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
@@ -30,7 +31,7 @@ export const PATCH = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to update test", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to update test", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

@@ -15,7 +15,7 @@ const mockStores: ConnectedStore[] = [
 
 describe("BulkPushPanel", () => {
   it("renders form inputs and store selector", () => {
-    render(<BulkPushPanel stores={mockStores} onPushComplete={vi.fn()} />);
+    render(<BulkPushPanel stores={mockStores} pushedProducts={[]} onPushComplete={vi.fn()} />);
     expect(screen.getByPlaceholderText("Product title")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Price")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Image URL")).toBeInTheDocument();
@@ -24,12 +24,12 @@ describe("BulkPushPanel", () => {
   });
 
   it("does not show disconnected stores", () => {
-    render(<BulkPushPanel stores={mockStores} onPushComplete={vi.fn()} />);
+    render(<BulkPushPanel stores={mockStores} pushedProducts={[]} onPushComplete={vi.fn()} />);
     expect(screen.queryByText("Store C")).not.toBeInTheDocument();
   });
 
   it("enables push button when title and stores selected", () => {
-    render(<BulkPushPanel stores={mockStores} onPushComplete={vi.fn()} />);
+    render(<BulkPushPanel stores={mockStores} pushedProducts={[]} onPushComplete={vi.fn()} />);
     const btn = screen.getByRole("button", { name: /Push to 0 Stores/i });
     expect(btn).toBeDisabled();
 
@@ -42,7 +42,7 @@ describe("BulkPushPanel", () => {
 
   it("shows result after successful push", async () => {
     const onPushComplete = vi.fn();
-    render(<BulkPushPanel stores={mockStores} onPushComplete={onPushComplete} />);
+    render(<BulkPushPanel stores={mockStores} pushedProducts={[]} onPushComplete={onPushComplete} />);
 
     fireEvent.change(screen.getByPlaceholderText("Product title"), { target: { value: "Test Product" } });
     fireEvent.click(screen.getByText("Store A"));
@@ -59,7 +59,7 @@ describe("BulkPushPanel", () => {
     const { safeFetch } = await import("@/lib/safe-fetch");
     (safeFetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("fail"));
 
-    render(<BulkPushPanel stores={mockStores} onPushComplete={vi.fn()} />);
+    render(<BulkPushPanel stores={mockStores} pushedProducts={[]} onPushComplete={vi.fn()} />);
     fireEvent.change(screen.getByPlaceholderText("Product title"), { target: { value: "Test Product" } });
     fireEvent.click(screen.getByText("Store A"));
     fireEvent.click(screen.getByRole("button", { name: /Push to 1 Store/i }));

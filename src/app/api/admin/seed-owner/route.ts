@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAuth, extractEmailFromRequest } from "@/lib/auth";
+import { verifyAuth } from "@/lib/auth";
+import { rateLimitByUser, LIMITS } from "@/lib/rate-limit";
 import { seedOwnerRole } from "@/lib/roles";
 
 /**
  * POST /api/admin/seed-owner
- * One-time endpoint to seed the owner role. Gated by OWNER_UID env var.
+ * One-time endpoint to seed the owner role. STRICTLY gated by the OWNER_UID
+ * env var: the caller's Firebase UID must exactly match. Email claims are
+ * intentionally NOT accepted — every authenticated user has one, so
+ * accepting an email as an alternative would let the first user who hits
+ * this endpoint claim ownership of a fresh database.
  */
 export async function POST(request: NextRequest) {
   const uid = await verifyAuth(request);
@@ -12,25 +17,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Only allow if the UID matches the env var
+  // Brute-force protection — the AUTH limit is the strictest bucket.
+  const rl = await rateLimitByUser(request, uid, LIMITS.AUTH);
+  if (!rl.allowed) return rl.response!;
+
   const envUids = (process.env.OWNER_UID || "")
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
 
-  const email = extractEmailFromRequest(request);
-
-  if (!envUids.includes(uid.toLowerCase()) && !email) {
+  if (!envUids.includes(uid.trim().toLowerCase())) {
     return NextResponse.json(
-      { error: "UID not in OWNER_UID env var and no email provided" },
+      { error: "Forbidden — caller UID is not the configured OWNER_UID" },
       { status: 403 }
     );
   }
 
-  // Use env email if available, otherwise extract from token
-  const ownerEmail = process.env.OWNER_EMAIL || email || "";
+  const ownerEmail = process.env.OWNER_EMAIL || "";
   if (!ownerEmail) {
-    return NextResponse.json({ error: "No email available" }, { status: 400 });
+    return NextResponse.json({ error: "OWNER_EMAIL env var is not set" }, { status: 400 });
   }
 
   const result = await seedOwnerRole(uid, ownerEmail);

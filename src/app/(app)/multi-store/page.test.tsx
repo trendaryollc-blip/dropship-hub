@@ -66,10 +66,14 @@ vi.mock("@/components/stores/StoreAIBar", () => ({
   ),
 }));
 
-vi.mock("@/components/stores/GlobalStoreChat", () => ({
-  default: ({ storeCount }: { storeCount?: number }) => (
-    <div data-testid="chat-sidebar">GlobalStoreChat</div>
+vi.mock("@/components/stores/StoreChat", () => ({
+  default: ({ mode }: { mode?: string }) => (
+    <div data-testid="chat-sidebar">StoreChat ({mode})</div>
   ),
+}));
+
+vi.mock("@/components/stores/StoreSkeletons", () => ({
+  MultiStorePageSkeleton: () => <div data-testid="multi-store-skeleton" />,
 }));
 
 const mockStores = [
@@ -186,7 +190,7 @@ describe("MultiStorePage", () => {
   it("renders loading state when data is not yet available", () => {
     mockUseAPI.mockReturnValue({ data: undefined, isLoading: true, mutate: mockMutate });
     const { container } = render(<MultiStorePage />);
-    expect(container.querySelector(".animate-spin")).toBeTruthy();
+    expect(container.querySelector('[data-testid="multi-store-skeleton"]')).toBeTruthy();
   });
 
   it("renders page header 'Multi-Store Dashboard'", () => {
@@ -312,7 +316,7 @@ describe("MultiStorePage", () => {
     expect(screen.getByText("No push jobs yet.")).toBeDefined();
   });
 
-  it("renders GlobalStoreChat", () => {
+  it("renders StoreChat sidebar", () => {
     render(<MultiStorePage />);
     const sidebar = screen.getByTestId("chat-sidebar");
     expect(sidebar).toBeDefined();

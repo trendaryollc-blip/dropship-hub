@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, isOwner } from "@/lib/auth";
 import { createPlatform, getAllPlatforms, deletePlatform, type PlatformInput } from "@/lib/platform-config";
 import { logger } from "@/lib/logger";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 const SEED_PLATFORMS: PlatformInput[] = [
   {
@@ -168,7 +169,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Seed failed" },
+      { error: safeErrorMessage(error, "Seed failed") },
       { status: 500 }
     );
   }

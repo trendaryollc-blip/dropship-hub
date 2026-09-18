@@ -6,6 +6,7 @@ import { orchestrateOrder, createOrchestrationInput } from "@/lib/fulfillment/or
 import { createDefaultRules } from "@/lib/fulfillment/rules-engine";
 import type { FulfillmentOrder } from "@/types/fulfillment";
 import type { FulfillmentRule } from "@/types/automation";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -213,7 +214,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Auto-processing failed", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Auto-processing failed", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }
@@ -240,7 +241,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     return NextResponse.json({ orders, count: orders.length });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch pending orders", details: error instanceof Error ? error.message : "Unknown" },
+      { error: "Failed to fetch pending orders", details: safeErrorMessage(error, "Unknown") },
       { status: 500 }
     );
   }

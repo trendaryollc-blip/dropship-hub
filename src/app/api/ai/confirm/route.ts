@@ -6,6 +6,7 @@ import { z } from "zod";
 import { confirmExecution, cancelExecution, getExecutionRecord } from "@/lib/ai/engine/runner";
 import { logToolConfirmed, logToolCancelled } from "@/lib/ai/safety/audit-log";
 import { getAutonomyLevel } from "@/lib/ai/modes/user-prefs";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 // ─── POST /api/ai/confirm ───────────────────────────────────────────────────
 // Confirm or cancel a pending tool execution
@@ -64,7 +65,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal error";
+    const message = safeErrorMessage(error, "Internal error");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }, LIMITS.AI_CHAT);
@@ -88,7 +89,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
 
     return NextResponse.json({ record });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal error";
+    const message = safeErrorMessage(error, "Internal error");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }, LIMITS.AI_CHAT);

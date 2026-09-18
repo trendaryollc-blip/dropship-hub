@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/auth";
 import { StoreConnectionSchema, StoreConnectionUpdateSchema, validateBody } from "@/lib/validation";
 import { LIMITS } from "@/lib/rate-limit";
 import { unregisterShopifyWebhooks } from "@/lib/shopify/webhooks";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 const SENSITIVE_FIELDS = ["apiKey", "apiSecret", "accessToken", "consumerKey", "consumerSecret", "password"];
 
@@ -22,7 +23,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     const connections = snap.docs.map((d) => ({ id: d.id, ...sanitizeConnection(d.data() as Record<string, unknown>) }));
     return NextResponse.json({ connections });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch connections", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch connections", details: safeErrorMessage(error, "Unknown") }, { status: 500 });
   }
 }, LIMITS.DEFAULT);
 
@@ -67,7 +68,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
 
     return NextResponse.json({ id: ref.id, ...store, status: "connected" });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to add connection", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to add connection", details: safeErrorMessage(error, "Unknown") }, { status: 500 });
   }
 }, LIMITS.DEFAULT);
 
@@ -91,7 +92,7 @@ export const DELETE = withAuth(async (req: NextRequest, uid: string) => {
     await db.collection("users").doc(uid).collection("storeConnections").doc(storeId).delete();
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to delete connection", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to delete connection", details: safeErrorMessage(error, "Unknown") }, { status: 500 });
   }
 }, LIMITS.DEFAULT);
 
@@ -108,6 +109,6 @@ export const PUT = withAuth(async (req: NextRequest, uid: string) => {
     await db.collection("users").doc(uid).collection("storeConnections").doc(storeId).update(validation.data);
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to update connection", details: error instanceof Error ? error.message : "Unknown" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to update connection", details: safeErrorMessage(error, "Unknown") }, { status: 500 });
   }
 }, LIMITS.DEFAULT);

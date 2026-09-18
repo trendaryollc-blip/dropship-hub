@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { TRACKING_TEMPLATES, generateTrackingHtml } from "@/lib/tracking-page";
 import { saveTrackingPageConfig, getTrackingPageConfigs, getTrackingPageStats, deleteTrackingPageConfig } from "@/lib/data/tracking-page";
+import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -19,7 +20,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     const configs = await getTrackingPageConfigs(uid);
     return NextResponse.json({ configs });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed") }, { status: 500 });
   }
 });
 
@@ -65,7 +66,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed") }, { status: 500 });
   }
 });
 
@@ -77,6 +78,6 @@ export const DELETE = withAuth(async (req: NextRequest, uid: string) => {
     await deleteTrackingPageConfig(uid, id);
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed" }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Failed") }, { status: 500 });
   }
 });

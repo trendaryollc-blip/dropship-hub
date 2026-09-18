@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import type { ScrapedProductData } from "@/types/listing-intelligence";
+import { PublicError, safeErrorMessage } from "@/lib/api-errors";
 
 function detectPlatform(url: string): string {
   const lower = url.toLowerCase();
@@ -93,7 +94,7 @@ async function scrapeAmazon(url: string): Promise<ScrapedProductData> {
   const asin = asinMatch?.[1] || "";
 
   const apiKey = process.env.RAINFOREST_API_KEY || process.env.AMAZON_API_KEY;
-  if (!apiKey) throw new Error("Rainforest API key not configured");
+  if (!apiKey) throw new PublicError("Rainforest API key not configured");
 
   const params = new URLSearchParams({
     api_key: apiKey,
@@ -255,7 +256,7 @@ export const POST = withAuth(async (request: NextRequest) => {
   } catch (error) {
     console.error("[listings/import] Error:", error instanceof Error ? error.message : error);
     return NextResponse.json(
-      { error: "Failed to scrape product data", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to scrape product data", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }
