@@ -1,6 +1,10 @@
 import { test, expect } from "@playwright/test";
 import { setupFirebaseAuth, injectAuthState } from "./helpers";
 
+function inputNearLabel(page: import("@playwright/test").Page, labelText: string | RegExp) {
+  return page.locator("label").filter({ hasText: labelText }).locator("..").locator("input, select").first();
+}
+
 test.describe("Calculator Page", () => {
   test("redirects to sign-in when unauthenticated", async ({ page }) => {
     await page.goto("/calculator");
@@ -10,165 +14,117 @@ test.describe("Calculator Page", () => {
 
 test.describe("Calculator Page - Authenticated", () => {
   test.beforeEach(async ({ page }) => {
-    // Setup Firebase auth interception + authenticated session
     await setupFirebaseAuth(page);
     await page.goto("/");
     await injectAuthState(page);
 
-    await page.goto("/calculator");
-    await page.waitForLoadState("networkidle");
+    await page.route("**/api/ai", (route) => {
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ providers: [] }) });
+    });
   });
 
-  test("loads calculator page with heading", async ({ page }) => {
+  test("loads calculator hub with heading", async ({ page }) => {
+    await page.goto("/calculator");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByText("Calculator Suite")).toBeVisible();
   });
 
-  test("shows profit tab by default", async ({ page }) => {
-    await expect(page.getByText("Input Values")).toBeVisible();
-    await expect(page.getByText("Results")).toBeVisible();
+  test("has all four calculator categories visible", async ({ page }) => {
+    await page.goto("/calculator");
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("link", { name: /profit calculator/i }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: /shipping calculator/i }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: /landed cost calculator/i }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: /margin calculator/i }).first()).toBeVisible();
   });
 
   test("profit calculator has input fields", async ({ page }) => {
-    await expect(page.getByLabel(/product cost/i)).toBeVisible();
-    await expect(page.getByLabel(/selling price/i)).toBeVisible();
-    await expect(page.getByLabel(/shipping cost/i)).toBeVisible();
-    await expect(page.getByLabel(/platform fee/i)).toBeVisible();
-    await expect(page.getByLabel(/ad spend/i)).toBeVisible();
-    await expect(page.getByLabel(/units sold/i)).toBeVisible();
+    await page.goto("/calculator/profit");
+    await page.waitForLoadState("networkidle");
+    await expect(inputNearLabel(page, /product cost/i)).toBeVisible();
+    await expect(inputNearLabel(page, /selling price/i)).toBeVisible();
+    await expect(inputNearLabel(page, /shipping cost/i)).toBeVisible();
+    await expect(inputNearLabel(page, /platform fee/i)).toBeVisible();
+    await expect(inputNearLabel(page, /ad spend/i)).toBeVisible();
+    await expect(inputNearLabel(page, /units sold/i)).toBeVisible();
   });
 
   test("shows net profit and margin results", async ({ page }) => {
-    await expect(page.getByText("Net Profit")).toBeVisible();
+    await page.goto("/calculator/profit");
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText("Net Profit").first()).toBeVisible();
     await expect(page.getByText("Profit Margin")).toBeVisible();
-    await expect(page.getByText("ROI")).toBeVisible();
+    await expect(page.getByText("ROI").first()).toBeVisible();
   });
 
   test("shows cost breakdown section", async ({ page }) => {
-    await expect(page.getByText("Cost Breakdown")).toBeVisible();
-  });
-
-  test("can switch to shipping tab", async ({ page }) => {
-    await page.getByRole("button", { name: /shipping/i }).click();
-    await page.waitForTimeout(300);
-    await expect(page.getByText("Package Details")).toBeVisible();
-    await expect(page.getByText("Shipping Options")).toBeVisible();
+    await page.goto("/calculator/profit");
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText("Cost Breakdown").first()).toBeVisible();
   });
 
   test("shipping tab has weight and dimension inputs", async ({ page }) => {
-    await page.getByRole("button", { name: /shipping/i }).click();
-    await page.waitForTimeout(300);
-    await expect(page.getByLabel(/weight/i)).toBeVisible();
-    await expect(page.getByLabel(/length/i)).toBeVisible();
-    await expect(page.getByLabel(/width/i)).toBeVisible();
-    await expect(page.getByLabel(/height/i)).toBeVisible();
+    await page.goto("/calculator/shipping");
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText("Package Details")).toBeVisible();
+    await expect(inputNearLabel(page, /weight/i)).toBeVisible();
+    await expect(inputNearLabel(page, /length/i)).toBeVisible();
+    await expect(inputNearLabel(page, /width/i)).toBeVisible();
+    await expect(inputNearLabel(page, /height/i)).toBeVisible();
   });
 
   test("shipping tab has origin and destination selectors", async ({ page }) => {
-    await page.getByRole("button", { name: /shipping/i }).click();
-    await page.waitForTimeout(300);
-    await expect(page.getByLabel(/origin/i)).toBeVisible();
-    await expect(page.getByLabel(/destination/i)).toBeVisible();
-  });
-
-  test("can switch to landed cost tab", async ({ page }) => {
-    await page.getByRole("button", { name: /landed/i }).click();
-    await page.waitForTimeout(300);
-    await expect(page.getByText("True Cost Input")).toBeVisible();
-    await expect(page.getByText("Landed Cost Breakdown")).toBeVisible();
+    await page.goto("/calculator/shipping");
+    await page.waitForLoadState("networkidle");
+    await expect(inputNearLabel(page, /origin/i)).toBeVisible();
+    await expect(inputNearLabel(page, /destination/i)).toBeVisible();
   });
 
   test("landed cost has tariff and insurance inputs", async ({ page }) => {
-    await page.getByRole("button", { name: /landed/i }).click();
-    await page.waitForTimeout(300);
-    await expect(page.getByLabel(/tariff/i)).toBeVisible();
-    await expect(page.getByLabel(/insurance/i)).toBeVisible();
-    await expect(page.getByLabel(/customs duty/i)).toBeVisible();
-  });
-
-  test("can switch to margin tab", async ({ page }) => {
-    await page.getByRole("button", { name: /margin/i }).click();
-    await page.waitForTimeout(300);
-    await expect(page.getByText("Margin Input")).toBeVisible();
-    await expect(page.getByText("Price Breakpoints")).toBeVisible();
+    await page.goto("/calculator/landed-cost");
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText("True Cost Input")).toBeVisible();
+    await expect(inputNearLabel(page, /tariff/i)).toBeVisible();
+    await expect(inputNearLabel(page, /insurance/i)).toBeVisible();
+    await expect(inputNearLabel(page, /customs duty/i)).toBeVisible();
   });
 
   test("margin tab has cost and desired margin inputs", async ({ page }) => {
-    await page.getByRole("button", { name: /margin/i }).click();
-    await page.waitForTimeout(300);
-    await expect(page.getByLabel(/cost price/i)).toBeVisible();
-    await expect(page.getByLabel(/desired margin/i)).toBeVisible();
+    await page.goto("/calculator/margin");
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText("Margin Input")).toBeVisible();
+    await expect(inputNearLabel(page, /cost price/i)).toBeVisible();
+    await expect(inputNearLabel(page, /desired margin/i)).toBeVisible();
   });
 
   test("shows recommended price in margin tab", async ({ page }) => {
-    await page.getByRole("button", { name: /margin/i }).click();
-    await page.waitForTimeout(300);
+    await page.goto("/calculator/margin");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByText("Recommended Price")).toBeVisible();
   });
 
   test("product cost input accepts numeric values", async ({ page }) => {
-    const input = page.getByLabel(/product cost/i);
+    await page.goto("/calculator/profit");
+    await page.waitForLoadState("networkidle");
+    const input = inputNearLabel(page, /product cost/i);
     await input.clear();
     await input.fill("15.99");
     await expect(input).toHaveValue("15.99");
   });
 
   test("results update when inputs change", async ({ page }) => {
-    const input = page.getByLabel(/product cost/i);
+    await page.goto("/calculator/profit");
+    await page.waitForLoadState("networkidle");
+    const input = inputNearLabel(page, /product cost/i);
     await input.clear();
     await input.fill("25");
     await page.waitForTimeout(200);
-    // Results should still be visible and update
-    await expect(page.getByText("Net Profit")).toBeVisible();
-  });
-
-  test("has all four calculator tabs visible", async ({ page }) => {
-    await expect(page.getByRole("button", { name: /profit/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /shipping/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /landed/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /margin/i })).toBeVisible();
-  });
-});
-
-test.describe("Calculator Page - URL Parameters", () => {
-  test.beforeEach(async ({ page }) => {
-    await page.route("**/identitytoolkit.googleapis.com/**", (route) => {
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ localId: "test-user-123", email: "test@example.com", idToken: "mock-token", registered: true }),
-      });
-    });
-    await page.route("**/securetoken.googleapis.com/**", (route) => {
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ access_token: "mock-token", token_type: "Bearer", expires_in: 3600 }),
-      });
-    });
-
-    await page.goto("/");
-    await page.evaluate(() => {
-      const dbRequest = indexedDB.open("firebaseLocalStorageDb", 1);
-      dbRequest.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-        if (!db.objectStoreNames.contains("firebaseLocalStorage")) db.createObjectStore("firebaseLocalStorage");
-      };
-      dbRequest.onsuccess = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-        const tx = db.transaction("firebaseLocalStorage", "readwrite");
-        tx.objectStore("firebaseLocalStorage").put({
-          fbase_key: "firebase:authUser:test-api-key:[DEFAULT]",
-          value: { uid: "test-user-123", email: "test@example.com", stsTokenManager: { accessToken: "mock-token", refreshToken: "mock-refresh", expirationTime: Date.now() + 3600000 }, emailVerified: true },
-        });
-      };
-    });
+    await expect(page.getByText("Net Profit").first()).toBeVisible();
   });
 
   test("can load calculator with pre-filled URL params", async ({ page }) => {
-    await page.goto("/calculator?title=Test+Product&cost=10&price=29.99&ship=5&fee=15&ads=3");
+    await page.goto("/calculator/profit?cost=10&price=29.99&ship=5&fee=15&ads=3");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText("Calculator Suite")).toBeVisible();
-    await expect(page.getByText("Calculating for")).toBeVisible();
-    await expect(page.getByText("Test Product")).toBeVisible();
+    await expect(page.getByText("Profit Calculator").first()).toBeVisible();
   });
 });

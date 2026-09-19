@@ -44,14 +44,14 @@ test.describe("Products Page - Authenticated - Empty State", () => {
   test("shows search input", async ({ page }) => {
     await page.goto("/products");
     await page.waitForLoadState("networkidle");
-    const searchInput = page.getByPlaceholder(/search/i).first();
+    const searchInput = page.getByPlaceholder(/what are you looking for/i);
     await expect(searchInput).toBeVisible();
   });
 
   test("can type in search input", async ({ page }) => {
     await page.goto("/products");
     await page.waitForLoadState("networkidle");
-    const searchInput = page.getByPlaceholder(/search/i).first();
+    const searchInput = page.getByPlaceholder(/what are you looking for/i);
     await searchInput.fill("wireless earbuds");
     await expect(searchInput).toHaveValue("wireless earbuds");
   });
@@ -96,7 +96,7 @@ test.describe("Products Page - Authenticated - Search Flow", () => {
   test("search shows loading state then results", async ({ page }) => {
     await page.goto("/products");
     await page.waitForLoadState("networkidle");
-    const searchInput = page.getByPlaceholder(/search/i).first();
+    const searchInput = page.getByPlaceholder(/what are you looking for/i);
     await searchInput.fill("wireless earbuds");
     await searchInput.press("Enter");
     // Should show results or empty state

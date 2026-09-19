@@ -50,7 +50,7 @@ test.describe("Competitors Page - Authenticated - Initial State", () => {
   test("shows quick search suggestions", async ({ page }) => {
     await page.goto("/competitors");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText("Quick search:")).toBeVisible();
+    await expect(page.getByText("Suggestions:")).toBeVisible();
   });
 
   test("can type in search input", async ({ page }) => {
@@ -78,8 +78,8 @@ test.describe("Competitors Page - Authenticated - Initial State", () => {
   test("empty state has suggestion buttons", async ({ page }) => {
     await page.goto("/competitors");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByRole("button", { name: /wireless earbuds/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /phone case/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /wireless earbuds/i }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: /phone case/i }).first()).toBeVisible();
   });
 
   test("clicking suggestion fills search and triggers analysis", async ({ page }) => {
@@ -104,7 +104,7 @@ test.describe("Competitors Page - Authenticated - Initial State", () => {
 
     await page.goto("/competitors");
     await page.waitForLoadState("networkidle");
-    await page.getByRole("button", { name: /wireless earbuds/i }).click();
+    await page.getByRole("button", { name: /wireless earbuds/i }).first().click();
     await page.waitForTimeout(2000);
   });
 });
@@ -118,7 +118,6 @@ test.describe("Competitors Page - Search Flow", () => {
 
   test("shows loading state during analysis", async ({ page }) => {
     await page.route("**/api/competitors", (route) => {
-      // Delay response to see loading state
       setTimeout(() => {
         route.fulfill({
           status: 200,

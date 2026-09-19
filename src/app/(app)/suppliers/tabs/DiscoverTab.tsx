@@ -372,7 +372,7 @@ function DiscoverContent() {
 
   const allCertifications = useMemo(() => {
     const certSet = new Set<string>();
-    suppliers.forEach((s) => s.quality.certifications.forEach((c) => certSet.add(c)));
+    suppliers.forEach((s) => (s.quality?.certifications ?? []).forEach((c) => certSet.add(c)));
     return Array.from(certSet).sort();
   }, [suppliers]);
 
@@ -407,7 +407,7 @@ function DiscoverContent() {
       result = result.filter((s) => s.stats.priceCompetitiveness >= filters.minPriceCompetitiveness);
     }
     if (filters.certifications.length > 0) {
-      result = result.filter((s) => filters.certifications.some((c) => s.quality.certifications.includes(c)));
+      result = result.filter((s) => filters.certifications.some((c) => (s.quality?.certifications ?? []).includes(c)));
     }
     if (hasProductContext && sortBy === "rating" && suppliers.length > 0 && "relevanceScore" in suppliers[0]) {
       result.sort((a, b) => ((b as SupplierProfile & { relevanceScore: number }).relevanceScore || 0) - ((a as SupplierProfile & { relevanceScore: number }).relevanceScore || 0));

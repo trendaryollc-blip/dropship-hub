@@ -7,6 +7,10 @@ async function loginAndGoToReturns(page: import("@playwright/test").Page) {
   await injectAuthState(page);
 
   await page.route("**/api/returns*", (route) => {
+    const url = route.request().url();
+    if (url.includes("defects") || url.includes("refund")) return route.fulfill({
+      status: 200, contentType: "application/json", body: JSON.stringify({ returns: [] }),
+    });
     route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -61,7 +65,7 @@ test.describe("Returns Page - Header", () => {
 
   test("page has Auto-Detect button", async ({ page }) => {
     await loginAndGoToReturns(page);
-    const autoDetectBtn = page.getByRole("button", { name: /auto-detect/i });
+    const autoDetectBtn = page.getByRole("button", { name: /auto-detect$/i });
     await expect(autoDetectBtn).toBeVisible();
   });
 });
@@ -138,8 +142,11 @@ test.describe("Returns Page - Returns with Data", () => {
     await page.goto("/");
     await injectAuthState(page);
 
-    await page.route("**/api/returns", (route) => {
-      if (route.request().url().includes("defects") || route.request().url().includes("refund")) return;
+    await page.route("**/api/returns*", (route) => {
+      const url = route.request().url();
+      if (url.includes("defects") || url.includes("refund")) return route.fulfill({
+        status: 200, contentType: "application/json", body: JSON.stringify({ defects: [], suppliers: [], totalDefects: 0, severityBreakdown: {}, topDefectProducts: [] }),
+      });
       route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -222,8 +229,8 @@ test.describe("Returns Page - Returns with Data", () => {
   test("displays return statuses", async ({ page }) => {
     await page.goto("/returns");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText("Pending").first()).toBeVisible();
-    await expect(page.getByText("Approved").first()).toBeVisible();
+    await expect(page.locator("span.rounded-full", { hasText: "Pending" }).first()).toBeVisible();
+    await expect(page.locator("span.rounded-full", { hasText: "Approved" }).first()).toBeVisible();
   });
 
   test("shows Approve button for pending returns", async ({ page }) => {

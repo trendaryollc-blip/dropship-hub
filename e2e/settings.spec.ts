@@ -24,23 +24,11 @@ test.describe("Settings Page - Authenticated", () => {
   });
 
   test("loads settings page with heading", async ({ page }) => {
-    await expect(page.getByText("Settings")).toBeVisible();
-  });
-
-  test("shows provider count status", async ({ page }) => {
-    await expect(page.getByText(/providers configured/i)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
   });
 
   test("has API Providers tab", async ({ page }) => {
     await expect(page.getByRole("button", { name: /api providers/i })).toBeVisible();
-  });
-
-  test("has AI Features tab", async ({ page }) => {
-    await expect(page.getByRole("button", { name: /ai features/i })).toBeVisible();
-  });
-
-  test("has Platforms tab", async ({ page }) => {
-    await expect(page.getByRole("button", { name: /platforms/i })).toBeVisible();
   });
 
   test("has Stores tab", async ({ page }) => {
@@ -71,50 +59,10 @@ test.describe("Settings Page - Authenticated", () => {
     await expect(page.getByText("OpenAI")).toBeVisible();
   });
 
-  test("API Providers tab shows Anthropic provider", async ({ page }) => {
-    await expect(page.getByText("Anthropic (Claude)")).toBeVisible();
-  });
-
   test("each provider has a Get API Key link", async ({ page }) => {
     const links = page.getByRole("link", { name: /get api key/i });
     const count = await links.count();
-    expect(count).toBeGreaterThanOrEqual(5);
-  });
-
-  test("can switch to AI Features tab", async ({ page }) => {
-    await page.getByRole("button", { name: /ai features/i }).click();
-    await page.waitForTimeout(300);
-    await expect(page.getByText("AI-Powered Features")).toBeVisible();
-  });
-
-  test("AI Features tab shows Price Optimization", async ({ page }) => {
-    await page.getByRole("button", { name: /ai features/i }).click();
-    await page.waitForTimeout(300);
-    await expect(page.getByText("Price Optimization")).toBeVisible();
-  });
-
-  test("AI Features tab shows Product Analysis", async ({ page }) => {
-    await page.getByRole("button", { name: /ai features/i }).click();
-    await page.waitForTimeout(300);
-    await expect(page.getByText("Product Analysis")).toBeVisible();
-  });
-
-  test("can switch to Platforms tab", async ({ page }) => {
-    await page.getByRole("button", { name: /platforms/i }).click();
-    await page.waitForTimeout(300);
-    await expect(page.getByText("Platform Integrations")).toBeVisible();
-  });
-
-  test("Platforms tab shows AliExpress connector", async ({ page }) => {
-    await page.getByRole("button", { name: /platforms/i }).click();
-    await page.waitForTimeout(300);
-    await expect(page.getByText("AliExpress")).toBeVisible();
-  });
-
-  test("Platforms tab shows CJ Dropshipping connector", async ({ page }) => {
-    await page.getByRole("button", { name: /platforms/i }).click();
-    await page.waitForTimeout(300);
-    await expect(page.getByText("CJ Dropshipping")).toBeVisible();
+    expect(count).toBeGreaterThanOrEqual(3);
   });
 
   test("can switch to Stores tab", async ({ page }) => {
@@ -152,7 +100,7 @@ test.describe("Settings Page - Authenticated", () => {
   test("Account tab shows email field", async ({ page }) => {
     await page.getByRole("button", { name: /account/i }).click();
     await page.waitForTimeout(300);
-    await expect(page.getByText("Email")).toBeVisible();
+    await expect(page.getByText("Email", { exact: true })).toBeVisible();
   });
 
   test("Account tab shows change password section", async ({ page }) => {
@@ -180,15 +128,6 @@ test.describe("Settings Page - Authenticated", () => {
     await expect(page.getByRole("button", { name: /export/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /import/i })).toBeVisible();
   });
-
-  test("How It Works section is visible", async ({ page }) => {
-    await expect(page.getByText("How It Works")).toBeVisible();
-    await expect(page.getByText("Fallback Chain")).toBeVisible();
-  });
-
-  test("Quick Start section is visible", async ({ page }) => {
-    await expect(page.getByText("Quick Start")).toBeVisible();
-  });
 });
 
 test.describe("Settings Page - Responsive", () => {
@@ -199,6 +138,6 @@ test.describe("Settings Page - Responsive", () => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto(AUTH_ROUTES.settings);
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText("Settings")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
   });
 });

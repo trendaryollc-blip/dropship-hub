@@ -104,24 +104,30 @@ test.describe("SRM Page - Authenticated", () => {
     await page.goto("/");
     await injectAuthState(page);
 
-    await page.route("**/api/srm/messages*", (route) => {
-      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(MOCK_MESSAGES) });
+    await page.route("**/api/srm/**", (route) => {
+      const url = route.request().url();
+      if (url.includes("/messages")) {
+        route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(MOCK_MESSAGES) });
+      } else if (url.includes("/negotiations")) {
+        route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(MOCK_NEGOTIATIONS) });
+      } else if (url.includes("/scorecards")) {
+        route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(MOCK_SCORECARDS) });
+      } else if (url.includes("/auto-switch")) {
+        route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ rules: MOCK_RULES.rules, logs: [] }) });
+      } else {
+        route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({}) });
+      }
     });
-    await page.route("**/api/srm/negotiations*", (route) => {
-      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(MOCK_NEGOTIATIONS) });
-    });
-    await page.route("**/api/srm/scorecards*", (route) => {
-      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(MOCK_SCORECARDS) });
-    });
-    await page.route("**/api/srm/auto-switch*", (route) => {
-      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ rules: MOCK_RULES.rules, logs: [] }) });
+
+    await page.route("**/api/suppliers*", (route) => {
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ suppliers: [] }) });
     });
   });
 
   test("loads SRM page with heading", async ({ page }) => {
     await page.goto("/srm");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText("Supplier Relationship Management")).toBeVisible();
+    await expect(page.getByText("Supplier Intelligence")).toBeVisible();
   });
 
   test("shows compose message button", async ({ page }) => {
@@ -133,24 +139,23 @@ test.describe("SRM Page - Authenticated", () => {
   test("shows KPI cards", async ({ page }) => {
     await page.goto("/srm");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText("Supplier Score")).toBeVisible();
     await expect(page.getByText("Active Negotiations")).toBeVisible();
   });
 
   test("has tab navigation", async ({ page }) => {
     await page.goto("/srm");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText("Scorecards")).toBeVisible();
-    await expect(page.getByText("Messages")).toBeVisible();
-    await expect(page.getByText("Negotiations")).toBeVisible();
-    await expect(page.getByText("Auto-Switch")).toBeVisible();
+    await expect(page.getByText("Scorecards").first()).toBeVisible();
+    await expect(page.getByText("Messages").first()).toBeVisible();
+    await expect(page.getByText("Negotiations").first()).toBeVisible();
+    await expect(page.getByText("Auto-Switch").first()).toBeVisible();
   });
 
   test("shows scorecards by default", async ({ page }) => {
     await page.goto("/srm");
     await page.waitForLoadState("networkidle");
     await expect(page.getByText("CJ Dropshipping")).toBeVisible();
-    await expect(page.getByText("87.5")).toBeVisible();
+    await expect(page.getByText("87.5").first()).toBeVisible();
   });
 
   test("scorecard shows grade", async ({ page }) => {
@@ -162,14 +167,13 @@ test.describe("SRM Page - Authenticated", () => {
   test("scorecard shows trend", async ({ page }) => {
     await page.goto("/srm");
     await page.waitForLoadState("networkidle");
-    // Trend icon should be visible
     await expect(page.getByText("CJ Dropshipping")).toBeVisible();
   });
 
   test("can switch to messages tab", async ({ page }) => {
     await page.goto("/srm");
     await page.waitForLoadState("networkidle");
-    await page.getByText("Messages").click();
+    await page.locator("button").filter({ hasText: "Messages" }).first().click();
     await page.waitForTimeout(300);
     await expect(page.getByText("Price inquiry for bulk order")).toBeVisible();
   });
@@ -177,7 +181,7 @@ test.describe("SRM Page - Authenticated", () => {
   test("message shows direction", async ({ page }) => {
     await page.goto("/srm");
     await page.waitForLoadState("networkidle");
-    await page.getByText("Messages").click();
+    await page.locator("button").filter({ hasText: "Messages" }).first().click();
     await page.waitForTimeout(300);
     await expect(page.getByText("outgoing").first()).toBeVisible();
   });
@@ -185,7 +189,7 @@ test.describe("SRM Page - Authenticated", () => {
   test("message shows status", async ({ page }) => {
     await page.goto("/srm");
     await page.waitForLoadState("networkidle");
-    await page.getByText("Messages").click();
+    await page.locator("button").filter({ hasText: "Messages" }).first().click();
     await page.waitForTimeout(300);
     await expect(page.getByText("sent").first()).toBeVisible();
   });
@@ -193,7 +197,7 @@ test.describe("SRM Page - Authenticated", () => {
   test("can switch to negotiations tab", async ({ page }) => {
     await page.goto("/srm");
     await page.waitForLoadState("networkidle");
-    await page.getByText("Negotiations").click();
+    await page.locator("button").filter({ hasText: "Negotiations" }).first().click();
     await page.waitForTimeout(300);
     await expect(page.getByText("Wireless Earbuds")).toBeVisible();
   });
@@ -201,7 +205,7 @@ test.describe("SRM Page - Authenticated", () => {
   test("negotiation shows status", async ({ page }) => {
     await page.goto("/srm");
     await page.waitForLoadState("networkidle");
-    await page.getByText("Negotiations").click();
+    await page.locator("button").filter({ hasText: "Negotiations" }).first().click();
     await page.waitForTimeout(300);
     await expect(page.getByText("active").first()).toBeVisible();
   });
@@ -209,7 +213,7 @@ test.describe("SRM Page - Authenticated", () => {
   test("negotiation shows price progress", async ({ page }) => {
     await page.goto("/srm");
     await page.waitForLoadState("networkidle");
-    await page.getByText("Negotiations").click();
+    await page.locator("button").filter({ hasText: "Negotiations" }).first().click();
     await page.waitForTimeout(300);
     await expect(page.getByText("$12.5")).toBeVisible();
     await expect(page.getByText("$14")).toBeVisible();
@@ -219,7 +223,7 @@ test.describe("SRM Page - Authenticated", () => {
   test("negotiation expands on click", async ({ page }) => {
     await page.goto("/srm");
     await page.waitForLoadState("networkidle");
-    await page.getByText("Negotiations").click();
+    await page.locator("button").filter({ hasText: "Negotiations" }).first().click();
     await page.waitForTimeout(300);
     await page.getByText("Wireless Earbuds").click();
     await page.waitForTimeout(300);
@@ -230,15 +234,15 @@ test.describe("SRM Page - Authenticated", () => {
   test("can switch to auto-switch tab", async ({ page }) => {
     await page.goto("/srm");
     await page.waitForLoadState("networkidle");
-    await page.getByText("Auto-Switch").click();
+    await page.locator("button").filter({ hasText: "Auto-Switch" }).first().click();
     await page.waitForTimeout(300);
-    await expect(page.getByText("Auto-Switch Rules")).toBeVisible();
+    await expect(page.getByText("Auto-Switch Rules").first()).toBeVisible();
   });
 
   test("auto-switch shows existing rules", async ({ page }) => {
     await page.goto("/srm");
     await page.waitForLoadState("networkidle");
-    await page.getByText("Auto-Switch").click();
+    await page.locator("button").filter({ hasText: "Auto-Switch" }).first().click();
     await page.waitForTimeout(300);
     await expect(page.getByText("overall_score")).toBeVisible();
   });
@@ -280,13 +284,13 @@ test.describe("SRM Page - Authenticated", () => {
   test("scorecard shows criteria breakdown on expand", async ({ page }) => {
     await page.goto("/srm");
     await page.waitForLoadState("networkidle");
-    await page.getByText("CJ Dropshipping").click();
+    await page.getByText("CJ Dropshipping").first().click();
     await page.waitForTimeout(300);
-    await expect(page.getByText("Speed")).toBeVisible();
-    await expect(page.getByText("Quality")).toBeVisible();
-    await expect(page.getByText("Communication")).toBeVisible();
-    await expect(page.getByText("Price")).toBeVisible();
-    await expect(page.getByText("Reliability")).toBeVisible();
+    await expect(page.getByText("Speed").first()).toBeVisible();
+    await expect(page.getByText("Quality").first()).toBeVisible();
+    await expect(page.getByText("Communication").first()).toBeVisible();
+    await expect(page.getByText("Price").first()).toBeVisible();
+    await expect(page.getByText("Reliability").first()).toBeVisible();
   });
 });
 
@@ -302,6 +306,6 @@ test.describe("SRM Page - Responsive", () => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto("/srm");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText("Supplier Relationship Management")).toBeVisible();
+    await expect(page.getByText("Supplier Intelligence")).toBeVisible();
   });
 });

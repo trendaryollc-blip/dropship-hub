@@ -6,11 +6,13 @@ const MOCK_SUPPLIERS = {
     {
       id: "sup-1",
       name: "Alpha Trading Co",
+      slug: "alpha-trading-co",
       location: "Shenzhen, China",
       country: "China",
       flag: "🇨🇳",
+      description: "Electronics manufacturer and exporter based in Shenzhen.",
       trustBadge: "gold" as const,
-      dataSource: "api" as const,
+      dataSource: "live" as const,
       specializations: ["Electronics", "Phone Accessories"],
       stats: {
         rating: 4.8,
@@ -19,21 +21,56 @@ const MOCK_SUPPLIERS = {
         responseTimeHours: 2,
         responseTime: "< 2h",
         shippingDays: 5,
+        shippingDaysEU: 8,
         orderCompletionRate: 98,
         disputeRate: 0.5,
         monthlyOrders: 15000,
-        qualityScore: 92,
+        totalProducts: 3200,
+        yearEstablished: 2009,
         communicationScore: 88,
+        qualityScore: 92,
+        priceCompetitiveness: 87,
       },
+      shipping: {
+        methods: ["Air", "Sea", "Express"],
+        processingTime: "2-3 days",
+        freeShippingThreshold: null,
+        packagingQuality: "premium" as const,
+      },
+      quality: {
+        inspection: "Pre-shipment inspection available",
+        returnPolicy: "30-day returns",
+        refundPolicy: "Full refund on defective items",
+        replacementPolicy: "Free replacement",
+        disputeResolution: "Mediation available",
+        certifications: ["ISO9001", "CE"],
+      },
+      catalog: {
+        categories: ["Electronics", "Phone Accessories"],
+        priceRange: { min: 2, max: 80 },
+        moq: 10,
+        samplesAvailable: true,
+        samplePrice: 15,
+      },
+      communication: {
+        methods: ["Email", "WhatsApp", "WeChat"],
+        languages: ["English", "Chinese"],
+        supportHours: "12h/day",
+      },
+      source: "aliexpress" as const,
+      sourceUrl: null,
+      lastUpdated: "2026-01-15",
     },
     {
       id: "sup-2",
       name: "Beta Supply Ltd",
+      slug: "beta-supply-ltd",
       location: "Guangzhou, China",
       country: "China",
       flag: "🇨🇳",
+      description: "Home & garden supplier with a strong kitchen range.",
       trustBadge: "silver" as const,
-      dataSource: "scraped" as const,
+      dataSource: "estimated" as const,
       specializations: ["Home & Garden", "Kitchen"],
       stats: {
         rating: 4.5,
@@ -42,12 +79,45 @@ const MOCK_SUPPLIERS = {
         responseTimeHours: 4,
         responseTime: "< 4h",
         shippingDays: 7,
+        shippingDaysEU: 10,
         orderCompletionRate: 95,
         disputeRate: 1.2,
         monthlyOrders: 8000,
-        qualityScore: 85,
+        totalProducts: 1800,
+        yearEstablished: 2014,
         communicationScore: 80,
+        qualityScore: 85,
+        priceCompetitiveness: 79,
       },
+      shipping: {
+        methods: ["Air", "Sea"],
+        processingTime: "3-5 days",
+        freeShippingThreshold: 500,
+        packagingQuality: "standard" as const,
+      },
+      quality: {
+        inspection: "Video inspection on request",
+        returnPolicy: "14-day returns",
+        refundPolicy: "Partial refund for late delivery",
+        replacementPolicy: "Replacement within 7 days",
+        disputeResolution: "Ticket system",
+        certifications: ["BSCI"],
+      },
+      catalog: {
+        categories: ["Home & Garden", "Kitchen"],
+        priceRange: { min: 3, max: 60 },
+        moq: 20,
+        samplesAvailable: true,
+        samplePrice: 12,
+      },
+      communication: {
+        methods: ["Email", "WhatsApp"],
+        languages: ["English", "Chinese"],
+        supportHours: "10h/day",
+      },
+      source: "alibaba" as const,
+      sourceUrl: "https://example.com/beta",
+      lastUpdated: "2026-01-10",
     },
   ],
 };
@@ -89,7 +159,7 @@ test.describe("Suppliers Page - Authenticated", () => {
   test("has search input", async ({ page }) => {
     await page.goto("/suppliers");
     await page.waitForLoadState("networkidle");
-    const searchInput = page.getByPlaceholder(/search/i);
+    const searchInput = page.getByPlaceholder("Search suppliers by name, category, or location...");
     await expect(searchInput).toBeVisible();
   });
 
@@ -109,7 +179,7 @@ test.describe("Suppliers Page - Authenticated", () => {
   test("search input accepts text", async ({ page }) => {
     await page.goto("/suppliers");
     await page.waitForLoadState("networkidle");
-    const searchInput = page.getByPlaceholder(/search/i);
+    const searchInput = page.getByPlaceholder("Search suppliers by name, category, or location...");
     await searchInput.fill("Alpha");
     await expect(searchInput).toHaveValue("Alpha");
   });
@@ -136,7 +206,7 @@ test.describe("Suppliers Page - Authenticated", () => {
   test("supplier card shows reliability score", async ({ page }) => {
     await page.goto("/suppliers");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText("Reliability")).toBeVisible();
+    await expect(page.getByText("Reliability").first()).toBeVisible();
   });
 
   test("supplier card shows rating", async ({ page }) => {
@@ -148,7 +218,7 @@ test.describe("Suppliers Page - Authenticated", () => {
   test("supplier card shows specializations", async ({ page }) => {
     await page.goto("/suppliers");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText("Electronics")).toBeVisible();
+    await expect(page.getByText("Electronics").first()).toBeVisible();
   });
 
   test("supplier card links to detail page", async ({ page }) => {
@@ -165,7 +235,7 @@ test.describe("Suppliers Page - Authenticated", () => {
     await page.getByRole("button", { name: /filters/i }).click();
     await page.waitForTimeout(300);
     // Filter panel should appear with trust badge options
-    await expect(page.getByText("Trust Badge")).toBeVisible();
+    await expect(page.getByText("Trust Badge").first()).toBeVisible();
   });
 
   test("filter panel shows location filters", async ({ page }) => {
@@ -173,7 +243,7 @@ test.describe("Suppliers Page - Authenticated", () => {
     await page.waitForLoadState("networkidle");
     await page.getByRole("button", { name: /filters/i }).click();
     await page.waitForTimeout(300);
-    await expect(page.getByText("Location")).toBeVisible();
+    await expect(page.getByText("Location").first()).toBeVisible();
   });
 
   test("filter panel shows rating filters", async ({ page }) => {
@@ -181,7 +251,7 @@ test.describe("Suppliers Page - Authenticated", () => {
     await page.waitForLoadState("networkidle");
     await page.getByRole("button", { name: /filters/i }).click();
     await page.waitForTimeout(300);
-    await expect(page.getByText("Min Rating")).toBeVisible();
+    await expect(page.getByText("Min Rating").first()).toBeVisible();
   });
 
   test("filter panel shows shipping speed filters", async ({ page }) => {
@@ -189,7 +259,7 @@ test.describe("Suppliers Page - Authenticated", () => {
     await page.waitForLoadState("networkidle");
     await page.getByRole("button", { name: /filters/i }).click();
     await page.waitForTimeout(300);
-    await expect(page.getByText("Shipping Speed")).toBeVisible();
+    await expect(page.getByText("Shipping Speed").first()).toBeVisible();
   });
 
   test("can sort by different options", async ({ page }) => {

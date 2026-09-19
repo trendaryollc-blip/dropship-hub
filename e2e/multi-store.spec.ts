@@ -102,10 +102,10 @@ test.describe("Multi-Store Page - Authenticated", () => {
   test("has tab navigation", async ({ page }) => {
     await page.goto("/multi-store");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText("Unified Orders")).toBeVisible();
-    await expect(page.getByText("Inventory Sync")).toBeVisible();
-    await expect(page.getByText("Performance")).toBeVisible();
-    await expect(page.getByText("Bulk Push")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Unified Orders", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Inventory Sync", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Performance", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Bulk Push", exact: true })).toBeVisible();
   });
 
   test("shows unified orders", async ({ page }) => {
@@ -124,7 +124,7 @@ test.describe("Multi-Store Page - Authenticated", () => {
   test("order shows status badge", async ({ page }) => {
     await page.goto("/multi-store");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText("pending").first()).toBeVisible();
+    await expect(page.getByText("pending", { exact: true }).first()).toBeVisible();
   });
 
   test("can switch to inventory tab", async ({ page }) => {
@@ -138,7 +138,7 @@ test.describe("Multi-Store Page - Authenticated", () => {
   test("can switch to performance tab", async ({ page }) => {
     await page.goto("/multi-store");
     await page.waitForLoadState("networkidle");
-    await page.getByText("Performance").click();
+    await page.getByRole("button", { name: "Performance", exact: true }).click();
     await page.waitForTimeout(300);
     await expect(page.getByText("7d")).toBeVisible();
   });
@@ -146,7 +146,7 @@ test.describe("Multi-Store Page - Authenticated", () => {
   test("can switch to bulk push tab", async ({ page }) => {
     await page.goto("/multi-store");
     await page.waitForLoadState("networkidle");
-    await page.getByText("Bulk Push").click();
+    await page.getByRole("button", { name: "Bulk Push", exact: true }).click();
     await page.waitForTimeout(300);
     await expect(page.getByText("Bulk Push to Stores")).toBeVisible();
   });
@@ -154,7 +154,7 @@ test.describe("Multi-Store Page - Authenticated", () => {
   test("bulk push shows connected stores", async ({ page }) => {
     await page.goto("/multi-store");
     await page.waitForLoadState("networkidle");
-    await page.getByText("Bulk Push").click();
+    await page.getByRole("button", { name: "Bulk Push", exact: true }).click();
     await page.waitForTimeout(300);
     await expect(page.getByText("My Shopify Store")).toBeVisible();
   });
