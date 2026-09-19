@@ -317,7 +317,7 @@ describe("/api/dashboard", () => {
       expect(data.heatmap).toEqual([]);
       expect(data.trending).toEqual([]);
       expect(data.briefing.insights[0]).toContain("temporarily unavailable");
-      expect(data.pulse).toEqual([]);
+      expect(data.pulse).toBeNull();
       expect(data.actionStats).toEqual([]);
       expect(data.fulfillmentPipeline).toEqual({
         pending: 0,

@@ -20,6 +20,8 @@ const eslintConfig = defineConfig([
     "lint-output3.txt",
     "lint-json.txt",
     "coverage/**",
+    "test-results/**",
+    "playwright-report/**",
     // Local AI tooling worktrees (duplicate copies of src/ on disk)
     ".kilo/**",
     ".kilocode/**",

@@ -77,7 +77,11 @@ export const GET = withAuth(async (_request: Request) => {
         }
       }
 
-      setCache(cacheKey, categoryData);
+      // Only cache non-empty results: caching an all-failed snapshot would pin
+      // the dashboard to a degraded state for the full 5-minute TTL.
+      if (Object.keys(categoryData).length > 0) {
+        setCache(cacheKey, categoryData);
+      }
     }
 
     const allProducts = Object.entries(categoryData).flatMap(([cat, data]) =>
@@ -92,6 +96,9 @@ export const GET = withAuth(async (_request: Request) => {
     let fulfillmentOrders: FulfillmentOrderDoc[] = [];
     let healthScore: number | null = null;
 
+    // Track partial failures so the client can surface a degraded-data banner
+    // instead of silently showing zeros.
+    let firestoreReadFailed = false;
     try {
       const db = await getAdminDB();
       if (uid) {
@@ -111,6 +118,7 @@ export const GET = withAuth(async (_request: Request) => {
         fulfillmentOrders = ordersSnap.docs.map((d) => d.data() as FulfillmentOrderDoc);
       }
     } catch (error) {
+      firestoreReadFailed = true;
       logger.error("[dashboard] Firestore read failed", {
         error: error instanceof Error ? error.message : String(error),
         uid,
@@ -118,26 +126,10 @@ export const GET = withAuth(async (_request: Request) => {
       });
     }
 
-    if (allProducts.length === 0) {
-      return NextResponse.json({
-        ticker: [],
-        aiDailyPick: null,
-        revenueStats: { revenue: 0, growth: 0, orders: 0, avgOrder: 0 },
-        revenueChart: [],
-        alerts: [],
-        nicheCards: [],
-        supplierStatuses: [],
-        heatmap: [],
-        trending: [],
-        briefing: { insights: ["CJ Dropshipping API is temporarily unavailable. Please try again in a moment."], sentiment: null, sentimentLabel: "Neutral", opportunities: 0, risks: 0, trends: 0, lastScan: "retrying..." },
-        pulse: [],
-        actionStats: [],
-        fulfillmentPipeline: { pending: 0, processing: 0, shipped: 0, delivered: 0, totalRevenue: 0, totalProfit: 0, recentOrders: [] },
-        contextualActions: [],
-        storesCount,
-        healthScore,
-      }, { headers: CLIENT_CACHE_HEADERS });
-    }
+    // Degraded mode: when the CJ discovery feed is unavailable we keep serving
+    // the user's real Firestore data (revenue, orders, stores) instead of an
+    // empty payload. CJ-derived sections degrade to empty arrays below.
+    const productsAvailable = allProducts.length > 0;
 
     // ── Fix #2: Compute real revenue stats from Firestore ────────────────
     const now = Date.now();
@@ -229,68 +221,78 @@ export const GET = withAuth(async (_request: Request) => {
     });
 
     // ── Fix #7: Improved AI Daily Pick (best composite score, not just rating) ──
-    const bestProduct = allProducts.reduce((best, p) => {
-      const price = p.price ?? 0;
-      const rating = p.rating ?? 4;
-      const reviews = p.reviews ?? 0;
-      // Composite: rating weighted, reviews weighted, price sweet spot ($5-$25)
-      const priceScore = price >= 5 && price <= 25 ? 20 : price < 5 ? 10 : 5;
-      const score = rating * 15 + Math.min(reviews, 500) / 20 + priceScore;
-      const bestPrice = best.price ?? 0;
-      const bestRating = best.rating ?? 4;
-      const bestReviews = best.reviews ?? 0;
-      const bestPriceScore = bestPrice >= 5 && bestPrice <= 25 ? 20 : bestPrice < 5 ? 10 : 5;
-      const bestScore = bestRating * 15 + Math.min(bestReviews, 500) / 20 + bestPriceScore;
-      return score > bestScore ? p : best;
-    });
+    // reduce() without an initial value throws on empty arrays, so guard the
+    // degraded (no CJ products) path and fall back to null.
+    const bestProduct = allProducts.length > 0
+      ? allProducts.reduce((best, p) => {
+          const price = p.price ?? 0;
+          const rating = p.rating ?? 4;
+          const reviews = p.reviews ?? 0;
+          // Composite: rating weighted, reviews weighted, price sweet spot ($5-$25)
+          const priceScore = price >= 5 && price <= 25 ? 20 : price < 5 ? 10 : 5;
+          const score = rating * 15 + Math.min(reviews, 500) / 20 + priceScore;
+          const bestPrice = best.price ?? 0;
+          const bestRating = best.rating ?? 4;
+          const bestReviews = best.reviews ?? 0;
+          const bestPriceScore = bestPrice >= 5 && bestPrice <= 25 ? 20 : bestPrice < 5 ? 10 : 5;
+          const bestScore = bestRating * 15 + Math.min(bestReviews, 500) / 20 + bestPriceScore;
+          return score > bestScore ? p : best;
+        })
+      : null;
 
-    const sourcePrice = bestProduct.price ?? 0;
-    const sellPrice = Number((sourcePrice * 2.5 + 4.99).toFixed(2));
-    const profit = Number((sellPrice - sourcePrice).toFixed(2));
-    const margin = Number(((profit / sellPrice) * 100).toFixed(1));
-    const bestCatProducts = allProducts.filter((p) => p.category === bestProduct.category);
-    const avgCatPrice = bestCatProducts.length > 0
-      ? bestCatProducts.reduce((s, p) => s + (p.price ?? 0), 0) / bestCatProducts.length
-      : sourcePrice;
-    const saturation = Math.min(95, Math.max(10, Math.round((1 - sourcePrice / (avgCatPrice || 1)) * 50 + 30)));
-    const ordersPerMonth = Math.round(500 + (bestProduct.reviews ?? 100) * 2 + (bestProduct.rating ?? 4) * 200);
-    const overallScore = Math.min(99, Math.round((bestProduct.rating ?? 4) * 12 + Math.min(bestProduct.reviews ?? 0, 500) / 50 + margin / 5));
-    const risk: "low" | "medium" | "high" = margin > 55 ? "low" : margin > 35 ? "medium" : "high";
+    // Daily pick + derived stats only exist when the discovery feed is live.
+    let aiDailyPick: AIDailyPick | null = null;
+    if (bestProduct) {
+      const sourcePrice = bestProduct.price ?? 0;
+      const sellPrice = Number((sourcePrice * 2.5 + 4.99).toFixed(2));
+      const profit = Number((sellPrice - sourcePrice).toFixed(2));
+      const margin = Number(((profit / sellPrice) * 100).toFixed(1));
+      const bestCatProducts = allProducts.filter((p) => p.category === bestProduct.category);
+      const avgCatPrice = bestCatProducts.length > 0
+        ? bestCatProducts.reduce((s, p) => s + (p.price ?? 0), 0) / bestCatProducts.length
+        : sourcePrice;
+      const saturation = Math.min(95, Math.max(10, Math.round((1 - sourcePrice / (avgCatPrice || 1)) * 50 + 30)));
+      const ordersPerMonth = Math.round(500 + (bestProduct.reviews ?? 100) * 2 + (bestProduct.rating ?? 4) * 200);
+      const overallScore = Math.min(99, Math.round((bestProduct.rating ?? 4) * 12 + Math.min(bestProduct.reviews ?? 0, 500) / 50 + margin / 5));
+      const risk: "low" | "medium" | "high" = margin > 55 ? "low" : margin > 35 ? "medium" : "high";
 
-    const aiDailyPick: AIDailyPick = {
-      title: bestProduct.title,
-      category: bestProduct.category,
-      image: bestProduct.image || "",
-      description: `High-potential product in ${bestProduct.category} with strong demand signals on CJ Dropshipping.`,
-      radarScores: null,
-      sourcePrice,
-      sellPrice,
-      profit,
-      margin,
-      risk,
-      reason: `Competitive source price in ${bestProduct.category} with healthy margin potential.`,
-      platform: "CJ Dropshipping",
-      ordersPerMonth,
-      saturation,
-      overallScore,
-      earningsPreview: {
-        profitPerOrder: profit,
+      aiDailyPick = {
+        title: bestProduct.title,
+        category: bestProduct.category,
+        image: bestProduct.image || "",
+        description: `High-potential product in ${bestProduct.category} with strong demand signals on CJ Dropshipping.`,
+        radarScores: null,
+        sourcePrice,
+        sellPrice,
+        profit,
+        margin,
+        risk,
+        reason: `Competitive source price in ${bestProduct.category} with healthy margin potential.`,
+        platform: "CJ Dropshipping",
         ordersPerMonth,
-        monthlyRevenue: Number((profit * ordersPerMonth).toFixed(2)),
-      },
-      reasonPoints: [
-        `Average rating: ${(bestProduct.rating ?? 4).toFixed(1)} stars`,
-        `${(bestProduct.reviews ?? 0).toLocaleString()} customer reviews`,
-        `Competitive source price at $${sourcePrice.toFixed(2)}`,
-        `${margin}% profit margin after fees`,
-      ],
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      yesterdayPick: null,
-      sourceUrl: bestProduct.link || undefined,
-    };
+        saturation,
+        overallScore,
+        earningsPreview: {
+          profitPerOrder: profit,
+          ordersPerMonth,
+          monthlyRevenue: Number((profit * ordersPerMonth).toFixed(2)),
+        },
+        reasonPoints: [
+          `Average rating: ${(bestProduct.rating ?? 4).toFixed(1)} stars`,
+          `${(bestProduct.reviews ?? 0).toLocaleString()} customer reviews`,
+          `Competitive source price at $${sourcePrice.toFixed(2)}`,
+          `${margin}% profit margin after fees`,
+        ],
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        yesterdayPick: null,
+        sourceUrl: bestProduct.link || undefined,
+      };
+    }
 
     const totalProducts = allProducts.length;
-    const avgPrice = Number((allProducts.reduce((s, p) => s + (p.price ?? 0), 0) / totalProducts).toFixed(2));
+    const avgPrice = totalProducts > 0
+      ? Number((allProducts.reduce((s, p) => s + (p.price ?? 0), 0) / totalProducts).toFixed(2))
+      : 0;
 
     // ── Fix #8: Niche growth derived from real product data ──────────────
     const nicheCards: NicheCard[] = Object.entries(categoryData).slice(0, 5).map(([cat, data], idx) => {
@@ -352,6 +354,10 @@ export const GET = withAuth(async (_request: Request) => {
       rating: Math.min(5, avgProductRating + 0.3),
       location: "China",
     };
+
+    // Empty when the feed is degraded — the UI then shows "no suppliers
+    // connected" instead of stats derived from zero products.
+    const supplierStatuses: SupplierStatus[] = productsAvailable ? [supplierStatus] : [];
 
     // ── Heatmap ──────────────────────────────────────────────────────────
     const heatmap: HeatmapCategory[] = Object.entries(categoryData).map(([cat, data]) => {
@@ -457,18 +463,24 @@ export const GET = withAuth(async (_request: Request) => {
     }).length;
 
     const insights: string[] = [];
-    if (bestProduct) {
-      insights.push(`${bestProduct.title.slice(0, 50)} is the top-rated product in ${bestProduct.category}`);
-    }
-    if (priceDrops > 0) {
-      insights.push(`${priceDrops} products under $5 detected — low-cost, high-margin opportunities available`);
-    }
-    if (highMarginProducts > 0) {
-      insights.push(`${highMarginProducts} products with 60%+ profit margin found across ${Object.keys(categoryData).length} categories`);
-    }
-    insights.push(`${totalProducts} products scanned from CJ Dropshipping — average source price $${avgPrice}`);
-    if (Object.keys(categoryData).length >= 3) {
-      insights.push(`${Object.keys(categoryData).length} active categories with strong product availability`);
+    if (productsAvailable) {
+      if (bestProduct) {
+        insights.push(`${bestProduct.title.slice(0, 50)} is the top-rated product in ${bestProduct.category}`);
+      }
+      if (priceDrops > 0) {
+        insights.push(`${priceDrops} products under $5 detected — low-cost, high-margin opportunities available`);
+      }
+      if (highMarginProducts > 0) {
+        insights.push(`${highMarginProducts} products with 60%+ profit margin found across ${Object.keys(categoryData).length} categories`);
+      }
+      insights.push(`${totalProducts} products scanned from CJ Dropshipping — average source price $${avgPrice}`);
+      if (Object.keys(categoryData).length >= 3) {
+        insights.push(`${Object.keys(categoryData).length} active categories with strong product availability`);
+      }
+    } else {
+      // Degraded: explain why the discovery sections are empty instead of
+      // showing "0 products" as if that were the real catalog state.
+      insights.push("CJ Dropshipping API is temporarily unavailable. Please try again in a moment.");
     }
 
     const oppCount = highMarginProducts + priceDrops;
@@ -478,22 +490,34 @@ export const GET = withAuth(async (_request: Request) => {
     const sentimentScore = allProducts.length > 0
         ? Math.round(allProducts.reduce((s, p) => s + ((p.rating ?? 4) * 20 + (p.reviews ?? 0) / 10), 0) / allProducts.length)
         : 50;
-    const aiBriefing: AIBriefing = {
-      insights,
-      sentiment: Math.max(0, Math.min(100, sentimentScore)),
-      sentimentLabel: sentimentScore >= 70 ? "positive" : sentimentScore >= 40 ? "neutral" : "negative",
-      opportunities: oppCount,
-      risks: riskCount,
-      trends: trendCount,
-      lastScan: "just now",
-    };
+    const aiBriefing: AIBriefing = productsAvailable
+      ? {
+          insights,
+          sentiment: Math.max(0, Math.min(100, sentimentScore)),
+          sentimentLabel: sentimentScore >= 70 ? "positive" : sentimentScore >= 40 ? "neutral" : "negative",
+          opportunities: oppCount,
+          risks: riskCount,
+          trends: trendCount,
+          lastScan: "just now",
+        }
+      : {
+          insights,
+          sentiment: null,
+          sentimentLabel: "Neutral",
+          opportunities: 0,
+          risks: 0,
+          trends: 0,
+          lastScan: "retrying...",
+        };
 
-    const quickActions: QuickActionStat[] = [
-      { label: "Search Products", description: "Discover new items to sell", href: "/products", color: "blue", stat: `${totalProducts}`, statLabel: "scanned this week" },
-      { label: "Find Suppliers", description: "Compare supplier options", href: "/suppliers", color: "emerald", stat: `${Object.keys(categoryData).length}/${categories.length}`, statLabel: "categories covered" },
-      { label: "Calculate Profit", description: "Estimate your margins", href: "/calculator", color: "amber", stat: `${totalProducts}`, statLabel: "products analyzed" },
-      { label: "AI Assistant", description: "Get smart recommendations", href: "/ai", color: "purple", stat: `${oppCount}`, statLabel: "new suggestions" },
-    ];
+    const quickActions: QuickActionStat[] = productsAvailable
+      ? [
+          { label: "Search Products", description: "Discover new items to sell", href: "/products", color: "blue", stat: `${totalProducts}`, statLabel: "scanned this week" },
+          { label: "Find Suppliers", description: "Compare supplier options", href: "/suppliers", color: "emerald", stat: `${Object.keys(categoryData).length}/${categories.length}`, statLabel: "categories covered" },
+          { label: "Calculate Profit", description: "Estimate your margins", href: "/calculator", color: "amber", stat: `${totalProducts}`, statLabel: "products analyzed" },
+          { label: "AI Assistant", description: "Get smart recommendations", href: "/ai", color: "purple", stat: `${oppCount}`, statLabel: "new suggestions" },
+        ]
+      : [];
 
     // ── Fix #6: Contextual actions link to /ai, not /intelligence ────────
     const pendingCount = fulfillmentPipeline.pending;
@@ -546,51 +570,59 @@ export const GET = withAuth(async (_request: Request) => {
         aiAnalysis: `Steady demand detected. ${p.demandLevel} demand level with ${p.competitionLevel} competition. Good candidate for store listing.`,
         sparkline: p.sparkline,
       })),
-      ...aiBriefing.insights.slice(0, 2).map((insight: string, i: number) => {
-        // Deterministic values derived from insight content and sentiment
-        const insightHash = insight.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
-        const sentimentValue = aiBriefing.sentiment ?? 50;
-        const deterministicConfidence = Math.min(95, Math.round(sentimentValue * 0.7 + (insightHash % 20) + 10));
-        const baseValue = 40 + (insightHash % 30);
-        const deterministicSparkline = Array.from({ length: 7 }, (_, idx) =>
-          Math.round(baseValue + Math.sin(insightHash + idx) * 10)
-        );
-        return {
-          id: `warn-${i}`,
-          type: "warning" as const,
-          title: `AI Alert: ${insight.slice(0, 50)}`,
-          description: insight,
-          action: "View Details",
-          actionHref: "/ai",
-          timestamp: "just now",
-          read: i > 0,
-          confidence: deterministicConfidence,
-          aiAnalysis: `Automated intelligence briefing. ${insight}`,
-          sparkline: deterministicSparkline,
-        };
-      }),
+      // Warning alerts only when the feed is live — in degraded mode the
+      // briefing insight is an outage notice, not an actionable alert.
+      ...(productsAvailable
+        ? aiBriefing.insights.slice(0, 2).map((insight: string, i: number) => {
+            // Deterministic values derived from insight content and sentiment
+            const insightHash = insight.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+            const sentimentValue = aiBriefing.sentiment ?? 50;
+            const deterministicConfidence = Math.min(95, Math.round(sentimentValue * 0.7 + (insightHash % 20) + 10));
+            const baseValue = 40 + (insightHash % 30);
+            const deterministicSparkline = Array.from({ length: 7 }, (_, idx) =>
+              Math.round(baseValue + Math.sin(insightHash + idx) * 10)
+            );
+            return {
+              id: `warn-${i}`,
+              type: "warning" as const,
+              title: `AI Alert: ${insight.slice(0, 50)}`,
+              description: insight,
+              action: "View Details",
+              actionHref: "/ai",
+              timestamp: "just now",
+              read: i > 0,
+              confidence: deterministicConfidence,
+              aiAnalysis: `Automated intelligence briefing. ${insight}`,
+              sparkline: deterministicSparkline,
+            };
+          })
+        : []),
     ];
 
     // ── Fix #5: Health score from real signals ───────────────────────────
-    try {
-      let score = 20; // base for having an account
-      if (storesCount > 0) score += 15;
-      if (totalRevenue > 0) score += 20;
-      if (totalOrders > 0) score += 10;
-      if (fulfillmentOrders.length > 0) score += 10;
-      if (trendingProducts.length > 0) score += 10;
-      if (allProducts.length > 0) score += 5;
-      // Bonus for consistent activity
-      if (revenueEntries.length >= 7) score += 5;
-      if (deliveredOrders.length > 0) score += 5;
-      healthScore = Math.min(100, score);
-    } catch (error) {
-      logger.error("[dashboard] Health score computation failed", {
-        error: error instanceof Error ? error.message : String(error),
-        uid,
-        section: "health-score",
-      });
-      healthScore = null;
+    // Only computed when the discovery feed is live; a fully degraded feed
+    // reports no score (null) so the UI never judges the account on it.
+    if (productsAvailable) {
+      try {
+        let score = 20; // base for having an account
+        if (storesCount > 0) score += 15;
+        if (totalRevenue > 0) score += 20;
+        if (totalOrders > 0) score += 10;
+        if (fulfillmentOrders.length > 0) score += 10;
+        if (trendingProducts.length > 0) score += 10;
+        if (allProducts.length > 0) score += 5;
+        // Bonus for consistent activity
+        if (revenueEntries.length >= 7) score += 5;
+        if (deliveredOrders.length > 0) score += 5;
+        healthScore = Math.min(100, score);
+      } catch (error) {
+        logger.error("[dashboard] Health score computation failed", {
+          error: error instanceof Error ? error.message : String(error),
+          uid,
+          section: "health-score",
+        });
+        healthScore = null;
+      }
     }
 
     // Filter contextualActions
@@ -608,7 +640,7 @@ export const GET = withAuth(async (_request: Request) => {
       revenueChart,  // Fix #2: Now returns chart data from Firestore
       alerts,
       nicheCards,
-      supplierStatuses: [supplierStatus],  // Fix #4: Now includes location
+      supplierStatuses,  // Fix #4: Now includes location
       heatmap,
       trending: trendingProducts,
       briefing: aiBriefing,
@@ -616,6 +648,7 @@ export const GET = withAuth(async (_request: Request) => {
       actionStats: quickActions,
       fulfillmentPipeline,  // Fix #3: Now uses real Firestore orders
       contextualActions: filteredContextualActions,
+      dataQuality: { cj: productsAvailable, firestore: !firestoreReadFailed },
       storesCount,
       healthScore,  // Fix #5: Now computed from real signals
     }, { headers: CLIENT_CACHE_HEADERS });
@@ -642,6 +675,7 @@ export const GET = withAuth(async (_request: Request) => {
       actionStats: [],
       fulfillmentPipeline: { pending: 0, processing: 0, shipped: 0, delivered: 0, totalRevenue: 0, totalProfit: 0, recentOrders: [] },
       contextualActions: [],
+      dataQuality: { cj: false, firestore: false },
       storesCount: 0,
       healthScore: null,
     }, { status: 503, headers: { "Cache-Control": "no-store" } });

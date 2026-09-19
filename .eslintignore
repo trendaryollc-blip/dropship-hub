@@ -1,0 +1,6 @@
+# Generated artifacts that must not be linted
+.next/
+node_modules/
+test-results/
+playwright-report/
+coverage/
