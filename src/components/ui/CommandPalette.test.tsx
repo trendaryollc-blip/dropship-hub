@@ -1,27 +1,34 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import CommandPalette from "./CommandPalette";
 
-// Mock the hook to control state
-vi.mock("@/hooks/useCommandPalette", () => ({
-  useCommandPalette: () => ({
-    isOpen: false,
-    query: "",
-    results: [],
-    selectedIndex: 0,
-    open: vi.fn(),
-    close: vi.fn(),
-    setQuery: vi.fn(),
-    setSelectedIndex: vi.fn(),
-    selectNext: vi.fn(),
-    selectPrev: vi.fn(),
-    executeSelected: vi.fn(),
-  }),
+const push = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push }),
 }));
 
 describe("CommandPalette", () => {
   it("renders nothing when closed", () => {
-    const { container } = render(<CommandPalette />);
+    const { container } = render(<CommandPalette open={false} onOpenChange={vi.fn()} />);
     expect(container.innerHTML).toBe("");
+  });
+
+  it("renders the command menu with a search input when open", () => {
+    render(<CommandPalette open={true} onOpenChange={vi.fn()} />);
+    expect(screen.getByPlaceholderText("Search commands...")).toBeInTheDocument();
+  });
+
+  it("closes on Escape key", () => {
+    const onOpenChange = vi.fn();
+    render(<CommandPalette open={true} onOpenChange={onOpenChange} />);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("opens on Ctrl+K", () => {
+    const onOpenChange = vi.fn();
+    render(<CommandPalette open={false} onOpenChange={onOpenChange} />);
+    fireEvent.keyDown(document, { key: "k", ctrlKey: true });
+    expect(onOpenChange).toHaveBeenCalledWith(true);
   });
 });

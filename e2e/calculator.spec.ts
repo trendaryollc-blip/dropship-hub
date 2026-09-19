@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { setupFirebaseAuth, injectAuthState } from "./helpers";
 
 test.describe("Calculator Page", () => {
   test("redirects to sign-in when unauthenticated", async ({ page }) => {
@@ -9,51 +10,11 @@ test.describe("Calculator Page", () => {
 
 test.describe("Calculator Page - Authenticated", () => {
   test.beforeEach(async ({ page }) => {
-    // Setup Firebase auth interception
-    await page.route("**/identitytoolkit.googleapis.com/**", (route) => {
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          localId: "test-user-123",
-          email: "test@example.com",
-          idToken: "mock-token",
-          registered: true,
-        }),
-      });
-    });
-    await page.route("**/securetoken.googleapis.com/**", (route) => {
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ access_token: "mock-token", token_type: "Bearer", expires_in: 3600 }),
-      });
-    });
-
-    // Inject authenticated state
+    // Setup Firebase auth interception + authenticated session
+    await setupFirebaseAuth(page);
     await page.goto("/");
-    await page.evaluate(() => {
-      const dbRequest = indexedDB.open("firebaseLocalStorageDb", 1);
-      dbRequest.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-        if (!db.objectStoreNames.contains("firebaseLocalStorage")) {
-          db.createObjectStore("firebaseLocalStorage");
-        }
-      };
-      dbRequest.onsuccess = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-        const tx = db.transaction("firebaseLocalStorage", "readwrite");
-        tx.objectStore("firebaseLocalStorage").put({
-          fbase_key: "firebase:authUser:test-api-key:[DEFAULT]",
-          value: {
-            uid: "test-user-123",
-            email: "test@example.com",
-            stsTokenManager: { accessToken: "mock-token", refreshToken: "mock-refresh", expirationTime: Date.now() + 3600000 },
-            emailVerified: true,
-          },
-        });
-      };
-    });
+    await injectAuthState(page);
+
     await page.goto("/calculator");
     await page.waitForLoadState("networkidle");
   });

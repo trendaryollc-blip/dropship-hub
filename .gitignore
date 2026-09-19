@@ -53,6 +53,7 @@ update_app_url.ps1
 # local AI tooling / agent worktrees
 .kilo/
 .kilocode/
+.mrcoder/
 
 # playwright artifacts
 playwright-report/

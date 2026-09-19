@@ -1,13 +1,19 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import ThemeGallery from "./ThemeGallery";
+
+const themeSpies = vi.hoisted(() => ({
+  setTheme: vi.fn(),
+  previewTheme: vi.fn(),
+  restoreTheme: vi.fn(),
+}));
 
 vi.mock("./ThemeProvider", () => ({
   useTheme: () => ({
     theme: "crimson-noir",
-    setTheme: vi.fn(),
-    previewTheme: vi.fn(),
-    restoreTheme: vi.fn(),
+    setTheme: themeSpies.setTheme,
+    previewTheme: themeSpies.previewTheme,
+    restoreTheme: themeSpies.restoreTheme,
   }),
 }));
 
@@ -26,6 +32,10 @@ vi.mock("lucide-react", () => ({
 }));
 
 describe("ThemeGallery", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("renders trigger button", () => {
     render(<ThemeGallery />);
     expect(screen.getByLabelText("Open theme gallery")).toBeDefined();
@@ -44,9 +54,11 @@ describe("ThemeGallery", () => {
     expect(screen.getByText("Ember Glow")).toBeDefined();
   });
 
-  it("select theme", () => {
+  it("select theme applies theme and closes gallery", () => {
     render(<ThemeGallery />);
     fireEvent.click(screen.getByLabelText("Open theme gallery"));
     fireEvent.click(screen.getByText("Ember Glow"));
+    expect(themeSpies.setTheme).toHaveBeenCalledWith("ember-glow");
+    expect(screen.queryByText("Choose Theme")).not.toBeInTheDocument();
   });
 });

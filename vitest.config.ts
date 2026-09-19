@@ -35,6 +35,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // Stub framer-motion in tests: real animations race test unmounts in
+      // happy-dom and surface as unhandled AbortError rejections.
+      "framer-motion": path.resolve(__dirname, "./src/__tests__/framer-motion-stub.tsx"),
     },
   },
 });

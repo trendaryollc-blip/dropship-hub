@@ -1,6 +1,8 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+import reactHooks from "eslint-plugin-react-hooks";
+import reactPlugin from "eslint-plugin-react";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -29,6 +31,13 @@ const eslintConfig = defineConfig([
     },
   },
   {
+    // Register plugins used by the rules below — rule references resolve
+    // against plugins declared in the same config object. (@next/next is
+    // already registered by eslint-config-next.)
+    plugins: {
+      "react-hooks": reactHooks,
+      react: reactPlugin,
+    },
     rules: {
       "@typescript-eslint/no-unused-vars": ["warn", {
         argsIgnorePattern: "^_",

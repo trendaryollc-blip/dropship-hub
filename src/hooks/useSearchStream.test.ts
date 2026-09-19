@@ -210,13 +210,20 @@ describe("useSearchStream", () => {
   });
 
   it("cleans up on unmount", () => {
+    mockFetch.mockReturnValue(new Promise(() => {}));
+    const abortSpy = vi.spyOn(AbortController.prototype, "abort");
+
     const { result, unmount } = renderHook(() => useSearchStream());
 
     act(() => {
       result.current.startStream("test");
     });
+    abortSpy.mockClear();
 
     unmount();
+
+    // Unmounting must abort the in-flight request
+    expect(abortSpy).toHaveBeenCalled();
   });
 
   describe("SSE streaming events", () => {

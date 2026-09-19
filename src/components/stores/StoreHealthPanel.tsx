@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
   Activity, CheckCircle2, AlertTriangle, XCircle, RefreshCw, Loader2,
@@ -28,16 +28,33 @@ export default function StoreHealthPanel({ connections }: StoreHealthPanelProps)
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const checkHealth = useCallback(async () => {
-    if (!user?.uid || connections.length === 0) { setLoading(false); return; }
+  // Latest-value refs so the check can read current data without depending
+  // on object identities. The effect below is keyed on stable primitives
+  // (user id + store-id set) — re-rendering with a new user/connection
+  // object (Firebase re-emits, parent inline arrays) must not retrigger
+  // the network check, otherwise the component refetches forever.
+  const userRef = useRef(user);
+  const connectionsRef = useRef(connections);
+  useEffect(() => {
+    userRef.current = user;
+    connectionsRef.current = connections;
+  }, [user, connections]);
+
+  const runHealthCheck = useCallback(async () => {
+    const currentUser = userRef.current;
+    const currentConnections = connectionsRef.current;
+    if (!currentUser?.uid || currentConnections.length === 0) {
+      setLoading(false);
+      return;
+    }
     try {
-      const token = await user.getIdToken();
+      const token = await currentUser.getIdToken();
       const result = await safeFetch<{ health: HealthStatus[] }>("/api/store/health", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setHealth(result.health || []);
     } catch {
-      const fallback: HealthStatus[] = connections.map((conn) => ({
+      const fallback: HealthStatus[] = currentConnections.map((conn) => ({
         storeId: conn.id,
         storeName: conn.name,
         platform: conn.platform,
@@ -49,13 +66,17 @@ export default function StoreHealthPanel({ connections }: StoreHealthPanelProps)
     } finally {
       setLoading(false);
     }
-  }, [user, connections]);
+  }, []);
 
-  useEffect(() => { checkHealth(); }, [checkHealth]);
+  // Only re-run when the signed-in user or the set of stores actually changes.
+  const storeKey = connections.map((c) => c.id).join("|");
+  useEffect(() => {
+    runHealthCheck();
+  }, [runHealthCheck, user?.uid, storeKey]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await checkHealth();
+    await runHealthCheck();
     setRefreshing(false);
   };
 

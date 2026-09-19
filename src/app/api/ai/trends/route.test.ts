@@ -21,8 +21,9 @@ vi.mock("@/lib/validation", () => ({
   TrendAnalysisInputSchema: {},
 }));
 
-vi.mock("@/lib/trend-analyzer", () => ({
-  predictTrend: vi.fn(() => ({
+const mockAnalysis = {
+  signals: [{ keyword: "wireless earbuds", growthRate: 45, platform: "Amazon" }],
+  prediction: {
     productIdea: "Test Product",
     category: "general",
     trendScore: 85,
@@ -36,11 +37,27 @@ vi.mock("@/lib/trend-analyzer", () => ({
     relatedKeywords: ["test", "product"],
     suggestedPlatforms: ["Amazon"],
     estimatedMargin: 45,
-  })),
+  },
+  risingStars: [{ keyword: "rising-star", growth: 200 }],
+  relatedTrends: [{ keyword: "wireless earbuds", growth: 45, platform: "Amazon" }],
+  analysisTime: 12,
+  provider: "multi-source-aggregator",
+};
+
+vi.mock("@/lib/data-sources/aggregator", () => ({
+  analyzeKeyword: vi.fn(() => Promise.resolve(mockAnalysis)),
+  fetchRealSignals: vi.fn(() =>
+    Promise.resolve([{ keyword: "wireless earbuds", growthRate: 45, platform: "Amazon" }])
+  ),
+  getTrendingKeywords: vi.fn(() =>
+    Promise.resolve([
+      { id: "t-1", keyword: "wireless earbuds", growth: 45, volume: 5000, direction: "up" },
+    ])
+  ),
+}));
+
+vi.mock("@/lib/trend-analyzer", () => ({
   detectRisingStars: vi.fn(() => [{ keyword: "rising-star", growth: 200 }]),
-  generateMockSignals: vi.fn(() => [
-    { keyword: "wireless earbuds", growthRate: 45, platform: "Amazon" },
-  ]),
 }));
 
 vi.mock("@/lib/data/trend-predictor", () => ({
@@ -78,7 +95,7 @@ describe("POST /api/ai/trends", () => {
     const res = await POST(req);
     const body = await res.json();
 
-    expect(body.provider).toBe("trend-analyzer");
+    expect(body.provider).toBe("multi-source-aggregator");
     expect(typeof body.analysisTime).toBe("number");
   });
 });

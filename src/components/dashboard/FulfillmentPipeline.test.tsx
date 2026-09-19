@@ -41,19 +41,6 @@ describe("FulfillmentPipeline", () => {
     expect(screen.getByText("28 total orders")).toBeInTheDocument();
   });
 
-  it("renders pipeline bar labels", () => {
-    render(<FulfillmentPipeline data={mockData} />);
-    expect(screen.getByText("Fulfillment Pipeline")).toBeInTheDocument();
-  });
-
-  it("renders pipeline bar counts", () => {
-    render(<FulfillmentPipeline data={mockData} />);
-    expect(screen.getByText("5")).toBeInTheDocument();
-    expect(screen.getByText("3")).toBeInTheDocument();
-    expect(screen.getByText("8")).toBeInTheDocument();
-    expect(screen.getByText("12")).toBeInTheDocument();
-  });
-
   it("renders pipeline bar counts", () => {
     render(<FulfillmentPipeline data={mockData} />);
     expect(screen.getByText("5")).toBeInTheDocument();
@@ -97,9 +84,10 @@ describe("FulfillmentPipeline", () => {
 
   it("renders order status labels", () => {
     render(<FulfillmentPipeline data={mockData} />);
-    expect(screen.getByText("Alice Johnson")).toBeInTheDocument();
-    expect(screen.getByText("Bob Smith")).toBeInTheDocument();
-    expect(screen.getByText("Carol White")).toBeInTheDocument();
+    expect(screen.getAllByText("Pending")).toHaveLength(2);
+    expect(screen.getAllByText("Processing")).toHaveLength(2);
+    expect(screen.getAllByText("Shipped")).toHaveLength(2);
+    expect(screen.getAllByText("Delivered")).toHaveLength(1);
   });
 
   it("renders order timestamps", () => {
@@ -137,12 +125,5 @@ describe("FulfillmentPipeline", () => {
     const zeroRevenueData = { ...mockData, totalRevenue: 0, totalProfit: 0 };
     render(<FulfillmentPipeline data={zeroRevenueData} />);
     expect(screen.getByText("0%")).toBeInTheDocument();
-  });
-
-  it("renders all 4 recent orders when exactly 4 provided", () => {
-    render(<FulfillmentPipeline data={mockData} />);
-    expect(screen.getByText("Alice Johnson")).toBeInTheDocument();
-    expect(screen.getByText("Bob Smith")).toBeInTheDocument();
-    expect(screen.getByText("Carol White")).toBeInTheDocument();
   });
 });

@@ -1,11 +1,15 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import ThemeSwitcher from "./ThemeSwitcher";
+
+const themeSpies = vi.hoisted(() => ({
+  setTheme: vi.fn(),
+}));
 
 vi.mock("./ThemeProvider", () => ({
   useTheme: () => ({
     theme: "crimson-noir",
-    setTheme: vi.fn(),
+    setTheme: themeSpies.setTheme,
   }),
 }));
 
@@ -23,6 +27,10 @@ vi.mock("lucide-react", () => ({
 }));
 
 describe("ThemeSwitcher", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("renders trigger button", () => {
     render(<ThemeSwitcher />);
     expect(screen.getByLabelText("Change theme")).toBeDefined();
@@ -34,9 +42,11 @@ describe("ThemeSwitcher", () => {
     expect(screen.getByText("Themes")).toBeDefined();
   });
 
-  it("selects theme", () => {
+  it("selects a theme and closes the dropdown", () => {
     render(<ThemeSwitcher />);
     fireEvent.click(screen.getByLabelText("Change theme"));
     fireEvent.click(screen.getByText("Ember Glow"));
+    expect(themeSpies.setTheme).toHaveBeenCalledWith("ember-glow");
+    expect(screen.queryByText("Ember Glow")).not.toBeInTheDocument();
   });
 });

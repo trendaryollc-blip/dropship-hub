@@ -1,6 +1,9 @@
 import { vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 
+// Required by React 19 + Testing Library so state updates are treated as act() events
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+
 // Mock ResizeObserver for Recharts
 class ResizeObserverMock {
   observe() {}

@@ -50,8 +50,7 @@ describe("VisualSearchButton", () => {
     expect(dropZone).toBeInTheDocument();
   });
 
-  it("handles invalid file type", async () => {
-    vi.spyOn(window, "alert").mockImplementation(() => {});
+  it("handles invalid file type", () => {
     render(<VisualSearchButton onSearch={vi.fn()} />);
     fireEvent.click(screen.getByTestId("visual-search-button"));
 
@@ -59,9 +58,12 @@ describe("VisualSearchButton", () => {
     const file = new File(["test"], "test.txt", { type: "text/plain" });
     Object.defineProperty(file, "size", { value: 100 });
     fireEvent.change(input, { target: { files: [file] } });
+
+    // Non-image files are rejected: the drop zone stays and no preview appears
+    expect(screen.getByTestId("drop-zone")).toBeInTheDocument();
   });
 
-  it("handles valid image file", async () => {
+  it("handles valid image file", () => {
     render(<VisualSearchButton onSearch={vi.fn()} />);
     fireEvent.click(screen.getByTestId("visual-search-button"));
 
@@ -72,7 +74,6 @@ describe("VisualSearchButton", () => {
 
     const readAsDataURL = vi.fn();
     const addEventListener = vi.fn();
-    const result = { target: { result: "data:image/png;base64,abc" } };
 
     vi.spyOn(global, "FileReader").mockImplementation(() => ({
       readAsDataURL,
@@ -96,5 +97,8 @@ describe("VisualSearchButton", () => {
     } as unknown as FileReader));
 
     fireEvent.change(input, { target: { files: [file] } });
+
+    // Accepted image files are handed to the FileReader for preview
+    expect(readAsDataURL).toHaveBeenCalledWith(file);
   });
 });

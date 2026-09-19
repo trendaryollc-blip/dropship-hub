@@ -79,17 +79,19 @@ describe("DynamicSuggestions", () => {
     expect(screen.getByText("Categories")).toBeInTheDocument();
   });
 
-  it("closes on escape key", async () => {
+  it("closes when clicking outside", async () => {
     render(<DynamicSuggestions onSelect={vi.fn()} currentValue="wire" />);
 
     await act(async () => {
       vi.advanceTimersByTime(350);
     });
 
-    const container = screen.getByTestId("dynamic-suggestions").parentElement!;
-    fireEvent.keyDown(container, { key: "Escape" });
+    expect(screen.getByTestId("dynamic-suggestions")).toBeInTheDocument();
+
+    fireEvent(document, new MouseEvent("mousedown", { bubbles: true }));
 
     await act(async () => {});
+    expect(screen.queryByTestId("dynamic-suggestions")).toBeNull();
   });
 
   it("handles empty suggestions response", async () => {

@@ -10,7 +10,8 @@ describe("ScoreRing", () => {
 
   it("renders with custom size", () => {
     const { container } = render(<ScoreRing score={50} size={60} />);
-    expect(container.firstChild).toBeTruthy();
+    const wrapper = container.firstElementChild as HTMLElement;
+    expect(wrapper).toHaveStyle({ width: "60px", height: "60px" });
   });
 
   it("renders low score", () => {

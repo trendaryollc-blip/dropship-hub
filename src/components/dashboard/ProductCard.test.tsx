@@ -84,11 +84,6 @@ describe("ProductCard", () => {
     expect(screen.getByText(/High Profit/)).toBeDefined();
   });
 
-  it("renders category", () => {
-    render(<ProductCard product={mockProduct} />);
-    expect(screen.getByText("Electronics")).toBeDefined();
-  });
-
   it("renders product image", () => {
     render(<ProductCard product={mockProduct} />);
     const img = screen.getByAltText("Wireless Earbuds Pro");

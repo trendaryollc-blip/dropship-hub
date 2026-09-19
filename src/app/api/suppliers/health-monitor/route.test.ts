@@ -90,7 +90,7 @@ describe("GET /api/suppliers/health-monitor", () => {
     expect(json.alerts).toHaveLength(1);
   });
 
-  it("returns error when getAdminDB fails", async () => {
+  it("returns sanitized error when getAdminDB fails", async () => {
     const { getAdminDB } = await import("@/lib/firebase-admin");
     (getAdminDB as any).mockRejectedValue(new Error("DB connection failed"));
 
@@ -99,6 +99,8 @@ describe("GET /api/suppliers/health-monitor", () => {
     const res = await GET(req as any);
     const json = await res.json();
 
-    expect(json.error).toContain("DB connection failed");
+    // Internal error details must never leak to the client
+    expect(json.error).toBeTruthy();
+    expect(json.error).not.toContain("DB connection failed");
   });
 });

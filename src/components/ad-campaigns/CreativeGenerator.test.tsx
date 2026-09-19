@@ -50,12 +50,22 @@ describe("CreativeGenerator", () => {
     expect(headlineBtn).toBeDefined();
   });
 
-  it("copy to clipboard works after generation", async () => {
+  it("copies generated creative to clipboard", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(window.navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
     const trigger = vi.fn().mockResolvedValue({ creatives: [{ type: "headline", content: "Copy Me" }] });
     (useMutation as any).mockReturnValue({ trigger, isMutating: false });
     render(<CreativeGenerator />);
 
     fireEvent.change(screen.getByPlaceholderText(/Wireless Noise-Cancelling/), { target: { value: "Test" } });
     fireEvent.click(screen.getByText("Generate Creatives"));
+
+    expect(await screen.findByText("Copy Me")).toBeInTheDocument();
+    const copyButton = screen.getByText("Copy Me").closest("div")!.parentElement!.querySelector("button")!;
+    fireEvent.click(copyButton);
+    expect(writeText).toHaveBeenCalledWith("Copy Me");
   });
 });

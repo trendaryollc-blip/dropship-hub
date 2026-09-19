@@ -92,8 +92,8 @@ describe("StorePage", () => {
 
   it("renders loading state initially when data is loading", () => {
     const { container } = renderWithData({ isLoading: true });
-    const spinner = container.querySelector(".animate-spin");
-    expect(spinner).toBeInTheDocument();
+    // Loading renders the StorePageSkeleton (pulse placeholders), not a spinner.
+    expect(container.querySelector(".animate-pulse")).toBeInTheDocument();
     expect(screen.queryByText("My Stores")).not.toBeInTheDocument();
   });
 
