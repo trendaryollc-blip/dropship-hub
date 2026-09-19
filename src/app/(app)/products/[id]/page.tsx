@@ -277,6 +277,10 @@ function ProductDetailContent() {
   useEffect(() => {
     if (!title || title === "Product") return;
 
+    // AbortController: navigating away mid-fetch must cancel the request,
+    // otherwise setState fires on an unmounted component.
+    const controller = new AbortController();
+
     const fetchEnrichment = async () => {
       setLoadingEnrichment(true);
       setEnrichmentError(false);
@@ -286,11 +290,17 @@ function ProductDetailContent() {
           method: "POST",
           headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({ title, source, price: priceNum }),
+          signal: controller.signal,
         });
         if (data.platforms) {
           setEnrichmentData(data);
+        } else {
+          // A 2xx response without usable data is still a failure for this
+          // section — surface the retry UI instead of a blank panel.
+          setEnrichmentError(true);
         }
       } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") return;
         setEnrichmentError(true);
         console.warn("[ProductDetail] Error:", e instanceof Error ? e.message : e);
       }
@@ -298,10 +308,13 @@ function ProductDetailContent() {
     };
 
     fetchEnrichment();
+    return () => controller.abort();
   }, [title, source, priceNum, getAuthHeaders, retryEnrichment]);
 
   useEffect(() => {
     if (!title || title === "Product") return;
+
+    const controller = new AbortController();
 
     const fetchReviews = async () => {
       setLoadingReview(true);
@@ -312,11 +325,15 @@ function ProductDetailContent() {
           method: "POST",
           headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({ url: link, source, title, rating: ratingNum, reviews: reviewsNum }),
+          signal: controller.signal,
         });
         if (data.averageRating !== undefined) {
           setReviewData(data);
+        } else {
+          setReviewError(true);
         }
       } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") return;
         setReviewError(true);
         console.warn("[ProductDetail] Error:", e instanceof Error ? e.message : e);
       }
@@ -324,10 +341,13 @@ function ProductDetailContent() {
     };
 
     fetchReviews();
+    return () => controller.abort();
   }, [title, link, source, ratingNum, reviewsNum, getAuthHeaders, retryReview]);
 
   useEffect(() => {
     if (!title || title === "Product") return;
+
+    const controller = new AbortController();
 
     const fetchMarketIntel = async () => {
       setLoadingMarketIntel(true);
@@ -338,11 +358,17 @@ function ProductDetailContent() {
           method: "POST",
           headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({ title, price: priceNum, rating: ratingNum, reviews: reviewsNum }),
+          signal: controller.signal,
         });
-        if (data.searchVolume) {
+        // Explicit validity check: searchVolume can legitimately be a string
+        // like "low" or 0 — only `undefined`/null mean "no data".
+        if (data.searchVolume !== undefined && data.searchVolume !== null) {
           setMarketIntelData(data);
+        } else {
+          setMarketIntelError(true);
         }
       } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") return;
         setMarketIntelError(true);
         console.warn("[ProductDetail] Error:", e instanceof Error ? e.message : e);
       }
@@ -350,10 +376,13 @@ function ProductDetailContent() {
     };
 
     fetchMarketIntel();
+    return () => controller.abort();
   }, [title, priceNum, ratingNum, reviewsNum, getAuthHeaders, retryMarketIntel]);
 
   useEffect(() => {
     if (!title || title === "Product") return;
+
+    const controller = new AbortController();
 
     const fetchListing = async () => {
       setLoadingListing(true);
@@ -364,11 +393,15 @@ function ProductDetailContent() {
           method: "POST",
           headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({ title, category, price: priceNum, platform: source }),
+          signal: controller.signal,
         });
         if (data.title) {
           setListingData(data);
+        } else {
+          setListingError(true);
         }
       } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") return;
         setListingError(true);
         console.warn("[ProductDetail] Error:", e instanceof Error ? e.message : e);
       }
@@ -376,6 +409,7 @@ function ProductDetailContent() {
     };
 
     fetchListing();
+    return () => controller.abort();
   }, [title, category, priceNum, source, getAuthHeaders, retryListing]);
 
   const enriched = useMemo(() => {

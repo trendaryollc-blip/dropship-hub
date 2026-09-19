@@ -433,8 +433,8 @@ describe("Dashboard Page", () => {
 
     it("renders demand and competition badges", () => {
       render(<DashboardHome />);
-      expect(screen.getByText("high demand")).toBeInTheDocument();
-      expect(screen.getByText("low competition")).toBeInTheDocument();
+      expect(screen.getByText("est. high demand")).toBeInTheDocument();
+      expect(screen.getByText("est. low competition")).toBeInTheDocument();
     });
 
     it("View All links to /products", () => {

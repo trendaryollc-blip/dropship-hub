@@ -1,7 +1,6 @@
 "use client";
 
 import { Activity } from "lucide-react";
-import { MiniSparkline } from "./MiniSparkline";
 import type { TickerItem } from "@/types/dashboard";
 
 export function MarketTickerFooter({ ticker }: { ticker: TickerItem[] }) {
@@ -22,7 +21,8 @@ export function MarketTickerFooter({ ticker }: { ticker: TickerItem[] }) {
             <span title="Price vs category average" className={`text-[10px] font-bold ${t.change >= 0 ? "text-emerald-400" : "text-red-400"}`}>
               {t.change >= 0 ? "+" : ""}{t.change}%
             </span>
-            <MiniSparkline data={t.sparkline} color={t.change >= 0 ? "#22c55e" : "#ef4444"} width={40} height={14} />
+            {/* No sparkline here: the value is a single price-vs-category-average
+                point, not a time series — drawing one implied fake history. */}
           </div>
         ))}
       </div>

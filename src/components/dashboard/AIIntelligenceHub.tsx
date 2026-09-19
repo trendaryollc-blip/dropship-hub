@@ -104,7 +104,9 @@ export function AIIntelligenceHub({
                     </div>
                     <div className="p-2 rounded-lg bg-white/[0.04] border border-white/[0.06]">
                       <p className="text-[8px] text-gray-500 uppercase mb-0.5">Orders/mo</p>
-                      <p className="text-xs font-bold text-white">{((dailyPick.ordersPerMonth ?? 0) / 1000).toFixed(1)}K</p>
+                      <p className="text-xs font-bold text-white" title="Model estimate derived from reviews and rating — not observed sales">
+                        ~{((dailyPick.ordersPerMonth ?? 0) / 1000).toFixed(1)}K
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -146,8 +148,10 @@ export function AIIntelligenceHub({
                       <span className="text-xs font-bold text-emerald-400">${(dailyPick.earningsPreview?.profitPerOrder ?? 0).toFixed(2)}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-gray-400">Orders per Month</span>
-                      <span className="text-xs font-bold text-white">{dailyPick.earningsPreview?.ordersPerMonth ?? 0}</span>
+                      <span className="text-[10px] text-gray-400">Est. Orders per Month</span>
+                      <span className="text-xs font-bold text-white" title="Model estimate derived from reviews and rating — not observed sales">
+                        ~{dailyPick.earningsPreview?.ordersPerMonth ?? 0}
+                      </span>
                     </div>
                     <div className="h-px bg-emerald-500/10" />
                     <div className="flex items-center justify-between">

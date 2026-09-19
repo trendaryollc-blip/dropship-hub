@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import {
   Search, Compass, Zap, ArrowRight,
   Flame, TrendingUp, Sparkles, ShoppingCart, Package,
-  ChevronUp,
+  ChevronUp, AlertTriangle,
 } from "lucide-react";
 import Image from "next/image";
 import { useInView } from "@/hooks/useInView";
@@ -638,6 +638,9 @@ function ProductsContent() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [platformResults, setPlatformResults] = useState<PlatformResult[]>([]);
   const [platformErrors, setPlatformErrors] = useState<PlatformError[]>([]);
+  // True when at least one requested platform didn't return usable results —
+  // shown as a soft warning so users know the list may be incomplete.
+  const [platformTruncated, setPlatformTruncated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
@@ -735,6 +738,7 @@ function ProductsContent() {
     setResults([]);
     setPlatformResults([]);
     setPlatformErrors([]);
+    setPlatformTruncated(false);
     setSearched(true);
     setQuery(q);
     saveRecentSearch(q);
@@ -750,7 +754,9 @@ function ProductsContent() {
       const requestBody: Record<string, unknown> = {
         query: q,
         platforms: platforms.length > 0 ? platforms : undefined,
-        stream: true, // Enable streaming mode
+        // Full (non-streaming) response — the enrichment pipeline runs on the
+        // complete merged payload, so streaming mode is intentionally off.
+        stream: false,
       };
       if (parsedIntent) requestBody.intent = parsedIntent;
 
@@ -764,7 +770,7 @@ function ProductsContent() {
       }>("/api/platforms/search-all", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders },
-        body: JSON.stringify({ ...requestBody, stream: false }), // Get full results without streaming
+        body: JSON.stringify(requestBody),
         signal: controller.signal,
       });
 
@@ -797,17 +803,22 @@ function ProductsContent() {
         }));
       }
 
-      // Update platform progress
+      // Update platform progress — over the platforms that were actually
+      // requested, so a user-selected subset isn't padded with unrelated
+      // platforms shown as "success, 0 results".
       const platformData = data.platforms || [];
-      setPlatformProgress({
-        platforms: DEFAULT_PLATFORMS.map((p) => {
-          const pd = platformData.find((pr: PlatformResult) => pr.platform === p.id);
-          const err = errs.find((e: PlatformError) => e.platform === p.id);
-          if (pd) return { platform: p.id, name: p.name, status: "success" as const, resultCount: pd.resultCount };
-          if (err) return { platform: p.id, name: p.name, status: "error" as const, error: err.error };
-          return { platform: p.id, name: p.name, status: "success" as const, resultCount: 0 };
-        }),
+      const progressList = activePlatforms.map((requested) => {
+        const pd = platformData.find((pr: PlatformResult) => pr.platform === requested.platform);
+        const err = errs.find((e: PlatformError) => e.platform === requested.platform);
+        if (err) return { ...requested, status: "error" as const, error: err.error };
+        if (pd) return { ...requested, status: "success" as const, resultCount: pd.resultCount };
+        // Requested but absent from the response entirely — that's an error
+        // (most often an aborted/overloaded request), not a zero-result query.
+        return { ...requested, status: "error" as const, error: "No response from platform" };
       });
+      setPlatformProgress({ platforms: progressList });
+      const truncated = progressList.some((p) => p.status === "error");
+      setPlatformTruncated(truncated);
 
       setPlatformResults(platformData);
       setPlatformErrors(errs);
@@ -815,7 +826,15 @@ function ProductsContent() {
       addSearch(q, allResults, selectedPlatforms.length > 0 ? selectedPlatforms : availablePlatforms.map((p) => p.id));
       cacheRef.current = { query: q, results: allResults, platformResults: platformData, platformErrors: errs };
       try {
-        sessionStorage.setItem(cacheKey, JSON.stringify({ query: q, results: allResults, platformResults: platformData }));
+        // Cap what we persist: full result sets can blow past the ~5MB
+        // sessionStorage quota, which would make the write (and the alert
+        // modal that shares this storage) fail silently.
+        const cachedResults = allResults.slice(0, 60);
+        sessionStorage.setItem(cacheKey, JSON.stringify({
+          query: q,
+          results: cachedResults,
+          platformResults: platformData.slice(0, 10),
+        }));
       } catch (e) { console.warn("[Products] Error:", e instanceof Error ? e.message : e); }
 
       // Feature 6: Save search to Firestore for personalization
@@ -833,14 +852,15 @@ function ProductsContent() {
       // Feature 6: Track search event
       trackSearch(q, allResults.length);
 
-      // Background image fetching
+      // Background image fetching — the API echoes the exact urls it resolved
+      // (`imgData.urls`), so images are matched by URL instead of array index.
       const missingImages = allResults.filter((r) => !r.image && r.link && r.link !== "#");
       if (missingImages.length > 0) {
         const imageController = new AbortController();
         imageFetchAbortRef.current = imageController;
         const urlsToFetch = missingImages.map((r) => r.link);
         const authHeaders2 = await getAuthHeaders();
-        safeFetch<{ images?: (string | undefined)[] }>("/api/platforms/batch-images", {
+        safeFetch<{ images?: (string | undefined)[]; urls?: string[] }>("/api/platforms/batch-images", {
           method: "POST",
           headers: { "Content-Type": "application/json", ...authHeaders2 },
           body: JSON.stringify({ urls: urlsToFetch }),
@@ -848,20 +868,28 @@ function ProductsContent() {
         })
           .then((imgData) => {
             if (!imgData.images) return;
+            // Build a url→image map when the API echoes the request order;
+            // otherwise fall back to positional alignment (legacy behavior).
+            const byUrl = new Map<string, string | undefined>();
+            if (imgData.urls) {
+              imgData.urls.forEach((url: string, i: number) => byUrl.set(url, imgData.images?.[i]));
+            }
             setResults((prev) => {
               const currentQuery = cacheRef.current.query;
               if (currentQuery !== q) return prev;
               const updated = prev.map((item) => {
                 if (item.image) return item;
-                const idx = missingImages.findIndex((m) => m.link === item.link);
-                if (idx >= 0 && imgData.images && imgData.images[idx]) {
-                  return { ...item, image: imgData.images[idx] };
-                }
+                const matched = byUrl.size > 0 ? byUrl.get(item.link) : imgData.images?.[missingImages.findIndex((m) => m.link === item.link)];
+                if (matched) return { ...item, image: matched };
                 return item;
               });
               cacheRef.current = { ...cacheRef.current, results: updated };
               try {
-                sessionStorage.setItem(cacheKey, JSON.stringify({ query: q, results: updated, platformResults: platformData }));
+                sessionStorage.setItem(cacheKey, JSON.stringify({
+                  query: q,
+                  results: updated.slice(0, 60),
+                  platformResults: platformData.slice(0, 10),
+                }));
               } catch (e) { console.warn("[Products] Error:", e instanceof Error ? e.message : e); }
               return updated;
             });
@@ -1177,6 +1205,20 @@ function ProductsContent() {
       {/* Platform progress */}
       {loading && platformProgress.platforms.length > 0 && (
         <PlatformProgress platforms={platformProgress.platforms} />
+      )}
+
+      {/* Incomplete results warning — some platforms didn't respond, so the
+          list may be missing products; shown after loading completes. */}
+      {!loading && platformTruncated && platformProgress.platforms.length > 0 && (
+        <div
+          role="status"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs"
+        >
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          <span className="flex-1">
+            Some platforms didn&apos;t respond — results may be incomplete.
+          </span>
+        </div>
       )}
 
       {!loading && searched && (

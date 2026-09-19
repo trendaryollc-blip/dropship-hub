@@ -64,7 +64,9 @@ export const POST = withAuth(async (request: NextRequest, _uid: string) => {
       r.status === "fulfilled" ? r.value : null
     );
 
-    return NextResponse.json({ images });
+    // Echo the resolved urls so clients can match images by URL instead of
+    // relying on positional alignment of the `images` array.
+    return NextResponse.json({ urls: limited, images });
   } catch {
     return NextResponse.json({ images: [] }, { status: 500 });
   }

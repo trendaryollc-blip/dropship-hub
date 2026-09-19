@@ -21,13 +21,28 @@ import { MarketIntelligence } from "@/components/dashboard/MarketIntelligence";
 import { StoreOperations } from "@/components/dashboard/StoreOperations";
 import { GrowthTools } from "@/components/dashboard/GrowthTools";
 import { MarketTickerFooter } from "@/components/dashboard/MarketTickerFooter";
+import QuickCompareBar from "@/components/dashboard/QuickCompareBar";
 import type { TrendingProduct } from "@/types/dashboard";
+
+// Maps a dashboard platform display name to its URL-safe platform id, so the
+// product detail page gets a truthful `src` instead of a hardcoded value.
+const PLATFORM_ID_BY_NAME: Record<string, string> = {
+  "CJ Dropshipping": "cj",
+  AliExpress: "aliexpress",
+  Amazon: "amazon",
+  eBay: "ebay",
+  Walmart: "walmart",
+  Temu: "temu",
+  Shein: "shein",
+  Etsy: "etsy",
+  Alibaba: "alibaba",
+};
 
 /* ═══════════════════════════════════════════════
    MAIN DASHBOARD PAGE
    ═══════════════════════════════════════════════ */
 export default function DashboardHome() {
-  const { data, markAlertRead, markAllAlertsRead, addToCompare, loading, error, hasData, refresh } = useDashboardData();
+  const { data, markAlertRead, markAllAlertsRead, addToCompare, removeFromCompare, clearCompare, loading, error, hasData, refresh } = useDashboardData();
   const { user } = useAuth();
   const { toggleSave, isSaved, savedProducts } = useSavedProducts();
   const router = useRouter();
@@ -82,7 +97,9 @@ export default function DashboardHome() {
     const params = new URLSearchParams({
       t: product.name,
       p: String(product.price),
-      src: "cj",
+      // Derive the platform id from the product itself; "cj" is only the
+      // fallback for unknown display names.
+      src: PLATFORM_ID_BY_NAME[product.platform] ?? "cj",
     });
     if (product.image) params.set("img", product.image);
     if (product.sourceUrl) params.set("link", product.sourceUrl);
@@ -166,6 +183,31 @@ export default function DashboardHome() {
           </div>
         )}
 
+        {/* Degraded data: the feed responded, but one or more sources failed.
+            Without this banner those failures used to show as silent zeros. */}
+        {error == null && hasData && data.dataQuality && (!data.dataQuality.firestore || !data.dataQuality.cj) && (
+          <div
+            role="status"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs"
+          >
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            <span className="flex-1">
+              {!data.dataQuality.firestore && !data.dataQuality.cj
+                ? "Store data and the product discovery feed are temporarily unavailable — showing the last available data."
+                : !data.dataQuality.firestore
+                  ? "Some of your store data couldn't be loaded right now — showing the latest available values."
+                  : "The product discovery feed is temporarily unavailable — your store data is still up to date."}
+            </span>
+            <button
+              type="button"
+              onClick={handleRetry}
+              className="font-semibold underline underline-offset-2 hover:text-amber-200 shrink-0"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
         <SectionErrorBoundary name="Command Center">
           <HeroCommandCenter
             username={user?.displayName || user?.email?.split("@")[0] || "there"}
@@ -217,6 +259,10 @@ export default function DashboardHome() {
         <SectionErrorBoundary name="Market Ticker">
           <MarketTickerFooter ticker={data.ticker} />
         </SectionErrorBoundary>
+
+        {/* Quick compare bar — collects products added from Product Discovery
+            ("Add to Compare") and lets users jump to the comparison view. */}
+        <QuickCompareBar items={data.compareItems ?? []} onRemove={removeFromCompare} onClear={clearCompare} />
       </div>
     </PageErrorBoundary>
   );

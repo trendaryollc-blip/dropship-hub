@@ -33,10 +33,10 @@ export function HeroCommandCenter({
   const healthColor = (healthScore ?? 0) >= 80 ? "#22c55e" : (healthScore ?? 0) >= 60 ? "#f59e0b" : "#ef4444";
   const healthLabel = (healthScore ?? 0) >= 80 ? "Running strong" : (healthScore ?? 0) >= 60 ? "Needs attention" : "Critical";
   const healthTip = (healthScore ?? 0) >= 80
-    ? "Your store is performing well. Keep it up!"
+    ? "Score is based on your connected stores, revenue, orders and product activity. Your store is performing well — keep it up!"
     : (healthScore ?? 0) >= 60
-      ? "Connect more suppliers or products to improve your score."
-      : "Connect your store and add products to boost your score.";
+      ? "Score is based on your connected stores, revenue, orders and product activity. Connect more suppliers or products to improve it."
+      : "Score is based on your connected stores, revenue, orders and product activity. Connect your store and add products to boost it.";
   const healthCta = (healthScore ?? 0) < 80 ? "Connect Store" : null;
 
   const quickActions = [

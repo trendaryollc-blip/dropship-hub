@@ -117,7 +117,7 @@ export function ProductDiscovery({ trending, onAddCompare, onSaveProduct, isProd
                       <p className="text-sm font-bold text-white">${product.price.toFixed(2)}</p>
                     </div>
                     <div className="p-2 rounded-lg bg-emerald-500/[0.06] border border-emerald-500/15">
-                      <p className="text-[8px] text-emerald-400/70 uppercase">Margin</p>
+                      <p className="text-[8px] text-emerald-400/70 uppercase">Est. Margin</p>
                       <p className="text-sm font-bold text-emerald-400">{product.margin}%</p>
                     </div>
                     <div className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06]">
@@ -130,10 +130,10 @@ export function ProductDiscovery({ trending, onAddCompare, onSaveProduct, isProd
                   </div>
                   <div className="flex items-center gap-1.5 flex-wrap mb-2">
                     <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${product.demandLevel === "high" ? "bg-emerald-500/15 text-emerald-400" : product.demandLevel === "medium" ? "bg-amber-500/15 text-amber-400" : "bg-gray-500/15 text-gray-400"}`}>
-                      {product.demandLevel} demand
+                      est. {product.demandLevel} demand
                     </span>
                     <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${product.competitionLevel === "low" ? "bg-emerald-500/15 text-emerald-400" : product.competitionLevel === "medium" ? "bg-amber-500/15 text-amber-400" : "bg-red-500/15 text-red-400"}`}>
-                      {product.competitionLevel} competition
+                      est. {product.competitionLevel} competition
                     </span>
                     <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-white/[0.06] text-gray-400">{product.shippingDays} days</span>
                   </div>

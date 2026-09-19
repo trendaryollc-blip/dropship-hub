@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Users, Globe, Key, TrendingUp, DollarSign, Activity,
-  Shield, BarChart3, ArrowRight,
+  Shield, BarChart3, ArrowRight, RefreshCw, AlertTriangle,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { safeFetch } from "@/lib/safe-fetch";
@@ -23,29 +23,65 @@ interface AdminStats {
   };
 }
 
+type StatusKind = "healthy" | "warning" | "error" | "active";
+
 export default function AdminDashboardPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!user) return;
+    // Cleanup flag: a slow fetch must not setState after unmount.
+    let cancelled = false;
+
     const fetchStats = async () => {
       try {
         const token = await user.getIdToken();
         const data = await safeFetch<AdminStats>("/api/admin/stats", {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (data) setStats(data);
+        if (cancelled) return;
+        // A 2xx response without the expected numeric fields is treated as a
+        // failure instead of silently rendering zeros.
+        if (data != null && typeof data.totalUsers !== "number") {
+          setFetchError(true);
+          setStats(null);
+          return;
+        }
+        setStats(data);
+        setFetchError(false);
+        setLastUpdated(Date.now());
       } catch (err) {
         console.warn("[Admin] Failed to fetch stats:", err);
+        if (!cancelled) setFetchError(true);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
+    setLoading(true);
     fetchStats();
-  }, [user]);
+    return () => {
+      cancelled = true;
+    };
+  }, [user, reloadKey]);
 
+  // Derive a truthful status from the actual values instead of hardcoding
+  // "healthy"/"active" so a broken state isn't rendered as a green dot.
+  const platformHealthStatus: StatusKind = (() => {
+    const total = stats?.totalPlatforms ?? 0;
+    const healthy = stats?.healthyPlatforms ?? 0;
+    if (total === 0) return "warning";
+    const ratio = healthy / total;
+    if (ratio >= 0.8) return "healthy";
+    if (ratio >= 0.5) return "warning";
+    return "error";
+  })();
+  const apiKeysStatus: StatusKind = (stats?.totalApiKeys ?? 0) > 0 ? "active" : "warning";
+  const subscriptionsStatus: StatusKind = (stats?.activeSubscriptions ?? 0) > 0 ? "active" : "warning";
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -71,6 +107,8 @@ export default function AdminDashboardPage() {
     { label: "API Keys", href: "/admin/api-keys", icon: Key, color: "text-amber-400", description: "View all keys" },
     { label: "Users", href: "/admin/users", icon: Users, color: "text-blue-400", description: "Manage accounts" },
     { label: "Analytics", href: "/admin/analytics", icon: BarChart3, color: "text-pink-400", description: "View metrics" },
+    { label: "Supplier Providers", href: "/admin/supplier-providers", icon: Activity, color: "text-cyan-400", description: "Configure suppliers" },
+    { label: "Settings", href: "/admin/settings", icon: Shield, color: "text-emerald-400", description: "System settings" },
   ];
 
   return (
@@ -85,11 +123,47 @@ export default function AdminDashboardPage() {
             Platform overview and key metrics at a glance.
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs font-medium text-red-400 bg-red-400/10 px-3 py-1.5 rounded-lg border border-red-400/20">
-          <Shield className="h-3.5 w-3.5" />
-          Owner Access
+        <div className="flex items-center gap-2 sm:gap-3">
+          {lastUpdated != null && !loading && (
+            <span className="hidden sm:inline text-[11px] text-muted-foreground">
+              Updated {new Date(lastUpdated).toLocaleTimeString()}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => setReloadKey((k) => k + 1)}
+            disabled={loading}
+            aria-label="Refresh dashboard stats"
+            title="Refresh stats"
+            className="p-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+          </button>
+          <div className="flex items-center gap-2 text-xs font-medium text-red-400 bg-red-400/10 px-3 py-1.5 rounded-lg border border-red-400/20">
+            <Shield className="h-3.5 w-3.5" />
+            Owner Access
+          </div>
         </div>
       </div>
+
+      {/* Error state — the page still renders (header, quick actions, zeros),
+          but a clear banner + retry replaces the old silent all-zeros behavior. */}
+      {fetchError && !loading && (
+        <div
+          role="status"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-400/10 border border-red-400/20 text-red-400 text-xs"
+        >
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          <span className="flex-1">Couldn&apos;t load platform stats — showing placeholder values.</span>
+          <button
+            type="button"
+            onClick={() => setReloadKey((k) => k + 1)}
+            className="font-semibold underline underline-offset-2 hover:text-red-300 shrink-0"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -111,7 +185,7 @@ export default function AdminDashboardPage() {
         <div className="px-6 py-4 border-b border-border">
           <h3 className="font-display text-sm font-semibold text-foreground">Quick Actions</h3>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-border">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 divide-x divide-border">
           {quickActions.map((action) => (
             <Link
               key={action.href}
@@ -140,17 +214,17 @@ export default function AdminDashboardPage() {
           <StatusRow
             label="Platform Health"
             value={`${stats?.healthyPlatforms ?? 0}/${stats?.totalPlatforms ?? 0} healthy`}
-            status="healthy"
+            status={platformHealthStatus}
           />
           <StatusRow
             label="API Keys Active"
             value={`${stats?.totalApiKeys ?? 0} keys configured`}
-            status="active"
+            status={apiKeysStatus}
           />
           <StatusRow
             label="Subscriptions"
             value={`${stats?.activeSubscriptions ?? 0} active paid plans${stats?.estimates?.activeSubscriptions ? " (estimated)" : ""}`}
-            status="active"
+            status={subscriptionsStatus}
           />
         </div>
       </div>
@@ -158,7 +232,7 @@ export default function AdminDashboardPage() {
   );
 }
 
-function StatusRow({ label, value, status }: { label: string; value: string; status: "healthy" | "warning" | "error" | "active" }) {
+function StatusRow({ label, value, status }: { label: string; value: string; status: StatusKind }) {
   const colors = {
     healthy: "bg-emerald-400",
     active: "bg-blue-400",
