@@ -3,14 +3,29 @@ import { withAuth } from "@/lib/auth";
 import { getSuppliers } from "@/lib/supplier-service";
 import { LIMITS } from "@/lib/rate-limit";
 import { safeErrorMessage } from "@/lib/api-errors";
+import { z } from "zod";
+import { validateBody } from "@/lib/validation";
+
+const FindSchema = z.object({
+  product: z.string().max(500).default(""),
+  category: z.string().max(200).default(""),
+  source: z.string().max(100).default(""),
+  // Accepts "12.99", "", or garbage — anything non-numeric becomes 0.
+  price: z.string().default(""),
+});
 
 export const GET = withAuth(async (request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url);
-    const product = searchParams.get("product") || "";
-    const category = searchParams.get("category") || "";
-    const _source = searchParams.get("source") || "";
-    const price = searchParams.get("price") ? parseFloat(searchParams.get("price")!) : 0;
+    const parseResult = validateBody(FindSchema, {
+      product: searchParams.get("product") || "",
+      category: searchParams.get("category") || "",
+      source: searchParams.get("source") || "",
+      price: searchParams.get("price") || "",
+    });
+    if (!parseResult.success) return parseResult.response;
+    const { product, category, price: priceRaw } = parseResult.data;
+    const price = parseFloat(priceRaw) || 0;
 
     const suppliers = await getSuppliers();
 

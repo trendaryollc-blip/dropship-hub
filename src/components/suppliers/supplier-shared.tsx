@@ -7,7 +7,11 @@ export const badgeConfig: Record<string, { label: string; color: string; border:
 };
 
 export const dataSourceConfig: Record<string, { label: string; color: string; description: string }> = {
-  live: { label: "LIVE DATA", color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20", description: "Real-time data from API" },
+  // "live" means catalog data (categories, product counts, prices) is fetched
+  // from the supplier's API in real time — NOT that quality/reliability scores
+  // are measured. The description states this scope explicitly so the badge
+  // isn't read as an all-metrics endorsement.
+  live: { label: "LIVE CATALOG", color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20", description: "Catalog synced live from API — quality scores shown once measured" },
   estimated: { label: "ESTIMATED", color: "text-amber-400 bg-amber-400/10 border-amber-400/20", description: "Based on public information" },
 };
 

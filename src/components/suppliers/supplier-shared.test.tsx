@@ -128,8 +128,8 @@ describe("badgeConfig", () => {
 
 describe("dataSourceConfig", () => {
   it("has live data config", () => {
-    expect(dataSourceConfig.live.label).toBe("LIVE DATA");
-    expect(dataSourceConfig.live.description).toBe("Real-time data from API");
+    expect(dataSourceConfig.live.label).toBe("LIVE CATALOG");
+    expect(dataSourceConfig.live.description).toBe("Catalog synced live from API — quality scores shown once measured");
   });
 
   it("has estimated data config", () => {

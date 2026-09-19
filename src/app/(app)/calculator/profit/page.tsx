@@ -7,7 +7,7 @@ import { saveCalcHistory, getCalcHistory, type CalcHistoryEntry } from "@/lib/da
 import {
   CheckCircle2, Save, Clock, AlertTriangle,
 } from "lucide-react";
-import { calculateProfit, type ProfitCalc } from "@/lib/calculations";
+import { calculateProfit, parseNumericParam, parseInputValue, type ProfitCalc } from "@/lib/calculations";
 import CalculatorLayout from "@/components/calculator/CalculatorLayout";
 import CalculatorPresets from "@/components/calculator/CalculatorPresets";
 import CalculatorAIAnalysis from "@/components/calculator/CalculatorAIAnalysis";
@@ -77,17 +77,17 @@ function RevenueProjection({ profitPerUnit }: { profitPerUnit: number }) {
 
 export default function ProfitCalculatorPage() {
   const searchParams = useSearchParams();
-  const initialCost = parseFloat(searchParams.get("cost") || "8");
-  const initialPrice = parseFloat(searchParams.get("price") || "34.99");
+  const initialCost = parseNumericParam(searchParams.get("cost"), 8, 0);
+  const initialPrice = parseNumericParam(searchParams.get("price"), 34.99, 0);
   const { user } = useAuth();
   const [saved, setSaved] = useState(false);
   const [history, setHistory] = useState<CalcHistoryEntry[]>([]);
 
   const [productCost, setProductCost] = useState(initialCost);
   const [sellingPrice, setSellingPrice] = useState(initialPrice);
-  const [shippingCost, setShippingCost] = useState(parseFloat(searchParams.get("ship") || "5"));
-  const [platformFee, setPlatformFee] = useState(parseFloat(searchParams.get("fee") || "15"));
-  const [adSpend, setAdSpend] = useState(parseFloat(searchParams.get("ads") || "3"));
+  const [shippingCost, setShippingCost] = useState(() => parseNumericParam(searchParams.get("ship"), 5, 0));
+  const [platformFee, setPlatformFee] = useState(() => parseNumericParam(searchParams.get("fee"), 15, 0, 100));
+  const [adSpend, setAdSpend] = useState(() => parseNumericParam(searchParams.get("ads"), 3, 0));
   const [units, setUnits] = useState(1);
 
   const profitResult: ProfitCalc = calculateProfit(productCost, sellingPrice, shippingCost, platformFee, adSpend, units);
@@ -214,29 +214,29 @@ export default function ProfitCalculatorPage() {
               <div className="space-y-4">
                 <div>
                   <label className={labelClass}>Product Cost ($)</label>
-                  <input type="number" step="0.01" value={productCost} onChange={(e) => setProductCost(+e.target.value)} className={inputClass} />
+                  <input type="number" step="0.01" value={productCost} onChange={(e) => setProductCost(parseInputValue(e.target.value, productCost, 0))} className={inputClass} />
                 </div>
                 <div>
                   <label className={labelClass}>Selling Price ($)</label>
-                  <input type="number" step="0.01" value={sellingPrice} onChange={(e) => setSellingPrice(+e.target.value)} className={inputClass} />
+                  <input type="number" step="0.01" value={sellingPrice} onChange={(e) => setSellingPrice(parseInputValue(e.target.value, sellingPrice, 0))} className={inputClass} />
                 </div>
                 <div>
                   <label className={labelClass}>Shipping Cost ($)</label>
-                  <input type="number" step="0.01" value={shippingCost} onChange={(e) => setShippingCost(+e.target.value)} className={inputClass} />
+                  <input type="number" step="0.01" value={shippingCost} onChange={(e) => setShippingCost(parseInputValue(e.target.value, shippingCost, 0))} className={inputClass} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className={labelClass}>Platform Fee (%)</label>
-                    <input type="number" step="0.1" value={platformFee} onChange={(e) => setPlatformFee(+e.target.value)} className={inputClass} />
+                    <input type="number" step="0.1" value={platformFee} onChange={(e) => setPlatformFee(parseInputValue(e.target.value, platformFee, 0, 100))} className={inputClass} />
                   </div>
                   <div>
                     <label className={labelClass}>Ad Spend/Unit ($)</label>
-                    <input type="number" step="0.01" value={adSpend} onChange={(e) => setAdSpend(+e.target.value)} className={inputClass} />
+                    <input type="number" step="0.01" value={adSpend} onChange={(e) => setAdSpend(parseInputValue(e.target.value, adSpend, 0))} className={inputClass} />
                   </div>
                 </div>
                 <div>
                   <label className={labelClass}>Units Sold</label>
-                  <input type="number" min="1" value={units} onChange={(e) => setUnits(+e.target.value)} className={inputClass} />
+                  <input type="number" min="1" value={units} onChange={(e) => setUnits(Math.max(1, Math.round(parseInputValue(e.target.value, units, 1))))} className={inputClass} />
                 </div>
               </div>
             </div>

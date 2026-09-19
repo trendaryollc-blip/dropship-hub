@@ -3,7 +3,19 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { MessageSquare, Send, X, Sparkles, Loader2 } from "lucide-react";
 import { safeFetch } from "@/lib/safe-fetch";
+import { auth } from "@/lib/firebase";
 import { useSavedProducts } from "./SavedProductsProvider";
+
+// /api/ai is behind withAuth — the caller's Firebase ID token is required.
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const user = auth.currentUser;
+  if (!user) return {};
+  try {
+    return { Authorization: `Bearer ${await user.getIdToken()}` };
+  } catch {
+    return {};
+  }
+}
 
 interface ChatMessage {
   id: string;
@@ -81,20 +93,32 @@ export default function SavedChatSidebar() {
     ];
 
     try {
+      const authHeaders = await getAuthHeaders();
       const res = await fetch("/api/ai", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({ messages: apiMessages, stream: true }),
       });
 
       if (!res.ok || !res.body) {
+        if (res.status === 401) {
+          setMessages((prev) => [...prev, {
+            id: uid(),
+            role: "assistant",
+            content: "Please sign in to chat about your saved products.",
+            timestamp: new Date(),
+          }]);
+          return;
+        }
         const retry = await safeFetch<{ response?: string }>("/api/ai", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({ messages: apiMessages, stream: false }),
         });
         if (retry.response) {
           setMessages((prev) => [...prev, { id: uid(), role: "assistant", content: retry.response!, timestamp: new Date() }]);
+        } else {
+          setMessages((prev) => [...prev, { id: uid(), role: "assistant", content: "Sorry, something went wrong. Please try again.", timestamp: new Date() }]);
         }
         return;
       }

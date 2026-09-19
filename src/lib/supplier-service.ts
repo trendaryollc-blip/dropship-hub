@@ -22,17 +22,24 @@ async function fetchCJProductSample(): Promise<{ count: number; avgPrice: number
   try {
     const accessToken = await getCJAccessToken();
     const queries = ["electronics", "fashion", "home", "beauty", "toys"];
+    // Fire all category samples in parallel — sequentially this could take
+    // up to 50s (5 × 10s timeouts) before the Discover tab gets data.
+    const responses = await Promise.all(
+      queries.map((q) =>
+        fetch(
+          `https://developers.cjdropshipping.com/api2.0/v1/product/list?productNameEn=${encodeURIComponent(q)}&pageNum=1&pageSize=20`,
+          { method: "GET", headers: { "CJ-Access-Token": accessToken, "Content-Type": "application/json" }, signal: AbortSignal.timeout(10000) }
+        ).catch(() => null)
+      )
+    );
+
     let totalProducts = 0;
     let totalPrice = 0;
     let productCount = 0;
     const categorySet = new Set<string>();
 
-    for (const q of queries) {
-      const res = await fetch(
-        `https://developers.cjdropshipping.com/api2.0/v1/product/list?productNameEn=${encodeURIComponent(q)}&pageNum=1&pageSize=20`,
-        { method: "GET", headers: { "CJ-Access-Token": accessToken, "Content-Type": "application/json" }, signal: AbortSignal.timeout(10000) }
-      );
-      if (!res.ok) continue;
+    for (const res of responses) {
+      if (!res || !res.ok) continue;
       const data = await res.json();
       const items = data.data || [];
       totalProducts += items.length;

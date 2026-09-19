@@ -5,12 +5,12 @@ import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { saveCalcHistory, getCalcHistory, type CalcHistoryEntry } from "@/lib/data";
 import { CheckCircle2, Save, Clock, Info } from "lucide-react";
-import { calculateLandedCost, type LandedCostCalc } from "@/lib/calculations";
+import { calculateLandedCost, parseNumericParam, parseInputValue, type LandedCostCalc } from "@/lib/calculations";
 import CalculatorLayout from "@/components/calculator/CalculatorLayout";
 
 export default function LandedCostCalculatorPage() {
   const searchParams = useSearchParams();
-  const initialCost = parseFloat(searchParams.get("cost") || "8");
+  const initialCost = parseNumericParam(searchParams.get("cost"), 8, 0);
   const { user } = useAuth();
   const [saved, setSaved] = useState(false);
   const [history, setHistory] = useState<CalcHistoryEntry[]>([]);
@@ -108,41 +108,41 @@ export default function LandedCostCalculatorPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelClass}>Product Cost ($)</label>
-                <input type="number" step="0.01" value={lcCost} onChange={(e) => setLcCost(+e.target.value)} className={inputClass} />
+                <input type="number" step="0.01" value={lcCost} onChange={(e) => setLcCost(parseInputValue(e.target.value, lcCost, 0))} className={inputClass} />
               </div>
               <div>
                 <label className={labelClass}>Shipping ($)</label>
-                <input type="number" step="0.01" value={lcShipping} onChange={(e) => setLcShipping(+e.target.value)} className={inputClass} />
+                <input type="number" step="0.01" value={lcShipping} onChange={(e) => setLcShipping(parseInputValue(e.target.value, lcShipping, 0))} className={inputClass} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelClass}>Tariff (%)</label>
-                <input type="number" step="0.1" value={tariff} onChange={(e) => setTariff(+e.target.value)} className={inputClass} />
+                <input type="number" step="0.1" value={tariff} onChange={(e) => setTariff(parseInputValue(e.target.value, tariff, 0, 100))} className={inputClass} />
               </div>
               <div>
                 <label className={labelClass}>Customs Duty ($)</label>
-                <input type="number" step="0.01" value={customsDuty} onChange={(e) => setCustomsDuty(+e.target.value)} className={inputClass} />
+                <input type="number" step="0.01" value={customsDuty} onChange={(e) => setCustomsDuty(parseInputValue(e.target.value, customsDuty, 0))} className={inputClass} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelClass}>Insurance ($)</label>
-                <input type="number" step="0.01" value={insurance} onChange={(e) => setInsurance(+e.target.value)} className={inputClass} />
+                <input type="number" step="0.01" value={insurance} onChange={(e) => setInsurance(parseInputValue(e.target.value, insurance, 0))} className={inputClass} />
               </div>
               <div>
                 <label className={labelClass}>Platform Fee (%)</label>
-                <input type="number" step="0.1" value={lcPlatformFee} onChange={(e) => setLcPlatformFee(+e.target.value)} className={inputClass} />
+                <input type="number" step="0.1" value={lcPlatformFee} onChange={(e) => setLcPlatformFee(parseInputValue(e.target.value, lcPlatformFee, 0, 100))} className={inputClass} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelClass}>Other Fees ($)</label>
-                <input type="number" step="0.01" value={otherFees} onChange={(e) => setOtherFees(+e.target.value)} className={inputClass} />
+                <input type="number" step="0.01" value={otherFees} onChange={(e) => setOtherFees(parseInputValue(e.target.value, otherFees, 0))} className={inputClass} />
               </div>
               <div>
                 <label className={labelClass}>Quantity</label>
-                <input type="number" min="1" value={lcQty} onChange={(e) => setLcQty(+e.target.value)} className={inputClass} />
+                <input type="number" min="1" value={lcQty} onChange={(e) => setLcQty(Math.max(1, Math.round(parseInputValue(e.target.value, lcQty, 1))))} className={inputClass} />
               </div>
             </div>
           </div>

@@ -429,6 +429,12 @@ function DiscoverContent() {
     filters.shippingSpeed !== "" || filters.specializations.length > 0 ||
     filters.minPriceCompetitiveness > 0 || filters.certifications.length > 0;
 
+  // When the available suppliers have no measured quality metrics (rating,
+  // shipping days, price competitiveness are all 0/unknown), rating and speed
+  // filters can never match — explain that instead of a bare empty state.
+  const statsUnmeasured = suppliers.length > 0 &&
+    suppliers.every((s) => s.stats.rating <= 0 && s.stats.reliabilityScore <= 0 && s.stats.shippingDays <= 0);
+
   const handleAIAction = useCallback((action: string, supplier: SupplierProfile) => {
     const prompts: Record<string, string> = {
       analyze: `Analyze this supplier in detail: ${supplier.name} - check reliability, pricing, shipping, quality, and give me a recommendation on whether to use them for my dropshipping store.`,
@@ -717,10 +723,14 @@ function DiscoverContent() {
                       {focusedSupplier.stats.shippingDays > 0 && <span className="flex items-center gap-1"><Truck className="h-3 w-3" /> {focusedSupplier.stats.shippingDays}d shipping</span>}
                     </div>
                     <div className="flex items-center gap-4 mt-2">
-                      <div className="flex items-center gap-1.5">
-                        <ScoreRing score={focusedSupplier.stats.reliabilityScore} size={24} />
-                        <span className="text-[10px] text-muted-foreground">Reliability</span>
-                      </div>
+                      {focusedSupplier.stats.reliabilityScore > 0 ? (
+                        <div className="flex items-center gap-1.5">
+                          <ScoreRing score={focusedSupplier.stats.reliabilityScore} size={24} />
+                          <span className="text-[10px] text-muted-foreground">Reliability</span>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground" title="Not yet measured — connect supplier analytics to populate this metric">Reliability: not measured</span>
+                      )}
                       <div className="flex items-center gap-1 text-amber-400">
                         <Star className="h-3.5 w-3.5 fill-current" />
                         <span className="text-xs font-bold">{focusedSupplier.stats.rating > 0 ? focusedSupplier.stats.rating.toFixed(1) : "\u2014"}</span>
@@ -741,6 +751,11 @@ function DiscoverContent() {
                 <Shield className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
                 <h3 className="font-display text-lg font-semibold text-foreground mb-2">No suppliers match your filters</h3>
                 <p className="text-sm text-muted-foreground mb-4">Try adjusting your search or filters</p>
+                {statsUnmeasured && (
+                  <p className="text-[11px] text-muted-foreground/70 mb-4 max-w-md mx-auto" role="note">
+                    Quality metrics (rating, shipping speed, reliability) aren&apos;t measured for the available suppliers yet — rating and speed filters can&apos;t match until measurement data exists.
+                  </p>
+                )}
                 <button
                   onClick={() => setFilters({
                     search: "", badges: [], locations: [], minRating: 0, shippingSpeed: "",

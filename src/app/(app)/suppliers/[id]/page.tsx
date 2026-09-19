@@ -119,15 +119,29 @@ function SupplierDetailContent({ id }: { id: string }) {
                 <span className="text-xs text-muted-foreground/60">{dataSourceConfig[supplier.dataSource].description}</span>
               </div>
               <div className="flex items-center gap-3">
-                <StarRating rating={supplier.stats.rating} size={14} />
-                <span className="font-display text-sm font-bold text-foreground">{supplier.stats.rating.toFixed(1)}</span>
-                <span className="text-xs text-muted-foreground">({supplier.stats.reviews.toLocaleString()} reviews)</span>
+                {supplier.stats.rating > 0 ? (
+                  <>
+                    <StarRating rating={supplier.stats.rating} size={14} />
+                    <span className="font-display text-sm font-bold text-foreground">{supplier.stats.rating.toFixed(1)}</span>
+                    <span className="text-xs text-muted-foreground">({supplier.stats.reviews.toLocaleString()} reviews)</span>
+                  </>
+                ) : (
+                  <span className="text-xs text-muted-foreground" title="No customer ratings recorded yet">No ratings yet</span>
+                )}
               </div>
             </div>
           </div>
           <div className="flex flex-col items-center gap-3 shrink-0">
-            <ScoreRing score={supplier.stats.reliabilityScore} size={64} />
-            <span className="text-[10px] text-muted-foreground">Reliability Score</span>
+            {supplier.stats.reliabilityScore > 0 ? (
+              <>
+                <ScoreRing score={supplier.stats.reliabilityScore} size={64} />
+                <span className="text-[10px] text-muted-foreground">Reliability Score</span>
+              </>
+            ) : (
+              <span className="text-[11px] text-muted-foreground text-center max-w-[110px]" title="Not yet measured — reliability data appears once supplier analytics are connected">
+                Reliability: not measured
+              </span>
+            )}
           </div>
         </div>
 
@@ -152,15 +166,16 @@ function SupplierDetailContent({ id }: { id: string }) {
         </div>
       </div>
 
-      {/* Quick Stats Bar */}
+      {/* Quick Stats Bar — zero values mean "not measured" here, not "zero
+          performance"; em dashes are shown instead of fake 0 metrics. */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
         {([
-          { label: "Rating", value: supplier.stats.rating.toFixed(1), icon: Star, color: "text-amber-400" },
-          { label: "Reliability", value: `${supplier.stats.reliabilityScore}%`, icon: Shield, color: "text-emerald-400" },
-          { label: "Response", value: supplier.stats.responseTime, icon: Clock, color: "text-blue-400" },
-          { label: "Completion", value: `${supplier.stats.orderCompletionRate}%`, icon: CheckCircle2, color: "text-emerald-400" },
-          { label: "Disputes", value: `${supplier.stats.disputeRate}%`, icon: AlertTriangle, color: "text-amber-400" },
-          { label: "Orders/mo", value: supplier.stats.monthlyOrders.toLocaleString(), icon: TrendingUp, color: "text-blue-400" },
+          { label: "Rating", value: supplier.stats.rating > 0 ? supplier.stats.rating.toFixed(1) : "\u2014", icon: Star, color: "text-amber-400" },
+          { label: "Reliability", value: supplier.stats.reliabilityScore > 0 ? `${supplier.stats.reliabilityScore}%` : "\u2014", icon: Shield, color: "text-emerald-400" },
+          { label: "Response", value: supplier.stats.responseTimeHours > 0 ? supplier.stats.responseTime : "\u2014", icon: Clock, color: "text-blue-400" },
+          { label: "Completion", value: supplier.stats.orderCompletionRate > 0 ? `${supplier.stats.orderCompletionRate}%` : "\u2014", icon: CheckCircle2, color: "text-emerald-400" },
+          { label: "Disputes", value: supplier.stats.disputeRate > 0 ? `${supplier.stats.disputeRate}%` : "\u2014", icon: AlertTriangle, color: "text-amber-400" },
+          { label: "Orders/mo", value: supplier.stats.monthlyOrders > 0 ? supplier.stats.monthlyOrders.toLocaleString() : "\u2014", icon: TrendingUp, color: "text-blue-400" },
         ] as const).map((stat) => (
           <div key={stat.label} className="glass rounded-xl border border-border p-3 text-center">
             <stat.icon className={`h-3.5 w-3.5 mx-auto mb-1 ${stat.color}`} />

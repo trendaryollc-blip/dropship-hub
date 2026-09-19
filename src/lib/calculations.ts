@@ -15,6 +15,26 @@ export interface ProfitCalc {
   costBreakdown: { name: string; value: number; pct: number; color: string }[];
 }
 
+// ── Shared numeric guards ────────────────────────────────────────────────────
+// Calculator inputs come from two untrusted places: URL params (?cost=abc)
+// and free typing in number fields ("12.", "-"). Unguarded, both produced
+// NaN states that rendered as "$NaN". These helpers sanitize both paths.
+
+/** Parse a URL/search param as a finite number, falling back safely. */
+export function parseNumericParam(value: string | null, fallback: number, min = -Infinity, max = Infinity): number {
+  const n = parseFloat(value ?? "");
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
+/** Coerce a number-field change event value; keep the previous value when the
+ *  raw input isn't a finite number (mid-typing "-", empty, etc.). */
+export function parseInputValue(raw: string, fallback: number, min = -Infinity, max = Infinity): number {
+  const n = parseFloat(raw);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
 export interface ShippingCalc {
   estimatedCost: number;
   deliveryDays: { min: number; max: number };
@@ -73,7 +93,13 @@ export function calculateProfit(
   const netProfit = revenue - totalCost;
   const profitMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0;
   const roi = totalCost > 0 ? (netProfit / totalCost) * 100 : 0;
-  const breakEvenUnits = netProfit > 0 ? 1 : Math.ceil(Math.abs(netProfit) > 0 ? Math.abs(totalCost - revenue) / Math.max(sellingPrice - productCost - (sellingPrice * platformFeePercent / 100) - shippingCost - adSpendPerUnit, 0.01) : 0);
+  // Break-even: this model has no fixed costs, so the first unit breaks even
+  // whenever the per-unit contribution is positive. When the contribution is
+  // zero or negative, break-even is unreachable at this price — report 0
+  // (the UI surfaces the negative-margin warning instead of a bogus unit count).
+  const perUnitFee = sellingPrice * platformFeePercent / 100;
+  const perUnitContribution = sellingPrice - productCost - perUnitFee - shippingCost - adSpendPerUnit;
+  const breakEvenUnits = perUnitContribution > 0 ? 1 : 0;
 
   const costBreakdown = [
     { name: "Product Cost", value: productCost * units, pct: totalCost > 0 ? ((productCost * units) / totalCost) * 100 : 0, color: "#3b82f6" },
@@ -162,21 +188,28 @@ export function calculateMargin(
   desiredMarginPercent: number,
   competitorPrices: number[] = []
 ): MarginCalc {
-  const recommendedPrice = +(costPrice / (1 - desiredMarginPercent / 100)).toFixed(2);
-  const marginAtPrice = desiredMarginPercent;
+  // Guards: NaN/negative cost and out-of-range margins (the UI allows free
+  // typing and URL params) would otherwise produce Infinity/NaN prices —
+  // e.g. a 100% margin divides by zero.
+  const safeCost = Number.isFinite(costPrice) ? Math.max(0, costPrice) : 0;
+  const safeMargin = Number.isFinite(desiredMarginPercent)
+    ? Math.min(95, Math.max(0, desiredMarginPercent))
+    : 0;
+  const recommendedPrice = +(safeCost / (1 - safeMargin / 100)).toFixed(2);
+  const marginAtPrice = safeMargin;
 
   const minCompetitor = competitorPrices.length > 0 ? Math.min(...competitorPrices) : recommendedPrice * 0.8;
   const maxCompetitor = competitorPrices.length > 0 ? Math.max(...competitorPrices) : recommendedPrice * 1.3;
 
   const competitiveRange = {
-    min: +Math.max(minCompetitor * 0.95, costPrice * 1.1).toFixed(2),
+    min: +Math.max(minCompetitor * 0.95, safeCost * 1.1).toFixed(2),
     max: +(maxCompetitor * 1.05).toFixed(2),
   };
 
   const priceBreakpoints = [20, 30, 40, 50, 60].map((margin) => {
-    const price = +(costPrice / (1 - margin / 100)).toFixed(2);
-    const profit = price - costPrice;
-    const roi = costPrice > 0 ? (profit / costPrice) * 100 : 0;
+    const price = +(safeCost / (1 - margin / 100)).toFixed(2);
+    const profit = price - safeCost;
+    const roi = safeCost > 0 ? (profit / safeCost) * 100 : 0;
     return { price, margin, roi: +roi.toFixed(1) };
   });
 

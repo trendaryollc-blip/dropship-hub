@@ -103,6 +103,14 @@ import {
   getShippingOptionsTool,
 } from "./shipping";
 
+// ─── Saved-Product Tools (analyze / similar / COGS / supplier compare) ──────
+import {
+  analyzeProductTool,
+  findSimilarProductsTool,
+  calculateCogsTool,
+  compareSuppliersTool,
+} from "./saved-tools";
+
 // ─── Register All Tools ─────────────────────────────────────────────────────
 
 export function registerAllTools(): void {
@@ -201,6 +209,12 @@ export function registerAllTools(): void {
     autoSelectShippingTool,
     calculateCustomsTool,
     getShippingOptionsTool,
+
+    // Saved-product analysis (4)
+    analyzeProductTool,
+    findSimilarProductsTool,
+    calculateCogsTool,
+    compareSuppliersTool,
   ]);
 }
 

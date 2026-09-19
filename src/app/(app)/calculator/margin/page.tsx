@@ -5,12 +5,12 @@ import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { saveCalcHistory, getCalcHistory, type CalcHistoryEntry } from "@/lib/data";
 import { CheckCircle2, Save, Clock } from "lucide-react";
-import { calculateMargin, type MarginCalc } from "@/lib/calculations";
+import { calculateMargin, parseNumericParam, parseInputValue, type MarginCalc } from "@/lib/calculations";
 import CalculatorLayout from "@/components/calculator/CalculatorLayout";
 
 export default function MarginCalculatorPage() {
   const searchParams = useSearchParams();
-  const initialCost = parseFloat(searchParams.get("cost") || "8");
+  const initialCost = parseNumericParam(searchParams.get("cost"), 8, 0);
   const { user } = useAuth();
   const [saved, setSaved] = useState(false);
   const [history, setHistory] = useState<CalcHistoryEntry[]>([]);
@@ -98,11 +98,11 @@ export default function MarginCalculatorPage() {
           <div className="space-y-4">
             <div>
               <label className={labelClass}>Cost Price ($)</label>
-              <input type="number" step="0.01" value={marginCost} onChange={(e) => setMarginCost(+e.target.value)} className={inputClass} />
+              <input type="number" step="0.01" value={marginCost} onChange={(e) => setMarginCost(parseInputValue(e.target.value, marginCost, 0))} className={inputClass} />
             </div>
             <div>
               <label className={labelClass}>Desired Margin (%)</label>
-              <input type="number" step="1" min="0" max="95" value={desiredMargin} onChange={(e) => setDesiredMargin(+e.target.value)} className={inputClass} />
+              <input type="number" step="1" min="0" max="95" value={desiredMargin} onChange={(e) => setDesiredMargin(parseInputValue(e.target.value, desiredMargin, 0, 95))} className={inputClass} />
             </div>
           </div>
         </div>

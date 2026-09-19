@@ -44,17 +44,14 @@ describe("Calculator Accuracy — Full Audit", () => {
       expect(r10.totalCost).toBeCloseTo(r1.totalCost * 10, 2);
     });
 
-    it("break-even units when losing money", () => {
+    it("break-even is unreachable (0) when losing money per unit", () => {
       // Selling at a loss: cost=20, price=10, ship=5, fee=10%, ads=3
-      // platformFee = 10 * 10/100 = 1
-      // totalCost = 20 + 1 + 5 + 3 = 29
-      // loss = 29 - 10 = 19
-      // per-unit margin = 10 - 20 - 1 - 5 - 3 = -19 (wait, that's per-unit)
-      // Actually: breakEvenUnits = ceil(19 / max(10 - 20 - 1 - 5 - 3, 0.01))
-      // = ceil(19 / max(-19, 0.01)) = ceil(19 / 0.01) = 1900
+      // per-unit contribution = 10 - 20 - 1 - 5 - 3 = -19 → no price point
+      // at this configuration reaches break-even, so the model reports 0
+      // (the UI surfaces the negative-margin warning instead).
       const r = calculateProfit(20, 10, 5, 10, 3, 1);
       expect(r.netProfit).toBeLessThan(0);
-      expect(r.breakEvenUnits).toBeGreaterThan(1);
+      expect(r.breakEvenUnits).toBe(0);
     });
 
     it("break-even is 1 when profitable", () => {

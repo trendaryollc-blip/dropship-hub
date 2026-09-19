@@ -13,10 +13,34 @@ import SavedAIResults, { type AIResult } from "@/components/saved/SavedAIResults
 import SavedChatSidebar from "@/components/saved/SavedChatSidebar";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { safeFetch } from "@/lib/safe-fetch";
+import { auth } from "@/lib/firebase";
+
+// Every /api/ai/* route is behind withAuth — requests must carry the caller's
+// Firebase ID token or they get a 401.
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const user = auth.currentUser;
+  if (!user) return {};
+  try {
+    return { Authorization: `Bearer ${await user.getIdToken()}` };
+  } catch {
+    return {};
+  }
+}
+
+interface StoreConnectionLite {
+  id: string;
+  platform: string;
+  name?: string;
+  status?: string;
+}
+
+// Bulk actions are capped so a large saved list can't fire unbounded AI tool
+// calls (rate limits + cost); results stream into the modal as they complete.
+const BULK_ACTION_LIMIT = 20;
 
 export default function SavedPage() {
   const router = useRouter();
-  const { savedProducts, clearSaved } = useSavedProducts();
+  const { savedProducts, clearSaved, syncError } = useSavedProducts();
 
   const [confirmClear, setConfirmClear] = useState(false);
   const [search, setSearch] = useState("");
@@ -69,11 +93,12 @@ export default function SavedPage() {
 
   const executeAITool = useCallback(async (toolId: string, input: Record<string, unknown>): Promise<AIResult> => {
     try {
+      const authHeaders = await getAuthHeaders();
       const res = await safeFetch<{ success: boolean; summary?: string; data?: unknown; error?: string }>(
         "/api/ai/execute",
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({ tool: toolId, input }),
         }
       );
@@ -105,7 +130,7 @@ export default function SavedPage() {
       "compare-suppliers": {
         title: "Compare Suppliers",
         toolId: "compare_suppliers",
-        inputFn: (p) => ({ productId: p.id, title: p.title }),
+        inputFn: (p) => ({ productId: p.id, title: p.title, price: p.price ?? 0 }),
       },
     };
 
@@ -116,10 +141,53 @@ export default function SavedPage() {
     setResults([]);
     setResultsOpen(true);
 
+    // push_to_store requires a concrete store connection (storeId + platform +
+    // price). Resolve the first connected store once up front; if none is
+    // connected, fail fast with an actionable message instead of N failures.
+    let store: StoreConnectionLite | null = null;
+    if (config.toolId === "push_to_store") {
+      try {
+        const authHeaders = await getAuthHeaders();
+        const data = await safeFetch<{ connections?: StoreConnectionLite[] }>("/api/store/connections", {
+          headers: authHeaders,
+        });
+        const connected = (data?.connections ?? []).filter((c) => c.status !== "disconnected");
+        store = connected[0] ?? null;
+      } catch {
+        store = null;
+      }
+      if (!store) {
+        setResults([{
+          tool: "push_to_store",
+          success: false,
+          summary: "No store connected",
+          error: "Connect a store (Shopify, WooCommerce, Etsy) under Stores first, then push your products.",
+        }]);
+        setAiLoading(null);
+        return;
+      }
+    }
+
     const batchResults: AIResult[] = [];
-    for (const product of filteredProducts) {
-      const result = await executeAITool(config.toolId, config.inputFn(product));
+    const targets = filteredProducts.slice(0, BULK_ACTION_LIMIT);
+    for (const product of targets) {
+      const input = config.inputFn(product);
+      if (config.toolId === "push_to_store" && store) {
+        input.storeId = store.id;
+        input.platform = store.platform;
+        input.price = product.price ?? 0;
+        if (product.image) input.images = [product.image];
+      }
+      const result = await executeAITool(config.toolId, input);
       batchResults.push({ ...result, summary: `${product.title}: ${result.summary}` });
+      setResults([...batchResults]);
+    }
+    if (filteredProducts.length > targets.length) {
+      batchResults.push({
+        tool: config.toolId,
+        success: true,
+        summary: `List truncated to the first ${BULK_ACTION_LIMIT} of ${filteredProducts.length} products to respect rate limits.`,
+      });
       setResults([...batchResults]);
     }
 
@@ -155,11 +223,11 @@ export default function SavedPage() {
 
   const handleCardAIAction = useCallback(async (action: string, product: SavedProduct) => {
     const toolMap: Record<string, { toolId: string; input: Record<string, unknown> }> = {
-      analyze: { toolId: "analyze_product", input: { productId: product.id, title: product.title } },
+      analyze: { toolId: "analyze_product", input: { productId: product.id, title: product.title, price: product.price ?? 0 } },
       similar: { toolId: "find_similar_products", input: { productId: product.id, title: product.title } },
       listing: { toolId: "generate_listing", input: { productId: product.id, title: product.title, platform: product.source } },
       profit: { toolId: "calculate_cogs", input: { productId: product.id, price: product.price ?? 0 } },
-      suppliers: { toolId: "compare_suppliers", input: { productId: product.id, title: product.title } },
+      suppliers: { toolId: "compare_suppliers", input: { productId: product.id, title: product.title, price: product.price ?? 0 } },
       ask: {
         toolId: "__chat",
         input: { prompt: `Tell me about "${product.title}" from ${product.source}. Price: $${product.price?.toFixed(2) ?? "N/A"}. Rating: ${product.rating ?? "N/A"}. What should I know about this product?` },
@@ -184,6 +252,16 @@ export default function SavedPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-5 pb-24">
+      {syncError && (
+        <div
+          role="status"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs"
+        >
+          <span className="flex-1">
+            Some changes couldn&apos;t sync to your account — they&apos;re saved on this device and will sync again on your next action.
+          </span>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-1 flex items-center gap-3">
