@@ -1,4 +1,4 @@
-import { ToolRegistry } from "../tools/registry";
+import { ToolRegistry } from "../tools";
 import type { WorkflowDefinition, WorkflowStep, ToolExecutionContext, ToolResult } from "../types";
 
 // ─── Workflow Runner ─────────────────────────────────────────────────────────

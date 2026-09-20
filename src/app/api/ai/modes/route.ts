@@ -14,7 +14,7 @@ import {
   deleteAutoRule,
 } from "@/lib/ai/modes/user-prefs";
 import { getGuardrailStatus } from "@/lib/ai/safety/guardrails";
-import { ToolRegistry } from "@/lib/ai/tools/registry";
+import { ToolRegistry } from "@/lib/ai/tools";
 import type { AutonomyLevel } from "@/lib/ai/types";
 import { safeErrorMessage } from "@/lib/api-errors";
 

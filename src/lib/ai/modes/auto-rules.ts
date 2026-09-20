@@ -1,5 +1,5 @@
 import { inngest } from "@/lib/jobs/client";
-import { ToolRegistry } from "../tools/registry";
+import { ToolRegistry } from "../tools";
 import type { AutoModeRule, ToolExecutionContext } from "../types";
 
 // ─── Auto Mode Rule Engine ───────────────────────────────────────────────────

@@ -34,7 +34,7 @@ vi.mock("@/lib/ai/safety/guardrails", () => ({
   getGuardrailStatus: mockGetGuardrailStatus,
 }));
 
-vi.mock("@/lib/ai/tools/registry", () => ({
+vi.mock("@/lib/ai/tools", () => ({
   ToolRegistry: {
     getDefinitions: vi.fn(() => [{ id: "tool-1", name: "Test Tool" }]),
     getCategories: vi.fn(() => ["general"]),

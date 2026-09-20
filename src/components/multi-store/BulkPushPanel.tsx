@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Send, Globe, Loader2, Package, Plus } from "lucide-react";
 import { safeFetch } from "@/lib/safe-fetch";
+import { getAuthHeaders } from "@/lib/auth-headers";
 import type { ConnectedStore } from "@/components/stores/ConnectedStoresList";
 import type { PushedProduct } from "@/components/stores/PushedProductsList";
 import ProductPicker from "./ProductPicker";
@@ -44,10 +45,11 @@ export default function BulkPushPanel({ stores, pushedProducts = [], onPushCompl
     setPushing(true);
     setResult(null);
     try {
+      const authHeaders = await getAuthHeaders();
       if (mode === "new") {
         await safeFetch("/api/multi-store/bulk-push", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({
             productTitle,
             productPrice: parseFloat(productPrice) || 0,
@@ -62,21 +64,36 @@ export default function BulkPushPanel({ stores, pushedProducts = [], onPushCompl
         setProductImage("");
         setProductUrl("");
       } else {
+        // Push each product as its own job; count failures instead of
+        // aborting the whole batch on the first error.
+        let ok = 0;
+        let failed = 0;
         for (const product of selectedProducts) {
-          await safeFetch("/api/multi-store/bulk-push", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              productTitle: product.productTitle,
-              productPrice: product.productPrice,
-              productImage: product.productImage,
-              productUrl: product.productUrl,
-              targetStoreIds: selectedStores,
-            }),
-          });
+          try {
+            await safeFetch("/api/multi-store/bulk-push", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", ...authHeaders },
+              body: JSON.stringify({
+                productTitle: product.productTitle,
+                productPrice: product.productPrice,
+                productImage: product.productImage,
+                productUrl: product.productUrl,
+                targetStoreIds: selectedStores,
+              }),
+            });
+            ok++;
+          } catch {
+            failed++;
+          }
         }
-        setResult({ success: true, message: `Pushed ${selectedProducts.length} products to ${selectedStores.length} stores` });
-        setSelectedProducts([]);
+        if (failed === 0) {
+          setResult({ success: true, message: `Pushed ${ok} products to ${selectedStores.length} stores` });
+        } else if (ok > 0) {
+          setResult({ success: true, message: `Pushed ${ok} products; ${failed} failed — try the failed ones again` });
+        } else {
+          setResult({ success: false, message: "All pushes failed — check your connection and try again" });
+        }
+        if (failed === 0) setSelectedProducts([]);
       }
       setSelectedStores([]);
       onPushComplete();

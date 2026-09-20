@@ -1,5 +1,5 @@
 import { getAutonomyLevel, getFeatureMode, getEnabledAutoRules } from "./user-prefs";
-import { ToolRegistry } from "../tools/registry";
+import { ToolRegistry } from "../tools";
 import type { ExecutionMode, AutonomyLevel } from "../types";
 
 // ─── Mode Evaluator ─────────────────────────────────────────────────────────

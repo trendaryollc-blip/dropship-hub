@@ -1,4 +1,4 @@
-import { ToolRegistry } from "../tools/registry";
+import { ToolRegistry } from "../tools";
 import type { ToolDefinition } from "../types";
 
 // ─── Tool Definitions for System Prompt ─────────────────────────────────────

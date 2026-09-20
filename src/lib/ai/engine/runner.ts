@@ -1,4 +1,4 @@
-import { ToolRegistry } from "../tools/registry";
+import { ToolRegistry } from "../tools";
 import type { ToolExecutionContext, ToolResult, ToolExecutionRecord, AutonomyLevel } from "../types";
 import { logToolCalled, logToolExecuted, logToolFailed } from "../safety/audit-log";
 import { checkGuardrails, recordAction } from "../safety/guardrails";

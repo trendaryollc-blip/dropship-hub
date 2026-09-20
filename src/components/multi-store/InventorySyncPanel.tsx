@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { RefreshCw, Loader2 } from "lucide-react";
 import { safeFetch } from "@/lib/safe-fetch";
+import { getAuthHeaders } from "@/lib/auth-headers";
 import { useToast } from "@/components/ui/Toast";
 import type { StoreInventoryItem } from "@/types/multi-store";
 import { INVENTORY_DISPLAY_LIMIT } from "@/components/stores/constants";
@@ -17,23 +18,29 @@ export default function InventorySyncPanel({ inventory }: InventorySyncPanelProp
   const [syncingAll, setSyncingAll] = useState(false);
   const [syncProgress, setSyncProgress] = useState<{ current: number; total: number } | null>(null);
 
+  const syncItem = async (item: StoreInventoryItem): Promise<boolean> => {
+    const source = item.stores[0];
+    await safeFetch("/api/multi-store/inventory", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(await getAuthHeaders()) },
+      body: JSON.stringify({
+        action: "sync",
+        productId: item.productId,
+        sourceStoreId: source.storeId,
+        newStock: source.stock,
+        productTitle: item.title,
+        sourceStoreName: source.storeName,
+      }),
+    });
+    return true;
+  };
+
   const handleSync = async (item: StoreInventoryItem) => {
     if (!item.stores.length) return;
     setSyncing(item.id);
     try {
-      const source = item.stores[0];
-      await safeFetch("/api/multi-store/inventory", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "sync",
-          productId: item.productId,
-          sourceStoreId: source.storeId,
-          newStock: source.stock,
-          productTitle: item.title,
-          sourceStoreName: source.storeName,
-        }),
-      });
+      await syncItem(item);
+      success(`Synced "${item.title}" stock to other stores`);
     } catch { toastError("Failed to sync inventory"); }
     setSyncing(null);
   };
@@ -50,19 +57,7 @@ export default function InventorySyncPanel({ inventory }: InventorySyncPanelProp
       setSyncProgress({ current: i + 1, total: inventory.length });
       if (!item.stores.length) { failed++; continue; }
       try {
-        const source = item.stores[0];
-        await safeFetch("/api/multi-store/inventory", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "sync",
-            productId: item.productId,
-            sourceStoreId: source.storeId,
-            newStock: source.stock,
-            productTitle: item.title,
-            sourceStoreName: source.storeName,
-          }),
-        });
+        await syncItem(item);
         synced++;
       } catch { failed++; }
     }
