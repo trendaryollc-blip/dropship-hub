@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { safeFetch } from "@/lib/safe-fetch";
+import { auth } from "@/lib/firebase";
 
 interface CompetitorWatchButtonProps {
   name: string;
@@ -12,55 +13,81 @@ interface CompetitorWatchButtonProps {
   compact?: boolean;
 }
 
+// /api/ai/execute is behind withAuth.
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const u = auth.currentUser;
+  if (!u) return {};
+  try {
+    return { Authorization: `Bearer ${await u.getIdToken()}` };
+  } catch {
+    return {};
+  }
+}
+
 export default function CompetitorWatchButton({ name, platform, price, compact }: CompetitorWatchButtonProps) {
   const { user } = useAuth();
   const [watching, setWatching] = useState(false);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
+  const watchId = `${platform}-${name}`;
 
   useEffect(() => {
     if (!user?.uid) { setChecking(false); return; }
-    safeFetch<{ isWatched: boolean }>(`/api/ai/execute`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tool: "get_watchlist", input: { type: "competitor" } }),
-    }).then(() => {
-      setChecking(false);
-    }).catch(() => setChecking(false));
-  }, [user?.uid, name]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await safeFetch<{ data?: { itemId: string }[] } | { success: boolean; data?: { itemId: string }[] }>("/api/ai/execute", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...(await getAuthHeaders()) },
+          body: JSON.stringify({ tool: "get_watchlist", input: { type: "competitor" } }),
+        });
+        if (!cancelled) {
+          const items = (res as { data?: { itemId: string }[] }).data ?? [];
+          setWatching(items.some((i) => i.itemId === watchId || i.itemId === name));
+        }
+      } catch {
+        // unavailable — leave unwatched default
+      } finally {
+        if (!cancelled) setChecking(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.uid, watchId, name]);
 
   const toggleWatch = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!user?.uid || loading) return;
     setLoading(true);
     try {
+      const authHeaders = await getAuthHeaders();
       if (watching) {
         await safeFetch("/api/ai/execute", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({
-            tool: "add_to_watchlist",
-            input: { type: "competitor", itemId: name, title: name },
+            tool: "remove_from_watchlist",
+            input: { type: "competitor", itemId: watchId },
           }),
         });
+        setWatching(false);
       } else {
         await safeFetch("/api/ai/execute", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({
             tool: "add_to_watchlist",
             input: {
               type: "competitor",
-              itemId: `${platform}-${name}`,
+              itemId: watchId,
               title: name,
               currentPrice: price,
             },
           }),
         });
+        setWatching(true);
       }
-      setWatching(!watching);
     } catch {
-      // silent
+      // silent — state stays truthful to the last confirmed operation
     } finally {
       setLoading(false);
     }

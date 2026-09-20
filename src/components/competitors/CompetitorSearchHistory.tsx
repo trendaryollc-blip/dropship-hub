@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Clock, Search, Loader2 } from "lucide-react";
 import { safeFetch } from "@/lib/safe-fetch";
+import { getAuthHeaders } from "@/lib/auth-headers";
 
 interface SearchEntry {
   id: string;
@@ -40,7 +41,8 @@ export default function CompetitorSearchHistory({ onSelect }: CompetitorSearchHi
     if (!user?.uid) { setLoading(false); return; }
     try {
       const data = await safeFetch<{ searches: SearchEntry[] }>(
-        `/api/search-history?type=competitor&uid=${user.uid}&limit=8`
+        `/api/search-history?type=competitor&uid=${user.uid}&limit=8`,
+        { headers: await getAuthHeaders() }
       );
       setHistory(data.searches || []);
     } catch {

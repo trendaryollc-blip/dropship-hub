@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useId } from "react";
 import { MessageSquare, Send, X, Sparkles, Loader2 } from "lucide-react";
 import { safeFetch } from "@/lib/safe-fetch";
+import { getAuthHeaders } from "@/lib/auth-headers";
 import type { ConnectedStore } from "./ConnectedStoresList";
 import type { PushedProduct } from "./PushedProductsList";
 
@@ -75,10 +76,16 @@ export default function StoreChatSidebar({ connections, pushedProducts }: StoreC
     ];
 
     try {
-      const res = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: apiMessages, stream: true }) });
+      const authHeaders = await getAuthHeaders();
+      const res = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ messages: apiMessages, stream: true }) });
       if (!res.ok || !res.body) {
-        const retry = await safeFetch<{ response?: string }>("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: apiMessages, stream: false }) });
+        if (res.status === 401) {
+          setMessages((prev) => [...prev, { id: uid(baseId), role: "assistant", content: "Please sign in to use the store assistant.", timestamp: new Date() }]);
+          return;
+        }
+        const retry = await safeFetch<{ response?: string }>("/api/ai", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ messages: apiMessages, stream: false }) });
         if (retry.response) setMessages((prev) => [...prev, { id: uid(baseId), role: "assistant", content: retry.response!, timestamp: new Date() }]);
+        else setMessages((prev) => [...prev, { id: uid(baseId), role: "assistant", content: "Sorry, something went wrong. Please try again.", timestamp: new Date() }]);
         return;
       }
       const reader = res.body.getReader();

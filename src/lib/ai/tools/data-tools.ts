@@ -5,7 +5,7 @@ import { getRevenueEntries } from "@/lib/data/revenue";
 import { getAlerts, markAlertRead, markAllAlertsRead } from "@/lib/data/alerts";
 import { getLatestDigest } from "@/lib/data/digest";
 import { getMissions, toggleMission } from "@/lib/data/missions";
-import { getWatchlist, addToWatchlist } from "@/lib/data/watchlist";
+import { getWatchlist, addToWatchlist, removeFromWatchlist } from "@/lib/data/watchlist";
 import { getStoreConnections } from "@/lib/data/store-connections";
 import { getPushedProducts } from "@/lib/data/pushed-products";
 import { getProfitEntries } from "@/lib/data/profit";
@@ -250,6 +250,28 @@ export const addToWatchlistTool = createTool({
       success: true,
       data: { itemId: input.itemId, title: input.title },
       summary: `Added "${input.title}" to watchlist.`,
+    };
+  },
+});
+
+// ─── Remove from Watchlist ──────────────────────────────────────────────────
+
+export const removeFromWatchlistTool = createTool({
+  id: "remove_from_watchlist",
+  name: "Remove from Watchlist",
+  description: "Remove a product, niche, or competitor from the monitoring watchlist",
+  category: "monitoring",
+  safetyLevel: "safe",
+  inputSchema: z.object({
+    itemId: z.string().min(1),
+    type: z.string().min(1),
+  }),
+  execute: async (input, ctx) => {
+    await removeFromWatchlist(ctx.uid, input.type as Parameters<typeof removeFromWatchlist>[1], input.itemId as string);
+    return {
+      success: true,
+      data: { itemId: input.itemId },
+      summary: `Removed item from watchlist.`,
     };
   },
 });

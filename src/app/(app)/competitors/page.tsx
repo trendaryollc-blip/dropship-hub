@@ -13,6 +13,19 @@ import { type MarketData } from "@/types/competitors";
 import { useMutation } from "@/hooks/useAPI";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { safeFetch } from "@/lib/safe-fetch";
+import { auth } from "@/lib/firebase";
+
+// /api/search-history and /api/ai/* are behind withAuth — carry the caller's
+// Firebase ID token or the request 401s.
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const u = auth.currentUser;
+  if (!u) return {};
+  try {
+    return { Authorization: `Bearer ${await u.getIdToken()}` };
+  } catch {
+    return {};
+  }
+}
 
 import MarketStatsBar from "@/components/competitors/MarketStatsBar";
 import PriceDistribution from "@/components/competitors/PriceDistribution";
@@ -100,14 +113,16 @@ function castToMarketData(raw: RawMarketData, query: string): MarketData {
   const competitorSWOT = raw.topSellers.slice(0, 5).map((s) => ({
     sellerName: s.name,
     strengths: [
-      `Strong rating of ${s.rating}/5.0 with ${s.totalProducts.toLocaleString()} products`,
+      s.rating > 0
+        ? `Rating of ${s.rating}/5.0 with ${s.totalProducts.toLocaleString()} products`
+        : `${s.totalProducts.toLocaleString()} products listed in this niche`,
       s.responseTime !== "N/A" ? `Fast response time: ${s.responseTime}` : "Established seller presence",
       s.returnPolicy !== "N/A" ? `Good return policy: ${s.returnPolicy}` : "Competitive pricing",
     ],
     weaknesses: [
       s.isDropshipper ? "Identified as dropshipper — potential quality concerns" : "Higher price point than some competitors",
       s.price > avgPrice ? `Priced $${(s.price - avgPrice).toFixed(2)} above market average` : "Limited product variety in this niche",
-      s.rating < 4.5 ? "Below-average rating indicates customer issues" : "May rely on volume over differentiation",
+      s.rating > 0 && s.rating < 4.5 ? "Below-average rating indicates customer issues" : "May rely on volume over differentiation",
     ],
     opportunities: [
       "Target their weak product categories for entry",
@@ -368,9 +383,10 @@ function CompetitorsContent() {
           const platformCount = result.platforms?.length ?? 0;
           const listings = result.totalListings ?? 0;
           const avg = result.avgPrice ?? 0;
+          const authHeaders = await getAuthHeaders();
           safeFetch("/api/search-history", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", ...authHeaders },
             body: JSON.stringify({ query: searchQuery.trim(), type: "competitor", platformsFound: platformCount, totalListings: listings, avgPrice: avg }),
           }).catch(() => {});
         }
@@ -404,21 +420,40 @@ function CompetitorsContent() {
     if (!marketData) return;
     setAiLoading(action);
 
+    // The user's own price is only known when a product was imported; fall
+    // back to the market floor for what-if analysis.
+    const myPrice = importedProduct?.price ?? marketData.minPrice ?? marketData.avgPrice;
+    // Standard sourcing estimate (2.5× rule) — the pricing tool needs a cost
+    // baseline; without one every request failed zod validation.
+    const estimatedCost = +(myPrice / 2.5).toFixed(2);
+
     const configs: Record<string, { title: string; toolId: string; input: Record<string, unknown> }> = {
       "optimize-pricing": {
         title: "Optimize Pricing",
         toolId: "optimize_pricing",
-        input: { query, avgPrice: marketData.avgPrice, minPrice: marketData.minPrice, maxPrice: marketData.maxPrice },
+        input: {
+          productTitle: query || "Selected product",
+          myPrice,
+          cost: estimatedCost,
+          floorPrice: estimatedCost,
+          minMargin: 20,
+          strategy: "maintain_margin" as const,
+          competitorPrices: marketData.platforms
+            .flatMap((p) => p.listings)
+            .filter((l) => l.price > 0)
+            .slice(0, 10)
+            .map((l) => ({ seller: l.seller, price: l.price, totalLanded: l.price, inStock: true })),
+        },
       },
       "competitor-intel": {
         title: "Competitor Intelligence",
-        toolId: "get_saved_products",
-        input: { type: "product" },
+        toolId: "search_products",
+        input: { query },
       },
       "find-gaps": {
         title: "Find Market Gaps",
-        toolId: "optimize_pricing",
-        input: { query, priceDistribution: marketData.priceDistribution },
+        toolId: "analyze_product",
+        input: { title: query, price: myPrice },
       },
       "counter-strategy": {
         title: "Counter-Strategy",
@@ -441,7 +476,8 @@ function CompetitorsContent() {
             price: s.price,
             rating: s.rating,
             threatLevel: s.threatLevel,
-            isDropshipper: s.isDropshipper,
+            // Route can emit null for unknown — z.boolean() rejects null.
+            isDropshipper: s.isDropshipper === true,
           })),
         },
       },
@@ -457,7 +493,7 @@ function CompetitorsContent() {
     const result = await executeAITool(config.toolId, config.input);
     setResults([{ ...result, summary: `${query}: ${result.summary}` }]);
     setAiLoading(null);
-  }, [marketData, query, executeAITool]);
+  }, [marketData, query, executeAITool, importedProduct]);
 
   return (
     <div className="max-w-7xl mx-auto pb-24">

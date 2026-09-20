@@ -60,6 +60,7 @@ import {
   completeMissionTool,
   getWatchlistTool,
   addToWatchlistTool,
+  removeFromWatchlistTool,
   getStoreConnectionsTool,
   getPushedProductsTool,
   getPriceRulesTool,
@@ -163,6 +164,7 @@ export function registerAllTools(): void {
     markAllAlertsReadTool,
     getWatchlistTool,
     addToWatchlistTool,
+    removeFromWatchlistTool,
 
     // Intelligence (4)
     getDailyDigestTool,

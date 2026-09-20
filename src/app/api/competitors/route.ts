@@ -66,8 +66,10 @@ function searchPlatform(
         title: r.title || "Product",
         price: r.price || 0,
         source: key,
-        seller: (typeof r.seller === "string" ? r.seller : null) || `${key} seller`,
-        sellerRating: (typeof r.rating === "number" ? r.rating : null) || 4.0,
+        seller: (typeof r.seller === "string" ? r.seller : null) || "Unknown seller",
+        // No fabricated defaults: an unknown rating stays 0 and the UI shows
+        // an em dash instead of inventing a 4.0★ that looks real.
+        sellerRating: (typeof r.rating === "number" && r.rating > 0) ? r.rating : 0,
         sellerProducts: (typeof r.sellerProducts === "number" ? r.sellerProducts : null) || 0,
         link: r.link || "#",
         shipping: (typeof r.shipping === "string" ? r.shipping : null) ?? "Varies",
@@ -181,9 +183,12 @@ function buildTopSellers(platforms: PlatformData[]): { name: string; platform: s
   }
 
   const sellers = Array.from(sellerMap.entries()).map(([name, data]) => {
+    // Threat levels are only assigned from MEASURED data (rating, product
+    // counts). Unknown ratings used to inherit a fabricated 4.0 default that
+    // pushed every seller into "medium/high threat".
     let threatLevel: "low" | "medium" | "high" = "low";
-    if (data.totalProducts > 200 && data.rating > 4.5) threatLevel = "high";
-    else if (data.totalProducts > 50 || data.rating > 4.0) threatLevel = "medium";
+    if (data.rating > 0 && data.totalProducts > 200 && data.rating > 4.5) threatLevel = "high";
+    else if (data.rating > 0 && (data.totalProducts > 50 || data.rating > 4.0)) threatLevel = "medium";
 
     return {
       name,
@@ -303,28 +308,12 @@ function buildPricingOptions(platforms: PlatformData[]): { label: string; icon: 
   return options;
 }
 
-function buildPriceHistory(platforms: PlatformData[]): { date: string; price: number; volume: number }[] {
-  const sparklines = platforms.map((p) => p.sparkline).filter((s) => s && s.length > 0);
-  if (sparklines.length === 0) return [];
-
-  const len = sparklines[0].length;
-  const now = new Date();
-  const history: { date: string; price: number; volume: number }[] = [];
-
-  for (let i = 0; i < len; i++) {
-    const pricesAtPoint = sparklines.map((s) => s[i] || 0).filter((p) => p > 0);
-    if (pricesAtPoint.length === 0) continue;
-    const avg = pricesAtPoint.reduce((a, b) => a + b, 0) / pricesAtPoint.length;
-    const date = new Date(now);
-    date.setDate(date.getDate() - (len - 1 - i));
-    history.push({
-      date: `${date.getMonth() + 1}/${date.getDate()}`,
-      price: Math.round(avg * 100) / 100,
-      volume: Math.floor(Math.random() * 50) + 10,
-    });
-  }
-
-  return history;
+function buildPriceHistory(_platforms: PlatformData[]): { date: string; price: number; volume: number }[] {
+  // Deliberately returns an empty series: a single search snapshot must not be
+  // dressed up as a 14-day price history (the old implementation synthesized
+  // backwards dates and RANDOM volume numbers). Enable Competitor Monitoring
+  // to collect real history over time instead.
+  return [];
 }
 
 function buildInsights(platforms: PlatformData[], avgPrice: number, priceRange: { min: number; max: number }, totalListings: number, opportunities: { type: string; potentialMargin?: number }[]): string[] {

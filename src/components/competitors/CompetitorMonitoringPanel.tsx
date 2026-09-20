@@ -7,6 +7,7 @@ import {
   ChevronDown, Loader2, RefreshCw,
 } from "lucide-react";
 import { safeFetch } from "@/lib/safe-fetch";
+import { getAuthHeaders } from "@/lib/auth-headers";
 
 interface CompetitorChange {
   id: string;
@@ -56,7 +57,7 @@ export default function CompetitorMonitoringPanel() {
     try {
       const data = await safeFetch<{ changes: CompetitorChange[]; summary: MonitoringSummary }>(
         "/api/ai/competitors",
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid: user.uid }) }
+        { method: "POST", headers: { "Content-Type": "application/json", ...(await getAuthHeaders()) }, body: JSON.stringify({ uid: user.uid }) }
       );
       setChanges(data.changes || []);
       setSummary(data.summary || { totalChanges: 0, critical: 0, warnings: 0, opportunities: 0 });
