@@ -51,11 +51,13 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     };
 
     let success = false;
+    let warning: string | undefined;
 
     switch (action) {
-      case "fulfill":
+      case "fulfill": {
+        let pushOk = true;
         if (trackingNumber) {
-          success = await adapter.pushTracking(storeConfig, order.orderId, trackingNumber, carrier || "Other");
+          pushOk = await adapter.pushTracking(storeConfig, order.orderId, trackingNumber, carrier || "Other");
         }
         await orderDoc.ref.update({
           fulfillmentStatus: "fulfilled",
@@ -64,8 +66,15 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
           carrier: carrier || order.carrier,
           updatedAt: new Date().toISOString(),
         });
+        // The order IS fulfilled locally, but if the tracking sync to the
+        // storefront failed the caller deserves to know instead of a blanket
+        // success (the old code overwrote the failure with `success = true`).
+        if (!pushOk) {
+          warning = "Order fulfilled locally, but the tracking number could not be pushed to the store.";
+        }
         success = true;
         break;
+      }
 
       case "cancel":
         await orderDoc.ref.update({
@@ -95,7 +104,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     }
 
     const updatedDoc = await orderDoc.ref.get();
-    return NextResponse.json({ success: true, order: { id: updatedDoc.id, ...updatedDoc.data() } });
+    return NextResponse.json({ success: true, warning, order: { id: updatedDoc.id, ...updatedDoc.data() } });
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to process order action", details: safeErrorMessage(error, "Unknown") },
