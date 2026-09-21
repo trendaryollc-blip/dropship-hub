@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { X, CheckCircle2, XCircle, Info, Loader2 } from "lucide-react";
+import { X, CheckCircle2, XCircle, Info, Loader2, AlertTriangle, Ban } from "lucide-react";
 
 export interface AIResult {
   tool: string;
@@ -9,6 +9,12 @@ export interface AIResult {
   summary: string;
   data?: unknown;
   error?: string;
+  needsConfirmation?: boolean;
+  executionId?: string;
+  confirming?: boolean;
+  cancelled?: boolean;
+  titlePrefix?: string;
+  id?: string;
 }
 
 interface SavedAIResultsProps {
@@ -17,6 +23,8 @@ interface SavedAIResultsProps {
   title: string;
   results: AIResult[];
   loading: boolean;
+  onConfirm?: (result: AIResult) => void;
+  onCancel?: (result: AIResult) => void;
 }
 
 function formatData(data: unknown): string {
@@ -29,7 +37,7 @@ function formatData(data: unknown): string {
   }
 }
 
-export default function SavedAIResults({ open, onClose, title, results, loading }: SavedAIResultsProps) {
+export default function SavedAIResults({ open, onClose, title, results, loading, onConfirm, onCancel }: SavedAIResultsProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -43,8 +51,9 @@ export default function SavedAIResults({ open, onClose, title, results, loading 
 
   if (!open) return null;
 
-  const successCount = results.filter((r) => r.success).length;
-  const failCount = results.filter((r) => !r.success).length;
+  const successCount = results.filter((r) => r.success && !r.needsConfirmation && !r.cancelled).length;
+  const failCount = results.filter((r) => !r.success && !r.needsConfirmation && !r.cancelled).length;
+  const awaitingCount = results.filter((r) => r.needsConfirmation).length;
 
   return (
     <div
@@ -58,7 +67,9 @@ export default function SavedAIResults({ open, onClose, title, results, loading 
             <h2 className="font-display text-lg font-bold text-foreground">{title}</h2>
             {results.length > 0 && (
               <p className="text-xs text-muted-foreground mt-0.5">
-                {successCount} succeeded{failCount > 0 ? `, ${failCount} failed` : ""}
+                {successCount} succeeded
+                {failCount > 0 ? `, ${failCount} failed` : ""}
+                {awaitingCount > 0 ? `, ${awaitingCount} awaiting confirmation` : ""}
               </p>
             )}
           </div>
@@ -79,39 +90,60 @@ export default function SavedAIResults({ open, onClose, title, results, loading 
             </div>
           )}
 
-          {results.map((result, i) => (
+          {results.map((result, i) => {
+            const isAwaiting = !!result.needsConfirmation;
+            const isCancelled = !!result.cancelled;
+            const displaySummary = (result.titlePrefix ? `${result.titlePrefix}: ` : "") + result.summary;
+            const cardCls = isCancelled
+              ? "bg-gray-500/5 border-gray-400/20"
+              : isAwaiting
+                ? "bg-orange-500/5 border-orange-400/20"
+                : result.success
+                  ? "bg-emerald-500/5 border-emerald-400/20"
+                  : "bg-red-500/5 border-red-400/20";
+            const badge = isCancelled
+              ? { cls: "bg-gray-400/10 text-gray-400", label: "Cancelled" }
+              : isAwaiting
+                ? { cls: "bg-orange-400/10 text-orange-400", label: "Awaiting confirmation" }
+                : result.success
+                  ? { cls: "bg-emerald-400/10 text-emerald-400", label: "Success" }
+                  : { cls: "bg-red-400/10 text-red-400", label: "Failed" };
+            const iconCls = isCancelled
+              ? "text-gray-400"
+              : isAwaiting
+                ? "text-orange-400"
+                : result.success
+                  ? "text-emerald-400"
+                  : "text-red-400";
+            return (
             <div
               key={i}
-              className={`rounded-xl border p-4 transition-all ${
-                result.success
-                  ? "bg-emerald-500/5 border-emerald-400/20"
-                  : "bg-red-500/5 border-red-400/20"
-              }`}
+              className={`rounded-xl border p-4 transition-all ${cardCls}`}
             >
               <div className="flex items-start gap-3">
                 <div className="shrink-0 mt-0.5">
-                  {result.success ? (
-                    <CheckCircle2 className="h-4.5 w-4.5 text-emerald-400" />
+                  {isCancelled ? (
+                    <Ban className="h-4.5 w-4.5 text-gray-400" />
+                  ) : isAwaiting ? (
+                    <AlertTriangle className="h-4.5 w-4.5 text-orange-400" />
+                  ) : result.success ? (
+                    <CheckCircle2 className={`h-4.5 w-4.5 ${iconCls}`} />
                   ) : (
-                    <XCircle className="h-4.5 w-4.5 text-red-400" />
+                    <XCircle className={`h-4.5 w-4.5 ${iconCls}`} />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-xs font-semibold text-foreground">{result.tool}</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium ${
-                      result.success
-                        ? "bg-emerald-400/10 text-emerald-400"
-                        : "bg-red-400/10 text-red-400"
-                    }`}>
-                      {result.success ? "Success" : "Failed"}
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium ${badge.cls}`}>
+                      {badge.label}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground">{result.summary}</p>
+                  <p className="text-sm text-muted-foreground">{displaySummary}</p>
                   {result.error && (
                     <p className="text-xs text-red-400 mt-1">{result.error}</p>
                   )}
-                  {result.data != null && (
+                  {result.data != null && !isAwaiting && (
                     <details className="mt-2">
                       <summary className="text-[10px] text-muted-foreground/60 cursor-pointer hover:text-muted-foreground transition-colors">
                         View details
@@ -121,10 +153,29 @@ export default function SavedAIResults({ open, onClose, title, results, loading 
                       </pre>
                     </details>
                   )}
+                  {isAwaiting && (
+                    <div className="flex items-center gap-2 mt-3">
+                      <button
+                        onClick={() => onCancel?.(result)}
+                        disabled={result.confirming}
+                        className="px-3 py-1.5 text-xs font-medium rounded-lg bg-surface border border-border text-muted-foreground hover:text-foreground hover:border-red-400/30 disabled:opacity-40 transition-all"
+                      >
+                        Deny
+                      </button>
+                      <button
+                        onClick={() => onConfirm?.(result)}
+                        disabled={result.confirming}
+                        className="px-3 py-1.5 text-xs font-medium rounded-lg bg-accent text-white hover:bg-accent-hover disabled:opacity-40 transition-all"
+                      >
+                        {result.confirming ? "Running..." : "Approve & Run"}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
 
           {loading && results.length > 0 && (
             <div className="flex items-center gap-2 py-3 text-muted-foreground">

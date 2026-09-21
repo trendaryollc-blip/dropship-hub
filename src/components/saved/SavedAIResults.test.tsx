@@ -8,6 +8,8 @@ vi.mock("lucide-react", () => ({
   XCircle: () => <div data-testid="icon-xcircle" />,
   Info: () => <div data-testid="icon-info" />,
   Loader2: () => <div data-testid="icon-loader" />,
+  AlertTriangle: () => <div data-testid="icon-alert" />,
+  Ban: () => <div data-testid="icon-ban" />,
 }));
 
 const mockResults: AIResult[] = [
@@ -52,5 +54,42 @@ describe("SavedAIResults", () => {
     render(<SavedAIResults {...defaultProps} onClose={onClose} />);
     fireEvent.keyDown(document, { key: "Escape" });
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("shows awaiting confirmation state with approve/deny actions", () => {
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+    const awaiting: AIResult = {
+      tool: "Analyze",
+      success: false,
+      summary: "Awaiting confirmation: Analyze Product",
+      error: "confirmation_required",
+      needsConfirmation: true,
+      executionId: "exec-1",
+      id: "res-1",
+    };
+    render(
+      <SavedAIResults {...defaultProps} results={[awaiting]} onConfirm={onConfirm} onCancel={onCancel} />
+    );
+    expect(screen.getByText("Awaiting confirmation")).toBeInTheDocument();
+    expect(screen.getByText("Approve & Run")).toBeInTheDocument();
+    expect(screen.getByText("Deny")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Approve & Run"));
+    expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ executionId: "exec-1" }));
+    fireEvent.click(screen.getByText("Deny"));
+    expect(onCancel).toHaveBeenCalledWith(expect.objectContaining({ executionId: "exec-1" }));
+  });
+
+  it("shows cancelled state", () => {
+    const cancelled: AIResult = {
+      tool: "Analyze",
+      success: false,
+      summary: "Cancelled by user",
+      cancelled: true,
+      id: "res-2",
+    };
+    render(<SavedAIResults {...defaultProps} results={[cancelled]} />);
+    expect(screen.getByText("Cancelled")).toBeInTheDocument();
+    expect(screen.queryByText("Approve & Run")).not.toBeInTheDocument();
   });
 });

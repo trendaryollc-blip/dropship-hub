@@ -59,7 +59,7 @@ export default function SavedAIBar({ onAction, loading, productCount }: SavedAIB
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="h-4 w-4 text-accent" />
         <h3 className="text-xs font-semibold text-foreground">AI-Powered Actions</h3>
-        <span className="text-[10px] text-muted-foreground">• Works across {productCount} saved products</span>
+        <span className="text-[10px] text-muted-foreground">• Applies to {productCount} product{productCount === 1 ? "" : "s"}</span>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         {actions.map((action) => (

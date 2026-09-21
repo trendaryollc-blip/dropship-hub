@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Heart, Trash2, Package, ArrowLeft, Sparkles } from "lucide-react";
 import { useSavedProducts, type SavedProduct } from "@/components/saved/SavedProductsProvider";
@@ -38,9 +38,44 @@ interface StoreConnectionLite {
 // calls (rate limits + cost); results stream into the modal as they complete.
 const BULK_ACTION_LIMIT = 20;
 
+// Map supplier source platforms to valid selling platforms for listing generation.
+function mapSourceToPlatform(source: string): "shopify" | "amazon" | "etsy" | "ebay" | "walmart" {
+  const s = source.toLowerCase();
+  if (s.includes("amazon")) return "amazon";
+  if (s.includes("etsy")) return "etsy";
+  if (s.includes("ebay")) return "ebay";
+  if (s.includes("walmart")) return "walmart";
+  return "shopify";
+}
+
+// generate_listing's schema requires description (min 1) and category (min 1)
+// plus http(s) image URLs. Saved records only carry title/price/source, so we
+// seed the generator with what we know and let it write the actual copy.
+function buildListingInput(product: SavedProduct): Record<string, unknown> {
+  const input: Record<string, unknown> = {
+    productId: product.id,
+    title: product.title,
+    description: product.title,
+    price: product.price ?? 0,
+    category: "General",
+    platform: mapSourceToPlatform(product.source),
+  };
+  if (product.image && /^https?:\/\//i.test(product.image)) {
+    input.images = [product.image];
+  }
+  return input;
+}
+
 export default function SavedPage() {
   const router = useRouter();
-  const { savedProducts, clearSaved, syncError } = useSavedProducts();
+  const { savedProducts, clearSaved, syncError, selectedIds } = useSavedProducts();
+  const resultIdCounter = useRef(0);
+
+  // Stable id for each AI result so confirm/cancel can update the right entry.
+  const nextResultId = useCallback((): string => {
+    resultIdCounter.current += 1;
+    return `saved-ai-${Date.now()}-${resultIdCounter.current}`;
+  }, []);
 
   const [confirmClear, setConfirmClear] = useState(false);
   const [search, setSearch] = useState("");
@@ -91,10 +126,17 @@ export default function SavedPage() {
     return list;
   }, [savedProducts, search, sort, platformFilter]);
 
+  // AI and bulk actions honor the checkbox selection: if any product is
+  // selected, act only on those; otherwise act on the whole filtered list.
+  const actionTargets = useMemo(() => {
+    if (selectedIds.size === 0) return filteredProducts;
+    return savedProducts.filter((p) => selectedIds.has(p.id));
+  }, [savedProducts, filteredProducts, selectedIds]);
+
   const executeAITool = useCallback(async (toolId: string, input: Record<string, unknown>): Promise<AIResult> => {
     try {
       const authHeaders = await getAuthHeaders();
-      const res = await safeFetch<{ success: boolean; summary?: string; data?: unknown; error?: string }>(
+      const res = await safeFetch<{ success: boolean; summary?: string; data?: unknown; error?: string; needsConfirmation?: boolean; executionId?: string }>(
         "/api/ai/execute",
         {
           method: "POST",
@@ -102,7 +144,16 @@ export default function SavedPage() {
           body: JSON.stringify({ tool: toolId, input }),
         }
       );
-      return { tool: toolId, success: res.success, summary: res.summary || (res.success ? "Done" : "Failed"), data: res.data, error: res.error };
+      return {
+        tool: toolId,
+        id: nextResultId(),
+        success: res.success,
+        summary: res.summary || (res.success ? "Done" : "Failed"),
+        data: res.data,
+        error: res.error,
+        needsConfirmation: res.needsConfirmation,
+        executionId: res.executionId,
+      };
     } catch (e) {
       return { tool: toolId, success: false, summary: "Execution failed", error: String(e) };
     }
@@ -125,7 +176,7 @@ export default function SavedPage() {
       "generate-listings": {
         title: "Generate Listings",
         toolId: "generate_listing",
-        inputFn: (p) => ({ productId: p.id, title: p.title, platform: p.source }),
+        inputFn: (p) => buildListingInput(p),
       },
       "compare-suppliers": {
         title: "Compare Suppliers",
@@ -169,30 +220,32 @@ export default function SavedPage() {
     }
 
     const batchResults: AIResult[] = [];
-    const targets = filteredProducts.slice(0, BULK_ACTION_LIMIT);
+    const targets = actionTargets.slice(0, BULK_ACTION_LIMIT);
     for (const product of targets) {
       const input = config.inputFn(product);
       if (config.toolId === "push_to_store" && store) {
         input.storeId = store.id;
         input.platform = store.platform;
         input.price = product.price ?? 0;
-        if (product.image) input.images = [product.image];
+        // push_to_store's schema requires valid URLs — skip non-http images
+        // (data URIs / relative paths would reject the whole push).
+        if (product.image && /^https?:\/\//i.test(product.image)) input.images = [product.image];
       }
       const result = await executeAITool(config.toolId, input);
-      batchResults.push({ ...result, summary: `${product.title}: ${result.summary}` });
+      batchResults.push({ ...result, titlePrefix: product.title });
       setResults([...batchResults]);
     }
-    if (filteredProducts.length > targets.length) {
+    if (actionTargets.length > targets.length) {
       batchResults.push({
         tool: config.toolId,
         success: true,
-        summary: `List truncated to the first ${BULK_ACTION_LIMIT} of ${filteredProducts.length} products to respect rate limits.`,
+        summary: `List truncated to the first ${BULK_ACTION_LIMIT} of ${actionTargets.length} products to respect rate limits.`,
       });
       setResults([...batchResults]);
     }
 
     setAiLoading(null);
-  }, [filteredProducts, executeAITool]);
+  }, [actionTargets, executeAITool]);
 
   const handleAIBarAction = useCallback(async (action: string) => {
     setAiLoading(action);
@@ -200,7 +253,7 @@ export default function SavedPage() {
     const actionConfig: Record<string, { title: string; toolId: string }> = {
       "analyze-all": { title: "Analyze All Products", toolId: "analyze_product" },
       "find-similar": { title: "Find Similar Products", toolId: "find_similar_products" },
-      "optimize-pricing": { title: "Optimize Pricing", toolId: "optimize_pricing" },
+      "optimize-pricing": { title: "Analyze Pricing", toolId: "analyze_product" },
       "generate-listings": { title: "Generate Listings", toolId: "generate_listing" },
     };
 
@@ -212,20 +265,24 @@ export default function SavedPage() {
     setResultsOpen(true);
 
     const batchResults: AIResult[] = [];
-    for (const product of filteredProducts.slice(0, 10)) {
-      const result = await executeAITool(config.toolId, { productId: product.id, title: product.title, price: product.price ?? 0 });
-      batchResults.push({ ...result, summary: `${product.title}: ${result.summary}` });
+    for (const product of actionTargets.slice(0, 10)) {
+      const input: Record<string, unknown> =
+        config.toolId === "generate_listing"
+          ? buildListingInput(product)
+          : { productId: product.id, title: product.title, price: product.price ?? 0 };
+      const result = await executeAITool(config.toolId, input);
+      batchResults.push({ ...result, titlePrefix: product.title });
       setResults([...batchResults]);
     }
 
     setAiLoading(null);
-  }, [filteredProducts, executeAITool]);
+  }, [actionTargets, executeAITool]);
 
   const handleCardAIAction = useCallback(async (action: string, product: SavedProduct) => {
     const toolMap: Record<string, { toolId: string; input: Record<string, unknown> }> = {
       analyze: { toolId: "analyze_product", input: { productId: product.id, title: product.title, price: product.price ?? 0 } },
       similar: { toolId: "find_similar_products", input: { productId: product.id, title: product.title } },
-      listing: { toolId: "generate_listing", input: { productId: product.id, title: product.title, platform: product.source } },
+      listing: { toolId: "generate_listing", input: buildListingInput(product) },
       profit: { toolId: "calculate_cogs", input: { productId: product.id, price: product.price ?? 0 } },
       suppliers: { toolId: "compare_suppliers", input: { productId: product.id, title: product.title, price: product.price ?? 0 } },
       ask: {
@@ -247,8 +304,72 @@ export default function SavedPage() {
     setResultsOpen(true);
 
     const result = await executeAITool(config.toolId, config.input);
-    setResults([{ ...result, summary: `${product.title}: ${result.summary}` }]);
+    setResults([{ ...result, titlePrefix: product.title }]);
   }, [executeAITool, router]);
+
+  // Approve a tool run that landed in "awaiting confirmation" state (Ask
+  // Every Time / moderate+ modes). The confirmation re-executes the tool
+  // server-side, so we swap the pending entry with the real result.
+  const handleConfirmResult = useCallback(async (result: AIResult) => {
+    if (!result.executionId) return;
+    setResults((prev) => prev.map((r) => (r.id === result.id ? { ...r, confirming: true } : r)));
+    try {
+      const authHeaders = await getAuthHeaders();
+      const res = await safeFetch<{ success?: boolean; result?: { success?: boolean; summary?: string; data?: unknown } }>(
+        "/api/ai/confirm",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...authHeaders },
+          body: JSON.stringify({ executionId: result.executionId, action: "confirm" }),
+        }
+      );
+      setResults((prev) => prev.map((r) =>
+        r.id === result.id
+          ? {
+              ...r,
+              needsConfirmation: false,
+              executionId: undefined,
+              confirming: false,
+              success: res?.result?.success ?? false,
+              summary: res?.result?.summary ?? "Executed",
+              data: res?.result?.data,
+              error: res?.result?.success ? undefined : (res?.result?.summary ?? "Failed"),
+            }
+          : r
+      ));
+    } catch {
+      setResults((prev) => prev.map((r) =>
+        r.id === result.id
+          ? { ...r, confirming: false, needsConfirmation: false, success: false, error: "Could not confirm this action" }
+          : r
+      ));
+    }
+  }, []);
+
+  // Deny a tool run that landed in "awaiting confirmation" state.
+  const handleCancelResult = useCallback(async (result: AIResult) => {
+    if (!result.executionId) return;
+    setResults((prev) => prev.map((r) => (r.id === result.id ? { ...r, confirming: true } : r)));
+    try {
+      const authHeaders = await getAuthHeaders();
+      await safeFetch("/api/ai/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify({ executionId: result.executionId, action: "cancel" }),
+      });
+      setResults((prev) => prev.map((r) =>
+        r.id === result.id
+          ? { ...r, needsConfirmation: false, executionId: undefined, confirming: false, cancelled: true, success: false, summary: "Action cancelled by user", error: undefined }
+          : r
+      ));
+    } catch {
+      setResults((prev) => prev.map((r) =>
+        r.id === result.id
+          ? { ...r, confirming: false, error: "Could not cancel this action" }
+          : r
+      ));
+    }
+  }, []);
 
   return (
     <div className="max-w-7xl mx-auto space-y-5 pb-24">
@@ -306,7 +427,7 @@ export default function SavedPage() {
       ) : (
         <>
           <SavedStatsBar />
-          <SavedAIBar onAction={handleAIBarAction} loading={aiLoading} productCount={savedProducts.length} />
+          <SavedAIBar onAction={handleAIBarAction} loading={aiLoading} productCount={selectedIds.size > 0 ? actionTargets.length : savedProducts.length} />
           <SavedToolbar
             search={search}
             setSearch={setSearch}
@@ -349,6 +470,8 @@ export default function SavedPage() {
         title={resultsTitle}
         results={results}
         loading={!!aiLoading}
+        onConfirm={handleConfirmResult}
+        onCancel={handleCancelResult}
       />
 
       <ConfirmDialog
