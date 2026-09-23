@@ -187,7 +187,13 @@ export const compareSuppliersTool = createTool({
   execute: async (input: Record<string, unknown>) => {
     const title = (input.title as string).toLowerCase();
     const price = Number(input.price) || 0;
-    const suppliers: SupplierProfile[] = await getSuppliers();
+
+    let suppliers: SupplierProfile[] = [];
+    try {
+      suppliers = await getSuppliers();
+    } catch {
+      suppliers = [];
+    }
 
     const scored = suppliers.map((s) => {
       let score = 0;

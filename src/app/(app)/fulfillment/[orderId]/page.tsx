@@ -130,7 +130,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 mt-3">
+            <div className="flex flex-wrap items-center gap-2 mt-3">
               <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${st.bg} ${st.color}`}>
                 {st.icon} {order.status.replace("_", " ")}
               </span>

@@ -42,6 +42,7 @@ interface RevenueEntry {
 }
 
 interface FulfillmentOrderDoc {
+  id?: string;
   status: "pending" | "in_progress" | "shipped" | "delivered" | "cancelled";
   totalRevenue: number;
   profit: number;
@@ -115,7 +116,12 @@ export const GET = withAuth(async (_request: Request) => {
         const connections = connectionsSnap.docs.map((d) => d.data() as { status?: string });
         storesCount = connections.filter((c) => c.status === "connected").length;
         revenueEntries = revenueSnap.docs.map((d) => d.data() as RevenueEntry);
-        fulfillmentOrders = ordersSnap.docs.map((d) => d.data() as FulfillmentOrderDoc);
+        fulfillmentOrders = ordersSnap.docs.map((d) => {
+          const data = d.data() as FulfillmentOrderDoc;
+          // Keep the Firestore doc id so "recent orders" rows get stable React
+          // keys instead of collisions when two orders share a createdAt millis.
+          return { ...data, id: d.id };
+        });
       }
     } catch (error) {
       firestoreReadFailed = true;
@@ -149,15 +155,19 @@ export const GET = withAuth(async (_request: Request) => {
     const prevTotalRevenue = prevRevenue.reduce((s, e) => s + (e.amount || 0), 0);
     const totalOrders = recentRevenue.reduce((s, e) => s + (e.orders || 0), 0);
     const avgOrder = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+    const totalProfit = recentRevenue.reduce((s, e) => s + (e.profit || 0), 0);
+    // Growth is only meaningful against a prior-period baseline. Without one
+    // (first revenue ever) report 0 so the dashboard never shows a fake "+100%".
     const growth = prevTotalRevenue > 0
       ? Math.round(((totalRevenue - prevTotalRevenue) / prevTotalRevenue) * 100)
-      : totalRevenue > 0 ? 100 : 0;
+      : 0;
 
     const revenueStats = {
       revenue: Math.round(totalRevenue),
       growth,
       orders: totalOrders,
       avgOrder: Math.round(avgOrder * 100) / 100,
+      profit: Math.round(totalProfit),
     };
 
     // ── Fix #2: Build revenue chart from Firestore data (last 14 days) ──
@@ -182,7 +192,7 @@ export const GET = withAuth(async (_request: Request) => {
     const pipelineProfit = fulfillmentOrders.reduce((s, o) => s + (o.profit || 0), 0);
 
     const recentFulfillmentOrders = fulfillmentOrders.slice(0, 5).map((o) => ({
-      id: o.createdAt || "",
+      id: o.id || o.createdAt || "order",
       customer: o.customerName || "Customer",
       product: o.items?.[0]?.name?.slice(0, 30) || "Product",
       status: o.status,
@@ -360,9 +370,15 @@ export const GET = withAuth(async (_request: Request) => {
     const supplierStatuses: SupplierStatus[] = productsAvailable ? [supplierStatus] : [];
 
     // ── Heatmap ──────────────────────────────────────────────────────────
-    const heatmap: HeatmapCategory[] = Object.entries(categoryData).map(([cat, data]) => {
+    const categoryEntries = Object.entries(categoryData);
+    const avgListingCount = categoryEntries.reduce((s, [, data]) => s + data.search_results.length, 0) / Math.max(1, categoryEntries.length);
+    const heatmap: HeatmapCategory[] = categoryEntries.map(([cat, data]) => {
       const products = data.search_results.filter((p) => p.price !== null && p.price > 0);
-      const heat = Math.min(100, Math.round((data.search_results.length / Math.max(1, Object.keys(categoryData).length)) * 100));
+      // Listing density vs the category average: an average category reads ~50,
+      // denser categories climb toward 100. The old formula normalised against
+      // the category COUNT, which capped real listings at ~20 and meant the
+      // "overheating" stat / risk alerts could essentially never fire.
+      const heat = Math.min(100, Math.round((data.search_results.length / Math.max(1, avgListingCount)) * 50));
       const topProduct = products.length > 0 ? products[0].title.slice(0, 30) : "N/A";
       const categoryAvgPrice = products.length > 0 ? products.reduce((s, p) => s + (p.price ?? 0), 0) / products.length : 0;
       const avgMargin = Math.round(((categoryAvgPrice * 2.5 + 4.99 - categoryAvgPrice) / (categoryAvgPrice * 2.5 + 4.99)) * 100);
@@ -512,7 +528,7 @@ export const GET = withAuth(async (_request: Request) => {
 
     const quickActions: QuickActionStat[] = productsAvailable
       ? [
-          { label: "Search Products", description: "Discover new items to sell", href: "/products", color: "blue", stat: `${totalProducts}`, statLabel: "scanned this week" },
+          { label: "Search Products", description: "Discover new items to sell", href: "/products", color: "blue", stat: `${totalProducts}`, statLabel: "products scanned" },
           { label: "Find Suppliers", description: "Compare supplier options", href: "/suppliers", color: "emerald", stat: `${Object.keys(categoryData).length}/${categories.length}`, statLabel: "categories covered" },
           { label: "Calculate Profit", description: "Estimate your margins", href: "/calculator", color: "amber", stat: `${totalProducts}`, statLabel: "products analyzed" },
           { label: "AI Assistant", description: "Get smart recommendations", href: "/ai", color: "purple", stat: `${oppCount}`, statLabel: "new suggestions" },
@@ -529,10 +545,14 @@ export const GET = withAuth(async (_request: Request) => {
     ];
 
     // ── Fix #6: Alerts use /ai not /intelligence ────────────────────────
-    // All alerts are generated at request time — "just now" is the honest timestamp.
+    // All alerts are generated at request time — "just now" is the honest
+    // timestamp. IDs are derived from alert CONTENT (not blind slot numbers),
+    // so the client's persisted "read" state stays attached to the same alert
+    // across revalidations, while a genuinely NEW opportunity/risk landing in
+    // the same slot gets a new id and correctly surfaces as unread.
     const alerts: SmartAlert[] = [
-      ...trendingProducts.filter((p) => p.margin > 50).slice(0, 2).map((p, i) => ({
-        id: `opp-${i}`,
+      ...trendingProducts.filter((p) => p.margin > 50).slice(0, 2).map((p) => ({
+        id: stableAlertId("opp", `${p.name}@${p.sellPrice}`),
         type: "opportunity" as const,
         title: `High-margin opportunity: ${p.name}`,
         description: `${p.margin}% margin with ${p.demandLevel} demand. Selling at $${p.sellPrice.toFixed(2)} from $${p.price.toFixed(2)} source.`,
@@ -545,7 +565,7 @@ export const GET = withAuth(async (_request: Request) => {
         sparkline: p.sparkline,
       })),
       ...heatmap.filter((c) => c.heat >= 70).slice(0, 2).map((c, i) => ({
-        id: `risk-${i}`,
+        id: stableAlertId("risk", `${c.category}@${c.heat}`),
         type: "risk" as const,
         title: `${c.category} market overheating`,
         description: `Heat score ${c.heat}/100. ${c.velocity > 0 ? `Growing ${c.velocity}% per week.` : "Cooling trend detected."} Competition rising.`,
@@ -557,8 +577,8 @@ export const GET = withAuth(async (_request: Request) => {
         aiAnalysis: `${c.category} is showing signs of market saturation. ${c.aiInsight} Monitor closely before investing more inventory.`,
         sparkline: c.weeklyData ?? [c.heat - 10, c.heat - 5, c.heat, c.heat + 3, c.heat - 2, c.heat + 1, c.heat],
       })),
-      ...trendingProducts.slice(0, 2).map((p, i) => ({
-        id: `info-${i}`,
+      ...trendingProducts.slice(0, 2).map((p) => ({
+        id: stableAlertId("info", `${p.name}@${p.monthlyVolume}`),
         type: "info" as const,
         title: `Trending: ${p.name}`,
         description: `${p.trend > 0 ? "+" : ""}${p.trend}% trend score. ${p.monthlyVolume} monthly volume on ${p.platform}.`,
@@ -583,7 +603,7 @@ export const GET = withAuth(async (_request: Request) => {
               Math.round(baseValue + Math.sin(insightHash + idx) * 10)
             );
             return {
-              id: `warn-${i}`,
+              id: stableAlertId("warn", insight),
               type: "warning" as const,
               title: `AI Alert: ${insight.slice(0, 50)}`,
               description: insight,
@@ -644,7 +664,6 @@ export const GET = withAuth(async (_request: Request) => {
       heatmap,
       trending: trendingProducts,
       briefing: aiBriefing,
-      pulse: null,
       actionStats: quickActions,
       fulfillmentPipeline,  // Fix #3: Now uses real Firestore orders
       contextualActions: filteredContextualActions,
@@ -663,7 +682,7 @@ export const GET = withAuth(async (_request: Request) => {
     return NextResponse.json({
       ticker: [],
       aiDailyPick: null,
-      revenueStats: { revenue: 0, growth: 0, orders: 0, avgOrder: 0 },
+      revenueStats: { revenue: 0, growth: 0, orders: 0, avgOrder: 0, profit: 0 },
       revenueChart: [],
       alerts: [],
       nicheCards: [],
@@ -671,7 +690,6 @@ export const GET = withAuth(async (_request: Request) => {
       heatmap: [],
       trending: [],
       briefing: { insights: ["System recovering — please try again"], sentiment: null, sentimentLabel: "Neutral", opportunities: 0, risks: 0, trends: 0, lastScan: "retrying..." },
-      pulse: [],
       actionStats: [],
       fulfillmentPipeline: { pending: 0, processing: 0, shipped: 0, delivered: 0, totalRevenue: 0, totalProfit: 0, recentOrders: [] },
       contextualActions: [],
@@ -681,6 +699,20 @@ export const GET = withAuth(async (_request: Request) => {
     }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 }, LIMITS.DEFAULT);
+
+/**
+ * Deterministic content-derived alert id (djb2-style hash, base36). The same
+ * payload always yields the same id so the client's persisted read-state stays
+ * accurate across 60s revalidations, while a different payload yields a fresh
+ * id and surfaces as unread.
+ */
+export function stableAlertId(type: string, payload: string): string {
+  let hash = 5381;
+  for (let i = 0; i < payload.length; i++) {
+    hash = ((hash << 5) + hash + payload.charCodeAt(i)) >>> 0;
+  }
+  return `${type}-${hash.toString(36)}`;
+}
 
 function formatTimeAgo(dateStr: string): string {
   if (!dateStr) return "just now";

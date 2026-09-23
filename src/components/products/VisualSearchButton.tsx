@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from "react";
 import Image from "next/image";
 import { Camera, Loader2, X, Upload } from "lucide-react";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 interface VisualSearchButtonProps {
   onSearch: (query: string) => void;
@@ -18,6 +19,7 @@ export default function VisualSearchButton({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
 
   const handleFileSelect = useCallback((file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -42,9 +44,11 @@ export default function VisualSearchButton({
     setError(null);
 
     try {
+      if (!user) throw new Error("Sign in to search by image");
+      const token = await user.getIdToken();
       const res = await fetch("/api/search/visual", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ image: preview }),
       });
 

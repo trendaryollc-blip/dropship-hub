@@ -94,7 +94,7 @@ function computeMatchScore(
   };
 }
 
-export const POST = withAuth(async (request: NextRequest, uid: string) => {
+async function buildRecommendations(uid: string): Promise<Response> {
   try {
     const db = await getAdminDB();
     const userRef = db.collection("users").doc(uid);
@@ -122,13 +122,15 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     // Compute average margin from their products
     const topMargins = lifecycle.map((p) => safeNum(p.profitMargin, 25));
 
-    // Score all products
-    const recommendations: ProductRecommendation[] = PRODUCT_CATALOG.map((product) => {
+    // Score all products. Every recommendation includes a ready-to-run
+    // `query` so the client can deep-link straight into /products?q=...
+    const recommendations: (ProductRecommendation & { query: string })[] = PRODUCT_CATALOG.map((product) => {
       const { score, reasoning } = computeMatchScore(product, userNiches, userCategories, topMargins);
       return {
         ...product,
         matchScore: score,
         reasoning,
+        query: product.title,
       };
     })
       .sort((a, b) => b.matchScore - a.matchScore)
@@ -150,4 +152,12 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
       { status: 500 }
     );
   }
+}
+
+export const GET = withAuth(async (_request: NextRequest, uid: string) => {
+  return buildRecommendations(uid);
+}, LIMITS.AI_CHAT);
+
+export const POST = withAuth(async (_request: NextRequest, uid: string) => {
+  return buildRecommendations(uid);
 }, LIMITS.AI_CHAT);

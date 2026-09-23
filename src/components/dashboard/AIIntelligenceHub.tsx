@@ -12,6 +12,32 @@ import { SectionDivider } from "./SectionDivider";
 import { ScoreRing } from "./ScoreRing";
 import type { AIDailyPick, AIBriefing, SmartAlert } from "@/types/dashboard";
 
+/**
+ * The route sends human strings ("just now", "retrying...") rather than ISO
+ * timestamps. Only feed through Date formatting when the value actually parses.
+ */
+function formatLastScan(value: string | undefined | null): string {
+  if (!value) return "N/A";
+  const date = new Date(value);
+  if (!Number.isNaN(date.getTime())) {
+    return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+  return value;
+}
+
+/**
+ * Same defensive parsing for the daily pick expiry — a malformed value must
+ * never crash the section with an `Invalid time value` RangeError.
+ */
+function formatExpiryDate(value: string | undefined | null): string {
+  if (!value) return "Today";
+  const date = new Date(value);
+  if (!Number.isNaN(date.getTime())) {
+    return date.toLocaleDateString();
+  }
+  return value;
+}
+
 export function AIIntelligenceHub({
   dailyPick, briefing, alerts, onAlertRead, onMarkAllRead,
 }: {
@@ -41,7 +67,7 @@ export function AIIntelligenceHub({
                       <ScoreRing score={dailyPick.overallScore ?? 0} size={32} strokeWidth={3} />
                     </div>
                     <p className="text-[10px] text-gray-500 mt-0.5">
-                      {dailyPick.category} &middot; {dailyPick.platform} &middot; Expires {new Date(dailyPick.expiresAt).toLocaleDateString()}
+                      {dailyPick.category} &middot; {dailyPick.platform} &middot; Expires {formatExpiryDate(dailyPick.expiresAt)}
                     </p>
                   </div>
                 </div>
@@ -180,7 +206,7 @@ export function AIIntelligenceHub({
                 <Link href="/products" className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-purple-500 text-white text-xs font-semibold hover:bg-purple-600 transition-all active:scale-[0.97]">
                   Start Selling <ArrowUpRight className="h-3.5 w-3.5" />
                 </Link>
-                <Link href={`/calculator?source=${dailyPick.sourcePrice}&sell=${dailyPick.sellPrice}`} className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-white/[0.1] text-gray-300 text-xs font-medium hover:bg-white/[0.05] transition-all">
+                <Link href={`/calculator/profit?cost=${dailyPick.sourcePrice}&price=${dailyPick.sellPrice}`} className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-white/[0.1] text-gray-300 text-xs font-medium hover:bg-white/[0.05] transition-all">
                   <Calculator className="h-3.5 w-3.5" /> Compare
                 </Link>
                 <a href={dailyPick.sourceUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-white/[0.1] text-gray-300 text-xs font-medium hover:bg-white/[0.05] transition-all">
@@ -198,9 +224,9 @@ export function AIIntelligenceHub({
             <div className="flex items-center gap-2 mb-3">
               <Brain className="h-4 w-4 text-cyan-400" />
               <span className="text-xs font-semibold text-white">AI Briefing</span>
-              <span className="ml-auto text-[9px] text-gray-600">{briefing.lastScan ? new Date(briefing.lastScan).toLocaleDateString() : "N/A"}</span>
+              <span className="ml-auto text-[9px] text-gray-600">{formatLastScan(briefing.lastScan)}</span>
             </div>
-            <div className="grid grid-cols-3 gap-2 mb-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
               <div className="text-center p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/15">
                 <p className="font-display text-lg font-bold text-emerald-400">{briefing.opportunities ?? 0}</p>
                 <p className="text-[8px] text-emerald-400/70 uppercase">Opps</p>

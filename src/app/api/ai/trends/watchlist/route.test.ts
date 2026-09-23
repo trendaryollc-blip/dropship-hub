@@ -13,6 +13,7 @@ vi.mock("@/lib/rate-limit", () => ({
 
 vi.doMock("@/lib/validation", () => ({
   TrendWatchlistInputSchema: {},
+  TrendWatchlistUpdateSchema: {},
   validateBody: vi.fn((schema: any, body: any) => ({ success: true, data: body })),
 }));
 
@@ -20,6 +21,7 @@ vi.doMock("@/lib/data/trend-predictor", () => ({
   getTrendWatchlist: vi.fn().mockResolvedValue([{ id: "w1", keyword: "test" }]),
   addTrendWatchlistEntry: vi.fn().mockResolvedValue("w1"),
   deleteTrendWatchlistEntry: vi.fn().mockResolvedValue(true),
+  updateTrendWatchlist: vi.fn().mockResolvedValue(true),
 }));
 
 describe("GET /api/ai/trends/watchlist", () => {
@@ -53,6 +55,42 @@ describe("POST /api/ai/trends/watchlist", () => {
 
     expect(json.id).toBe("w1");
     expect(json.success).toBe(true);
+  });
+});
+
+describe("PUT /api/ai/trends/watchlist", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("updates alert config on an entry", async () => {
+    const { PUT } = await import("./route");
+    const { updateTrendWatchlist } = await import("@/lib/data/trend-predictor");
+    const req = new Request("http://localhost/api/ai/trends/watchlist", {
+      method: "PUT",
+      body: JSON.stringify({ id: "w1", alertOnRising: false, customThreshold: 75 }),
+    });
+
+    const res = await PUT(req as any);
+    const json = await res.json();
+
+    expect(json.success).toBe(true);
+    expect(updateTrendWatchlist).toHaveBeenCalledWith("test-user-123", "w1", {
+      alertOnRising: false,
+      customThreshold: 75,
+    });
+  });
+
+  it("returns 400 when id missing", async () => {
+    const { PUT } = await import("./route");
+    const req = new Request("http://localhost/api/ai/trends/watchlist", {
+      method: "PUT",
+      body: JSON.stringify({ alertOnRising: false }),
+    });
+
+    const res = await PUT(req as any);
+    const json = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(json.error).toBe("Missing entry ID");
   });
 });
 

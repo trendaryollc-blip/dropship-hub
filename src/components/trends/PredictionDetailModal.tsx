@@ -10,6 +10,7 @@ import GeographicHeatmap from "./GeographicHeatmap";
 import PDFExportButton from "./PDFExportButton";
 import type { TrendPrediction, TrendSignal } from "@/types/trend-predictor";
 import { exportAnalysisToCSV } from "@/lib/trends/export";
+import { formatDate } from "@/lib/dates";
 
 interface PredictionDetailModalProps {
   prediction: TrendPrediction;
@@ -104,7 +105,7 @@ export default function PredictionDetailModal({
                   <span className="text-xs text-muted-foreground">· {prediction.category}</span>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span>Created {new Date(prediction.createdAt).toLocaleDateString()}</span>
+                  <span>Created {formatDate(prediction.createdAt) || "—"}</span>
                   <span>·</span>
                   <span className={`font-semibold ${dirColor}`}>{prediction.direction}</span>
                   <span>·</span>

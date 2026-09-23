@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import VoiceInput from "@/components/ai/VoiceInput";
 import VisualSearchButton from "@/components/products/VisualSearchButton";
+import { auth } from "@/lib/firebase";
 
 const platformIcons: Record<string, string> = {
   amazon: "📦", ebay: "🏷️", aliexpress: "🇨🇳",
@@ -29,6 +30,18 @@ const AI_SUGGESTED = [
   { text: "Viral pet accessories", icon: Sparkles },
   { text: "Low competition beauty", icon: Sparkles },
 ];
+
+function HighlightedSuggestion({ text, query }: { text: string; query: string }) {
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx < 0 || !query) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <span className="text-accent font-medium">{text.slice(idx, idx + query.length)}</span>
+      {text.slice(idx + query.length)}
+    </>
+  );
+}
 
 interface DynamicSuggestion {
   text: string;
@@ -70,8 +83,12 @@ export default function SearchHeader({
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
+        const headers: Record<string, string> = {};
+        const token = auth.currentUser ? await auth.currentUser.getIdToken().catch(() => null) : null;
+        if (token) headers.Authorization = `Bearer ${token}`;
         const res = await fetch(`/api/search/suggestions?q=${encodeURIComponent(query)}`, {
           signal: controller.signal,
+          headers,
         });
         const data = await res.json();
         if (data.suggestions) setDynamicSuggestions(data.suggestions);
@@ -124,11 +141,11 @@ export default function SearchHeader({
           {/* Glow effect on focus */}
           <div className={`absolute -inset-1 rounded-3xl bg-gradient-to-r from-accent/20 via-accent/10 to-accent/20 blur-2xl transition-opacity duration-700 ${isFocused ? "opacity-100" : "opacity-0"}`} />
           
-          <div className="relative glass rounded-3xl p-6 sm:p-8 border border-border/30">
+          <div className="relative glass rounded-3xl p-4 sm:p-6 desk:p-8 border border-border/30">
             {/* Tip inside hero */}
             <div className="flex items-center justify-center gap-2 mb-4 pb-4 border-b border-border/20">
-              <Lightbulb className="h-3.5 w-3.5 text-accent/40" />
-              <p className="text-[11px] text-muted-foreground/50">
+              <Lightbulb className="h-3.5 w-3.5 text-accent/40 shrink-0" />
+              <p className="text-[11px] text-muted-foreground/50 text-center">
                 Use natural language like &quot;summer outdoor gadgets under $15 with 30%+ margin&quot; for best results
               </p>
             </div>
@@ -141,7 +158,7 @@ export default function SearchHeader({
                   : "bg-surface/40 border border-border/30 hover:border-border/50"
               }`}>
                 {/* Search icon */}
-                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-accent/10 shrink-0">
+                <div className="hidden sm:flex items-center justify-center w-10 h-10 rounded-xl bg-accent/10 shrink-0">
                   <Search className="h-5 w-5 text-accent" />
                 </div>
 
@@ -149,6 +166,11 @@ export default function SearchHeader({
                 <input
                   ref={inputRef}
                   type="text"
+                  role="combobox"
+                  aria-expanded={showDropdown}
+                  aria-controls="search-suggestions-list"
+                  aria-autocomplete="list"
+                  aria-label="Search products"
                   value={query}
                   onChange={(e) => { setQuery(e.target.value); setShowDropdown(true); }}
                   onFocus={() => { setShowDropdown(true); setIsFocused(true); }}
@@ -158,13 +180,14 @@ export default function SearchHeader({
                     if (e.key === "Escape") setShowDropdown(false);
                   }}
                   placeholder="What are you looking for? Try natural language..."
-                  className="flex-1 h-12 bg-transparent text-foreground placeholder:text-muted-foreground/40 focus:outline-none text-base sm:text-lg font-medium"
+                  className="flex-1 min-w-0 h-12 bg-transparent text-foreground placeholder:text-muted-foreground/40 focus:outline-none text-base sm:text-lg font-medium"
                 />
 
                 {/* Clear button */}
                 {query && (
                   <button
                     onClick={() => { setQuery(""); inputRef.current?.focus(); }}
+                    aria-label="Clear search"
                     className="flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface/60 transition-all shrink-0"
                   >
                     <X className="h-4 w-4" />
@@ -175,16 +198,17 @@ export default function SearchHeader({
                 <VoiceInput onTranscript={(text) => { setQuery(text); setShowDropdown(true); }} />
 
                 {/* Visual/Image search */}
-                <VisualSearchButton onSearch={handleAISearch} className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface/40 hover:bg-surface/60 text-muted-foreground hover:text-foreground" />
+                <VisualSearchButton onSearch={handleAISearch} className="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl bg-surface/40 hover:bg-surface/60 text-muted-foreground hover:text-foreground" />
 
                 {/* Divider */}
-                <div className="w-px h-6 bg-border/30 shrink-0" />
+                <div className="hidden sm:block w-px h-6 bg-border/30 shrink-0" />
 
                 {/* Search button */}
                 <button
                   onClick={handleSearch}
                   disabled={loading || !query.trim()}
-                  className="btn-hero-cta flex items-center gap-2 h-12 px-6 shrink-0"
+                  aria-label="Search"
+                  className="btn-hero-cta flex items-center gap-2 h-12 px-4 sm:px-6 shrink-0"
                 >
                   {loading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -196,7 +220,7 @@ export default function SearchHeader({
               </div>
 
               {/* Search All Platforms button */}
-              <div className="flex items-center justify-between mt-3 px-1">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mt-3 px-1">
                 <div className="flex items-center gap-2">
                   <Globe className="h-3.5 w-3.5 text-muted-foreground/50" />
                   <span className="text-xs text-muted-foreground/50">Search across all platforms</span>
@@ -204,6 +228,7 @@ export default function SearchHeader({
                 <button
                   onClick={() => { setShowDropdown(false); onSearch(platforms.map(p => p.id)); }}
                   disabled={loading || !query.trim()}
+                  aria-label="Search across all platforms"
                   className="text-xs text-accent hover:text-accent/80 font-medium transition-colors disabled:opacity-40"
                 >
                   Search All Platforms
@@ -212,7 +237,7 @@ export default function SearchHeader({
 
               {/* Dropdown */}
               {(showSuggestions || showRecent) && (
-                <div className="absolute left-0 right-0 mt-2 glass rounded-2xl border border-border overflow-hidden shadow-2xl shadow-black/20 z-50">
+                <div id="search-suggestions-list" role="listbox" aria-label="Search suggestions" className="absolute left-0 right-0 mt-2 glass rounded-2xl border border-border overflow-hidden shadow-2xl shadow-black/20 z-50">
                   {showRecent && (
                     <div className="p-2">
                       <div className="flex items-center gap-1.5 px-3 py-1.5 mb-1">
@@ -222,6 +247,8 @@ export default function SearchHeader({
                       {recentSearches.slice(0, 4).map((s) => (
                         <button
                           key={s}
+                          role="option"
+                          aria-selected="false"
                           onClick={() => { setQuery(s); setShowDropdown(false); onRecentClick(s); }}
                           className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-surface/60 transition-all text-left"
                         >
@@ -240,18 +267,13 @@ export default function SearchHeader({
                       {filteredSuggestions.map((s) => (
                         <button
                           key={s}
+                          role="option"
+                          aria-selected="false"
                           onClick={() => { setQuery(s); setShowDropdown(false); onSearch(); }}
                           className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-surface/60 transition-all text-left"
                         >
                           <Search className="h-3.5 w-3.5 text-muted-foreground/30" />
-                          <span
-                            dangerouslySetInnerHTML={{
-                              __html: s.replace(
-                                new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi"),
-                                '<span class="text-accent font-medium">$1</span>'
-                              ),
-                            }}
-                          />
+                          <HighlightedSuggestion text={s} query={query} />
                         </button>
                       ))}
                     </div>
@@ -279,6 +301,7 @@ export default function SearchHeader({
                     <button
                       key={p.id}
                       onClick={() => togglePlatform(p.id)}
+                      aria-pressed={isSelected}
                       className={`platform-chip-hover flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap shrink-0 border ${
                         isSelected
                           ? "bg-accent/15 text-accent border-accent/25 shadow-sm shadow-accent/10"

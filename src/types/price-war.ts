@@ -86,6 +86,19 @@ export interface PriceWarSettings {
   notifyOnFloorBreach: boolean;
 }
 
+export interface PriceAlert {
+  id: string;
+  ruleId: string;
+  type: "price_drop" | "price_increase" | "out_of_stock" | "new_competitor" | "below_floor";
+  message: string;
+  competitorPrice: number;
+  myPrice: number;
+  severity: "low" | "medium" | "high";
+  read: boolean;
+  // Firestore Timestamp serializes to {seconds, nanoseconds} via JSON.
+  createdAt: string | { seconds: number; nanoseconds?: number };
+}
+
 export interface PriceWarStats {
   totalRules: number;
   activeRules: number;

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
-let mockUser: any = { uid: "test-uid" };
+let mockUser: any = { uid: "test-uid", getIdToken: vi.fn().mockResolvedValue("test-token") };
 let mockSuppliersData: any = null;
 let mockAssignmentData: any = null;
 let mockUseAPIImpl: ((url: string | null) => any) | null = null;
@@ -34,7 +34,7 @@ import { SupplierPicker } from "@/components/fulfillment/SupplierPicker";
 describe("SupplierPicker", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUser = { uid: "test-uid" };
+    mockUser = { uid: "test-uid", getIdToken: vi.fn().mockResolvedValue("test-token") };
     mockSuppliersData = {
       suppliers: [
         { id: "cj-dropshipping", name: "CJ Dropshipping" },

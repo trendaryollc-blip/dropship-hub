@@ -12,6 +12,7 @@ export interface TrendWatchlistDoc {
   alertOnRising: boolean;
   alertOnPeak: boolean;
   alertOnSaturation: boolean;
+  customThreshold?: number;
 }
 
 export interface TrendAlertDoc {
@@ -73,6 +74,21 @@ export async function deleteTrendWatchlistEntry(uid: string, entryId: string): P
     return true;
   } catch (error) {
     handleFirestoreError("deleteTrendWatchlistEntry", error);
+    return false;
+  }
+}
+
+export async function updateTrendWatchlist(
+  uid: string,
+  entryId: string,
+  updates: Partial<Pick<TrendWatchlistDoc, "alertOnRising" | "alertOnPeak" | "alertOnSaturation" | "customThreshold">>
+): Promise<boolean> {
+  try {
+    if (Object.keys(updates).length === 0) return true;
+    await updateDoc(doc(db, "users", uid, "trendWatchlist", entryId), updates);
+    return true;
+  } catch (error) {
+    handleFirestoreError("updateTrendWatchlist", error);
     return false;
   }
 }

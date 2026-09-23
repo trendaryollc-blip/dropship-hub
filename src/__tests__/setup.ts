@@ -4,6 +4,45 @@ import "@testing-library/jest-dom/vitest";
 // Required by React 19 + Testing Library so state updates are treated as act() events
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
+// Node 25 exposes a broken, method-less `localStorage`/`sessionStorage` global
+// when webstorage is enabled without a valid --localstorage-file path. Replace
+// both with in-memory implementations so components that persist state work.
+function makeMemoryStorage(): Storage {
+  const data = new Map<string, string>();
+  return {
+    get length() {
+      return data.size;
+    },
+    clear() {
+      data.clear();
+    },
+    getItem(key: string) {
+      return data.has(key) ? (data.get(key) as string) : null;
+    },
+    key(index: number) {
+      return Array.from(data.keys())[index] ?? null;
+    },
+    removeItem(key: string) {
+      data.delete(key);
+    },
+    setItem(key: string, value: string) {
+      data.set(key, String(value));
+    },
+  } as Storage;
+}
+
+for (const name of ["localStorage", "sessionStorage"] as const) {
+  const existing = (globalThis as Record<string, unknown>)[name] as Storage | undefined;
+  if (!existing || typeof existing.setItem !== "function") {
+    Object.defineProperty(globalThis, name, {
+      value: makeMemoryStorage(),
+      configurable: true,
+      writable: true,
+      enumerable: true,
+    });
+  }
+}
+
 // Mock ResizeObserver for Recharts
 class ResizeObserverMock {
   observe() {}

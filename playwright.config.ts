@@ -19,7 +19,7 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     actionTimeout: 10000,
-    navigationTimeout: 15000,
+    navigationTimeout: 30000,
   },
   projects: [
     {

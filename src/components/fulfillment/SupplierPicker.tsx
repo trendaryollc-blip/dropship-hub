@@ -27,9 +27,8 @@ export function SupplierPicker({ productId, productName: _productName, onAssigne
   const [shippingCost, setShippingCost] = useState("0");
   const [loading, setLoading] = useState(false);
 
-  const uid = user?.uid || "";
   const { data: supplierData, isLoading: initialLoading } = useAPI<{ assignment?: SupplierAssignment }>(
-    uid ? `/api/fulfillment/suppliers?uid=${uid}&productId=${productId}` : null
+    user ? `/api/fulfillment/suppliers?productId=${encodeURIComponent(productId)}` : null
   );
   const { data: suppliersList, isLoading: suppliersLoading } = useAPI<{ suppliers?: { id: string; name: string }[] }>("/api/suppliers");
   const assignment = supplierData?.assignment || null;
@@ -51,11 +50,11 @@ export function SupplierPicker({ productId, productName: _productName, onAssigne
     if (!user) return;
     setLoading(true);
     try {
+      const token = await user.getIdToken();
       await safeFetch("/api/fulfillment/suppliers", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          uid: user.uid,
           productId,
           supplierId,
           supplierName,
@@ -73,7 +72,11 @@ export function SupplierPicker({ productId, productName: _productName, onAssigne
   const handleClear = async () => {
     if (!user) return;
     try {
-      await safeFetch(`/api/fulfillment/suppliers?uid=${user.uid}&productId=${productId}`, { method: "DELETE" });
+      const token = await user.getIdToken();
+      await safeFetch(`/api/fulfillment/suppliers?productId=${encodeURIComponent(productId)}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
     } catch (e) { console.warn("[SupplierPicker] Error:", e instanceof Error ? e.message : e); }
   };
 

@@ -111,7 +111,7 @@ export function ProductDiscovery({ trending, onAddCompare, onSaveProduct, isProd
                       {product.whyTrending}
                     </p>
                   )}
-                  <div className="grid grid-cols-3 gap-2 mb-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
                     <div className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06]">
                       <p className="text-[8px] text-gray-500 uppercase">Price</p>
                       <p className="text-sm font-bold text-white">${product.price.toFixed(2)}</p>

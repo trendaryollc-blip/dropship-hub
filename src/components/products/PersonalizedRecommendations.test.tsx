@@ -30,7 +30,9 @@ const mockRecommendations = [
 ];
 
 beforeEach(() => {
-  vi.mocked(AuthProvider.useAuth).mockReturnValue({ user: { uid: "user-1" } } as any);
+  vi.mocked(AuthProvider.useAuth).mockReturnValue({
+    user: { uid: "user-1", getIdToken: vi.fn().mockResolvedValue("test-token") },
+  } as any);
   vi.mocked(SafeFetch.safeFetch).mockResolvedValue({ recommendations: [] });
 });
 

@@ -8,7 +8,7 @@ import { useInView } from "@/hooks/useInView";
 import { SectionDivider } from "./SectionDivider";
 
 export function RevenueProfitHub({ stats, chartData, storesConnected, suppliersActive, pendingOrders, marginPct }: {
-  stats: { revenue: number; growth: number; orders: number; avgOrder: number };
+  stats: { revenue: number; growth: number; orders: number; avgOrder: number; profit: number };
   chartData: { date: string; value: number }[];
   storesConnected: number;
   suppliersActive: number;
@@ -19,6 +19,8 @@ export function RevenueProfitHub({ stats, chartData, storesConnected, suppliersA
   const revenue = stats.revenue ?? 0;
   const orders = stats.orders ?? 0;
   const avgOrder = stats.avgOrder ?? 0;
+  const profitTotal = stats.profit ?? 0;
+  const profitPerOrder = orders > 0 ? profitTotal / orders : 0;
   const growth = stats.growth ?? 0;
 
   const chartMax = chartData.length > 0 ? Math.max(...chartData.map(d => d.value), 1) : 1;
@@ -129,8 +131,8 @@ export function RevenueProfitHub({ stats, chartData, storesConnected, suppliersA
             <span className="text-sm font-semibold text-white">Profit Tracker</span>
           </div>
           <div className="text-center mb-4">
-            <p className="font-display text-3xl font-bold text-emerald-400">${avgOrder.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-            <p className="text-[10px] text-emerald-400/70 mt-1">Avg. Order Value</p>
+            <p className="font-display text-3xl font-bold text-emerald-400">${profitPerOrder.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <p className="text-[10px] text-emerald-400/70 mt-1">Profit per Order</p>
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between text-xs">
@@ -142,6 +144,14 @@ export function RevenueProfitHub({ stats, chartData, storesConnected, suppliersA
                 style={{ width: `${Math.min(100, marginPct)}%` }} />
             </div>
             <div className="h-px bg-emerald-500/10" />
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-400">Avg. Order Value</span>
+              <span className="font-semibold text-white">${avgOrder.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-400">Total Profit</span>
+              <span className="font-semibold text-white">${profitTotal.toLocaleString()}</span>
+            </div>
             <div className="flex items-center justify-between text-xs">
               <span className="text-gray-400">Total Revenue</span>
               <span className="font-semibold text-white">${revenue.toLocaleString()}</span>

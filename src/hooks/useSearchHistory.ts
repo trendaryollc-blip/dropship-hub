@@ -4,6 +4,8 @@ import { useState, useCallback } from "react";
 
 const STORAGE_KEY = "searchHistory";
 const MAX_SEARCHES = 10;
+const MAX_RESULTS_PER_ENTRY = 30;
+const MAX_STORAGE_BYTES = 4.5 * 1024 * 1024;
 
 export interface SearchHistoryEntry {
   query: string;
@@ -11,6 +13,14 @@ export interface SearchHistoryEntry {
   platforms: string[];
   timestamp: number;
   clickedProductIds: string[];
+}
+
+function estimateBytes(value: unknown): number {
+  try {
+    return new Blob([JSON.stringify(value)]).size;
+  } catch {
+    return JSON.stringify(value).length * 2;
+  }
 }
 
 function loadHistory(): SearchHistoryEntry[] {
@@ -33,7 +43,16 @@ function loadHistory(): SearchHistoryEntry[] {
 function saveHistory(history: SearchHistoryEntry[]) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(0, MAX_SEARCHES)));
+    // Trim each entry's results so a single large search can't blow the
+    // storage quota, then drop the oldest entries until we fit under budget.
+    let pruned = history.map((entry) => ({
+      ...entry,
+      results: entry.results.slice(0, MAX_RESULTS_PER_ENTRY),
+    }));
+    while (pruned.length > 0 && estimateBytes(pruned) > MAX_STORAGE_BYTES) {
+      pruned = pruned.slice(0, -1);
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(pruned.slice(0, MAX_SEARCHES)));
   } catch {
     // localStorage full or unavailable — silently fail
   }
@@ -47,7 +66,7 @@ export function useSearchHistory() {
     setHistory((prev) => {
       const entry: SearchHistoryEntry = {
         query: query.trim(),
-        results,
+        results: results.slice(0, MAX_RESULTS_PER_ENTRY),
         platforms,
         timestamp: Date.now(),
         clickedProductIds: [],

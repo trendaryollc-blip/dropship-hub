@@ -14,7 +14,7 @@ export default function CTA() {
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
       <div className="mx-auto max-w-7xl px-6">
-        <div className="relative glass rounded-3xl p-12 md:p-16 text-center overflow-hidden">
+        <div className="relative glass rounded-3xl p-6 sm:p-10 md:p-16 text-center overflow-hidden">
           <div className="absolute top-0 left-1/4 w-[400px] h-[300px] bg-accent/[0.06] rounded-full blur-[100px]" />
           <div className="absolute bottom-0 right-1/4 w-[300px] h-[200px] bg-accent-warm/[0.04] rounded-full blur-[80px]" />
 

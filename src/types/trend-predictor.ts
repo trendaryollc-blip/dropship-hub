@@ -91,6 +91,7 @@ export interface TrendAnalysisResponse {
   relatedTrends: { keyword: string; growth: number; platform: TrendPlatform }[];
   analysisTime: number;
   provider: string;
+  geoData?: { region: string; value: number }[];
 }
 
 export interface TrendWatchlistEntry {
@@ -102,4 +103,5 @@ export interface TrendWatchlistEntry {
   alertOnRising: boolean;
   alertOnPeak: boolean;
   alertOnSaturation: boolean;
+  customThreshold?: number;
 }

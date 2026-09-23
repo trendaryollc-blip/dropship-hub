@@ -12,7 +12,7 @@ import Image from "next/image";
 import { useInView } from "@/hooks/useInView";
 import SearchHeader from "@/components/products/SearchHeader";
 import FilterPanel, { Filters } from "@/components/products/FilterPanel";
-import EnrichedProductCard from "@/components/products/EnrichedProductCard";
+import EnrichedProductCard, { type EnrichedProduct } from "@/components/products/EnrichedProductCard";
 import ListItemCard from "@/components/products/ListItemCard";
 import ResultsHeader from "@/components/products/ResultsHeader";
 import ComparePanel from "@/components/products/ComparePanel";
@@ -26,10 +26,10 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { useSearchTracking } from "@/contexts/SearchTrackingContext";
 import { useAPI } from "@/hooks/useAPI";
 import { safeFetch } from "@/lib/safe-fetch";
+import { matchProductByName } from "@/lib/search/match-product";
 import { PageErrorBoundary } from "@/components/ui/PageErrorBoundary";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
-import SmartFeed from "@/components/products/SmartFeed";
 
 interface SearchResult {
   id: string;
@@ -92,17 +92,17 @@ interface TrendingProduct {
   fullName: string;
   category: string;
   price: number;
-  sellPrice: number;
-  profit: number;
-  margin: number;
+  sellPrice: number | null;
+  profit: number | null;
+  margin: number | null;
   platform: string;
   platformId: string;
   link: string;
-  trend: number;
-  sparkline: number[];
-  confidence: number;
-  demandLevel: "low" | "medium" | "high";
-  competitionLevel: "low" | "medium" | "high";
+  trend: number | null;
+  sparkline: number[] | null;
+  confidence: number | null;
+  demandLevel: "low" | "medium" | "high" | null;
+  competitionLevel: "low" | "medium" | "high" | null;
   image: string;
   tags: string[];
   rating: number | null;
@@ -305,6 +305,8 @@ function TrendingSection() {
     if (product.link) params.set("link", product.link);
     if (product.rating != null) params.set("r", String(product.rating));
     if (product.reviews != null) params.set("rev", String(product.reviews));
+    if (product.category) params.set("cat", product.category);
+    if (product.tags?.length) params.set("tags", product.tags.join(","));
     router.push(`/products/${product.id}?${params.toString()}`);
   };
 
@@ -360,8 +362,8 @@ function TrendingSection() {
       {!loading && products.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {products.map((product, i) => {
-            const demand = demandConfig[product.demandLevel];
-            const comp = compConfig[product.competitionLevel];
+            const demand = product.demandLevel ? demandConfig[product.demandLevel] : undefined;
+            const comp = product.competitionLevel ? compConfig[product.competitionLevel] : undefined;
             const rankBg = rankGradients[Math.min(i, rankGradients.length - 1)];
             return (
               <div key={product.id} className={`transition-all duration-500 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transitionDelay: `${i * 80}ms` }}>
@@ -385,10 +387,12 @@ function TrendingSection() {
                         <span className="text-[10px] font-black text-white">#{i + 1}</span>
                       </div>
                       <div className="absolute top-2 right-2">
-                        <span className="text-[10px] font-bold text-white bg-black/60 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1">
-                          <TrendingUp className="h-2.5 w-2.5 text-emerald-400" />
-                          +{product.trend}%
-                        </span>
+                        {product.trend != null && (
+                          <span className="text-[10px] font-bold text-white bg-black/60 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1">
+                            <TrendingUp className="h-2.5 w-2.5 text-emerald-400" />
+                            +{product.trend}%
+                          </span>
+                        )}
                       </div>
                       <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/80 to-transparent" />
                       <div className="absolute bottom-2 left-2 right-2 flex items-end justify-between">
@@ -407,23 +411,31 @@ function TrendingSection() {
                     </button>
 
                     <div className="mt-auto space-y-2">
-                      <div className="flex items-baseline justify-between">
+                      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-baseline sm:justify-between">
                         <div>
-                          <p className="text-[10px] text-muted-foreground line-through">${(product.sellPrice ?? 0).toFixed(2)}</p>
-                          <p className="text-sm font-bold text-emerald-400">${(product.profit ?? 0).toFixed(2)} <span className="text-[10px] font-normal text-muted-foreground">profit</span></p>
+                          <p className="text-sm font-bold text-emerald-400">
+                            ${(product.price ?? 0).toFixed(2)}
+                            {product.profit != null && (
+                              <span className="text-[10px] font-normal text-muted-foreground"> <span className="line-through">${(product.sellPrice ?? 0).toFixed(2)}</span> ~${product.profit.toFixed(2)} profit</span>
+                            )}
+                          </p>
                         </div>
-                        <span className="text-[10px] text-muted-foreground bg-surface/80 px-1.5 py-0.5 rounded-full">{product.margin}%</span>
+                        {product.margin != null && (
+                          <span className="text-[10px] text-muted-foreground bg-surface/80 px-1.5 py-0.5 rounded-full">{product.margin}%</span>
+                        )}
                       </div>
 
                       <div className="h-px bg-border/50" />
 
-                      <div className="flex items-center gap-1.5">
-                        <Flame className="h-3 w-3 text-accent-warm shrink-0" />
-                        <div className="flex-1 h-1.5 rounded-full bg-surface overflow-hidden">
-                          <div className="h-full rounded-full bg-gradient-to-r from-accent to-emerald-400" style={{ width: `${product.confidence}%` }} />
+                      {product.confidence != null && (
+                        <div className="flex items-center gap-1.5">
+                          <Flame className="h-3 w-3 text-accent-warm shrink-0" />
+                          <div className="flex-1 h-1.5 rounded-full bg-surface overflow-hidden">
+                            <div className="h-full rounded-full bg-gradient-to-r from-accent to-emerald-400" style={{ width: `${product.confidence}%` }} />
+                          </div>
+                          <span className="text-[9px] text-muted-foreground shrink-0">{product.confidence}</span>
                         </div>
-                        <span className="text-[9px] text-muted-foreground shrink-0">{product.confidence}</span>
-                      </div>
+                      )}
 
                       <button
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); viewProduct(product); }}
@@ -630,8 +642,28 @@ const DEFAULT_PLATFORMS: PlatformInfo[] = [
   { id: "alibaba", name: "Alibaba", enabled: true, configured: true },
 ];
 
+// Display names for platform ids that may not be in DEFAULT_PLATFORMS.
+const PLATFORM_NAME_FALLBACK: Record<string, string> = {
+  amazon: "Amazon",
+  ebay: "Ebay",
+  aliexpress: "Aliexpress",
+  cj: "CJ",
+  google_shopping: "Google Shopping",
+  walmart: "Walmart",
+  etsy: "Etsy",
+  temu: "Temu",
+  shein: "Shein",
+  banggood: "Banggood",
+  dhgate: "DHgate",
+  alibaba: "Alibaba",
+  keepa: "Keepa",
+};
+
+const PAGE_SIZE = 24;
+
 function ProductsContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const urlQuery = searchParams.get("q") || "";
   const cacheRef = useRef({ query: "", results: [] as SearchResult[], platformResults: [] as PlatformResult[], platformErrors: [] as PlatformError[] });
   const [query, setQuery] = useState(urlQuery);
@@ -658,10 +690,7 @@ function ProductsContent() {
   const { trackSearch } = useSearchTracking();
   const searchAbortRef = useRef<AbortController | null>(null);
   const imageFetchAbortRef = useRef<AbortController | null>(null);
-  const {
-    history, addSearch, markProductClicked,
-    getInterestedProducts, getInterestProfile, getSmartRecommendations, clearHistory,
-  } = useSearchHistory();
+  const { history, addSearch, markProductClicked } = useSearchHistory();
 
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
     if (!user) return {};
@@ -676,6 +705,9 @@ function ProductsContent() {
   // Compare mode
   const [compareMode, setCompareMode] = useState(false);
   const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
+  // Compare items handed over via URL (?compare=<name>&compare=<name>), e.g.
+  // from the dashboard's QuickCompareBar. Matched once results arrive.
+  const pendingCompareNames = useRef<{ names: string[]; applied: boolean }>({ names: [], applied: false });
 
   // Product selection for Quick AI Actions (independent per card)
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
@@ -688,11 +720,20 @@ function ProductsContent() {
   // Search Alert modal (Feature 10)
   const [showAlertModal, setShowAlertModal] = useState(false);
 
+  // Pagination — keep the DOM light for large result sets; users can load more
+  // in batches instead of rendering hundreds of cards at once.
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [results, filters, sortBy]);
+
   useEffect(() => {
     try {
       const stored = JSON.parse(localStorage.getItem("recentSearches") || "[]");
       if (Array.isArray(stored)) setRecentSearches(stored);
-    } catch (e) { console.warn("[Products] Error:", e instanceof Error ? e.message : e); }
+    } catch {
+      // ignore malformed local storage
+    }
   }, []);
 
   const saveRecentSearch = useCallback((q: string) => {
@@ -712,7 +753,9 @@ function ProductsContent() {
 
     const platforms = platformsOverride ?? selectedPlatforms;
     const platformKey = [...platforms].sort().join(",") || "all";
-    const cacheKey = `search_${platformKey}_${q}`;
+    // Bumped when the cached payload shape changes, so stale cache entries
+    // from an older build can't be restored with missing/renamed fields.
+    const cacheKey = `search_v2_${platformKey}_${q}`;
 
     try {
       const cached = JSON.parse(sessionStorage.getItem(cacheKey) || "null");
@@ -725,13 +768,17 @@ function ProductsContent() {
         });
         setResults(cleanResults);
         setPlatformResults(cached.platformResults || []);
+        setPlatformErrors([]);
+        setPlatformTruncated(false);
         setSearched(true);
         setLoading(false);
         setQuery(q);
         cacheRef.current = { query: q, results: cleanResults, platformResults: cached.platformResults || [], platformErrors: [] };
         return;
       }
-    } catch (e) { console.warn("[Products] Error:", e instanceof Error ? e.message : e); }
+    } catch {
+      // cache unavailable — continue with a live search
+    }
 
     setLoading(true);
     setError(null);
@@ -741,11 +788,27 @@ function ProductsContent() {
     setPlatformTruncated(false);
     setSearched(true);
     setQuery(q);
+    setVisibleCount(PAGE_SIZE);
     saveRecentSearch(q);
 
-    // Initialize platform progress
+    // Sync the active search into the URL so results are shareable and
+    // survive a refresh. Preserve any existing command params (compare,
+    // maxPrice, minMargin) instead of wiping them out.
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.set("q", q);
+    router.replace(`/products?${nextParams.toString()}`);
+
+    // Initialize platform progress — resolve display names (from the API's
+    // platform list, a static fallback, or a humanized id) instead of showing
+    // raw platform ids in the status bar.
     const activePlatforms = platforms.length > 0
-      ? platforms.map((p) => ({ platform: p, name: p, status: "loading" as const }))
+      ? platforms.map((p) => ({
+          platform: p,
+          name: availablePlatforms.find((ap) => ap.id === p)?.name ||
+            PLATFORM_NAME_FALLBACK[p] ||
+            p.replace(/_/g, " "),
+          status: "loading" as const,
+        }))
       : DEFAULT_PLATFORMS.map((p) => ({ platform: p.id, name: p.name, status: "loading" as const }));
     setPlatformProgress({ platforms: activePlatforms });
 
@@ -835,7 +898,9 @@ function ProductsContent() {
           results: cachedResults,
           platformResults: platformData.slice(0, 10),
         }));
-      } catch (e) { console.warn("[Products] Error:", e instanceof Error ? e.message : e); }
+      } catch {
+        // sessionStorage full or unavailable — results still render in memory
+      }
 
       // Feature 6: Save search to Firestore for personalization
       if (user) {
@@ -890,13 +955,14 @@ function ProductsContent() {
                   results: updated.slice(0, 60),
                   platformResults: platformData.slice(0, 10),
                 }));
-              } catch (e) { console.warn("[Products] Error:", e instanceof Error ? e.message : e); }
+              } catch {
+                // sessionStorage unavailable — in-memory results still work
+              }
               return updated;
             });
           })
-          .catch((e) => {
-          if (e instanceof DOMException && e.name === "AbortError") return;
-          console.warn("[ProductsPage] Error:", e instanceof Error ? e.message : e);
+          .catch(() => {
+          // Image enrichment is best-effort; don't retry or surface
         });
       }
     } catch (err) {
@@ -905,7 +971,7 @@ function ProductsContent() {
     } finally {
       setLoading(false);
     }
-  }, [query, selectedPlatforms, getAuthHeaders, saveRecentSearch, trackSearch, user]);
+  }, [query, selectedPlatforms, getAuthHeaders, saveRecentSearch, trackSearch, user, router, searchParams, availablePlatforms]);
 
   const initialSearchDone = useRef(false);
 
@@ -920,6 +986,9 @@ function ProductsContent() {
       initialSearchDone.current = true;
       setQuery(lastSearch.query);
       setResults(lastSearch.results as SearchResult[]);
+      setPlatformResults([]);
+      setPlatformErrors([]);
+      setPlatformTruncated(false);
       setSearched(true);
       if (lastSearch.platforms.length > 0) {
         setSelectedPlatforms(lastSearch.platforms);
@@ -940,7 +1009,44 @@ function ProductsContent() {
       return;
     }
     handleSearch(q);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, handleSearch]);
+
+  // Consume the ?compare= names from the dashboard's QuickCompareBar. The
+  // products are not loaded yet, so record the request and activate compare
+  // mode; the matches are applied below once results resolve.
+  useEffect(() => {
+    const names = searchParams.getAll("compare") || [];
+    if (names.length === 0) return;
+    pendingCompareNames.current = { names, applied: false };
+    setCompareMode(true);
+  }, [searchParams]);
+
+  // Apply the requested compare names against the resolved result set (capped
+  // at 4 like the compare bar). Retries on each results change until at least
+  // one match lands, so a slow search still hands the products over.
+  useEffect(() => {
+    const pending = pendingCompareNames.current;
+    if (pending.applied || pending.names.length === 0 || results.length === 0) return;
+    const ids = pending.names
+      .map((name) => matchProductByName(results, name))
+      .filter((id): id is string => id !== null)
+      .slice(0, 4);
+    if (ids.length === 0) return;
+    pending.applied = true;
+    setSelectedForCompare(ids);
+  }, [results]);
+
+  // Apply URL price/margin constraints (?maxPrice=30&minMargin=60) that the
+  // dashboard's smart-search chips build, so the promised filter applies.
+  useEffect(() => {
+    const maxPrice = searchParams.get("maxPrice");
+    const minMargin = searchParams.get("minMargin");
+    if (!maxPrice && !minMargin) return;
+    setFilters((prev) => ({
+      ...prev,
+      priceMax: maxPrice ? String(maxPrice) : prev.priceMax,
+      minMargin: minMargin ? Number(minMargin) : prev.minMargin,
+    }));
   }, [searchParams]);
 
   const { data: platformData } = useAPI<{ platforms?: PlatformInfo[] }>("/api/platforms/search-all");
@@ -961,10 +1067,25 @@ function ProductsContent() {
   const sortedResults = useMemo(() => {
     const sorted = [...results];
     switch (sortBy) {
-      case "price-asc":
-        return sorted.sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity));
+    case "price-asc":
+        return [...sorted].sort((a, b) => {
+          const pa = a.price;
+          const pb = b.price;
+          // Missing prices always sort last, regardless of direction
+          if (pa == null && pb == null) return 0;
+          if (pa == null) return 1;
+          if (pb == null) return -1;
+          return pa - pb;
+        });
       case "price-desc":
-        return sorted.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
+        return [...sorted].sort((a, b) => {
+          const pa = a.price;
+          const pb = b.price;
+          if (pa == null && pb == null) return 0;
+          if (pa == null) return 1;
+          if (pb == null) return -1;
+          return pb - pa;
+        });
       case "rating":
         return sorted.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
       case "reviews":
@@ -1018,6 +1139,9 @@ function ProductsContent() {
     });
   }, [sortedResults, filters]);
 
+  const visibleResults = filteredResults.slice(0, visibleCount);
+  const hasMore = filteredResults.length > visibleCount;
+
   // Compare mode handlers
   const toggleCompareMode = () => {
     setCompareMode(!compareMode);
@@ -1050,7 +1174,7 @@ function ProductsContent() {
   }, [markProductClicked]);
 
   // AI action handler
-  const handleAIAction = useCallback((action: string, product: SearchResult) => {
+  const handleAIAction = useCallback((action: string, product: EnrichedProduct) => {
     if (action === "validate") {
       const params = new URLSearchParams();
       if (product.title) params.set("productTitle", product.title);
@@ -1126,14 +1250,14 @@ function ProductsContent() {
 
   // Search Alert handler (Feature 10)
   const handleCreateAlert = useCallback(async (alertData: SearchAlertData) => {
-    if (!user) return;
+    if (!user) throw new Error("You must be signed in to create an alert");
     const token = await user.getIdToken();
-    const res = await safeFetch<{ success?: boolean; error?: string }>("/api/search/alerts", {
+    const res = await safeFetch<{ success?: boolean; alert?: unknown; error?: string }>("/api/search/alerts", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ uid: user.uid, ...alertData }),
+      body: JSON.stringify(alertData),
     });
-    if (!res.success && res.error) throw new Error(res.error);
+    if (!res.alert && res.error) throw new Error(res.error);
   }, [user]);
 
   return (
@@ -1265,7 +1389,7 @@ function ProductsContent() {
         <>
           {viewMode === "grid" ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredResults.map((product, i) => (
+              {visibleResults.map((product, i) => (
                 <EnrichedProductCard
                   key={`${product.id}-${i}`}
                   product={product}
@@ -1282,7 +1406,7 @@ function ProductsContent() {
             </div>
           ) : (
             <div className="space-y-2">
-              {filteredResults.map((product, i) => (
+              {visibleResults.map((product, i) => (
                 <ListItemCard
                   key={`${product.id}-${i}`}
                   product={product}
@@ -1292,6 +1416,16 @@ function ProductsContent() {
                   onSelectForActions={selectProduct}
                 />
               ))}
+            </div>
+          )}
+          {hasMore && (
+            <div className="flex justify-center pt-2">
+              <button
+                onClick={() => setVisibleCount((c) => Math.min(filteredResults.length, c + PAGE_SIZE))}
+                className="text-xs px-5 py-2.5 rounded-xl bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 transition-colors"
+              >
+                Load more ({filteredResults.length - visibleCount} remaining)
+              </button>
             </div>
           )}
         </>

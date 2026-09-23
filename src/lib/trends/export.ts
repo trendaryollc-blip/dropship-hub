@@ -1,4 +1,5 @@
 import type { TrendPrediction, RisingStar, TrendWatchlistEntry } from "@/types/trend-predictor";
+import { toIsoString } from "@/lib/dates";
 
 function escapeCSV(value: string | number | boolean | undefined): string {
   if (value === undefined || value === null) return "";
@@ -41,7 +42,7 @@ export function exportPredictionsToCSV(predictions: TrendPrediction[]): void {
     p.estimatedMargin,
     escapeCSV(p.relatedKeywords?.join("; ")),
     escapeCSV(p.suggestedPlatforms?.join("; ")),
-    escapeCSV(p.createdAt),
+    escapeCSV(toIsoString(p.createdAt)),
   ]);
 
   const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
@@ -58,7 +59,7 @@ export function exportWatchlistToCSV(watchlist: TrendWatchlistEntry[]): void {
     w.alertOnRising,
     w.alertOnPeak,
     w.alertOnSaturation,
-    escapeCSV(w.addedAt),
+    escapeCSV(toIsoString(w.addedAt)),
   ]);
 
   const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");

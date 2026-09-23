@@ -176,7 +176,7 @@ function ScenarioCard({
             <input type="number" step="100" value={scenario.monthlyBudget}
               onChange={(e) => onUpdate(index, "monthlyBudget", +e.target.value)} className={inputClass} />
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <div>
               <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">CPC ($)</label>
               <input type="number" step="0.01" value={scenario.cpc}

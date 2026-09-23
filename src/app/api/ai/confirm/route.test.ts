@@ -31,6 +31,7 @@ vi.mock("@/lib/ai/safety/audit-log", () => ({
 
 vi.mock("@/lib/ai/modes/user-prefs", () => ({
   getAutonomyLevel: mockGetAutonomyLevel,
+  getModePreferences: vi.fn().mockResolvedValue({ guardrails: {} }),
 }));
 
 vi.mock("@/lib/validation", () => ({

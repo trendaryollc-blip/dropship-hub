@@ -1,4 +1,28 @@
 import type { Page } from "@playwright/test";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
+/**
+ * The Playwright test process does not load Next.js-style env files (.env.local
+ * etc.), so NEXT_PUBLIC_FIREBASE_API_KEY is often undefined here even though
+ * the app build embedded the real key. Firebase persists its session under
+ * `firebase:authUser:<apiKey>:[DEFAULT]`, so the seeded record must match the
+ * KEY THE BUILD actually used, or session restore silently finds nothing and
+ * the app bounces to /sign-in. Read the key out of the standard env files.
+ */
+function apiKeyFromEnvFiles(): string | undefined {
+  for (const file of [".env.local", ".env", ".env.development.local", ".env.production.local"]) {
+    try {
+      const path = join(process.cwd(), file);
+      if (!existsSync(path)) continue;
+      const match = readFileSync(path, "utf8").match(/^NEXT_PUBLIC_FIREBASE_API_KEY\s*=\s*(.+)$/m);
+      if (match) return match[1].trim().replace(/^["']|["']$/g, "");
+    } catch {
+      // ignore unreadable env files
+    }
+  }
+  return undefined;
+}
 
 /**
  * Intercepts Firebase Auth network calls and fulfills them with a mock user so
@@ -65,7 +89,7 @@ export async function injectAuthState(page: Page) {
   // Seed every API key we might be running against so the record is found
   // regardless of how the app was built (CI uses "test").
   const apiKeys = Array.from(
-    new Set([process.env.NEXT_PUBLIC_FIREBASE_API_KEY, "test-api-key", "test"].filter(Boolean))
+    new Set([process.env.NEXT_PUBLIC_FIREBASE_API_KEY, apiKeyFromEnvFiles(), "test-api-key", "test"].filter(Boolean))
   );
 
   await page.addInitScript((keys) => {

@@ -474,7 +474,7 @@ export default function ShippingOptimizerPanel() {
 
                 {/* Quick Stats */}
                 {cheapest && fastest && (
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <motion.div whileHover={{ scale: 1.02 }} className="glass rounded-xl p-3 text-center">
                       <p className="text-[9px] text-muted-foreground mb-0.5">Cheapest</p>
                       <p className="text-sm font-bold text-emerald-400">${cheapest.cost.toFixed(2)}</p>

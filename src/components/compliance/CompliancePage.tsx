@@ -8,9 +8,12 @@ import {
   Zap,
   Download,
   FileText,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import { useAPI } from "@/hooks/useAPI";
 import { useToast } from "@/components/ui/Toast";
+import { authJson, getAuthHeaders } from "@/lib/auth-headers";
 import type {
   ComplianceCheckInput,
   ComplianceReport,
@@ -21,6 +24,42 @@ import ComplianceCheckForm from "./ComplianceCheckForm";
 import ComplianceResult from "./ComplianceResult";
 import ComplianceStatsCards from "./ComplianceStatsCards";
 import ComplianceHistory from "./ComplianceHistory";
+
+function DataState({
+  isLoading,
+  error,
+  label,
+  onRetry,
+}: {
+  isLoading: boolean;
+  error: unknown;
+  label: string;
+  onRetry: () => void;
+}) {
+  if (isLoading) {
+    return (
+      <div className="glass rounded-2xl p-10 text-center">
+        <Loader2 className="h-6 w-6 animate-spin text-accent mx-auto" />
+        <p className="text-sm text-muted-foreground mt-2">Loading {label}…</p>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="glass rounded-2xl p-6 text-center border border-red-500/20">
+        <AlertCircle className="h-6 w-6 text-red-400 mx-auto mb-2" />
+        <p className="text-sm text-foreground">Couldn&apos;t load {label}.</p>
+        <button
+          onClick={onRetry}
+          className="mt-3 px-4 py-1.5 rounded-lg bg-surface border border-border text-xs font-medium text-muted-foreground hover:text-foreground transition-all inline-flex items-center gap-1.5"
+        >
+          <RefreshCw className="h-3 w-3" /> Retry
+        </button>
+      </div>
+    );
+  }
+  return null;
+}
 
 export default function CompliancePage() {
   const [activeTab, setActiveTab] = useState<"check" | "history">("check");
@@ -38,10 +77,20 @@ export default function CompliancePage() {
   } | null>(null);
   const { success, error: showError } = useToast();
 
-  const { data: statsData, mutate: mutateStats } = useAPI<{
+  const {
+    data: statsData,
+    mutate: mutateStats,
+    isLoading: statsLoading,
+    error: statsError,
+  } = useAPI<{
     stats: ComplianceStats;
   }>("/api/compliance?type=stats");
-  const { data: historyData, mutate: mutateHistory } = useAPI<{
+  const {
+    data: historyData,
+    mutate: mutateHistory,
+    isLoading: historyLoading,
+    error: historyError,
+  } = useAPI<{
     checks: ComplianceDoc[];
   }>("/api/compliance?type=list");
 
@@ -51,13 +100,7 @@ export default function CompliancePage() {
       setResult(null);
       setBatchResults(null);
       try {
-        const res = await fetch("/api/compliance", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(input),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Check failed");
+        const data = await authJson<{ report: ComplianceReport }>("/api/compliance", input);
         setResult(data.report);
         success("Compliance check complete");
         mutateStats();
@@ -76,14 +119,18 @@ export default function CompliancePage() {
       setLoading(true);
       setBatchResults(null);
       try {
-        const res = await fetch("/api/compliance", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type: "batch", products }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Batch check failed");
-        setBatchResults(data);
+        const data = await authJson<{
+          reports: { report: ComplianceReport }[];
+          summary: {
+            total: number;
+            passed: number;
+            warnings: number;
+            violations: number;
+            blocked: number;
+          };
+        }>("/api/compliance", { type: "batch", products });
+        // The API wraps each report as { success, report } — unwrap for the UI.
+        setBatchResults({ reports: data.reports.map((r) => r.report), summary: data.summary });
         success(
           `Batch check complete: ${data.summary.passed} passed, ${data.summary.warnings} warnings, ${data.summary.violations} violations`
         );
@@ -101,10 +148,7 @@ export default function CompliancePage() {
   const handleDelete = useCallback(
     async (id: string) => {
       try {
-        const res = await fetch(`/api/compliance?id=${id}`, {
-          method: "DELETE",
-        });
-        if (!res.ok) throw new Error("Failed to delete");
+        await authJson(`/api/compliance?id=${encodeURIComponent(id)}`, undefined, "DELETE");
         success("Check deleted");
         mutateHistory();
         mutateStats();
@@ -115,35 +159,46 @@ export default function CompliancePage() {
     [success, showError, mutateHistory, mutateStats]
   );
 
-  const handleExportCSV = async () => {
-    try {
-      const res = await fetch("/api/compliance?type=export&format=csv");
+  const downloadExport = useCallback(
+    async (format: "csv" | "json") => {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`/api/compliance?type=export&format=${format}`, { headers });
+      if (!res.ok) {
+        let message = "Export failed";
+        try {
+          const body = await res.json();
+          if (body?.error) message = String(body.error);
+        } catch {
+          // not JSON — keep generic message
+        }
+        throw new Error(message);
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `compliance-export-${new Date().toISOString().split("T")[0]}.csv`;
+      a.download = `compliance-export-${new Date().toISOString().split("T")[0]}.${format}`;
       a.click();
       URL.revokeObjectURL(url);
+    },
+    []
+  );
+
+  const handleExportCSV = async () => {
+    try {
+      await downloadExport("csv");
       success("CSV exported");
-    } catch {
-      showError("Export failed");
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "Export failed");
     }
   };
 
   const handleExportJSON = async () => {
     try {
-      const res = await fetch("/api/compliance?type=export&format=json");
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `compliance-export-${new Date().toISOString().split("T")[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+      await downloadExport("json");
       success("JSON exported");
-    } catch {
-      showError("Export failed");
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "Export failed");
     }
   };
 
@@ -167,7 +222,8 @@ export default function CompliancePage() {
       </div>
 
       {/* Stats */}
-      {stats && <ComplianceStatsCards stats={stats} />}
+      <DataState isLoading={statsLoading} error={statsError} label="compliance stats" onRetry={() => mutateStats()} />
+      {!statsLoading && !statsError && stats && <ComplianceStatsCards stats={stats} />}
 
       {/* Tabs */}
       <div className="flex gap-2">
@@ -264,20 +320,37 @@ export default function CompliancePage() {
           <div className="flex items-center justify-end gap-2">
             <button
               onClick={handleExportCSV}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-surface border border-border text-muted-foreground hover:text-foreground transition-all"
+              disabled={historyLoading || !!historyError || history.length === 0}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-surface border border-border text-muted-foreground hover:text-foreground transition-all disabled:opacity-50"
             >
               <FileText className="h-3.5 w-3.5" />
               Export CSV
             </button>
             <button
               onClick={handleExportJSON}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-surface border border-border text-muted-foreground hover:text-foreground transition-all"
+              disabled={historyLoading || !!historyError || history.length === 0}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-surface border border-border text-muted-foreground hover:text-foreground transition-all disabled:opacity-50"
             >
               <Download className="h-3.5 w-3.5" />
               Export JSON
             </button>
           </div>
-          <ComplianceHistory checks={history} onDelete={handleDelete} />
+          <DataState
+            isLoading={historyLoading}
+            error={historyError}
+            label="your compliance history"
+            onRetry={() => mutateHistory()}
+          />
+          {!historyLoading && !historyError && history.length === 0 && (
+            <div className="glass rounded-2xl p-10 text-center">
+              <Clock className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">No compliance checks yet</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Run your first check from the &quot;New Check&quot; tab.</p>
+            </div>
+          )}
+          {!historyLoading && !historyError && history.length > 0 && (
+            <ComplianceHistory checks={history} onDelete={handleDelete} />
+          )}
         </div>
       )}
     </div>

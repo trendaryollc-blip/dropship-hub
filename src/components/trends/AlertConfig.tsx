@@ -22,7 +22,7 @@ export default function AlertConfig({ entry, onUpdate, className = "" }: AlertCo
     alertOnRising: entry.alertOnRising,
     alertOnPeak: entry.alertOnPeak,
     alertOnSaturation: entry.alertOnSaturation,
-    customThreshold: 50,
+    customThreshold: entry.customThreshold ?? 50,
   });
   const [saving, setSaving] = useState(false);
 

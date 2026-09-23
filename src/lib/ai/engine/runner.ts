@@ -1,5 +1,5 @@
 import { ToolRegistry } from "../tools";
-import type { ToolExecutionContext, ToolResult, ToolExecutionRecord, AutonomyLevel } from "../types";
+import type { ToolExecutionContext, ToolResult, ToolExecutionRecord, AutonomyLevel, GuardrailConfig } from "../types";
 import { logToolCalled, logToolExecuted, logToolFailed } from "../safety/audit-log";
 import { checkGuardrails, recordAction } from "../safety/guardrails";
 import { needsConfirmation, checkDollarThreshold } from "../safety/confirmations";
@@ -25,6 +25,7 @@ export async function runTool(
     skipConfirmation?: boolean;
     autonomyLevel?: number;
     dollarThreshold?: number;
+    guardrails?: GuardrailConfig;
   }
 ): Promise<RunToolResult> {
   const executionId = context.executionId;
@@ -69,7 +70,7 @@ export async function runTool(
 
   // 3. Check guardrails
   if (!options?.skipGuardrails) {
-    const guardrailCheck = await checkGuardrails(uid, toolId, input);
+    const guardrailCheck = await checkGuardrails(uid, toolId, input, options?.guardrails);
     if (!guardrailCheck.allowed) {
       const record = createExecutionRecord(toolId, uid, executionId, input, context.trigger, "failed", guardrailCheck.reason);
       await saveExecutionRecord(record);
@@ -196,7 +197,7 @@ export async function getExecutionRecord(uid: string, executionId: string): Prom
   return doc.exists ? (doc.data() as ToolExecutionRecord) : null;
 }
 
-export async function confirmExecution(uid: string, executionId: string): Promise<RunToolResult | null> {
+export async function confirmExecution(uid: string, executionId: string, guardrails?: GuardrailConfig): Promise<RunToolResult | null> {
   const record = await getExecutionRecord(uid, executionId);
   if (!record || record.status !== "awaiting_confirmation") {
     return null;
@@ -216,7 +217,7 @@ export async function confirmExecution(uid: string, executionId: string): Promis
     .doc(executionId)
     .update({ confirmed: true, status: "running" });
 
-  // Re-run with skipConfirmation
+  // Re-run with skipConfirmation but still enforce guardrails
   return runTool(record.toolId, record.input, {
     uid,
     executionId,
@@ -224,7 +225,7 @@ export async function confirmExecution(uid: string, executionId: string): Promis
     mode: "ai_assist",
   }, {
     skipConfirmation: true,
-    skipGuardrails: true,
+    guardrails,
   });
 }
 

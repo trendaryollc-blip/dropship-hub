@@ -6,9 +6,12 @@ import { FileText, Copy, Check, Trash2, Loader2, Sparkles, Package, Link2, Searc
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAPI } from "@/hooks/useAPI";
 import { useToast } from "@/components/ui/Toast";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { authJson } from "@/lib/auth-headers";
+import { copyToClipboard } from "@/lib/clipboard";
 import { URLImporter, CompetitorPanel, ListingPreview, MarketInsightsPanel, SmartAutofill } from "@/components/listings/intelligence";
 import type { PlatformType, ListingGenerationResponse, SavedListing, ListingStats } from "@/types/product-listing";
-import type { ScrapedProductData, CompetitorListing } from "@/types/listing-intelligence";
+import type { ScrapedProductData, CompetitorListing, CompetitorIntelligence } from "@/types/listing-intelligence";
 
 const PLATFORMS: { id: PlatformType; label: string; icon: string }[] = [
   { id: "amazon", label: "Amazon", icon: "📦" },
@@ -26,8 +29,8 @@ export default function ProductListingsPage() {
   const searchParams = useSearchParams();
   const uid = user?.uid || "";
 
-  const { data: listingsData, mutate: mutateListings } = useAPI<{ listings?: SavedListing[] }>(uid ? `/api/ai/listings?uid=${uid}` : null);
-  const { data: statsData } = useAPI<{ stats?: ListingStats }>(uid ? `/api/ai/listings?type=stats&uid=${uid}` : null);
+  const { data: listingsData, mutate: mutateListings, isLoading: listingsLoading, error: listingsError } = useAPI<{ listings?: SavedListing[] }>(uid ? "/api/ai/listings" : null);
+  const { data: statsData } = useAPI<{ stats?: ListingStats }>(uid ? "/api/ai/listings?type=stats" : null);
 
   const urlTitle = searchParams.get("title") || "";
   const urlPrice = searchParams.get("price") || "";
@@ -51,10 +54,12 @@ export default function ProductListingsPage() {
   const [result, setResult] = useState<ListingGenerationResponse | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"generate" | "saved">("generate");
-  const [activePanel, setActivePanel] = useState<"form" | "competitors" | "preview" | "insights">("form");
+  const [activePanel, setActivePanel] = useState<"competitors" | "insights" | "preview">("competitors");
   const [showUrlImporter, setShowUrlImporter] = useState(false);
   const [scrapedImages, setScrapedImages] = useState<string[]>([]);
   const [scrapedBrand, setScrapedBrand] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [competitorIntel, setCompetitorIntel] = useState<CompetitorIntelligence | null>(null);
 
   const listings = listingsData?.listings || [];
   const stats = statsData?.stats || null;
@@ -109,8 +114,14 @@ export default function ProductListingsPage() {
     toastSuccess("Competitor data applied!");
   }, [specKeys, specVals, toastSuccess]);
 
+  const isPriceValid = (() => {
+    const parsed = parseFloat(String(price));
+    return String(price).trim() !== "" && Number.isFinite(parsed) && parsed >= 0;
+  })();
+
   const handleGenerate = async () => {
-    if (!title.trim() || !description.trim() || !price || !category.trim()) return;
+    const parsedPrice = parseFloat(String(price));
+    if (!title.trim() || !description.trim() || !isPriceValid || !category.trim()) return;
     setGenerating(true);
     try {
       const specs: Record<string, string> = {};
@@ -118,60 +129,67 @@ export default function ProductListingsPage() {
         if (k.trim() && specVals[i]?.trim()) specs[k.trim()] = specVals[i].trim();
       });
 
-      const res = await fetch("/api/ai/listings/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          product: {
-            title: title.trim(),
-            description: description.trim(),
-            price: parseFloat(price) || 0,
-            category: category.trim(),
-            images: scrapedImages,
-            specifications: specs,
-            brand: scrapedBrand,
-          },
-          platform,
-          tone,
-        }),
+      const data = await authJson<ListingGenerationResponse>("/api/ai/listings/generate", {
+        product: {
+          title: title.trim(),
+          description: description.trim(),
+          price: parsedPrice,
+          category: category.trim(),
+          images: scrapedImages,
+          specifications: specs,
+          brand: scrapedBrand,
+        },
+        platform,
+        tone,
       });
-      const data = await res.json();
       if (data.listing) {
         setResult(data);
         setActivePanel("preview");
         toastSuccess("Listing generated successfully!");
+      } else {
+        toastError("Generation returned no listing — try again");
       }
     } catch (e) {
       console.error("[ProductListings] Generation failed:", e instanceof Error ? e.message : e);
-      toastError("Failed to generate listing");
+      toastError(e instanceof Error ? e.message : "Failed to generate listing");
     } finally {
       setGenerating(false);
     }
   };
 
   const handleCopy = (text: string, field: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopiedField(field);
-      setTimeout(() => setCopiedField(null), 2000);
-    }).catch(() => {
-      toastError("Failed to copy to clipboard");
+    copyToClipboard(text).then((ok) => {
+      if (ok) {
+        setCopiedField(field);
+        setTimeout(() => setCopiedField(null), 2000);
+      } else {
+        toastError("Failed to copy to clipboard");
+      }
     });
   };
 
   const handleDelete = async (id: string) => {
+    setConfirmDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    const id = confirmDeleteId;
+    setConfirmDeleteId(null);
+    if (!id) return;
     try {
-      await fetch(`/api/ai/listings?id=${id}`, { method: "DELETE" });
+      await authJson(`/api/ai/listings?id=${encodeURIComponent(id)}`, undefined, "DELETE");
+      toastSuccess("Listing deleted");
       mutateListings();
     } catch (e) {
       console.error("[ProductListings] Delete failed:", e instanceof Error ? e.message : e);
-      toastError("Failed to delete listing");
+      toastError(e instanceof Error ? e.message : "Failed to delete listing");
     }
   };
 
   const addSpec = () => { setSpecKeys([...specKeys, ""]); setSpecVals([...specVals, ""]); };
   const removeSpec = (i: number) => { setSpecKeys(specKeys.filter((_, idx) => idx !== i)); setSpecVals(specVals.filter((_, idx) => idx !== i)); };
 
-  const isFormValid = title.trim() && description.trim() && price && category.trim();
+  const isFormValid = Boolean(title.trim() && description.trim() && isPriceValid && category.trim());
 
   return (
     <div className="max-w-7xl mx-auto space-y-4 px-3 sm:px-4 lg:px-6 pb-24">
@@ -341,42 +359,29 @@ export default function ProductListingsPage() {
                 keyword={title || category}
                 platform={platform}
                 onSelectListing={handleSelectCompetitor}
+                onIntelligenceLoaded={setCompetitorIntel}
               />
             )}
 
             {/* Market Insights */}
             {activePanel === "insights" && (
-              <MarketInsightsPanel
-                insights={{
-                  avgPrice: parseFloat(price) || 29.99,
-                  priceRange: { min: 15, max: 59.99 },
-                  medianPrice: 24.99,
-                  avgRating: 4.5,
-                  avgReviewCount: 3247,
-                  topKeywords: [
-                    { keyword: title.split(" ")[0]?.toLowerCase() || "product", frequency: 8 },
-                    { keyword: category.toLowerCase() || "general", frequency: 6 },
-                    { keyword: "premium", frequency: 5 },
-                    { keyword: "best seller", frequency: 4 },
-                    { keyword: "high quality", frequency: 3 },
-                  ],
-                  competitionLevel: "medium",
-                  saturationScore: 45,
-                  recommendedPrice: parseFloat(price) ? parseFloat(price) * 0.95 : 28.49,
-                  priceDistribution: [
-                    { range: "$0-25", count: 3, percentage: 30 },
-                    { range: "$25-50", count: 4, percentage: 40 },
-                    { range: "$50-100", count: 2, percentage: 20 },
-                    { range: "$100+", count: 1, percentage: 10 },
-                  ],
-                  opportunityScore: 68,
-                  insights: [
-                    "Medium competition — room to enter with optimized listing.",
-                    "Consider bundling to increase perceived value.",
-                    "Focus on review generation to compete with established sellers.",
-                  ],
-                }}
-              />
+              competitorIntel ? (
+                <MarketInsightsPanel insights={competitorIntel.marketInsights} />
+              ) : (
+                <div className="glass rounded-2xl p-12 text-center">
+                  <Sparkles className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground mb-1">No market insights yet</p>
+                  <p className="text-[10px] text-muted-foreground mb-4">
+                    Run competitor analysis to see real pricing, ratings, and keyword data for your niche
+                  </p>
+                  <button
+                    onClick={() => setActivePanel("competitors")}
+                    className="px-4 py-2 rounded-xl bg-accent text-white text-xs font-semibold hover:bg-accent/80 transition-all"
+                  >
+                    Analyze Competitors
+                  </button>
+                </div>
+              )
             )}
 
             {/* Generated Result / Preview */}
@@ -531,7 +536,23 @@ export default function ProductListingsPage() {
             </div>
           )}
 
-          {listings.length === 0 ? (
+          {listingsLoading ? (
+            <div className="glass rounded-2xl p-12 text-center">
+              <Loader2 className="h-8 w-8 text-muted-foreground mx-auto mb-3 animate-spin" />
+              <p className="text-sm text-muted-foreground">Loading your saved listings…</p>
+            </div>
+          ) : listingsError ? (
+            <div className="glass rounded-2xl p-12 text-center">
+              <p className="text-sm text-muted-foreground mb-1">Couldn&apos;t load your saved listings.</p>
+              <p className="text-[10px] text-muted-foreground mb-4">Check your connection and try again.</p>
+              <button
+                onClick={() => mutateListings()}
+                className="px-4 py-2 rounded-xl bg-surface border border-border text-xs font-semibold text-foreground hover:bg-surface-hover transition-all"
+              >
+                Retry
+              </button>
+            </div>
+          ) : listings.length === 0 ? (
             <div className="glass rounded-2xl p-12 text-center">
               <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
               <p className="text-sm text-muted-foreground">No saved listings yet. Generate your first listing!</p>
@@ -544,7 +565,7 @@ export default function ProductListingsPage() {
                     <span className="text-[10px] font-semibold text-accent uppercase">{l.platform}</span>
                     <div className="flex items-center gap-1">
                       <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${l.optimizationScore >= 80 ? "bg-emerald-400/10 text-emerald-400" : "bg-amber-400/10 text-amber-400"}`}>{l.optimizationScore}%</span>
-                      <button onClick={() => handleDelete(l.id)} className="p-1 rounded hover:bg-surface-hover"><Trash2 className="h-3 w-3 text-muted-foreground" /></button>
+                      <button onClick={() => handleDelete(l.id)} aria-label={`Delete saved listing ${l.title}`} title="Delete listing" className="p-1 rounded hover:bg-surface-hover"><Trash2 className="h-3 w-3 text-muted-foreground" /></button>
                     </div>
                   </div>
                   <h4 className="text-sm font-medium text-foreground line-clamp-2">{l.title}</h4>
@@ -560,6 +581,16 @@ export default function ProductListingsPage() {
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!confirmDeleteId}
+        title="Delete saved listing?"
+        description="This permanently removes the listing from your saved library. This cannot be undone."
+        confirmLabel="Delete"
+        danger
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
     </div>
   );
 }

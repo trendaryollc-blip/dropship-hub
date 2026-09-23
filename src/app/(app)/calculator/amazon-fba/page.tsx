@@ -63,7 +63,7 @@ export default function AmazonFBACalculatorPage() {
                 <label className={labelClass}>Weight (lbs)</label>
                 <input type="number" step="0.1" value={productWeight} onChange={(e) => setProductWeight(+e.target.value)} className={inputClass} />
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className={labelClass}>Length (in)</label>
                   <input type="number" value={length} onChange={(e) => setLength(+e.target.value)} className={inputClass} />
@@ -132,7 +132,7 @@ export default function AmazonFBACalculatorPage() {
 
           <div className={cardClass}>
             <h3 className="font-display text-lg font-semibold text-foreground mb-4">FBA vs FBM Comparison</h3>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="p-4 rounded-xl bg-surface/50 border border-border text-center">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Total FBA Cost</p>
                 <p className="font-display text-xl font-bold text-accent">${result.fbaVsFbm.fba}</p>

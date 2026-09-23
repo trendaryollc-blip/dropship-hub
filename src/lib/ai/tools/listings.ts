@@ -13,9 +13,9 @@ export const generateListingTool = createTool({
   safetyLevel: "safe",
   inputSchema: z.object({
     title: z.string().min(1).max(500),
-    description: z.string().min(1).max(5000),
+    description: z.string().min(1).max(5000).optional(),
     price: z.number().min(0),
-    category: z.string().min(1).max(200),
+    category: z.string().min(1).max(200).optional(),
     images: z.array(z.string().url()).max(10).optional().default([]),
     specifications: z.record(z.string(), z.string()).optional().default({}),
     supplierUrl: z.string().url().optional(),
@@ -27,9 +27,9 @@ export const generateListingTool = createTool({
   execute: async (input: Record<string, unknown>) => {
     const product: ProductInput = {
       title: input.title as string,
-      description: input.description as string,
+      description: (input.description as string) || `High-quality ${input.title} available for dropshipping. Competitive pricing and fast shipping.`,
       price: input.price as number,
-      category: input.category as string,
+      category: (input.category as string) || "General",
       images: (input.images as string[]) || [],
       specifications: (input.specifications as Record<string, string>) || {},
       supplierUrl: input.supplierUrl as string | undefined,

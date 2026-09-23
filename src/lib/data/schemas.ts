@@ -1411,6 +1411,7 @@ export const AddTrendWatchlistInputSchema = z.object({
   alertOnRising: z.boolean(),
   alertOnPeak: z.boolean(),
   alertOnSaturation: z.boolean(),
+  customThreshold: z.number().min(0).max(100).optional(),
 });
 
 // ── Compliance Checker ───────────────────────────────────────────────────────

@@ -273,15 +273,15 @@ export default function AdminAiKeysPage() {
                 data.configured ? "border-border hover:border-purple-400/30" : "border-border/50 opacity-70"
               }`}>
               <div className="p-5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-3 h-3 rounded-full ${
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className={`w-3 h-3 rounded-full shrink-0 ${
                       data.keys.some((k) => k.lastStatus === "healthy") ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]"
                       : data.keys.some((k) => k.lastStatus === "error") ? "bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.5)]"
                       : "bg-muted-foreground/40"
                     }`} />
-                    <div>
-                      <div className="flex items-center gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-3">
                         <h3 className="font-display font-semibold text-foreground text-lg">{prov.name}</h3>
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-400/10 text-purple-400 border border-purple-400/20">
                           {prov.freeTier}
@@ -348,7 +348,7 @@ export default function AdminAiKeysPage() {
                           }`}>
                           {editingKey?.providerId === prov.id && editingKey?.keyId === key.id ? (
                             <div className="space-y-3">
-                              <div className="grid grid-cols-2 gap-3">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div><label className="text-[10px] text-muted-foreground uppercase tracking-wider">Key Value</label>
                                   <input type="text" value={editKeyVal} onChange={(e) => setEditKeyVal(e.target.value)} className="w-full mt-1 px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm font-mono focus:outline-none focus:border-purple-400/50" /></div>
                                 <div><label className="text-[10px] text-muted-foreground uppercase tracking-wider">Label</label>
@@ -366,14 +366,14 @@ export default function AdminAiKeysPage() {
                               </div>
                             </div>
                           ) : (
-                            <div className="flex items-start justify-between gap-4">
+                            <div className="flex flex-col gap-3 xl:flex-row xl:items-start justify-between">
                               <div className="flex items-start gap-4 min-w-0 flex-1">
                                 <div className="flex items-center gap-1.5 cursor-grab active:cursor-grabbing mt-0.5">
                                   <GripVertical className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-purple-400 transition-colors" />
                                   <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-400/10 text-purple-400 border border-purple-400/20">#{key.priority}</span>
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-2">
+<div className="flex flex-wrap items-center gap-2 shrink-0">
                                     <span className="text-sm font-medium text-foreground">{key.label}</span>
                                     <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
                                       key.lastStatus === "healthy" ? "bg-emerald-400/10 text-emerald-400"
@@ -391,8 +391,8 @@ export default function AdminAiKeysPage() {
                                   </div>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-4">
-                                <div className="text-right min-w-[100px]">
+                              <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+                                <div className="text-right min-w-0 sm:min-w-[100px]">
                                   <div className="flex items-center gap-1.5 justify-end mb-1">
                                     <span className="text-xs text-muted-foreground">{key.requestsUsed}/{key.requestsLimit}</span>
                                   </div>
@@ -437,7 +437,7 @@ export default function AdminAiKeysPage() {
                   {showAddKeyFor === prov.id && (
                     <div className="p-4 rounded-xl bg-purple-500/5 border border-purple-500/20 space-y-3">
                       <h5 className="text-xs font-semibold text-purple-400 uppercase tracking-wider">Add New API Key</h5>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div><label className="text-[10px] text-muted-foreground uppercase tracking-wider">API Key *</label>
                           <input type="text" value={addKeyVal} onChange={(e) => setAddKeyVal(e.target.value)} placeholder="Enter API key" className="w-full mt-1 px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm font-mono focus:outline-none focus:border-purple-400/50" /></div>
                         <div><label className="text-[10px] text-muted-foreground uppercase tracking-wider">Label</label>

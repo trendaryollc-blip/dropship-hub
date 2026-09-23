@@ -75,7 +75,7 @@ export default function QuickCompareBar({
                   onClick={() => {
                     const params = new URLSearchParams();
                     items.forEach((item) => params.append("compare", item.name));
-                    router.push(`/products?compare=${params.toString().replace(/compare=/g, "")}`);
+                    router.push(`/products?${params.toString()}`);
                   }}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent text-white text-xs font-semibold hover:bg-accent-hover transition-all hover:shadow-[0_0_15px_rgba(var(--glow-color),0.3)] active:scale-[0.97]"
                 >

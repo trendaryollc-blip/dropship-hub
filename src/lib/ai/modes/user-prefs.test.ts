@@ -42,7 +42,7 @@ describe("User Prefs", () => {
       const prefs = await getModePreferences("user_1");
       expect(prefs.uid).toBe("user_1");
       expect(prefs.globalMode).toBe("ai_assist");
-      expect(prefs.autonomyLevel).toBe(1);
+      expect(prefs.autonomyLevel).toBe(2);
     });
 
     it("returns stored preferences", async () => {

@@ -523,13 +523,13 @@ export default function DigestPage() {
                 <Mail className="h-4 w-4 text-accent shrink-0" />
                 <p className="text-xs sm:text-sm text-foreground font-medium">Get digest via email</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="your@email.com"
-                  className="px-3 py-2 rounded-xl bg-surface border border-border text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/40 w-48 sm:w-56"
+                  className="px-3 py-2 rounded-xl bg-surface border border-border text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/40 flex-1 min-w-0 sm:flex-none sm:w-56"
                 />
                 <button
                   onClick={handleGenerateWithEmail}

@@ -27,6 +27,7 @@ import type {
   PatentCheckResult,
   ExportControlResult,
 } from "@/types/compliance";
+import { copyToClipboard } from "@/lib/clipboard";
 
 const CHECK_ICONS: Record<ComplianceCheckType, typeof Tag> = {
   trademark: Tag,
@@ -56,6 +57,7 @@ interface Props {
 
 export default function ComplianceResult({ report }: Props) {
   const [expandedCheck, setExpandedCheck] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const riskColors = {
     safe: "text-emerald-400",
@@ -103,7 +105,10 @@ export default function ComplianceResult({ report }: Props) {
 
   const handleCopy = async () => {
     const summary = `Compliance Report: ${report.productTitle}\nScore: ${report.overallScore}/100\nRisk: ${report.riskLevel}\nCan List: ${report.canList}\nChecks: ${report.checks.length}\nFlags: ${report.flags.length}\n\n${report.recommendations.join("\n")}`;
-    await navigator.clipboard.writeText(summary);
+    const ok = await copyToClipboard(summary);
+    if (!ok) return;
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -112,10 +117,11 @@ export default function ComplianceResult({ report }: Props) {
       <div className="flex items-center gap-2 justify-end">
         <button
           onClick={handleCopy}
+          aria-label="Copy report summary to clipboard"
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-surface/50 border border-border/50 text-muted-foreground hover:text-foreground hover:bg-surface transition-colors"
         >
-          <Copy className="h-3.5 w-3.5" />
-          Copy Report
+          {copied ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+          {copied ? "Copied!" : "Copy Report"}
         </button>
         <button
           onClick={handleExport}

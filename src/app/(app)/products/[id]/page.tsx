@@ -58,6 +58,37 @@ const defaultSuggestedSearches = [
   "kitchen gadget", "yoga mat", "back brace", "espresso maker",
 ];
 
+export function buildProductUrl(link: string, source: string, title: string): string {
+  if (link && link !== "#") return link;
+  const q = encodeURIComponent(title || "products");
+  switch (source) {
+    case "amazon":
+      return `https://www.amazon.com/s?k=${q}`;
+    case "ebay":
+      return `https://www.ebay.com/sch/i.html?_nkw=${q}`;
+    case "aliexpress":
+      return `https://www.aliexpress.com/wholesale?SearchText=${q}`;
+    case "walmart":
+      return `https://www.walmart.com/search?q=${q}`;
+    case "google_shopping":
+      return `https://www.google.com/search?q=${q}&tbm=shop`;
+    case "shein":
+      return `https://us.shein.com/pdsearch/${q}/`;
+    case "etsy":
+      return `https://www.etsy.com/search?q=${q}`;
+    case "alibaba":
+      return `https://www.alibaba.com/trade/search?SearchText=${q}`;
+    case "cj":
+      return "https://www.cjdropshipping.com/";
+    case "temu":
+      return "https://www.temu.com/";
+    case "dhgate":
+      return `https://www.dhgate.com/wholesale/search.do?searchkey=${q}`;
+    default:
+      return `https://www.google.com/search?q=${q}`;
+  }
+}
+
 interface ProductData {
   id: string;
   title: string;
@@ -156,10 +187,14 @@ function ProductDetailContent() {
     try {
       const stored = sessionStorage.getItem("selectedProduct");
       if (stored) return JSON.parse(stored);
-    } catch (e) { console.warn("[ProductDetail] Error:", e instanceof Error ? e.message : e); }
+    } catch {
+      // malformed cache — fall through to URL params
+    }
     // Fall back to URL params (works for shared/bookmarked links)
     const t = searchParams.get("t");
     if (t) {
+      const cat = searchParams.get("cat");
+      const tags = searchParams.get("tags");
       return {
         id: "",
         title: t,
@@ -169,6 +204,8 @@ function ProductDetailContent() {
         source: searchParams.get("src") || "amazon",
         rating: searchParams.get("r") ? parseFloat(searchParams.get("r")!) : undefined,
         reviews: searchParams.get("rev") ? parseInt(searchParams.get("rev")!) : undefined,
+        category: cat || undefined,
+        tags: tags ? tags.split(",").filter(Boolean) : undefined,
       };
     }
     return null;
@@ -197,6 +234,7 @@ function ProductDetailContent() {
   const image = product?.image || searchParams.get("img");
   const link = product?.link || searchParams.get("link") || "#";
   const source = product?.source || searchParams.get("src") || "amazon";
+  const effectiveLink = buildProductUrl(link, source, title);
   const rating = product?.rating != null ? String(product.rating) : searchParams.get("r");
   const reviews = product?.reviews != null ? String(product.reviews) : searchParams.get("rev");
   const category = product?.category || "General";
@@ -474,7 +512,7 @@ function ProductDetailContent() {
     }
 
     return {
-      platforms: priceNum ? [{ platform: source, price: priceNum, rating: ratingNum || 0, reviews: reviewsNum || 0, inStock: true, url: link, sparkline: [priceNum] }] : [],
+      platforms: priceNum ? [{ platform: source, price: priceNum, rating: ratingNum || 0, reviews: reviewsNum || 0, inStock: true, url: effectiveLink, sparkline: [priceNum] }] : [],
       cheapest: priceNum ? { platform: source, price: priceNum } : null,
       mostExpensive: null,
       priceSpread: 0,
@@ -513,7 +551,7 @@ function ProductDetailContent() {
       } : null,
       supplierMatches: [],
     };
-  }, [enrichmentData, reviewData, marketIntelData, listingData, source, priceNum, ratingNum, reviewsNum, link]);
+  }, [enrichmentData, reviewData, marketIntelData, listingData, source, priceNum, ratingNum, reviewsNum, effectiveLink]);
 
   if (hasNoData) {
     return (
@@ -545,7 +583,7 @@ function ProductDetailContent() {
         rating={ratingNum}
         reviews={reviewsNum}
         source={source}
-        link={link}
+        link={effectiveLink}
         heroRef={heroRef}
       />
 
@@ -670,7 +708,7 @@ function ProductDetailContent() {
 
             {/* CTA Button */}
             <div className="flex flex-col sm:flex-row gap-3 pt-1">
-              <a href={link} target="_blank" rel="noopener noreferrer" className="btn-hero-cta flex items-center justify-center gap-2">
+              <a href={effectiveLink} target="_blank" rel="noopener noreferrer" className="btn-hero-cta flex items-center justify-center gap-2">
                 <ShoppingCart className="h-4 w-4" /> View on {source.replace("_", " ")} <ExternalLink className="h-3.5 w-3.5" />
               </a>
             </div>
@@ -679,7 +717,7 @@ function ProductDetailContent() {
       </div>
 
       {/* Action Bar */}
-      <ProductActionBar platform={source} platformUrl={link} productTitle={title} category={category} id={product?.id} price={priceNum} image={image} images={displayImages} rating={ratingNum} reviews={reviewsNum} />
+      <ProductActionBar platform={source} platformUrl={effectiveLink} productTitle={title} category={category} id={product?.id} price={priceNum} image={image} images={displayImages} rating={ratingNum} reviews={reviewsNum} />
 
       {/* Next Steps */}
       <div className="glass rounded-2xl p-4 border border-border">

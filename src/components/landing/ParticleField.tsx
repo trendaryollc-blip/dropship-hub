@@ -21,6 +21,8 @@ export default function ParticleField() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
     let animationId: number;
     let particles: Particle[] = [];
     let mouseX = -1000;
@@ -131,21 +133,22 @@ export default function ParticleField() {
     };
 
     window.addEventListener("resize", handleResize);
-    canvas.addEventListener("mousemove", handleMouseMove);
-    canvas.addEventListener("mouseleave", handleMouseLeave);
+    window.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseleave", handleMouseLeave);
 
     return () => {
       cancelAnimationFrame(animationId);
       window.removeEventListener("resize", handleResize);
-      canvas.removeEventListener("mousemove", handleMouseMove);
-      canvas.removeEventListener("mouseleave", handleMouseLeave);
+      window.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseleave", handleMouseLeave);
     };
   }, []);
 
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 w-full h-full pointer-events-auto"
+      aria-hidden="true"
+      className="absolute inset-0 w-full h-full pointer-events-none"
       style={{ opacity: 0.6 }}
     />
   );

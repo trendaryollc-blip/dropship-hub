@@ -4,9 +4,9 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
-  Package, Heart, Star, Images, Check, Send, Loader2, Store, X, ExternalLink,
-  Sparkles, TrendingUp, BarChart3, Search, GitCompare, Truck, AlertTriangle,
-  MessageSquare, ShoppingCart, Clock, Users, ShieldCheck,
+  Package, Heart, Star, Check, Send, Loader2, Store, X, ExternalLink,
+  Sparkles, BarChart3, Search, GitCompare, Truck, AlertTriangle,
+  MessageSquare, ShoppingCart, Users, ShieldCheck,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -30,39 +30,39 @@ interface ConnectedStore {
   status: string;
 }
 
+export type EnrichedProduct = Record<string, unknown> & {
+  id: string;
+  title: string;
+  price: number | null;
+  image: string | null;
+  link: string;
+  source: string;
+  images?: string[];
+  brand?: string;
+  rating?: number;
+  reviews?: number;
+  estimatedMargin?: number;
+  goldenScore?: number;
+  goldenRank?: "S" | "A" | "B" | "C" | "D";
+  trendPhase?: "emerging" | "growth" | "mature" | "declining";
+  saturationLevel?: "unsaturated" | "low" | "moderate" | "saturated" | "hyper-saturated";
+  competitionScore?: number;
+  shippingDays?: number;
+  inStock?: boolean;
+  stockQuantity?: number;
+  platformCount?: number;
+  platforms?: Array<{ platform: string; price: number | null; link: string }>;
+  competitorCount?: number;
+  competitorPrices?: Array<{ platform: string; price: number; url: string }>;
+};
+
 interface EnrichedProductCardProps {
-  product: Record<string, unknown> & {
-    id: string;
-    title: string;
-    price: number | null;
-    image: string | null;
-    link: string;
-    source: string;
-    images?: string[];
-    brand?: string;
-    rating?: number;
-    reviews?: number;
-    estimatedMargin?: number;
-    goldenScore?: number;
-    goldenRank?: "S" | "A" | "B" | "C" | "D";
-    trendPhase?: "emerging" | "growth" | "mature" | "declining";
-    saturationLevel?: "unsaturated" | "low" | "moderate" | "saturated" | "hyper-saturated";
-    saturationScore?: number;
-    competitionScore?: number;
-    shippingDays?: number;
-    inStock?: boolean;
-    stockQuantity?: number;
-    platformCount?: number;
-    platforms?: Array<{ platform: string; price: number | null; link: string }>;
-    competitorCount?: number;
-    competitorPrices?: Array<{ platform: string; price: number; url: string }>;
-  };
+  product: EnrichedProduct;
   index: number;
   selected?: boolean;
   onToggleSelect?: (id: string) => void;
   compareMode?: boolean;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onAIAction?: (action: string, product: any) => void;
+  onAIAction?: (action: string, product: EnrichedProduct) => void;
   onProductClick?: (product: Record<string, unknown>) => void;
   selectedForActions?: boolean;
   onSelectForActions?: (id: string) => void;
@@ -114,18 +114,18 @@ export default function EnrichedProductCard({
   const [pushResult, setPushResult] = useState<{ success: boolean; message: string } | null>(null);
   const [showAIActions, setShowAIActions] = useState(false);
   const aiActionsRef = useRef<HTMLDivElement>(null);
-  const [priceTrend] = useState(() => {
-    const base = product.price || 10;
-    return Array.from({ length: 7 }, () => base + (Math.random() - 0.5) * base * 0.2);
-  });
 
-  const estimatedMargin = product.estimatedMargin ?? (product.price ? Math.min(60, Math.max(10, Math.round(40 + (Math.random() - 0.5) * 30))) : null);
-  const estimatedProfit = product.price && estimatedMargin ? +(product.price * estimatedMargin / 100).toFixed(2) : null;
-  const imageCount = product.images?.length || (product.image ? 1 : 0);
+  // Only show margin/profit when the enrichment pipeline actually produced a
+  // value — never fabricate numbers for display.
+  const estimatedMargin = product.estimatedMargin ?? null;
+  const estimatedProfit = product.price != null && estimatedMargin != null
+    ? +(product.price * estimatedMargin / 100).toFixed(2)
+    : null;
 
-  const shippingDays = product.shippingDays ?? (product.source === "cj" ? Math.floor(Math.random() * 10) + 5 : product.source === "aliexpress" ? Math.floor(Math.random() * 20) + 10 : Math.floor(Math.random() * 7) + 2);
-  const inStock = product.inStock ?? (product.stockQuantity == null ? true : product.stockQuantity > 0);
-  const saturationScore = product.saturationScore ?? (product.competitionScore != null ? product.competitionScore : null);
+  // Shipping/stock are only shown when real supplier data is present.
+  const shippingDays = product.shippingDays ?? null;
+  const stockQuantity = product.stockQuantity ?? null;
+  const inStock = product.inStock ?? (stockQuantity != null ? stockQuantity > 0 : null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -210,8 +210,7 @@ export default function EnrichedProductCard({
 
   const handleAIAction = (action: string) => {
     setShowAIActions(false);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onAIAction?.(action, product as any);
+    onAIAction?.(action, product);
   };
 
   const getSaturationColor = (level?: string) => {
@@ -250,10 +249,9 @@ export default function EnrichedProductCard({
       className={`transition-all duration-500 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
       style={{ transitionDelay: `${Math.min(index * 50, 400)}ms` }}
     >
-      <a
-        href={`/products/${product.id}`}
+      <div
         onClick={handleClick}
-        className={`glass-card-animated rounded-2xl overflow-hidden group block ${
+        className={`glass-card-animated rounded-2xl overflow-hidden group block cursor-pointer ${
           compareMode && selected ? "ring-2 ring-accent ring-offset-2 ring-offset-background" : ""
         } ${selectedForActions ? "ring-2 ring-accent/60 ring-offset-1 ring-offset-background" : ""}`}
       >
@@ -298,8 +296,8 @@ export default function EnrichedProductCard({
             </span>
           )}
 
-          {/* Profit Estimate Badge - TOP RIGHT, prominent */}
-          {estimatedMargin && !product.trendPhase && !product.goldenRank && (
+          {/* Profit Estimate Badge - TOP RIGHT, prominent (only when real margin data exists) */}
+          {estimatedMargin != null && !product.trendPhase && !product.goldenRank && (
             <span className="absolute top-2 right-2 px-2.5 py-1 rounded-lg bg-emerald-500/95 text-white text-[11px] font-bold backdrop-blur-sm shadow-lg shadow-emerald-500/30 flex items-center gap-1">
               <BarChart3 className="h-3 w-3" /> ~{estimatedMargin}%
             </span>
@@ -410,16 +408,23 @@ export default function EnrichedProductCard({
         </div>
 
         <div className="p-3 space-y-2">
-          <h3 className="font-medium text-sm text-foreground line-clamp-2 group-hover:text-accent transition-colors leading-tight">
-            {product.title}
-          </h3>
+          <a
+            href={`/products/${product.id}`}
+            onClick={(e) => { e.stopPropagation(); handleClick(e); }}
+            aria-label={product.title}
+            className="block"
+          >
+            <h3 className="font-medium text-sm text-foreground line-clamp-2 group-hover:text-accent transition-colors leading-tight">
+              {product.title}
+            </h3>
+          </a>
 
           {/* Price + Profit Row - prominent */}
           <div className="flex items-center justify-between">
             {product.price != null ? (
               <div className="flex items-baseline gap-1.5">
                 <span className="text-lg font-bold text-accent">${product.price.toFixed(2)}</span>
-                {estimatedProfit && (
+                {estimatedProfit != null && (
                   <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-400/10 px-1.5 py-0.5 rounded">~${estimatedProfit} profit</span>
                 )}
               </div>
@@ -435,22 +440,28 @@ export default function EnrichedProductCard({
             )}
           </div>
 
-          {/* Info Row: Shipping + Stock + Competitors */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground bg-surface/60 px-1.5 py-0.5 rounded-md">
-              <Truck className="h-2.5 w-2.5" /> {shippingDays}d
-            </span>
-            <span className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md ${
-              inStock ? "text-emerald-400 bg-emerald-400/10" : "text-red-400 bg-red-400/10"
-            }`}>
-              {inStock ? <><Check className="h-2.5 w-2.5" /> In Stock</> : <><AlertTriangle className="h-2.5 w-2.5" /> Out of Stock</>}
-            </span>
-            {product.competitorCount != null && product.competitorCount > 0 && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground bg-surface/60 px-1.5 py-0.5 rounded-md">
-                <Users className="h-2.5 w-2.5" /> {product.competitorCount} sellers
-              </span>
-            )}
-          </div>
+          {/* Info Row: Shipping + Stock + Competitors (only real data) */}
+          {(shippingDays != null || inStock != null || (product.competitorCount != null && product.competitorCount > 0)) && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {shippingDays != null && (
+                <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground bg-surface/60 px-1.5 py-0.5 rounded-md">
+                  <Truck className="h-2.5 w-2.5" /> {shippingDays}d
+                </span>
+              )}
+              {inStock != null && (
+                <span className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md ${
+                  inStock ? "text-emerald-400 bg-emerald-400/10" : "text-red-400 bg-red-400/10"
+                }`}>
+                  {inStock ? <><Check className="h-2.5 w-2.5" /> In Stock</> : <><AlertTriangle className="h-2.5 w-2.5" /> Out of Stock</>}
+                </span>
+              )}
+              {product.competitorCount != null && product.competitorCount > 0 && (
+                <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground bg-surface/60 px-1.5 py-0.5 rounded-md">
+                  <Users className="h-2.5 w-2.5" /> {product.competitorCount} sellers
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Action Buttons Row */}
           <div className="flex items-center gap-1.5 pt-0.5">
@@ -537,10 +548,10 @@ export default function EnrichedProductCard({
             </div>
           )}
         </div>
-      </a>
+      </div>
 
       {/* Supplier Assignment */}
-      <div className="px-3 pb-2 -mt-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+      <div className="px-3 pb-2 -mt-1">
         <SupplierPicker productId={product.id} productName={product.title} />
       </div>
 

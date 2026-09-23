@@ -1,9 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import SearchHeader from "./SearchHeader";
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
+
+vi.mock("@/components/products/VisualSearchButton", () => ({
+  default: () => <button data-testid="visual-search-button" />,
+}));
+
+vi.mock("@/components/ai/VoiceInput", () => ({
+  default: () => <button data-testid="voice-input" />,
+}));
+
+vi.mock("@/lib/firebase", () => ({
+  auth: { currentUser: null },
+}));
 
 describe("SearchHeader", () => {
   beforeEach(() => {
@@ -267,5 +279,210 @@ describe("SearchHeader", () => {
     fireEvent.keyDown(input, { key: "Enter" });
 
     expect(onSearch).toHaveBeenCalled();
+  });
+
+  it("toggles a platform chip", () => {
+    const togglePlatform = vi.fn();
+    render(
+      <SearchHeader
+        query="headphones"
+        setQuery={vi.fn()}
+        onSearch={vi.fn()}
+        loading={false}
+        platforms={[{ id: "amazon", name: "Amazon" }]}
+        selectedPlatforms={[]}
+        togglePlatform={togglePlatform}
+        showFilters={false}
+        setShowFilters={vi.fn()}
+        recentSearches={[]}
+        onRecentClick={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Amazon/ }));
+    expect(togglePlatform).toHaveBeenCalledWith("amazon");
+  });
+
+  it("marks a selected platform chip as pressed", () => {
+    render(
+      <SearchHeader
+        query=""
+        setQuery={vi.fn()}
+        onSearch={vi.fn()}
+        loading={false}
+        platforms={[{ id: "amazon", name: "Amazon" }]}
+        selectedPlatforms={["amazon"]}
+        togglePlatform={vi.fn()}
+        showFilters={false}
+        setShowFilters={vi.fn()}
+        recentSearches={[]}
+        onRecentClick={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: /Amazon/ })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("clears the search query via the clear button", () => {
+    const setQuery = vi.fn();
+    render(
+      <SearchHeader
+        query="headphones"
+        setQuery={setQuery}
+        onSearch={vi.fn()}
+        loading={false}
+        platforms={[]}
+        selectedPlatforms={[]}
+        togglePlatform={vi.fn()}
+        showFilters={false}
+        setShowFilters={vi.fn()}
+        recentSearches={[]}
+        onRecentClick={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByLabelText("Clear search"));
+    expect(setQuery).toHaveBeenCalledWith("");
+  });
+
+  it("disables the search and all-platforms buttons with an empty query", () => {
+    render(
+      <SearchHeader
+        query=""
+        setQuery={vi.fn()}
+        onSearch={vi.fn()}
+        loading={false}
+        platforms={[{ id: "amazon", name: "Amazon" }]}
+        selectedPlatforms={[]}
+        togglePlatform={vi.fn()}
+        showFilters={false}
+        setShowFilters={vi.fn()}
+        recentSearches={[]}
+        onRecentClick={vi.fn()}
+      />
+    );
+
+    expect(screen.getByLabelText("Search")).toBeDisabled();
+    expect(screen.getByLabelText("Search across all platforms")).toBeDisabled();
+  });
+
+  it("passes all platform ids when searching all platforms", () => {
+    const onSearch = vi.fn();
+    render(
+      <SearchHeader
+        query="test"
+        setQuery={vi.fn()}
+        onSearch={onSearch}
+        loading={false}
+        platforms={[{ id: "amazon", name: "Amazon" }, { id: "ebay", name: "eBay" }]}
+        selectedPlatforms={["amazon"]}
+        togglePlatform={vi.fn()}
+        showFilters={false}
+        setShowFilters={vi.fn()}
+        recentSearches={[]}
+        onRecentClick={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByLabelText("Search across all platforms"));
+    expect(onSearch).toHaveBeenCalledWith(["amazon", "ebay"]);
+  });
+
+  it("fires onAskAI from an AI suggested prompt pill", () => {
+    const onAskAI = vi.fn();
+    const setQuery = vi.fn();
+    render(
+      <SearchHeader
+        query=""
+        setQuery={setQuery}
+        onSearch={vi.fn()}
+        loading={false}
+        platforms={[]}
+        selectedPlatforms={[]}
+        togglePlatform={vi.fn()}
+        showFilters={false}
+        setShowFilters={vi.fn()}
+        recentSearches={[]}
+        onRecentClick={vi.fn()}
+        onAskAI={onAskAI}
+      />
+    );
+
+    fireEvent.click(screen.getByText("Trending TikTok products"));
+    expect(onAskAI).toHaveBeenCalledWith("Trending TikTok products");
+    expect(setQuery).toHaveBeenCalledWith("Trending TikTok products");
+  });
+
+  it("runs a search when a dynamic suggestion is clicked", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        suggestions: [
+          { text: "wireless earbuds", category: "trending" },
+          { text: "wireless charger", category: "category" },
+        ],
+      }),
+    });
+
+    vi.useFakeTimers();
+    try {
+      const onSearch = vi.fn();
+      const setQuery = vi.fn();
+      render(
+        <SearchHeader
+          query="wire"
+          setQuery={setQuery}
+          onSearch={onSearch}
+          loading={false}
+          platforms={[]}
+          selectedPlatforms={[]}
+          togglePlatform={vi.fn()}
+          showFilters={false}
+          setShowFilters={vi.fn()}
+          recentSearches={[]}
+          onRecentClick={vi.fn()}
+        />
+      );
+
+      fireEvent.change(screen.getByPlaceholderText(/looking for/i), { target: { value: "wireless" } });
+
+      await act(async () => {
+        await vi.runOnlyPendingTimersAsync();
+      });
+
+      const option = screen.getAllByRole("option").find((o) => o.textContent === "wireless earbuds");
+      if (!option) throw new Error("suggestion option not found");
+      fireEvent.click(option);
+
+      expect(onSearch).toHaveBeenCalled();
+      expect(setQuery).toHaveBeenCalledWith("wireless earbuds");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("clears recent search history", () => {
+    const removeItem = vi.spyOn(localStorage, "removeItem");
+    render(
+      <SearchHeader
+        query=""
+        setQuery={vi.fn()}
+        onSearch={vi.fn()}
+        loading={false}
+        platforms={[]}
+        selectedPlatforms={[]}
+        togglePlatform={vi.fn()}
+        showFilters={false}
+        setShowFilters={vi.fn()}
+        recentSearches={["earbuds"]}
+        onRecentClick={vi.fn()}
+      />
+    );
+
+    fireEvent.focus(screen.getByPlaceholderText(/looking for/i));
+    fireEvent.click(screen.getByText("Clear history"));
+
+    expect(removeItem).toHaveBeenCalledWith("recentSearches");
+    removeItem.mockRestore();
   });
 });

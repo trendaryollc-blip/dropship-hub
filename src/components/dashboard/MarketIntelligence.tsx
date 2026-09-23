@@ -61,7 +61,7 @@ export function MarketIntelligence({ heatmap, ticker }: { heatmap: HeatmapCatego
                 const getColor = (h: number) => h >= 80 ? "from-red-500/20 to-red-500/5 border-red-500/20" : h >= 60 ? "from-orange-500/15 to-orange-500/5 border-orange-500/15" : h >= 40 ? "from-amber-500/10 to-amber-500/5 border-amber-500/15" : "from-blue-500/10 to-blue-500/5 border-blue-500/15";
                 const getTxt = (h: number) => h >= 80 ? "text-red-400" : h >= 60 ? "text-orange-400" : h >= 40 ? "text-amber-400" : "text-blue-400";
                 return (
-                  <div key={cat.category} className={`p-3 rounded-xl bg-gradient-to-br ${getColor(cat.heat)} border transition-all duration-300 hover:scale-[1.03] cursor-pointer`}>
+                  <div key={cat.category} className={`p-3 rounded-xl bg-gradient-to-br ${getColor(cat.heat)} border transition-all duration-300 hover:scale-[1.03]`}>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[10px] font-semibold text-white truncate">{cat.category}</span>
                       <span className={`text-[10px] font-bold ${getTxt(cat.heat)}`}>{cat.heat}</span>

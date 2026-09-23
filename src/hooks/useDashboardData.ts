@@ -14,16 +14,6 @@ interface AIBriefing {
   lastScan: string;
 }
 
-interface MarketPulseCard {
-  label: string;
-  value: string;
-  change: string;
-  up: boolean;
-  sparkline: number[];
-  icon: string;
-  color: string;
-}
-
 interface QuickActionStat {
   label: string;
   description: string;
@@ -38,6 +28,7 @@ interface RevenueStats {
   growth: number;
   orders: number;
   avgOrder: number;
+  profit: number;
 }
 
 interface RevenueChartPoint {
@@ -65,7 +56,6 @@ export interface DashboardData {
   trending: TrendingProduct[];
   compareItems: { name: string; price: number; margin: number; image: string }[];
   briefing: AIBriefing;
-  pulse: MarketPulseCard[];
   actionStats: QuickActionStat[];
   fulfillmentPipeline: FulfillmentPipelineData;
   contextualActions: ContextualAction[];
@@ -107,7 +97,7 @@ function persistReadAlertIds(ids: string[]): void {
 const defaults = {
   ticker: [] as TickerItem[],
   dailyPick: null as AIDailyPick | null,
-  revenueStats: { revenue: 0, growth: 0, orders: 0, avgOrder: 0 } as RevenueStats,
+  revenueStats: { revenue: 0, growth: 0, orders: 0, avgOrder: 0, profit: 0 } as RevenueStats,
   revenueChart: [] as RevenueChartPoint[],
   alerts: [] as SmartAlert[],
   niches: [] as NicheCard[],
@@ -123,7 +113,6 @@ const defaults = {
     trends: 0,
     lastScan: "",
   } as AIBriefing,
-  pulse: [] as MarketPulseCard[],
   actionStats: [] as QuickActionStat[],
   fulfillmentPipeline: {
     pending: 0,
@@ -167,7 +156,6 @@ export function useDashboardData(): UseDashboardDataResult {
     heatmap?: HeatmapCategory[];
     trending?: TrendingProduct[];
     briefing?: AIBriefing;
-    pulse?: MarketPulseCard[];
     actionStats?: QuickActionStat[];
     fulfillmentPipeline?: FulfillmentPipelineData;
     contextualActions?: ContextualAction[];
@@ -223,7 +211,6 @@ export function useDashboardData(): UseDashboardDataResult {
     trending: apiData?.trending?.length ? apiData.trending : defaults.trending,
     compareItems: [],
     briefing: apiData?.briefing ?? defaults.briefing,
-    pulse: apiData?.pulse?.length ? apiData.pulse : defaults.pulse,
     actionStats: apiData?.actionStats?.length ? apiData.actionStats : defaults.actionStats,
     fulfillmentPipeline: apiData?.fulfillmentPipeline ?? defaults.fulfillmentPipeline,
     contextualActions: apiData?.contextualActions ?? defaults.contextualActions,

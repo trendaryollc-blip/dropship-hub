@@ -34,6 +34,10 @@ export default function Comparison() {
     setSliderPos(pct);
   };
 
+  const nudge = (delta: number) => {
+    setSliderPos((p) => Math.max(10, Math.min(90, p + delta)));
+  };
+
   return (
     <section className="relative py-24 md:py-32">
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
@@ -55,7 +59,28 @@ export default function Comparison() {
         <div className={`glass rounded-2xl overflow-hidden transition-all duration-700 delay-200 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
           {/* Visual slider comparison */}
           <div
-            className="relative h-48 md:h-64 overflow-hidden cursor-col-resize select-none"
+            className="relative h-48 md:h-64 overflow-hidden cursor-col-resize select-none touch-none"
+            role="slider"
+            tabIndex={0}
+            aria-label="Before and after comparison"
+            aria-valuemin={10}
+            aria-valuemax={90}
+            aria-valuenow={Math.round(sliderPos)}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+                e.preventDefault();
+                nudge(-5);
+              } else if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+                e.preventDefault();
+                nudge(5);
+              } else if (e.key === "Home") {
+                e.preventDefault();
+                setSliderPos(10);
+              } else if (e.key === "End") {
+                e.preventDefault();
+                setSliderPos(90);
+              }
+            }}
             onMouseDown={(e) => {
               setIsDragging(true);
               handleMove(e.clientX, e.currentTarget.getBoundingClientRect());
@@ -73,10 +98,11 @@ export default function Comparison() {
               if (isDragging) handleMove(e.touches[0].clientX, e.currentTarget.getBoundingClientRect());
             }}
             onTouchEnd={() => setIsDragging(false)}
+            onTouchCancel={() => setIsDragging(false)}
           >
             {/* Before (Manual) side */}
             <div className="absolute inset-0 bg-gradient-to-br from-red-400/10 via-red-400/5 to-background">
-              <div className="absolute inset-0 flex flex-col items-end justify-center p-8 pr-16">
+              <div className="absolute inset-0 flex flex-col items-end justify-center p-6 sm:p-8 sm:pr-16">
                 <div className="flex gap-2 mb-4">
                   <div className="w-10 h-10 rounded-xl bg-red-400/10 flex items-center justify-center">
                     <span className="text-lg">📊</span>
@@ -90,7 +116,7 @@ export default function Comparison() {
                 </div>
                 <p className="font-display text-lg font-bold text-foreground mb-1">Manual Research</p>
                 <p className="text-sm text-muted-foreground text-right">Spreadsheets, browser tabs, guesswork</p>
-                <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
+                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                   <span>4+ hours/day</span>
                   <span className="w-1 h-1 rounded-full bg-border" />
                   <span>$200+/mo in tools</span>
@@ -103,7 +129,7 @@ export default function Comparison() {
               className="absolute inset-0 bg-gradient-to-br from-accent/10 via-accent/5 to-background"
               style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}
             >
-              <div className="absolute inset-0 flex flex-col items-start justify-center p-8 pl-16">
+              <div className="absolute inset-0 flex flex-col items-start justify-center p-6 sm:p-8 sm:pl-16">
                 <div className="flex gap-2 mb-4">
                   <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
                     <span className="text-lg">🚀</span>
@@ -117,7 +143,7 @@ export default function Comparison() {
                 </div>
                 <p className="font-display text-lg font-bold text-foreground mb-1">DropShip Hub</p>
                 <p className="text-sm text-muted-foreground text-left">One dashboard, real-time data</p>
-                <div className="mt-4 flex items-center gap-4 text-xs text-emerald-400 font-medium">
+                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-emerald-400 font-medium">
                   <span>15 min/day</span>
                   <span className="w-1 h-1 rounded-full bg-border" />
                   <span>Free to start</span>
@@ -146,28 +172,28 @@ export default function Comparison() {
 
           {/* Feature comparison table */}
           <div className="border-t border-border">
-            <div className="grid grid-cols-3 border-b border-border">
-              <div className="p-4 md:p-5" />
-              <div className="p-4 md:p-5 text-center border-x border-border">
-                <p className="font-display text-sm font-bold text-accent">DropShip Hub</p>
+            <div className="grid grid-cols-[minmax(0,1fr)_56px_56px] sm:grid-cols-3 border-b border-border">
+              <div className="p-2.5 sm:p-4 md:p-5 min-w-0" />
+              <div className="p-2.5 sm:p-4 md:p-5 text-center border-x border-border">
+                <p className="font-display text-xs sm:text-sm font-bold text-accent">DropShip Hub</p>
               </div>
-              <div className="p-4 md:p-5 text-center">
-                <p className="font-display text-sm font-bold text-muted-foreground">Manual</p>
+              <div className="p-2.5 sm:p-4 md:p-5 text-center">
+                <p className="font-display text-xs sm:text-sm font-bold text-muted-foreground">Manual</p>
               </div>
             </div>
 
             {rows.map((row, i) => (
               <div
                 key={row.name}
-                className={`grid grid-cols-3 border-b border-border last:border-b-0 ${i % 2 === 0 ? "bg-surface/30" : ""}`}
+                className={`grid grid-cols-[minmax(0,1fr)_56px_56px] sm:grid-cols-3 border-b border-border last:border-b-0 ${i % 2 === 0 ? "bg-surface/30" : ""}`}
               >
-                <div className="p-4 md:p-5 flex items-center">
-                  <span className="text-sm text-foreground">{row.name}</span>
+                <div className="p-2.5 sm:p-4 md:p-5 flex items-center min-w-0">
+                  <span className="text-xs sm:text-sm leading-snug text-foreground">{row.name}</span>
                 </div>
-                <div className="p-4 md:p-5 flex items-center justify-center border-x border-border">
+                <div className="p-2.5 sm:p-4 md:p-5 flex items-center justify-center border-x border-border">
                   <StatusIcon status={row.hub} />
                 </div>
-                <div className="p-4 md:p-5 flex items-center justify-center">
+                <div className="p-2.5 sm:p-4 md:p-5 flex items-center justify-center">
                   <StatusIcon status={row.manual} />
                 </div>
               </div>

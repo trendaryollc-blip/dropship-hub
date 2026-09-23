@@ -114,7 +114,7 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-8 max-w-6xl">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-3xl font-display font-bold text-foreground mb-2">
             Admin Dashboard
@@ -123,7 +123,7 @@ export default function AdminDashboardPage() {
             Platform overview and key metrics at a glance.
           </p>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {lastUpdated != null && !loading && (
             <span className="hidden sm:inline text-[11px] text-muted-foreground">
               Updated {new Date(lastUpdated).toLocaleTimeString()}
@@ -185,12 +185,12 @@ export default function AdminDashboardPage() {
         <div className="px-6 py-4 border-b border-border">
           <h3 className="font-display text-sm font-semibold text-foreground">Quick Actions</h3>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 divide-x divide-border">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {quickActions.map((action) => (
             <Link
               key={action.href}
               href={action.href}
-              className="flex flex-col items-center gap-3 px-4 py-6 hover:bg-surface-hover transition-all group"
+              className="flex flex-col items-center gap-3 px-4 py-6 rounded-xl border border-border/50 hover:bg-surface-hover transition-all group"
             >
               <div className="p-3 rounded-xl bg-surface border border-border group-hover:border-accent/20 transition-all">
                 <action.icon className={`h-5 w-5 ${action.color}`} />
@@ -241,12 +241,12 @@ function StatusRow({ label, value, status }: { label: string; value: string; sta
   };
 
   return (
-    <div className="flex items-center justify-between p-3 rounded-xl bg-surface/50 border border-border">
-      <div className="flex items-center gap-3">
-        <div className={`w-2 h-2 rounded-full ${colors[status]} shadow-[0_0_6px_rgba(255,255,255,0.15)]`} />
-        <span className="text-sm text-foreground">{label}</span>
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 p-3 rounded-xl bg-surface/50 border border-border">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className={`w-2 h-2 rounded-full ${colors[status]} shadow-[0_0_6px_rgba(255,255,255,0.15)] shrink-0`} />
+        <span className="text-sm text-foreground truncate">{label}</span>
       </div>
-      <span className="text-xs text-muted-foreground">{value}</span>
+      <span className="text-xs text-muted-foreground shrink-0">{value}</span>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { getAdminDB } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import type { GuardrailConfig } from "../types";
 import { DEFAULT_GUARDRAILS } from "../types";
 
@@ -55,41 +56,32 @@ export async function checkGuardrails(
 
 export async function recordAction(uid: string, cost: number = 0): Promise<void> {
   const db = await getAdminDB();
+  if (!db) return;
   const now = new Date();
   const hourKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}-${String(now.getHours()).padStart(2, "0")}`;
   const dayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   const countersRef = db.collection("users").doc(uid).collection("aiCounters");
 
-  // Increment hourly counter
-  const hourDoc = countersRef.doc(`hour_${hourKey}`);
-  await hourDoc.set(
-    {
-      count: (await hourDoc.get()).data()?.count || 0,
-      cost: (await hourDoc.get()).data()?.cost || 0,
-      updatedAt: now.toISOString(),
-    },
-    { merge: true }
-  );
-  await hourDoc.update({
-    count: (await hourDoc.get()).data()?.count + 1,
-    cost: ((await hourDoc.get()).data()?.cost || 0) + cost,
-  });
+  // Use FieldValue.increment for atomic counters — avoids race conditions
+  // under concurrent requests.
+  const batch = db.batch();
 
-  // Increment daily counter
+  const hourDoc = countersRef.doc(`hour_${hourKey}`);
+  batch.set(hourDoc, {
+    count: FieldValue.increment(1),
+    cost: FieldValue.increment(cost),
+    updatedAt: now.toISOString(),
+  }, { merge: true });
+
   const dayDoc = countersRef.doc(`day_${dayKey}`);
-  await dayDoc.set(
-    {
-      count: (await dayDoc.get()).data()?.count || 0,
-      cost: (await dayDoc.get()).data()?.cost || 0,
-      updatedAt: now.toISOString(),
-    },
-    { merge: true }
-  );
-  await dayDoc.update({
-    count: (await dayDoc.get()).data()?.count + 1,
-    cost: ((await dayDoc.get()).data()?.cost || 0) + cost,
-  });
+  batch.set(dayDoc, {
+    count: FieldValue.increment(1),
+    cost: FieldValue.increment(cost),
+    updatedAt: now.toISOString(),
+  }, { merge: true });
+
+  await batch.commit();
 }
 
 async function getActionCount(uid: string, window: "hour" | "day"): Promise<number> {

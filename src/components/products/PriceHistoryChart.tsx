@@ -155,7 +155,7 @@ export default function PriceHistoryChart({ data, title, isOpen, onClose }: Pric
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-2 mt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4">
             <div className="text-center p-2 rounded-lg bg-surface/30">
               <p className="text-[9px] text-gray-500 mb-0.5">Lowest</p>
               <p className="text-xs font-bold text-emerald-400">${Math.min(...data.map((d) => d.price)).toFixed(2)}</p>

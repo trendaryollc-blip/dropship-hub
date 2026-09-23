@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { Link2, Loader2, Check, AlertCircle, Globe, Upload, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
-import { auth } from "@/lib/firebase";
+import { authJson } from "@/lib/auth-headers";
 import type { ScrapedProductData } from "@/types/listing-intelligence";
 
 interface URLImporterProps {
@@ -58,21 +58,10 @@ export default function URLImporter({ onImport, onDismiss: _onDismiss }: URLImpo
     if (!url.trim()) return;
     setScraping(true);
     try {
-      const token = await auth.currentUser?.getIdToken();
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      const res = await fetch("/api/ai/listings/import", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ url: url.trim() }),
-      });
-      const raw = await res.json();
-
-      if (!res.ok) {
-        toastError(raw.error || "Failed to import product data");
-        return;
-      }
+      const raw = await authJson<{ data?: ScrapedProductData; platform?: string; error?: string }>(
+        "/api/ai/listings/import",
+        { url: url.trim() }
+      );
 
       const d = raw.data as ScrapedProductData | undefined;
       if (!d || (!d.title && !d.description)) {

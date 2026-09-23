@@ -9,6 +9,12 @@ vi.mock("lucide-react", () => ({
   Upload: (props: any) => <div data-testid="icon-upload" {...props} />,
 }));
 
+vi.mock("@/components/auth/AuthProvider", () => ({
+  useAuth: () => ({
+    user: { uid: "user-1", getIdToken: vi.fn().mockResolvedValue("test-token") },
+  }),
+}));
+
 describe("VisualSearchButton", () => {
   it("renders camera button", () => {
     render(<VisualSearchButton onSearch={vi.fn()} />);

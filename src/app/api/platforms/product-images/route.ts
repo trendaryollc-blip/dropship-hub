@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
+import { assertSafeUrl, fetchValidatedHtml } from "@/lib/safe-url";
 
 const RAINFOREST_API_KEY = process.env.RAINFOREST_API_KEY;
 const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY;
@@ -42,6 +43,11 @@ function extractImageUrls(data: Record<string, unknown>): string[] {
 async function fetchViaRainforestByUrl(url: string): Promise<string[]> {
   if (!RAINFOREST_API_KEY) return [];
 
+  // The raw URL is sent to a third-party scraping API, so it must pass the
+  // same allowlist/SSRF validation before we spend quota on it.
+  const safeUrl = await assertSafeUrl(url);
+  if (!safeUrl) return [];
+
   const includeVariants = [
     "product(title,image,images)",
     "product(title,image,images,variations)",
@@ -55,7 +61,7 @@ async function fetchViaRainforestByUrl(url: string): Promise<string[]> {
         api_key: RAINFOREST_API_KEY,
         type: "product",
         amazon_domain: "amazon.com",
-        url,
+        url: safeUrl,
         include_clause: clause,
       });
       const res = await fetch(`https://api.rainforestapi.com/request?${params}`, {
@@ -241,10 +247,14 @@ async function scrapeImagesFromHtml(html: string): Promise<string[]> {
 async function scrapeViaScraperAPI(url: string): Promise<string[]> {
   if (!SCRAPER_API_KEY) return [];
 
+  // Third-party scraper quota must not be spent on non-allowlisted URLs.
+  const safeUrl = await assertSafeUrl(url);
+  if (!safeUrl) return [];
+
   try {
     const params = new URLSearchParams({
       api_key: SCRAPER_API_KEY,
-      url,
+      url: safeUrl,
       render: "true",
     });
     const res = await fetch(`https://api.scraperapi.com?${params}`, {
@@ -262,16 +272,12 @@ async function scrapeViaScraperAPI(url: string): Promise<string[]> {
 
 async function scrapeDirect(url: string): Promise<string[]> {
   try {
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate, br",
-      },
-      signal: AbortSignal.timeout(20000),
-      redirect: "follow",
-    });
+    // fetchValidatedHtml re-validates every redirect hop (allowlist + DNS
+    // rebinding checks), so an attacker-supplied or malicious product URL
+    // can never make the server reach internal/private addresses.
+    const result = await fetchValidatedHtml(url, AbortSignal.timeout(20000));
+    if (!result) return [];
+    const res = result.response;
     if (!res.ok) return [];
     const contentType = res.headers.get("content-type") || "";
     if (!contentType.includes("text/html") && !contentType.includes("text/plain")) return [];

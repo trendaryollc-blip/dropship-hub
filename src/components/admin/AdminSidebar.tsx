@@ -140,7 +140,7 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
         </Link>
         <button
           onClick={onClose}
-          className="md:hidden p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors"
+          className="desk:hidden p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors"
           aria-label="Close menu"
         >
           <X className="h-4 w-4" />
@@ -180,7 +180,7 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
     <>
       {/* Desktop sidebar */}
       <aside
-        className={`hidden md:flex fixed left-0 top-0 bottom-0 z-40 flex-col border-r border-white/[0.04] backdrop-blur-xl transition-all duration-300 ${
+        className={`hidden desk:flex fixed left-0 top-0 bottom-0 z-40 flex-col border-r border-white/[0.04] backdrop-blur-xl transition-all duration-300 ${
           collapsed ? "w-[68px]" : "w-[240px]"
         }`}
         style={{ backgroundColor: "var(--sidebar)" }}
@@ -196,14 +196,14 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
 
       {/* Mobile overlay */}
       {isOpen && (
-        <div className="md:hidden fixed inset-0 z-50">
+        <div className="desk:hidden fixed inset-0 z-50">
           <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
             onClick={onClose}
           />
           <aside
             ref={dialogRef}
-            className="absolute left-0 top-0 bottom-0 w-[280px] flex flex-col border-r border-white/[0.04] backdrop-blur-xl animate-in slide-in-from-left duration-300"
+            className="absolute left-0 top-0 bottom-0 w-[80vw] max-w-[280px] flex flex-col border-r border-white/[0.04] backdrop-blur-xl animate-in slide-in-from-left duration-300"
             style={{ backgroundColor: "var(--sidebar)" }}
           >
             {navContent}

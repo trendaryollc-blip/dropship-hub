@@ -7,6 +7,7 @@ export type TrackingStatus = "ordered" | "processing" | "shipped" | "in_transit"
 
 export interface TrackingPageConfig {
   id: string;
+  publicId?: string;
   storeId: string;
   storeName: string;
   template: TrackingPageTemplate;
@@ -106,6 +107,7 @@ export interface TrackingPageTemplateOption {
 
 export interface TrackingPageConfigDoc {
   id: string;
+  publicId?: string;
   storeId: string;
   storeName: string;
   template: TrackingPageTemplate;

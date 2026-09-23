@@ -5,6 +5,7 @@ import { Bell, Search, LogOut, ChevronDown, Menu, ArrowLeft, TrendingUp, AlertTr
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import ThemeGallery from "@/components/theme/ThemeGallery";
+import HeaderBreadcrumbs from "@/components/ui/HeaderBreadcrumbs";
 import { safeFetch } from "@/lib/safe-fetch";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useAPI } from "@/hooks/useAPI";
@@ -176,27 +177,32 @@ export default function Topbar({ onMenuToggle }: TopbarProps) {
     : "U";
 
   return (
-    <header className="sticky top-0 z-30 h-16 flex items-center gap-3 px-4 md:px-6 border-b border-border bg-background/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-30 h-16 flex items-center gap-2 md:gap-3 px-4 md:px-6 border-b border-border bg-background/80 backdrop-blur-xl">
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent" />
 
-      <button
-        onClick={() => router.back()}
-        className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all"
-        aria-label="Go back"
-      >
-        <ArrowLeft className="h-5 w-5" />
-      </button>
+      {/* Left: menu (mobile) + back (desktop) + breadcrumbs */}
+      <div className="flex items-center gap-1 md:gap-2 flex-1 desk:flex-none min-w-0">
+        <button
+          onClick={onMenuToggle}
+          className="desk:hidden p-2 -ml-1 shrink-0 rounded-xl text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all"
+          aria-label="Toggle menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
 
-      <button
-        onClick={onMenuToggle}
-        className="md:hidden p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all"
-        aria-label="Toggle menu"
-      >
-        <Menu className="h-5 w-5" />
-      </button>
+        <button
+          onClick={() => router.back()}
+          className="hidden desk:flex p-2 -ml-1 shrink-0 rounded-xl text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all"
+          aria-label="Go back"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
 
-      {!pathname.startsWith("/products") && (
-      <div className="flex-1 max-w-md" ref={searchRef}>
+        <HeaderBreadcrumbs className="min-w-0" />
+      </div>
+
+      {/* Search: desktop only, identical on every page */}
+      <div className="hidden desk:block flex-1 max-w-md" ref={searchRef}>
         <form onSubmit={handleSearch} className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
@@ -250,11 +256,9 @@ export default function Topbar({ onMenuToggle }: TopbarProps) {
           )}
         </form>
       </div>
-      )}
 
-      <div className="flex items-center gap-2 md:gap-3">
-        <ThemeGallery />
-
+      {/* Right: notifications, profile, theme (theme last so its panel stays on-screen) */}
+      <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
         <div ref={notificationsRef} className="relative">
           <button
             onClick={() => setNotificationsOpen(!notificationsOpen)}
@@ -372,7 +376,7 @@ export default function Topbar({ onMenuToggle }: TopbarProps) {
             <div className="h-8 w-8 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-xs font-bold text-accent">
               {initials}
             </div>
-            <div className="hidden md:block text-left">
+            <div className="hidden desk:block text-left">
               <p className="text-sm font-medium text-foreground leading-none mb-0.5">
                 {user?.displayName || user?.email?.split("@")[0] || "User"}
               </p>
@@ -380,7 +384,7 @@ export default function Topbar({ onMenuToggle }: TopbarProps) {
                 {user?.email || "user@dropshiphub.com"}
               </p>
             </div>
-            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground hidden md:block" />
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground hidden desk:block" />
           </button>
 
           {dropdownOpen && (
@@ -400,6 +404,8 @@ export default function Topbar({ onMenuToggle }: TopbarProps) {
             </div>
           )}
         </div>
+
+        <ThemeGallery />
       </div>
     </header>
   );

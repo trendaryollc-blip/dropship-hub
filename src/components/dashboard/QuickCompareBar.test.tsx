@@ -1,8 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
+const pushMock = vi.fn();
+
 vi.mock("next/navigation", () => ({
-  useRouter: vi.fn(() => ({ push: vi.fn() })),
+  useRouter: vi.fn(() => ({ push: pushMock })),
 }));
 
 vi.mock("next/image", () => ({
@@ -63,6 +65,13 @@ describe("QuickCompareBar", () => {
   it("shows Add product link when less than 4 items", () => {
     render(<QuickCompareBar items={makeItems()} onRemove={vi.fn()} onClear={vi.fn()} />);
     expect(screen.getByText("+ Add product")).toBeInTheDocument();
+  });
+
+  it("navigates to /products with one repeatable compare param per item", () => {
+    render(<QuickCompareBar items={makeItems()} onRemove={vi.fn()} onClear={vi.fn()} />);
+    const compareBtn = screen.getByRole("button", { name: "Compare" });
+    fireEvent.click(compareBtn);
+    expect(pushMock).toHaveBeenCalledWith("/products?compare=Product+A&compare=Product+B");
   });
 
   it("hides Add product link when 4 items", () => {

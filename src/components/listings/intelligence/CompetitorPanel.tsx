@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { Search, TrendingUp, TrendingDown, Minus, Star, BarChart3, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
-import { auth } from "@/lib/firebase";
+import { authJson } from "@/lib/auth-headers";
 import type { CompetitorIntelligence, CompetitorListing, MarketInsights } from "@/types/listing-intelligence";
 
 interface CompetitorPanelProps {
   keyword: string;
   platform: string;
   onSelectListing?: (listing: CompetitorListing) => void;
+  onIntelligenceLoaded?: (intelligence: CompetitorIntelligence) => void;
 }
 
 function CompetitionBadge({ level }: { level: MarketInsights["competitionLevel"] }) {
@@ -91,7 +92,7 @@ function CompetitorCard({ listing, onClick }: { listing: CompetitorListing; onCl
   );
 }
 
-export default function CompetitorPanel({ keyword, platform, onSelectListing }: CompetitorPanelProps) {
+export default function CompetitorPanel({ keyword, platform, onSelectListing, onIntelligenceLoaded }: CompetitorPanelProps) {
   const { error: toastError, warning: toastWarning } = useToast();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<CompetitorIntelligence | null>(null);
@@ -104,23 +105,18 @@ export default function CompetitorPanel({ keyword, platform, onSelectListing }: 
     }
     setLoading(true);
     try {
-      const token = await auth.currentUser?.getIdToken();
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      const res = await fetch("/api/ai/listings/competitors", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ keyword: keyword.trim(), platform }),
-      });
-      const result = await res.json();
+      const result = await authJson<{ intelligence?: CompetitorIntelligence; error?: string }>(
+        "/api/ai/listings/competitors",
+        { keyword: keyword.trim(), platform }
+      );
       if (result.intelligence) {
         setData(result.intelligence);
+        onIntelligenceLoaded?.(result.intelligence);
       } else {
-        toastError(result.error || "Failed to fetch competitor data");
+        toastError("Failed to fetch competitor data");
       }
-    } catch {
-      toastError("Failed to fetch competitor data");
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Failed to fetch competitor data");
     } finally {
       setLoading(false);
     }

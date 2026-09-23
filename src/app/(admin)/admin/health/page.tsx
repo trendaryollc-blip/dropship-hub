@@ -65,7 +65,7 @@ export default function AdminHealthPage() {
   return (
     <div className="space-y-8 max-w-6xl">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-3xl font-display font-bold text-foreground mb-2">
             System Health
@@ -75,7 +75,7 @@ export default function AdminHealthPage() {
           </p>
         </div>
         <button onClick={fetchHealth}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-muted-foreground hover:text-foreground hover:border-white/10 transition-all">
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-muted-foreground hover:text-foreground hover:border-white/10 transition-all shrink-0">
           <RefreshCw className="h-4 w-4" /> Refresh
         </button>
       </div>
@@ -122,15 +122,15 @@ export default function AdminHealthPage() {
         <div className="divide-y divide-border">
           {platforms.map((p) => (
             <div key={p.id} className="px-6 py-4 hover:bg-surface-hover/50 transition-colors">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className={`w-3 h-3 rounded-full ${
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className={`w-3 h-3 rounded-full shrink-0 ${
                     p.lastHealth === "healthy" ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]"
                     : p.lastHealth === "error" ? "bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.5)]"
                     : "bg-muted-foreground/40"
                   }`} />
-                  <div>
-                    <div className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
                       <h4 className="text-sm font-semibold text-foreground">{p.name}</h4>
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-surface border border-border text-muted-foreground uppercase">
                         {p.method}
@@ -142,13 +142,13 @@ export default function AdminHealthPage() {
                       )}
                     </div>
                     {p.lastError && (
-                      <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
-                        <AlertTriangle className="h-3 w-3" />{p.lastError}
+                      <p className="text-xs text-red-400 mt-1 flex items-start gap-1">
+                        <AlertTriangle className="h-3 w-3 shrink-0" /><span className="min-w-0 break-words">{p.lastError}</span>
                       </p>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-3 sm:gap-4 shrink-0">
                   <div className="text-right">
                     <p className="text-xs text-muted-foreground">{p.keysCount} key{p.keysCount !== 1 ? "s" : ""}</p>
                     {p.lastSearched && (

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyAuth } from "@/lib/auth";
 
 const CATEGORY_SUGGESTIONS: Record<string, string[]> = {
   electronics: ["bluetooth speaker", "usb hub", "wireless charger", "webcam", "mouse pad"],
@@ -13,6 +14,40 @@ const CATEGORY_SUGGESTIONS: Record<string, string[]> = {
 
 const cache = new Map<string, { data: unknown; expiry: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
+const CACHE_MAX_ENTRIES = 500;
+
+// Strip any HTML/script content from user-derived suggestion text so the
+// response is always plain text regardless of what was stored in Firestore.
+function sanitizeSuggestion(text: unknown): string {
+  if (typeof text !== "string") return "";
+  return text
+    .replace(/<[^>]*>/g, "")
+    .replace(/[<>]/g, "")
+    .trim()
+    .slice(0, 120);
+}
+
+// Simple per-IP fixed-window rate limit (in-memory; pairs with Upstash for
+// the primary routes — suggestions are low-risk and fire on each keystroke).
+const rateBuckets = new Map<string, { count: number; reset: number }>();
+const RATE_MAX = 60;
+const RATE_WINDOW_MS = 60_000;
+
+function rateLimit(ip: string): boolean {
+  const now = Date.now();
+  const bucket = rateBuckets.get(ip);
+  if (!bucket || now > bucket.reset) {
+    rateBuckets.set(ip, { count: 1, reset: now + RATE_WINDOW_MS });
+    if (rateBuckets.size > 1000) {
+      for (const [key, b] of rateBuckets) {
+        if (now > b.reset) rateBuckets.delete(key);
+      }
+    }
+    return true;
+  }
+  bucket.count += 1;
+  return bucket.count <= RATE_MAX;
+}
 
 async function getTrendingSearches(): Promise<string[]> {
   try {
@@ -89,10 +124,17 @@ async function getSeasonalSuggestions(): Promise<string[]> {
 
 export async function GET(request: NextRequest) {
   try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      || request.headers.get("x-real-ip")
+      || "unknown";
+    if (!rateLimit(ip)) {
+      return NextResponse.json({ suggestions: [] }, { status: 429 });
+    }
+
     const { searchParams } = new URL(request.url);
     const q = searchParams.get("q") || "";
 
-    if (q.length < 2) {
+    if (q.length < 2 || q.length > 100) {
       return NextResponse.json({ suggestions: [] });
     }
 
@@ -111,7 +153,8 @@ export async function GET(request: NextRequest) {
       t.toLowerCase().includes(lowerQ)
     ).slice(0, 3);
     for (const text of trendingMatches) {
-      suggestions.push({ text, category: "trending" });
+      const clean = sanitizeSuggestion(text);
+      if (clean) suggestions.push({ text: clean, category: "trending" });
     }
 
     // 2. Category matches
@@ -130,36 +173,36 @@ export async function GET(request: NextRequest) {
     const seasonalSuggestions = await getSeasonalSuggestions();
     const seasonalMatches = seasonalSuggestions.filter((s) => s.toLowerCase().includes(lowerQ));
     for (const text of seasonalMatches.slice(0, 2)) {
-      suggestions.push({ text, category: "seasonal" });
+      const clean = sanitizeSuggestion(text);
+      if (clean) suggestions.push({ text: clean, category: "seasonal" });
     }
 
-    // 4. Try to get user search history for personalized suggestions (Feature 9)
+    // 4. Personalized suggestions from the caller's own search history.
+    // The uid comes from a cryptographically verified token (verifyAuth),
+    // never from a client-supplied claim — prevents IDOR on history.
     try {
-      const authHeader = request.headers.get("authorization");
-      if (authHeader) {
+      const uid = await verifyAuth(request);
+      if (uid) {
         const { getAdminDB } = await import("@/lib/firebase-admin");
-        const jwt = await import("jsonwebtoken");
-        const token = authHeader.replace("Bearer ", "");
-        const decoded = jwt.default.decode(token) as { uid?: string } | null;
-        if (decoded && decoded.uid) {
-          const db = await getAdminDB();
-          const historySnap = await db
-            .collection("users")
-            .doc(decoded.uid)
-            .collection("searchHistory")
-            .orderBy("createdAt", "desc")
-            .limit(20)
-            .get();
+        const db = await getAdminDB();
+        const historySnap = await db
+          .collection("users")
+          .doc(uid)
+          .collection("searchHistory")
+          .orderBy("createdAt", "desc")
+          .limit(20)
+          .get();
 
-          const historyQueries = historySnap.docs.map((d) => (d.data().query || "").toLowerCase());
-          const historyMatches = historyQueries.filter((h) => h.includes(lowerQ) && !suggestions.some((s) => s.text === h));
-          for (const text of historyMatches.slice(0, 2)) {
-            suggestions.push({ text, category: "history" });
-          }
+        const historyQueries = historySnap.docs
+          .map((d) => sanitizeSuggestion(d.data().query).toLowerCase())
+          .filter(Boolean);
+        const historyMatches = historyQueries.filter((h) => h.includes(lowerQ) && !suggestions.some((s) => s.text === h));
+        for (const text of historyMatches.slice(0, 2)) {
+          suggestions.push({ text, category: "history" });
         }
       }
     } catch {
-      // Silently ignore auth/history errors
+      // Silently ignore auth/history errors — suggestions still work
     }
 
     const uniqueSuggestions = suggestions
@@ -167,6 +210,10 @@ export async function GET(request: NextRequest) {
       .slice(0, 8);
 
     const result = { suggestions: uniqueSuggestions };
+    if (cache.size >= CACHE_MAX_ENTRIES) {
+      const oldest = cache.keys().next().value;
+      if (oldest !== undefined) cache.delete(oldest);
+    }
     cache.set(cacheKey, { data: result, expiry: Date.now() + CACHE_TTL });
 
     return NextResponse.json(result);

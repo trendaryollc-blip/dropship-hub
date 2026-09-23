@@ -89,12 +89,14 @@ function AppShell({ children }: { children: React.ReactNode }) {
     <SearchTrackingProvider
       userId={user?.uid}
       trackFn={async (event, data) => {
-        await trackSearchEvent(event, data);
+        if (!user) return;
+        const idToken = await user.getIdToken();
+        await trackSearchEvent(event, data, idToken);
       }}
     >
       <div className="min-h-screen bg-background">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <div className="md:pl-[240px] transition-all duration-300">
+        <div className="desk:pl-[240px] transition-all duration-300">
           <Topbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
           <main className="p-4 md:p-6">
             {children}

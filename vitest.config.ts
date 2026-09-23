@@ -23,13 +23,22 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
+      include: ["src/**/*.{ts,tsx}"],
       exclude: [
         "node_modules/",
+        ".next/**",
         "src/__tests__/",
         "src/**/*.test.{ts,tsx}",
         "src/**/*.spec.{ts,tsx}",
+        "src/**/*.d.ts",
         "public/**",
       ],
+      thresholds: {
+        statements: 50,
+        branches: 65,
+        functions: 55,
+        lines: 50,
+      },
     },
   },
   resolve: {

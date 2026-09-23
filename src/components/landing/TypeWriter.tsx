@@ -17,7 +17,6 @@ export default function TypeWriter({
 }: TypeWriterProps) {
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [currentText, setCurrentText] = useState("");
-  const [isDeleting, setIsDeleting] = useState(false);
   const [isFading, setIsFading] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -25,7 +24,7 @@ export default function TypeWriter({
     const currentWord = words[currentWordIndex];
 
     // Phase 1: Typing
-    if (!isDeleting && !isFading) {
+    if (!isFading) {
       if (currentText.length < currentWord.length) {
         timeoutRef.current = setTimeout(() => {
           setCurrentText(currentWord.slice(0, currentText.length + 1));
@@ -43,7 +42,6 @@ export default function TypeWriter({
       timeoutRef.current = setTimeout(() => {
         setCurrentText("");
         setIsFading(false);
-        setIsDeleting(false);
         setCurrentWordIndex((prev) => (prev + 1) % words.length);
       }, 300);
     }
@@ -51,7 +49,7 @@ export default function TypeWriter({
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-  }, [currentText, isDeleting, isFading, currentWordIndex, words, typingSpeed, pauseTime]);
+  }, [currentText, isFading, currentWordIndex, words, typingSpeed, pauseTime]);
 
   return (
     <span className={`inline-flex items-baseline ${className}`}>

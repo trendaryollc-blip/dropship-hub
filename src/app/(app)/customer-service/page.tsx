@@ -434,9 +434,9 @@ export default function CustomerServicePage() {
               {escalations.filter((e) => e.status === "pending").length} Pending
             </span>
           )}
-          <div className="flex items-center bg-surface rounded-xl border border-border p-0.5">
+          <div className="flex items-center bg-surface rounded-xl border border-border p-0.5 overflow-x-auto">
             {(["dashboard", "chat", "escalations", "knowledge-base", "rules", "templates"] as const).map((tab) => (
-              <button key={tab} onClick={() => setActiveTab(tab)} className={`px-2 sm:px-2.5 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-semibold capitalize transition-all ${activeTab === tab ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-muted-foreground hover:text-foreground"}`}>
+              <button key={tab} onClick={() => setActiveTab(tab)} className={`px-2 sm:px-2.5 py-1.5 rounded-lg text-[9px] sm:text-[10px] font-semibold capitalize whitespace-nowrap shrink-0 transition-all ${activeTab === tab ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-muted-foreground hover:text-foreground"}`}>
                 {tab.replace("-", " ")}
               </button>
             ))}

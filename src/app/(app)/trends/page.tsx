@@ -9,9 +9,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import VoiceInput from "@/components/ai/VoiceInput";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAPI } from "@/hooks/useAPI";
+import { useToast } from "@/components/ui/Toast";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { authJson } from "@/lib/auth-headers";
+import { toDate } from "@/lib/dates";
 import KPICard from "@/components/ui/KPICard";
-import MiniSparkline from "@/components/ui/MiniSparkline";
 import EmptyState from "@/components/ui/EmptyState";
+import { DashboardWidgetSkeleton } from "@/components/ui/Skeleton";
 import TrendLifecycleCurve from "@/components/trends/TrendLifecycleCurve";
 import TrendStageIndicator from "@/components/trends/TrendStageIndicator";
 import PlatformBreakdown from "@/components/trends/PlatformBreakdown";
@@ -24,7 +28,7 @@ import NotificationCenter from "@/components/trends/NotificationCenter";
 import AccuracyTracker from "@/components/trends/AccuracyTracker";
 import PDFExportButton from "@/components/trends/PDFExportButton";
 import { exportPredictionsToCSV, exportWatchlistToCSV, exportRisingStarsToCSV } from "@/lib/trends/export";
-import type { TrendPrediction, RisingStar, TrendWatchlistEntry, TrendAnalysisResponse, TrendSignal } from "@/types/trend-predictor";
+import type { TrendPrediction, RisingStar, TrendWatchlistEntry, TrendAnalysisResponse } from "@/types/trend-predictor";
 
 interface TrendingItem {
   id: string;
@@ -43,11 +47,14 @@ type Tab = "dashboard" | "analyze" | "predictions" | "watchlist" | "compare" | "
 export default function TrendsPage() {
   const { user } = useAuth();
   const uid = user?.uid || "";
+  const { success: toastSuccess, error: toastError } = useToast();
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+  const [removing, setRemoving] = useState(false);
 
-  const { data: trendingData, mutate: mutateTrending } = useAPI<{ trending?: TrendingItem[]; risingStars?: RisingStar[] }>(uid ? `/api/ai/trends?uid=${uid}` : null);
-  const { data: risingData } = useAPI<{ risingStars?: RisingStar[] }>(uid ? `/api/ai/trends/rising-stars?uid=${uid}` : null);
-  const { data: predictionsData, mutate: mutatePredictions } = useAPI<{ predictions?: TrendPrediction[] }>(uid ? `/api/ai/trends/predictions?uid=${uid}` : null);
-  const { data: watchlistData, mutate: mutateWatchlist } = useAPI<{ entries?: TrendWatchlistEntry[] }>(uid ? `/api/ai/trends/watchlist?uid=${uid}` : null);
+  const { data: trendingData, mutate: mutateTrending, isLoading: trendsLoading, error: trendsError } = useAPI<{ trending?: TrendingItem[]; risingStars?: RisingStar[] }>(uid ? "/api/ai/trends" : null);
+  const { data: risingData } = useAPI<{ risingStars?: RisingStar[] }>(uid ? "/api/ai/trends/rising-stars" : null);
+  const { data: predictionsData, mutate: mutatePredictions } = useAPI<{ predictions?: TrendPrediction[] }>(uid ? "/api/ai/trends/predictions" : null);
+  const { data: watchlistData, mutate: mutateWatchlist } = useAPI<{ entries?: TrendWatchlistEntry[] }>(uid ? "/api/ai/trends/watchlist" : null);
 
   const trending = trendingData?.trending || [];
   const risingStars = risingData?.risingStars || trendingData?.risingStars || [];
@@ -74,20 +81,16 @@ export default function TrendsPage() {
     if (!kw) return;
     setAnalyzing(true);
     try {
-      const res = await fetch("/api/ai/trends", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          keyword: kw,
-          category: searchCategory.trim() || undefined,
-          timeframe: searchTimeframe,
-        }),
+      const data = await authJson<TrendAnalysisResponse>("/api/ai/trends", {
+        keyword: kw,
+        category: searchCategory.trim() || undefined,
+        timeframe: searchTimeframe,
       });
-      const data = await res.json();
       setAnalysisResult(data);
       mutatePredictions();
     } catch (e) {
       console.error("[Trends] Error:", e instanceof Error ? e.message : e);
+      toastError(e instanceof Error ? e.message : "Trend analysis failed");
     } finally {
       setAnalyzing(false);
     }
@@ -97,12 +100,10 @@ export default function TrendsPage() {
     const results: TrendPrediction[] = [];
     for (const kw of keywords) {
       try {
-        const res = await fetch("/api/ai/trends", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ keyword: kw, timeframe: searchTimeframe }),
+        const data = await authJson<{ prediction?: TrendPrediction }>("/api/ai/trends", {
+          keyword: kw,
+          timeframe: searchTimeframe,
         });
-        const data = await res.json();
         if (data.prediction) results.push(data.prediction);
       } catch {
         // Skip failed keywords
@@ -114,53 +115,56 @@ export default function TrendsPage() {
   const handleAddWatchlist = async () => {
     if (!watchKeyword.trim()) return;
     try {
-      await fetch("/api/ai/trends/watchlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          keyword: watchKeyword.trim(),
-          category: watchCategory.trim() || "general",
-          alertOnRising: true,
-          alertOnPeak: true,
-          alertOnSaturation: true,
-        }),
+      await authJson("/api/ai/trends/watchlist", {
+        keyword: watchKeyword.trim(),
+        category: watchCategory.trim() || "general",
+        alertOnRising: true,
+        alertOnPeak: true,
+        alertOnSaturation: true,
       });
+      toastSuccess("Added to watchlist");
       mutateWatchlist();
       setWatchKeyword("");
       setWatchCategory("");
     } catch (e) {
       console.error("[Trends] Error:", e instanceof Error ? e.message : e);
+      toastError(e instanceof Error ? e.message : "Failed to add to watchlist");
     }
   };
 
   const handleRemoveWatchlist = async (id: string) => {
+    setRemoving(true);
     try {
-      await fetch(`/api/ai/trends/watchlist?id=${id}`, { method: "DELETE" });
+      await authJson(`/api/ai/trends/watchlist?id=${encodeURIComponent(id)}`, undefined, "DELETE");
+      toastSuccess("Removed from watchlist");
       mutateWatchlist();
     } catch (e) {
       console.error("[Trends] Error:", e instanceof Error ? e.message : e);
+      toastError(e instanceof Error ? e.message : "Failed to remove from watchlist");
+    } finally {
+      setRemoving(false);
     }
   };
 
-  const handleWatchlistAlertUpdate = async (id: string, config: { alertOnRising: boolean; alertOnPeak: boolean; alertOnSaturation: boolean }) => {
+  const handleWatchlistAlertUpdate = async (
+    id: string,
+    config: { alertOnRising: boolean; alertOnPeak: boolean; alertOnSaturation: boolean; customThreshold?: number }
+  ) => {
     try {
-      await fetch("/api/ai/trends/watchlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, ...config }),
-      });
+      await authJson("/api/ai/trends/watchlist", { id, ...config }, "PUT");
       mutateWatchlist();
-    } catch {
-      // Non-critical
+    } catch (e) {
+      console.error("[Trends] Error:", e instanceof Error ? e.message : e);
+      toastError(e instanceof Error ? e.message : "Failed to update alert settings");
     }
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     setLastRefresh(new Date());
     mutateTrending();
     mutatePredictions();
     mutateWatchlist();
-  };
+  }, [mutateTrending, mutatePredictions, mutateWatchlist]);
 
   const handleViewPrediction = (pred: TrendPrediction) => {
     setSelectedPrediction(pred);
@@ -173,10 +177,21 @@ export default function TrendsPage() {
     .sort((a, b) => {
       if (sortField === "score") return b.trendScore - a.trendScore;
       if (sortField === "margin") return b.estimatedMargin - a.estimatedMargin;
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      return (toDate(b.createdAt)?.getTime() ?? 0) - (toDate(a.createdAt)?.getTime() ?? 0);
     });
 
-  const sparkData = (seed: number) => Array.from({ length: 7 }, (_, i) => 30 + ((seed + i * 7) % 40));
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const predictionsToday = predictions.filter((p) => (toDate(p.createdAt)?.getTime() ?? 0) >= startOfToday.getTime()).length;
+
+  const analysisStage =
+    analysisResult?.prediction.direction === "rising"
+      ? "rising"
+      : analysisResult?.prediction.direction === "peaking"
+        ? "peak"
+        : analysisResult?.prediction.direction === "declining"
+          ? "declining"
+          : "emerging";
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 px-3 sm:px-4 lg:px-6 pb-24">
@@ -231,17 +246,29 @@ export default function TrendsPage() {
         <div className="space-y-4">
           {/* KPI Row */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <KPICard icon={TrendingUp} label="Active Trends" value={watchlist.length} sparkline={sparkData(1)} />
-            <KPICard icon={Flame} label="Rising Stars" value={risingStars.length} sparkline={sparkData(2)} />
-            <KPICard icon={Zap} label="Predictions Today" value={predictions.length} sparkline={sparkData(3)} />
-            <KPICard icon={Eye} label="Watchlist Items" value={watchlist.length} sparkline={sparkData(4)} />
+            <KPICard icon={TrendingUp} label="Active Trends" value={trending.length} />
+            <KPICard icon={Flame} label="Rising Stars" value={risingStars.length} />
+            <KPICard icon={Zap} label="Predictions Today" value={predictionsToday} />
+            <KPICard icon={Eye} label="Watchlist Items" value={watchlist.length} />
           </div>
 
           {/* Accuracy Tracker */}
           <AccuracyTracker uid={uid} />
 
           {/* Trending Keywords */}
-          {trending.length > 0 && (
+          {trendsLoading ? (
+            <DashboardWidgetSkeleton />
+          ) : trendsError ? (
+            <div className="glass rounded-2xl p-8 text-center">
+              <p className="text-sm text-muted-foreground mb-3">Couldn&apos;t load trending data.</p>
+              <button
+                onClick={() => mutateTrending()}
+                className="px-4 py-2 rounded-xl bg-surface border border-border text-xs font-semibold text-foreground hover:bg-surface-hover transition-all"
+              >
+                Retry
+              </button>
+            </div>
+          ) : trending.length > 0 && (
             <div className="glass rounded-2xl p-4 sm:p-5">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-display text-sm font-semibold text-foreground">Trending Keywords</h3>
@@ -270,7 +297,6 @@ export default function TrendsPage() {
                           </p>
                           <p className="text-[10px] text-muted-foreground">{t.volume?.toLocaleString()} volume</p>
                         </div>
-                        <MiniSparkline data={sparkData(t.keyword.charCodeAt(0))} width={40} height={16} />
                       </div>
                     </div>
                   );
@@ -311,7 +337,7 @@ export default function TrendsPage() {
             </div>
           )}
 
-          {trending.length === 0 && risingStars.length === 0 && (
+          {!trendsLoading && !trendsError && trending.length === 0 && risingStars.length === 0 && (
             <EmptyState iconName="analytics" title="No trends data yet" description="Click 'Analyze' to discover trending products and rising stars"
               action={{ label: "Start Analyzing", onClick: () => setActiveTab("analyze") }} />
           )}
@@ -365,8 +391,16 @@ export default function TrendsPage() {
           </div>
 
           <div className="space-y-4">
-            {analysisResult?.prediction && (
-              <>
+            <AnimatePresence mode="wait">
+              {analysisResult?.prediction && (
+                <motion.div
+                  key="analysis-result"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.25 }}
+                  className="space-y-4"
+                >
                 {/* Main Result Card */}
                 <div className="glass rounded-2xl p-4 sm:p-5 space-y-3">
                   <div className="flex items-center justify-between">
@@ -443,6 +477,9 @@ export default function TrendsPage() {
                   </div>
                 </div>
 
+                {/* Trend Stage */}
+                <TrendStageIndicator stage={analysisStage} />
+
                 {/* Lifecycle Curve */}
                 {analysisResult.signals && analysisResult.signals.length > 0 && (
                   <TrendLifecycleCurve
@@ -469,8 +506,12 @@ export default function TrendsPage() {
                     height={150}
                   />
                 )}
-              </>
-            )}
+
+                {/* Geographic Distribution */}
+                <GeographicHeatmap data={analysisResult.geoData || []} height={240} />
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {analysisResult?.risingStars && analysisResult.risingStars.length > 0 && (
               <div className="glass rounded-2xl p-4 sm:p-5">
@@ -571,14 +612,14 @@ export default function TrendsPage() {
                   onClick={() => handleViewPrediction(pred)}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <DirIcon className={`h-4 w-4 ${dirColor}`} />
+                        <DirIcon className={`h-4 w-4 ${dirColor} shrink-0`} />
                         <h4 className="text-sm font-medium text-foreground">{pred.productIdea}</h4>
                         <span className="text-[10px] text-muted-foreground">· {pred.category}</span>
                       </div>
                       <p className="text-[10px] text-muted-foreground mb-2 line-clamp-1">{pred.reasoning}</p>
-                      <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
                         <span>Score: <span className="text-foreground font-semibold">{pred.trendScore}%</span></span>
                         <span>Peak: <span className="text-foreground font-semibold">{pred.timeToPeak}</span></span>
                         <span>Margin: <span className="text-emerald-400 font-semibold">{pred.estimatedMargin}%</span></span>
@@ -651,7 +692,6 @@ export default function TrendsPage() {
                       <span className="text-[10px] text-muted-foreground">{w.category}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      <MiniSparkline data={sparkData(w.keyword.charCodeAt(0))} width={50} height={14} />
                       {w.alertOnRising && <span className="px-1.5 py-0.5 rounded bg-emerald-400/10 text-emerald-400 text-[8px] font-bold">Rising</span>}
                       {w.alertOnPeak && <span className="px-1.5 py-0.5 rounded bg-amber-400/10 text-amber-400 text-[8px] font-bold">Peak</span>}
                       {w.alertOnSaturation && <span className="px-1.5 py-0.5 rounded bg-red-400/10 text-red-400 text-[8px] font-bold">Saturation</span>}
@@ -661,14 +701,17 @@ export default function TrendsPage() {
                     <AlertConfig entry={w} onUpdate={handleWatchlistAlertUpdate} />
                     <button
                       onClick={() => { setSearchKeyword(w.keyword); setActiveTab("analyze"); }}
+                      aria-label={`Analyze ${w.keyword} trend`}
                       className="p-1.5 rounded-lg hover:bg-surface transition-all"
                       title="Analyze this keyword"
                     >
                       <Search className="h-3.5 w-3.5 text-muted-foreground" />
                     </button>
                     <button
-                      onClick={() => handleRemoveWatchlist(w.id)}
-                      className="p-1.5 rounded-lg hover:bg-surface transition-all"
+                      onClick={() => setConfirmRemoveId(w.id)}
+                      disabled={removing}
+                      aria-label={`Remove ${w.keyword} from watchlist`}
+                      className="p-1.5 rounded-lg hover:bg-surface transition-all disabled:opacity-50"
                       title="Remove from watchlist"
                     >
                       <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
@@ -690,6 +733,7 @@ export default function TrendsPage() {
           suggestedPlatforms: [], estimatedMargin: 0, createdAt: "",
         }}
         signals={analysisResult?.signals || []}
+        geoData={analysisResult?.geoData || []}
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         onAddToWatchlist={(kw, cat) => {
@@ -698,6 +742,20 @@ export default function TrendsPage() {
           setActiveTab("watchlist");
           setModalOpen(false);
         }}
+      />
+
+      <ConfirmDialog
+        open={!!confirmRemoveId}
+        title="Remove from watchlist?"
+        description="You'll stop tracking this keyword and its trend alerts. This cannot be undone."
+        confirmLabel="Remove"
+        danger
+        onConfirm={() => {
+          const id = confirmRemoveId;
+          setConfirmRemoveId(null);
+          if (id) void handleRemoveWatchlist(id);
+        }}
+        onCancel={() => setConfirmRemoveId(null)}
       />
     </div>
   );

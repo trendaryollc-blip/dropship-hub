@@ -37,7 +37,7 @@ export default function TrustBar() {
           <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
 
           {/* Scrolling brand row */}
-          <div className="flex overflow-hidden">
+          <div className="flex overflow-hidden" aria-hidden="true">
             <div className={`flex items-center gap-12 whitespace-nowrap ${isInView ? "animate-scroll" : ""}`}>
               {[...brands, ...brands].map((brand, i) => (
                 <div

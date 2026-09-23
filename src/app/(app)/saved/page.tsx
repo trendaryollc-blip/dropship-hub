@@ -383,7 +383,7 @@ export default function SavedPage() {
           </span>
         </div>
       )}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-1 flex items-center gap-3">
             <Heart className="h-7 w-7 text-accent fill-current" /> Saved Products
@@ -397,7 +397,7 @@ export default function SavedPage() {
         {savedProducts.length > 0 && (
           <button
             onClick={() => setConfirmClear(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface border border-border text-xs font-medium text-muted-foreground hover:text-red-400 hover:border-red-400/30 transition-all"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface border border-border text-xs font-medium text-muted-foreground hover:text-red-400 hover:border-red-400/30 transition-all shrink-0 max-w-fit"
           >
             <Trash2 className="h-3.5 w-3.5" /> Clear all
           </button>
@@ -405,7 +405,7 @@ export default function SavedPage() {
       </div>
 
       {savedProducts.length === 0 ? (
-        <div className="glass rounded-2xl p-16 text-center">
+        <div className="glass rounded-2xl p-6 sm:p-16 text-center">
           <div className="w-20 h-20 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-5">
             <Package className="h-10 w-10 text-accent/40" />
           </div>
@@ -413,7 +413,7 @@ export default function SavedPage() {
           <p className="text-sm text-muted-foreground mb-3 max-w-md mx-auto">
             Tap the heart on any product card to save it here. Once saved, you can analyze, optimize, and manage them with AI.
           </p>
-          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground/60 mb-6">
+          <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground/60 mb-6">
             <Sparkles className="h-3.5 w-3.5 text-accent/40" />
             <span>AI-powered analysis, pricing optimization, and bulk actions</span>
           </div>
@@ -440,7 +440,7 @@ export default function SavedPage() {
           />
 
           {filteredProducts.length === 0 ? (
-            <div className="glass rounded-2xl p-12 text-center">
+            <div className="glass rounded-2xl p-8 sm:p-12 text-center">
               <Package className="h-12 w-12 text-muted-foreground/25 mx-auto mb-4" />
               <h3 className="font-display text-lg font-semibold text-foreground mb-2">No matching products</h3>
               <p className="text-sm text-muted-foreground">Try adjusting your search or filters.</p>

@@ -56,7 +56,7 @@ export default function ComplianceStatsCards({ stats }: Props) {
   ];
 
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
       {cards.map((card) => (
         <div key={card.label} className="glass rounded-2xl p-4">
           <div className="flex items-center justify-between mb-2">

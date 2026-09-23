@@ -11,7 +11,7 @@ interface Recommendation {
   id: string;
   title: string;
   reason: string;
-  query: string;
+  query?: string;
   confidence: number;
   category: string;
 }
@@ -22,20 +22,26 @@ export default function PersonalizedRecommendations() {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const fetchRecommendations = useCallback(async () => {
     if (!user) return;
     setLoading(true);
+    setLoadError(false);
     try {
+      const token = await user.getIdToken();
       const data = await safeFetch<{ recommendations?: Recommendation[] }>(
-        `/api/ai/recommendations?uid=${user.uid}&type=products&limit=5`
+        `/api/ai/recommendations?type=products&limit=5`,
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       if (data.recommendations && data.recommendations.length > 0) {
         setRecommendations(data.recommendations);
         setHasLoaded(true);
+      } else {
+        setHasLoaded(true);
       }
     } catch {
-      // Silently fail - recommendations are optional
+      setLoadError(true);
     }
     setLoading(false);
   }, [user]);
@@ -46,7 +52,7 @@ export default function PersonalizedRecommendations() {
     }
   }, [user, hasLoaded, fetchRecommendations]);
 
-  if (!user || (hasLoaded && recommendations.length === 0)) return null;
+  if (!user || (hasLoaded && recommendations.length === 0 && !loadError)) return null;
 
   return (
     <div ref={ref} className={`transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
@@ -83,7 +89,7 @@ export default function PersonalizedRecommendations() {
               style={{ transitionDelay: `${i * 60}ms` }}
             >
               <Link
-                href={`/products?q=${encodeURIComponent(rec.query)}`}
+                href={`/products?q=${encodeURIComponent(rec.query || rec.title)}`}
                 className="glass rounded-xl p-3 flex items-center gap-3 hover:bg-accent/5 hover:border-accent/20 border border-transparent transition-all group"
               >
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
@@ -124,6 +130,17 @@ export default function PersonalizedRecommendations() {
           </p>
           <p className="text-[10px] text-muted-foreground/60 mt-1">
             AI analyzes your portfolio and suggests winning products
+          </p>
+        </button>
+      )}
+
+      {!loading && loadError && hasLoaded && recommendations.length === 0 && (
+        <button
+          onClick={fetchRecommendations}
+          className="w-full glass rounded-2xl p-4 text-center hover:bg-accent/5 border border-transparent hover:border-accent/20 transition-all"
+        >
+          <p className="text-xs text-muted-foreground">
+            Couldn&apos;t load recommendations — tap to retry
           </p>
         </button>
       )}

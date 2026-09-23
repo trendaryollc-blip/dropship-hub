@@ -1,17 +1,18 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { safeFetch } from "@/lib/safe-fetch";
 import AdminSidebar from "@/components/admin/AdminSidebar";
+import ThemeGallery from "@/components/theme/ThemeGallery";
+import HeaderBreadcrumbs from "@/components/ui/HeaderBreadcrumbs";
 import {
   Menu,
   ArrowLeft,
   LogOut,
   ChevronDown,
   Shield,
-  Loader2,
 } from "lucide-react";
 
 function AdminAuthGuard({ children }: { children: React.ReactNode }) {
@@ -103,7 +104,6 @@ function AdminShell({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const pathname = usePathname();
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -128,33 +128,33 @@ function AdminShell({
     <div className="min-h-screen bg-background flex">
       <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex-1 md:ml-[240px] flex flex-col min-h-screen">
+      <div className="flex-1 desk:ml-[240px] flex flex-col min-h-screen">
         {/* Admin Topbar */}
-        <header className="sticky top-0 z-30 h-14 flex items-center gap-3 px-4 md:px-6 border-b border-white/[0.04] bg-background/80 backdrop-blur-xl">
+        <header className="sticky top-0 z-30 h-16 flex items-center gap-2 md:gap-3 px-4 md:px-6 border-b border-white/[0.04] bg-background/80 backdrop-blur-xl">
           <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-red-500/20 to-transparent" />
 
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="md:hidden p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all"
-            aria-label="Toggle menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
+          {/* Left: menu (mobile) + breadcrumbs */}
+          <div className="flex items-center gap-1 md:gap-2 flex-1 md:flex-none min-w-0">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="desk:hidden p-2 -ml-1 shrink-0 rounded-xl text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all"
+              aria-label="Toggle menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
 
-          <div className="flex items-center gap-2 text-xs font-medium text-red-400 bg-red-400/10 px-2.5 py-1 rounded-lg border border-red-400/20">
-            <Shield className="h-3 w-3" />
-            Admin
+            <HeaderBreadcrumbs className="min-w-0" />
           </div>
 
-          <div className="flex-1" />
-
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">Back to App</span>
-          </button>
+          {/* Right: back to app, profile, theme (theme last so its panel stays on-screen) */}
+          <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="flex items-center gap-2 p-2 md:px-3 md:py-1.5 rounded-xl md:rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span className="hidden desk:inline">Back to App</span>
+            </button>
 
           <div ref={dropdownRef} className="relative">
             <button
@@ -164,12 +164,12 @@ function AdminShell({
               <div className="h-7 w-7 rounded-lg bg-red-400/10 border border-red-400/20 flex items-center justify-center text-[10px] font-bold text-red-400">
                 {initials}
               </div>
-              <div className="hidden md:block text-left">
+              <div className="hidden desk:block text-left">
                 <p className="text-xs font-medium text-foreground leading-none">
                   {user?.displayName || user?.email?.split("@")[0] || "Admin"}
                 </p>
               </div>
-              <ChevronDown className="h-3 w-3 text-muted-foreground hidden md:block" />
+              <ChevronDown className="h-3 w-3 text-muted-foreground hidden desk:block" />
             </button>
 
             {dropdownOpen && (
@@ -188,6 +188,9 @@ function AdminShell({
                 </button>
               </div>
             )}
+          </div>
+
+          <ThemeGallery />
           </div>
         </header>
 

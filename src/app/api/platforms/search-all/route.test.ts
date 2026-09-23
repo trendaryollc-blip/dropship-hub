@@ -78,6 +78,45 @@ describe("/api/platforms/search-all", () => {
       expect(data.error).toBe("Query is required");
     });
 
+    it("returns 400 when query is too long", async () => {
+      const { POST } = await import("./route");
+      const req = makePostRequest({ query: "x".repeat(201) });
+      const res = await POST(req);
+      const data = await res.json();
+      expect(res.status).toBe(400);
+      expect(data.error).toContain("too long");
+      expect(mockSearchAllPlatforms).not.toHaveBeenCalled();
+    });
+
+    it("returns 400 when platforms is not an array", async () => {
+      const { POST } = await import("./route");
+      const req = makePostRequest({ query: "test", platforms: "amazon" });
+      const res = await POST(req);
+      const data = await res.json();
+      expect(res.status).toBe(400);
+      expect(data.error).toBe("platforms must be an array");
+    });
+
+    it("dedupes, sanitizes and caps the selected platform list", async () => {
+      mockSearchAllPlatforms.mockResolvedValue([]);
+
+      const { POST } = await import("./route");
+      const huge = Array.from({ length: 50 }, (_, i) => `platform_${i}`);
+      const req = makePostRequest({
+        query: "test",
+        platforms: ["amazon", "amazon", "bad id!", "AMAZON", "", "amazon", ...huge],
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+
+      const calledArgs = mockSearchAllPlatforms.mock.calls[0];
+      expect(calledArgs[1].length).toBeLessThanOrEqual(20);
+      expect(calledArgs[1]).toContain("amazon");
+      expect(calledArgs[1]).not.toContain("bad id!");
+      expect(calledArgs[1]).not.toContain("AMAZON");
+      expect(calledArgs[1]).not.toContain("");
+    });
+
     it("searches all platforms and returns enriched results", async () => {
       mockSearchAllPlatforms.mockResolvedValue([
         {

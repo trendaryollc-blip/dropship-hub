@@ -789,7 +789,7 @@ export default function ProductValidationPage() {
                 style={{ width: `${(completedFetches / totalFetches) * 100}%` }}
               />
             </div>
-            <div className="flex gap-3 mt-2">
+            <div className="flex flex-wrap gap-3 mt-2">
               {([
                 ["suppliers", "Suppliers"],
                 ["enrichment", "Price Enrichment"],
@@ -997,7 +997,7 @@ export default function ProductValidationPage() {
                   <div className="mt-2 p-2.5 rounded-xl bg-surface/30">
                     <p className="text-[10px] text-muted-foreground font-semibold mb-2">Competitor 1</p>
                     <Input label="Name" value={form.comp1Name} onChange={(v) => update("comp1Name", v)} placeholder="Competitor name" />
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       <Input label="Price" value={form.comp1Price} onChange={(v) => update("comp1Price", v)} type="number" />
                       <Input label="Rating" value={form.comp1Rating} onChange={(v) => update("comp1Rating", v)} type="number" />
                       <Input label="Reviews" value={form.comp1Reviews} onChange={(v) => update("comp1Reviews", v)} type="number" />
@@ -1007,7 +1007,7 @@ export default function ProductValidationPage() {
                   <div className="mt-2 p-2.5 rounded-xl bg-surface/30">
                     <p className="text-[10px] text-muted-foreground font-semibold mb-2">Competitor 2</p>
                     <Input label="Name" value={form.comp2Name} onChange={(v) => update("comp2Name", v)} placeholder="Competitor name" />
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       <Input label="Price" value={form.comp2Price} onChange={(v) => update("comp2Price", v)} type="number" />
                       <Input label="Rating" value={form.comp2Rating} onChange={(v) => update("comp2Rating", v)} type="number" />
                       <Input label="Reviews" value={form.comp2Reviews} onChange={(v) => update("comp2Reviews", v)} type="number" />
@@ -1034,7 +1034,7 @@ export default function ProductValidationPage() {
                   <Input label="Target Markets (comma-sep)" value={form.targetMarkets} onChange={(v) => update("targetMarkets", v)} placeholder="US,UK,CA" />
                   <Input label="Shipping Methods (comma-sep)" value={form.shippingMethods} onChange={(v) => update("shippingMethods", v)} placeholder="standard,express" />
                   <Input label="Weight (lbs)" value={form.weight} onChange={(v) => update("weight", v)} type="number" />
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <Input label="Length (in)" value={form.dimLength} onChange={(v) => update("dimLength", v)} type="number" />
                     <Input label="Width (in)" value={form.dimWidth} onChange={(v) => update("dimWidth", v)} type="number" />
                     <Input label="Height (in)" value={form.dimHeight} onChange={(v) => update("dimHeight", v)} type="number" />

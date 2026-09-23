@@ -473,7 +473,7 @@ function ProductListRow({ product, delay, onClick, onStageChange }: {
   const Icon = stageIcons[product.currentStage];
 
   return (
-    <div ref={ref} onClick={onClick} className={`flex items-center gap-4 p-3 rounded-xl glass cursor-pointer hover:border-accent/20 hover:bg-surface-hover transition-all ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`} style={{ transitionDelay: `${delay}ms` }}>
+    <div ref={ref} onClick={onClick} className={`flex flex-wrap items-center gap-2 sm:gap-4 p-3 rounded-xl glass cursor-pointer hover:border-accent/20 hover:bg-surface-hover transition-all ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`} style={{ transitionDelay: `${delay}ms` }}>
       <span className="text-2xl shrink-0">{product.productImage || "📦"}</span>
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold text-foreground truncate">{product.productTitle}</p>
@@ -874,7 +874,7 @@ export default function ProductLifecyclePage() {
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">Track products from discovery to sunset. AI-powered stage transitions and recommendations.</p>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {criticalAlerts > 0 && (
             <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-red-400/10 border border-red-400/20 text-[10px] sm:text-[11px] font-semibold text-red-400">
               <AlertTriangle className="h-3 w-3" />{criticalAlerts} Critical

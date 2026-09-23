@@ -122,7 +122,7 @@ function NicheCard({ card, index }: { card: NicheCardType; index: number }) {
         <p className="text-[11px] text-muted-foreground leading-relaxed mb-3">{card.aiInsight}</p>
 
         {/* Metrics row */}
-        <div className="grid grid-cols-3 gap-2 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
           <div className="p-2 rounded-lg bg-surface/50 border border-border text-center">
             <Package className="h-3 w-3 text-blue-400 mx-auto mb-0.5" />
             <p className="font-display text-xs font-bold text-foreground">{card.productCount}</p>

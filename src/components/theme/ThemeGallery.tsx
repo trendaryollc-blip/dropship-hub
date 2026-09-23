@@ -160,7 +160,7 @@ export default function ThemeGallery() {
 
       {/* Gallery Panel */}
       {open && (
-        <div className="absolute right-0 top-full mt-3 w-[480px] max-h-[85vh] overflow-hidden rounded-2xl border border-border/60 shadow-2xl shadow-black/20 z-50"
+        <div className="absolute right-0 top-full mt-3 w-[min(30rem,calc(100vw-1.5rem))] max-h-[85vh] overflow-hidden rounded-2xl border border-border/60 shadow-2xl shadow-black/20 z-50"
           style={{
             background: "var(--surface)",
             backdropFilter: "blur(40px) saturate(1.5)",
@@ -168,7 +168,7 @@ export default function ThemeGallery() {
           }}
         >
           {/* Header */}
-          <div className="px-6 pt-6 pb-4">
+          <div className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4">
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="text-lg font-display font-bold text-foreground tracking-tight">
@@ -186,7 +186,7 @@ export default function ThemeGallery() {
           </div>
 
           {/* Theme Grid */}
-          <div className="px-6 pb-6 overflow-y-auto max-h-[calc(85vh-120px)]">
+          <div className="px-4 pb-4 sm:px-6 sm:pb-6 overflow-y-auto max-h-[calc(85vh-120px)]">
             <div className="grid grid-cols-2 gap-3">
               {themeOrder.map((name) => {
                 const t = themes[name];

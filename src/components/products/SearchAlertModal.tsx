@@ -45,6 +45,7 @@ export default function SearchAlertModal({
   const [threshold, setThreshold] = useState("10");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -56,6 +57,7 @@ export default function SearchAlertModal({
 
   const handleSubmit = async () => {
     setLoading(true);
+    setError(null);
     try {
       await onCreateAlert({
         query,
@@ -68,8 +70,8 @@ export default function SearchAlertModal({
       });
       setSuccess(true);
       setTimeout(() => { setSuccess(false); onClose(); }, 1500);
-    } catch {
-      // error handled by parent
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to create alert. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -189,7 +191,10 @@ export default function SearchAlertModal({
           )}
         </div>
 
-        <div className="p-5 border-t border-white/10">
+        <div className="p-5 border-t border-white/10 space-y-3">
+          {error && (
+            <p role="alert" className="text-xs text-red-400 text-center">{error}</p>
+          )}
           <button
             onClick={handleSubmit}
             disabled={loading || platforms.length === 0 || success}

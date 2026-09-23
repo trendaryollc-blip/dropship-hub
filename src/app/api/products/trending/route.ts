@@ -8,6 +8,7 @@ import {
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { safeErrorMessage } from "@/lib/api-errors";
+import { getFeedCache, setFeedCache } from "@/lib/feed-cache";
 
 interface TrendingProduct {
   id: string;
@@ -32,8 +33,8 @@ interface TrendingProduct {
   reviews: number | null;
 }
 
-let cachedTrending: { products: TrendingProduct[]; timestamp: number } | null = null;
-const CACHE_TTL = 30 * 60 * 1000;
+const CACHE_NAMESPACE = "discovery-feed";
+const CACHE_TTL_SECONDS = 30 * 60;
 
 const PLATFORM_QUERIES = [
   { query: "wireless earbuds", searchFn: searchAmazon, platform: "Amazon", platformId: "amazon" },
@@ -48,8 +49,9 @@ const PLATFORM_QUERIES = [
 
 export const GET = withAuth(async () => {
   try {
-    if (cachedTrending && cachedTrending.products.length > 0 && Date.now() - cachedTrending.timestamp < CACHE_TTL) {
-      return NextResponse.json({ products: cachedTrending.products, cached: true });
+    const cachedTrending = await getFeedCache<TrendingProduct[]>(CACHE_NAMESPACE, "trending", CACHE_TTL_SECONDS);
+    if (cachedTrending && cachedTrending.length > 0) {
+      return NextResponse.json({ products: cachedTrending, cached: true });
     }
 
     const results = await Promise.allSettled(
@@ -108,18 +110,20 @@ export const GET = withAuth(async () => {
         .sort((a, b) => a.price - b.price)
         .slice(0, 8);
 
-      cachedTrending = { products: sorted, timestamp: Date.now() };
+      await setFeedCache(CACHE_NAMESPACE, "trending", sorted, CACHE_TTL_SECONDS);
       return NextResponse.json({ products: sorted, count: sorted.length });
     }
 
-    if (cachedTrending && cachedTrending.products.length > 0) {
-      return NextResponse.json({ products: cachedTrending.products, cached: true });
+    const staleTrending = await getFeedCache<TrendingProduct[]>(CACHE_NAMESPACE, "trending", CACHE_TTL_SECONDS);
+    if (staleTrending && staleTrending.length > 0) {
+      return NextResponse.json({ products: staleTrending, cached: true });
     }
 
     return NextResponse.json({ products: [], count: 0 });
   } catch (error) {
-    if (cachedTrending && cachedTrending.products.length > 0) {
-      return NextResponse.json({ products: cachedTrending.products, cached: true, error: safeErrorMessage(error, "Unknown error") });
+    const staleTrending = await getFeedCache<TrendingProduct[]>(CACHE_NAMESPACE, "trending", CACHE_TTL_SECONDS);
+    if (staleTrending && staleTrending.length > 0) {
+      return NextResponse.json({ products: staleTrending, cached: true, error: safeErrorMessage(error, "Unknown error") });
     }
     return NextResponse.json(
       {

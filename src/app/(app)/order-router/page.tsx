@@ -814,7 +814,7 @@ export default function OrderRouterPage() {
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">Smart multi-channel order routing. AI selects the optimal supplier based on location, stock, speed, and cost.</p>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {pendingCount > 0 && (
             <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-400/10 border border-amber-400/20 text-[10px] sm:text-[11px] font-semibold text-amber-400">
               <Clock className="h-3 w-3" />

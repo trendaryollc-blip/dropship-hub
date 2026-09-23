@@ -45,9 +45,8 @@ describe("useDashboardData", () => {
       supplierStatuses: [{ id: "1", name: "Supplier" }],
       heatmap: [{ category: "Tech", count: 5 }],
       trending: [{ id: "1", title: "Trending" }],
-      revenueStats: { revenue: 1000, growth: 10, orders: 50, avgOrder: 20 },
+      revenueStats: { revenue: 1000, growth: 10, orders: 50, avgOrder: 20, profit: 300 },
       briefing: { insights: ["test"], sentiment: 70, sentimentLabel: "Positive", opportunities: 3, risks: 1, trends: 5, lastScan: "2026-01-01" },
-      pulse: [{ label: "Market", value: "Up", change: "+1%", up: true, sparkline: [1, 2, 3], icon: "trend", color: "green" }],
       actionStats: [{ label: "Search", description: "Search products", href: "/search", color: "blue", stat: "100", statLabel: "queries" }],
     };
 
@@ -163,13 +162,15 @@ describe("useDashboardData", () => {
 
   it("maps revenueStats from API data", () => {
     vi.mocked(useAPI).mockReturnValue({
-      data: { revenueStats: { revenue: 5000, growth: 12, orders: 100, avgOrder: 50 } },
+      data: { revenueStats: { revenue: 5000, growth: 12, orders: 100, avgOrder: 50, profit: 1500 } },
       isLoading: false,
       mutate: vi.fn(),
     } as never);
 
     const { result } = renderHook(() => useDashboardData());
-    expect(result.current.data.revenueStats).toBeDefined();
+    expect(result.current.data.revenueStats).toEqual({
+      revenue: 5000, growth: 12, orders: 100, avgOrder: 50, profit: 1500,
+    });
   });
 
   it("maps heatmap from API data", () => {
@@ -203,17 +204,6 @@ describe("useDashboardData", () => {
 
     const { result } = renderHook(() => useDashboardData());
     expect(result.current.data.niches).toEqual([{ name: "Tech Niche", grade: "A+" }]);
-  });
-
-  it("maps pulse from API data", () => {
-    vi.mocked(useAPI).mockReturnValue({
-      data: { pulse: [{ label: "Market", value: "Up" }] },
-      isLoading: false,
-      mutate: vi.fn(),
-    } as never);
-
-    const { result } = renderHook(() => useDashboardData());
-    expect(result.current.data.pulse).toEqual([{ label: "Market", value: "Up" }]);
   });
 
   it("maps actionStats from API data", () => {

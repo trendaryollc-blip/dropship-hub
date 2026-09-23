@@ -368,3 +368,11 @@ export const TrendWatchlistInputSchema = z.object({
   alertOnPeak: z.boolean(),
   alertOnSaturation: z.boolean(),
 });
+
+export const TrendWatchlistUpdateSchema = z.object({
+  id: z.string().min(1).max(200),
+  alertOnRising: z.boolean().optional(),
+  alertOnPeak: z.boolean().optional(),
+  alertOnSaturation: z.boolean().optional(),
+  customThreshold: z.number().min(0).max(100).optional(),
+});

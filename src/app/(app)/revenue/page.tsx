@@ -154,6 +154,7 @@ function RevenueChart({ actual, predicted }: { actual: { date: string; value: nu
 
   const getX = (i: number, total: number) => padding.left + (i / (total - 1)) * chartW;
   const getY = (val: number) => padding.top + chartH - ((val - minVal) / range) * chartH;
+  const tooltipX = tooltip ? Math.max(70, Math.min(tooltip.x, w - padding.right - 70)) : 0;
 
   const actualPath = actual.map((p, i) => `${i === 0 ? "M" : "L"} ${getX(i, allPoints.length)} ${getY(p.value)}`).join(" ");
   const predictedPath = [actual[actual.length - 1], ...predicted]
@@ -234,8 +235,8 @@ function RevenueChart({ actual, predicted }: { actual: { date: string; value: nu
             <g>
               <line x1={tooltip.x} y1={padding.top} x2={tooltip.x} y2={padding.top + chartH} stroke="rgba(255,255,255,0.1)" strokeDasharray="3 3" />
               <circle cx={tooltip.x} cy={tooltip.y} r="5" fill="#3b82f6" stroke="#fff" strokeWidth="2" />
-              <rect x={tooltip.x - 50} y={tooltip.y - 34} width="100" height="24" rx="6" fill="#16161f" stroke="rgba(255,255,255,0.1)" />
-              <text x={tooltip.x} y={tooltip.y - 18} textAnchor="middle" className="fill-foreground text-[9px] font-bold">
+              <rect x={tooltipX - 55} y={tooltip.y - 34} width="110" height="24" rx="6" fill="#16161f" stroke="rgba(255,255,255,0.1)" />
+              <text x={tooltipX} y={tooltip.y - 18} textAnchor="middle" className="fill-foreground text-[9px] font-bold">
                 ${tooltip.value} — {tooltip.date}
               </text>
             </g>
@@ -666,7 +667,7 @@ export default function RevenuePage() {
             </div>
           </div>
           {monthlyComparison.length > 0 ? (
-            <div className="flex items-end justify-around h-28 sm:h-40">
+            <div className="flex items-end justify-around gap-2 px-1 overflow-x-auto h-28 sm:h-40">
               {monthlyComparison.map((m, i) => (
                 <MonthlyBar key={m.month} data={m} maxRevenue={maxMonthlyRevenue} delay={i * 100} />
               ))}

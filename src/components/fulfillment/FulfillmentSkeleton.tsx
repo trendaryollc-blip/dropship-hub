@@ -31,7 +31,7 @@ export function OrderCardSkeleton() {
         ))}
       </div>
 
-      <div className="grid grid-cols-3 gap-2 mb-3 p-2 rounded-lg bg-surface/50">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3 p-2 rounded-lg bg-surface/50">
         {[1, 2, 3].map((i) => (
           <div key={i} className="text-center space-y-1">
             <div className="h-2 w-12 rounded bg-surface/50 animate-pulse mx-auto" />

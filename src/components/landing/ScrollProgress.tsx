@@ -9,7 +9,7 @@ export default function ScrollProgress() {
     const handleScroll = () => {
       const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
       if (totalHeight <= 0) return;
-      const scrolled = (window.scrollY / totalHeight) * 100;
+      const scrolled = Math.min(100, Math.max(0, (window.scrollY / totalHeight) * 100));
       setProgress(scrolled);
     };
 

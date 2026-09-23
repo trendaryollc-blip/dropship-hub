@@ -60,7 +60,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     const collectionName = type === "competitor" ? "competitorSearches" : "searchHistory";
 
     const entry: Record<string, unknown> = {
-      query: query.trim(),
+      query: query.trim().slice(0, 300),
       createdAt: new Date().toISOString(),
     };
 

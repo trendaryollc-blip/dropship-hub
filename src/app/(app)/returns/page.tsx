@@ -217,12 +217,12 @@ function DefectCard({ defect, onAction, loading }: { defect: DefectReport; onAct
 
       <p className="text-[10px] text-muted-foreground mb-3 line-clamp-2">{defect.description}</p>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <span className="text-[9px] text-muted-foreground">
           Reported by {defect.reportedBy.replace(/_/g, " ")} · {new Date(defect.createdAt).toLocaleDateString()}
         </span>
         {!defect.resolved && (
-          <div className="flex gap-1.5">
+          <div className="flex flex-wrap gap-1.5">
             <button
               onClick={() => onAction(defect.id, "resolve", { resolution: "replacement_sent" })}
               disabled={loading}
@@ -564,7 +564,7 @@ export default function ReturnsPage() {
                     </span>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2 p-2 rounded-lg bg-surface/50">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2 rounded-lg bg-surface/50">
                   <div className="text-center">
                     <p className="text-[9px] text-muted-foreground">Subtotal</p>
                     <p className="text-[10px] font-bold text-foreground">${refund.subtotal.toFixed(2)}</p>

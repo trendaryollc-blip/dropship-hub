@@ -5,13 +5,12 @@ import type {
   TrendPlatform,
   TrendDirection,
 } from "@/types/trend-predictor";
-import type { TrendFetchOptions, AggregatedSignal, TimeframeOption } from "./types";
+import type { AggregatedSignal, TimeframeOption } from "./types";
 import { fetchGoogleTrends, convertGoogleTrendsToSignal } from "./google-trends";
 import { fetchAmazonData, convertAmazonToSignal } from "./amazon";
 import { fetchSocialSignals, convertSocialToSignal } from "./social";
 import { getCached, setCache, CACHE_TTL } from "./cache";
 import {
-  calculateTrendScore,
   predictTrend,
   detectRisingStars,
 } from "@/lib/trend-analyzer";
@@ -199,10 +198,14 @@ export async function analyzeKeyword(
   relatedTrends: { keyword: string; growth: number; platform: TrendPlatform }[];
   analysisTime: number;
   provider: string;
+  geoData: { region: string; value: number }[];
 }> {
   const startTime = Date.now();
 
-  const signals = await fetchRealSignals(keyword, category, platforms, timeframe);
+  const [signals, geoResult] = await Promise.all([
+    fetchRealSignals(keyword, category, platforms, timeframe),
+    fetchGoogleTrends(keyword, timeframe),
+  ]);
   const prediction = predictTrend(signals);
   const risingStars = detectRisingStars(signals);
 
@@ -219,6 +222,7 @@ export async function analyzeKeyword(
     relatedTrends,
     analysisTime: Date.now() - startTime,
     provider: "multi-source-aggregator",
+    geoData: geoResult.success && geoResult.data ? geoResult.data.interestByRegion : [],
   };
 }
 

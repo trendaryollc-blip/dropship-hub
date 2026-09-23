@@ -210,17 +210,20 @@ export function SavedProductsProvider({ children }: { children: ReactNode }) {
 
   const toggleSave = useCallback(
     (product: SavedProduct) => {
-      let wasSaved = false;
+      // Read the current saved state from the closure BEFORE queueing the
+      // state update — reading it from inside the setProducts updater is
+      // unreliable (updaters run during render, not synchronously), which
+      // used to make unsaving re-write the doc to Firestore instead of
+      // deleting it.
+      const wasSaved = products.some((p) => p.id === product.id);
       setProducts((prev) => {
-        const exists = prev.some((p) => p.id === product.id);
-        wasSaved = exists;
-        let next: SavedProduct[];
-        if (exists) {
+        if (wasSaved) {
           const tombstones = recordTombstone(product.id);
-          next = filterTombstoned(prev, tombstones);
-        } else {
-          next = [{ ...product, savedAt: Date.now() }, ...prev].slice(0, MAX_SAVED);
+          const next = filterTombstoned(prev, tombstones);
+          saveLocal(next);
+          return next;
         }
+        const next = [{ ...product, savedAt: Date.now() }, ...prev].slice(0, MAX_SAVED);
         saveLocal(next);
         return next;
       });
@@ -249,7 +252,7 @@ export function SavedProductsProvider({ children }: { children: ReactNode }) {
         }
       }
     },
-    [user, recordTombstone, pushRemoteTombstones]
+    [user, products, recordTombstone, pushRemoteTombstones]
   );
 
   const removeSaved = useCallback(

@@ -3,6 +3,7 @@ import { searchCJProducts } from "@/lib/platform-search";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { safeErrorMessage } from "@/lib/api-errors";
+import { getFeedCache, setFeedCache } from "@/lib/feed-cache";
 
 interface Category {
   id: string;
@@ -15,8 +16,8 @@ interface Category {
   query: string;
 }
 
-let cachedCategories: { categories: Category[]; timestamp: number } | null = null;
-const CACHE_TTL = 60 * 60 * 1000;
+const CACHE_NAMESPACE = "discovery-feed";
+const CACHE_TTL_SECONDS = 60 * 60;
 
 const CATEGORY_QUERIES = [
   { name: "Electronics", icon: "📱", query: "electronics gadgets" },
@@ -42,8 +43,9 @@ const CATEGORY_IMAGES: Record<string, string> = {
 
 export const GET = withAuth(async () => {
   try {
-    if (cachedCategories && Date.now() - cachedCategories.timestamp < CACHE_TTL) {
-      return NextResponse.json({ categories: cachedCategories.categories, cached: true });
+    const cachedCategories = await getFeedCache<Category[]>(CACHE_NAMESPACE, "categories", CACHE_TTL_SECONDS);
+    if (cachedCategories && cachedCategories.length > 0) {
+      return NextResponse.json({ categories: cachedCategories, cached: true });
     }
 
     const results = await Promise.allSettled(
@@ -88,7 +90,7 @@ export const GET = withAuth(async () => {
       });
     }
 
-    cachedCategories = { categories, timestamp: Date.now() };
+    await setFeedCache(CACHE_NAMESPACE, "categories", categories, CACHE_TTL_SECONDS);
     return NextResponse.json({ categories, count: categories.length });
   } catch (error) {
     return NextResponse.json(

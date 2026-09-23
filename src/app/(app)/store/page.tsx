@@ -130,17 +130,17 @@ export default function StorePage() {
         </Link>
       )}
 
-      <div className="flex gap-1 p-1 rounded-xl bg-surface border border-border max-w-lg">
-        <button onClick={() => setActiveTab("stores")} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "stores" ? "bg-accent text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background/50"}`}>
+      <div className="flex gap-1 p-1 rounded-xl bg-surface border border-border max-w-lg overflow-x-auto">
+        <button onClick={() => setActiveTab("stores")} className={`flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all ${activeTab === "stores" ? "bg-accent text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background/50"}`}>
           <Link2 className="h-3.5 w-3.5" /> Connected Stores
         </button>
-        <button onClick={() => setActiveTab("products")} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "products" ? "bg-accent text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background/50"}`}>
+        <button onClick={() => setActiveTab("products")} className={`flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all ${activeTab === "products" ? "bg-accent text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background/50"}`}>
           <Package className="h-3.5 w-3.5" /> Pushed Products ({pushedProducts.length})
         </button>
-        <button onClick={() => setActiveTab("automation")} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "automation" ? "bg-accent text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background/50"}`}>
+        <button onClick={() => setActiveTab("automation")} className={`flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all ${activeTab === "automation" ? "bg-accent text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background/50"}`}>
           <Clock className="h-3.5 w-3.5" /> Automation
         </button>
-        <button onClick={() => setActiveTab("alerts")} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "alerts" ? "bg-accent text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background/50"}`}>
+        <button onClick={() => setActiveTab("alerts")} className={`flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all ${activeTab === "alerts" ? "bg-accent text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background/50"}`}>
           <Bell className="h-3.5 w-3.5" /> Price Alerts
         </button>
       </div>

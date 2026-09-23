@@ -83,6 +83,26 @@ export default function FilterPanel({
     });
   };
 
+  // Keep min <= max: when one bound crosses the other, clamp it to keep the
+  // range valid instead of silently filtering everything out.
+  const setPriceMin = (value: string) => {
+    const max = Number(filters.priceMax);
+    if (value !== "" && filters.priceMax !== "" && Number(value) > max) {
+      setFilters({ ...filters, priceMin: value, priceMax: value });
+      return;
+    }
+    setFilters({ ...filters, priceMin: value });
+  };
+
+  const setPriceMax = (value: string) => {
+    const min = Number(filters.priceMin);
+    if (value !== "" && filters.priceMin !== "" && Number(value) < min) {
+      setFilters({ ...filters, priceMin: value, priceMax: value });
+      return;
+    }
+    setFilters({ ...filters, priceMax: value });
+  };
+
   const hasActiveFilters =
     filters.brands.length > 0 ||
     filters.priceMin !== "" ||
@@ -169,6 +189,7 @@ export default function FilterPanel({
                   <button
                     key={brand}
                     onClick={() => toggleBrand(brand)}
+                    aria-pressed={filters.brands.includes(brand)}
                     className={`flex items-center gap-2 w-full px-2.5 py-1.5 rounded-lg text-xs transition-all ${
                       filters.brands.includes(brand)
                         ? "bg-accent/10 text-accent border border-accent/20"
@@ -212,10 +233,11 @@ export default function FilterPanel({
               <input
                 type="number"
                 value={filters.priceMin}
-                onChange={(e) => setFilters({ ...filters, priceMin: e.target.value })}
+                onChange={(e) => setPriceMin(e.target.value)}
                 placeholder="Min"
                 min="0"
                 step="0.01"
+                aria-label="Minimum price"
                 className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50"
               />
             </div>
@@ -224,10 +246,11 @@ export default function FilterPanel({
               <input
                 type="number"
                 value={filters.priceMax}
-                onChange={(e) => setFilters({ ...filters, priceMax: e.target.value })}
+                onChange={(e) => setPriceMax(e.target.value)}
                 placeholder="Max"
                 min="0"
                 step="0.01"
+                aria-label="Maximum price"
                 className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50"
               />
             </div>
@@ -245,6 +268,7 @@ export default function FilterPanel({
               <button
                 key={r}
                 onClick={() => setFilters({ ...filters, minRating: r })}
+                aria-pressed={filters.minRating === r}
                 className={`flex items-center gap-0.5 px-2.5 py-2 rounded-lg text-xs transition-all ${
                   filters.minRating === r
                     ? "bg-accent/10 text-accent border border-accent/20"
@@ -278,6 +302,7 @@ export default function FilterPanel({
               <button
                 key={m}
                 onClick={() => setFilters({ ...filters, minMargin: m })}
+                aria-pressed={filters.minMargin === m}
                 className={`flex-1 px-1.5 py-2 rounded-lg text-xs transition-all ${
                   filters.minMargin === m
                     ? "bg-accent/10 text-accent border border-accent/20"
@@ -304,6 +329,7 @@ export default function FilterPanel({
               <button
                 key={opt.value}
                 onClick={() => toggleCompetition(opt.value)}
+                aria-pressed={filters.competitionLevel.includes(opt.value)}
                 className={`flex-1 px-2 py-2 rounded-lg text-xs font-medium transition-all border ${
                   filters.competitionLevel.includes(opt.value)
                     ? `${opt.bg} ${opt.color}`
@@ -330,6 +356,7 @@ export default function FilterPanel({
               <button
                 key={opt.value}
                 onClick={() => toggleTrending(opt.value)}
+                aria-pressed={filters.trendingDirection.includes(opt.value)}
                 className={`flex-1 px-2 py-2 rounded-lg text-xs font-medium transition-all border ${
                   filters.trendingDirection.includes(opt.value)
                     ? `${opt.bg} ${opt.color}`
@@ -358,6 +385,7 @@ export default function FilterPanel({
               <button
                 key={p}
                 onClick={() => togglePlatformFilter(p)}
+                aria-pressed={filters.platformFilter.length === 0 || filters.platformFilter.includes(p)}
                 className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all border ${
                   filters.platformFilter.length === 0 || filters.platformFilter.includes(p)
                     ? "bg-accent/10 text-accent border-accent/20"

@@ -269,7 +269,7 @@ export const DEFAULT_GUARDRAILS: GuardrailConfig = {
 export const DEFAULT_MODE_PREFERENCES: Omit<AIModePreferences, "uid" | "createdAt" | "updatedAt"> = {
   globalMode: "ai_assist",
   featureModes: {},
-  autonomyLevel: 1,
+  autonomyLevel: 2,
   autoRules: [],
   guardrails: DEFAULT_GUARDRAILS,
 };

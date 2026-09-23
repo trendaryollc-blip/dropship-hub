@@ -88,7 +88,7 @@ export default function AdminSettingsPage() {
   return (
     <div className="space-y-8 max-w-4xl">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-3xl font-display font-bold text-foreground mb-2">
             System Settings
@@ -98,7 +98,7 @@ export default function AdminSettingsPage() {
           </p>
         </div>
         <button onClick={handleSave} disabled={saving}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent-hover transition-all disabled:opacity-50 shadow-[0_0_20px_rgba(var(--glow-color),0.15)]">
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent-hover transition-all disabled:opacity-50 shadow-[0_0_20px_rgba(var(--glow-color),0.15)] shrink-0">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           Save Changes
         </button>
@@ -116,7 +116,7 @@ export default function AdminSettingsPage() {
               <p className="text-xs text-muted-foreground mt-0.5">Temporarily disable access for all non-admin users</p>
             </div>
             <button onClick={() => toggleSetting("maintenanceMode")}
-              className={`relative w-12 h-6 rounded-full transition-colors ${settings.maintenanceMode ? "bg-red-500" : "bg-muted-foreground/30"}`}>
+              className={`relative w-12 h-6 rounded-full transition-colors shrink-0 ${settings.maintenanceMode ? "bg-red-500" : "bg-muted-foreground/30"}`}>
               <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${settings.maintenanceMode ? "left-7" : "left-1"}`} />
             </button>
           </div>
@@ -127,7 +127,7 @@ export default function AdminSettingsPage() {
               <p className="text-xs text-muted-foreground mt-0.5">Allow new users to sign up</p>
             </div>
             <button onClick={() => toggleSetting("registrationEnabled")}
-              className={`relative w-12 h-6 rounded-full transition-colors ${settings.registrationEnabled ? "bg-emerald-500" : "bg-muted-foreground/30"}`}>
+              className={`relative w-12 h-6 rounded-full transition-colors shrink-0 ${settings.registrationEnabled ? "bg-emerald-500" : "bg-muted-foreground/30"}`}>
               <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${settings.registrationEnabled ? "left-7" : "left-1"}`} />
             </button>
           </div>

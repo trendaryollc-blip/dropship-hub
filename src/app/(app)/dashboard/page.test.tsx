@@ -378,7 +378,8 @@ describe("Dashboard Page", () => {
     it("renders Earnings Preview", () => {
       render(<DashboardHome />);
       expect(screen.getByText("Earnings Preview")).toBeInTheDocument();
-      expect(screen.getByText("Profit per Order")).toBeInTheDocument();
+      expect(screen.getByText("$22.49")).toBeInTheDocument();
+      expect(screen.getByText("Est. Orders per Month")).toBeInTheDocument();
     });
 
     it("renders Market Saturation", () => {

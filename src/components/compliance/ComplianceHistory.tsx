@@ -27,6 +27,7 @@ import type {
   ComplianceCheckType,
   ComplianceFlag,
 } from "@/types/compliance";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 interface Props {
   checks: ComplianceDoc[];
@@ -290,6 +291,7 @@ export default function ComplianceHistory({ checks, onDelete }: Props) {
   const [riskFilter, setRiskFilter] = useState<string>("all");
   const [selectedCheck, setSelectedCheck] = useState<ComplianceDoc | null>(null);
   const [expandedCheck, setExpandedCheck] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const filteredChecks = useMemo(
     () =>
@@ -496,7 +498,8 @@ export default function ComplianceHistory({ checks, onDelete }: Props) {
                     e.stopPropagation();
                     handleExport(check);
                   }}
-                  className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface/80 transition-colors opacity-0 group-hover:opacity-100"
+                  aria-label={`Export ${check.productTitle} as JSON`}
+                  className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface/80 transition-colors md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100"
                   title="Export as JSON"
                 >
                   <Download className="h-4 w-4" />
@@ -504,9 +507,11 @@ export default function ComplianceHistory({ checks, onDelete }: Props) {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    onDelete(check.id);
+                    setConfirmDeleteId(check.id);
                   }}
-                  className="p-2 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
+                  aria-label={`Delete ${check.productTitle} check`}
+                  className="p-2 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100"
+                  title="Delete"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -516,6 +521,18 @@ export default function ComplianceHistory({ checks, onDelete }: Props) {
           );
         })}
       </div>
+      <ConfirmDialog
+        open={!!confirmDeleteId}
+        title="Delete compliance check?"
+        description="This permanently removes the check and its full report from your history. This cannot be undone."
+        confirmLabel="Delete"
+        danger
+        onConfirm={() => {
+          if (confirmDeleteId) onDelete(confirmDeleteId);
+          setConfirmDeleteId(null);
+        }}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
     </div>
   );
 }

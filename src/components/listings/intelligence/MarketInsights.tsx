@@ -35,7 +35,7 @@ export default function MarketInsightsPanel({ insights }: MarketInsightsProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <div className="glass rounded-xl p-2.5 text-center">
           <DollarSign className="h-4 w-4 text-emerald-400 mx-auto mb-1" />
           <p className="text-sm font-bold text-foreground">${insights.avgPrice.toFixed(0)}</p>

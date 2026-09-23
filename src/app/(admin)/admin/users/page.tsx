@@ -174,14 +174,14 @@ export default function AdminUsersPage() {
         <div className="divide-y divide-border">
           {filtered.map((u) => (
             <div key={u.uid} className={`px-6 py-4 hover:bg-surface-hover/50 transition-colors ${u.banned ? "opacity-50" : ""}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                <div className="flex items-center gap-4 min-w-0">
                   <div className="h-10 w-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-sm font-bold text-accent shrink-0">
                     {u.displayName?.[0] || u.email?.[0]?.toUpperCase() || "U"}
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-semibold text-foreground">{u.displayName || "Unknown"}</p>
+                      <p className="text-sm font-semibold text-foreground truncate">{u.displayName || "Unknown"}</p>
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${roleColors[u.role]}`}>
                         {u.role === "owner" && <Crown className="h-2.5 w-2.5 inline mr-0.5" />}
                         {u.role.toUpperCase()}
@@ -193,8 +193,8 @@ export default function AdminUsersPage() {
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-400/10 text-red-400 border border-red-400/20">BANNED</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{u.email || "No email"}</span>
+                    <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1 min-w-0"><Mail className="h-3 w-3 shrink-0" /><span className="truncate">{u.email || "No email"}</span></span>
                       {u.createdAt && (
                         <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />Joined {new Date(u.createdAt).toLocaleDateString()}</span>
                       )}
@@ -202,7 +202,7 @@ export default function AdminUsersPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   {u.role !== "owner" && (
                     <select value={u.role} onChange={(e) => handleRoleChange(u.uid, e.target.value)}
                       className="px-2.5 py-1.5 rounded-lg bg-surface border border-border text-xs text-muted-foreground focus:outline-none focus:border-accent/30 transition-colors">

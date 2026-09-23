@@ -29,13 +29,13 @@ interface QuickAction {
   icon: typeof Sparkles;
   color: string;
   bg: string;
-  action?: "compare" | "alert" | "navigate";
+  action?: "compare" | "alert" | "navigate" | "ai";
   destination?: string;
 }
 
 interface QuickActionChipsProps {
   query: string;
-  onAction: (prompt: string) => void;
+  onAction?: (prompt: string) => void;
   disabled?: boolean;
   hasResults?: boolean;
   compareMode?: boolean;
@@ -115,6 +115,14 @@ const ACTIONS: QuickAction[] = [
     bg: "bg-amber-400/10 border-amber-400/20",
     action: "alert",
   },
+  {
+    id: "ask-ai",
+    label: "Ask AI",
+    icon: Sparkles,
+    color: "text-fuchsia-400",
+    bg: "bg-fuchsia-400/10 border-fuchsia-400/20",
+    action: "ai",
+  },
 ];
 
 function buildProductParams(product: Product, destination: string): string {
@@ -162,7 +170,7 @@ function buildProductParams(product: Product, destination: string): string {
 }
 
 export default function QuickActionChips({
-  query, onAction: _onAction, disabled, hasResults, compareMode, toggleCompareMode,
+  query, onAction, disabled, hasResults, compareMode, toggleCompareMode,
   onCreateAlert, selectedProduct,
 }: QuickActionChipsProps) {
   const router = useRouter();
@@ -176,6 +184,11 @@ export default function QuickActionChips({
     }
     if (action.action === "alert" && onCreateAlert) {
       onCreateAlert();
+      return;
+    }
+    if (action.action === "ai" && onAction) {
+      const target = selectedProduct?.title || query;
+      onAction(`Analyze "${target}" for dropshipping potential, margins, and competition`);
       return;
     }
     if (action.action === "navigate" && action.destination && selectedProduct) {

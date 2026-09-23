@@ -69,7 +69,7 @@ export default function Hero() {
 
         <div className="absolute inset-0 grid-pattern pointer-events-none" />
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-accent/[0.07] rounded-full blur-[120px]" />
-        <div className="absolute top-1/3 right-0 w-[400px] h-[400px] bg-accent-warm/[0.04] rounded-full blur-[100px]" />
+        <div className="absolute top-1/3 right-0 w-[400px] h-[400px] bg-accent-warm/[0.04] rounded-full blur-[100px] hidden sm:block" />
 
         <div className="relative z-10 mx-auto max-w-7xl px-6">
           <div className="animate-slide-up flex justify-center mb-8">
@@ -103,15 +103,15 @@ export default function Hero() {
             <div className="animate-slide-up-delay-2 flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
               <Link
                 href="/sign-up"
-                className="group relative inline-flex items-center gap-2 px-8 py-4 text-base font-semibold text-white rounded-2xl bg-accent hover:bg-accent-hover transition-all hover:shadow-[0_0_30px_rgba(var(--glow-color),0.4)] active:scale-[0.97]"
+                className="group relative inline-flex items-center gap-2 px-6 sm:px-8 py-4 text-base font-semibold text-white rounded-2xl bg-accent hover:bg-accent-hover transition-all hover:shadow-[0_0_30px_rgba(var(--glow-color),0.4)] active:scale-[0.97]"
               >
                 Start For Free
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 <div className="absolute inset-0 rounded-2xl bg-accent/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
               </Link>
               <Link
-                href="#how-it-works"
-                className="inline-flex items-center gap-2 px-8 py-4 text-base font-medium text-muted-foreground hover:text-foreground rounded-2xl border border-border hover:border-muted-foreground/30 hover:bg-surface transition-all"
+                href="/#how-it-works"
+                className="inline-flex items-center gap-2 px-6 sm:px-8 py-4 text-base font-medium text-muted-foreground hover:text-foreground rounded-2xl border border-border hover:border-muted-foreground/30 hover:bg-surface transition-all"
               >
                 See How It Works
               </Link>
@@ -119,7 +119,7 @@ export default function Hero() {
           </div>
         </div>
 
-        <div className="animate-slide-up-delay-3 relative max-w-5xl mx-auto mb-12">
+        <div className="animate-slide-up-delay-3 relative max-w-5xl mx-auto mb-12 px-6">
           <div className="absolute -inset-4 bg-accent/[0.08] rounded-3xl blur-2xl opacity-50" />
 
           <div className="relative rounded-2xl border border-border bg-surface/80 backdrop-blur-xl p-2 md:p-3 shadow-2xl shadow-accent/10">
@@ -129,22 +129,22 @@ export default function Hero() {
                 <div className="w-3 h-3 rounded-full bg-amber-400/60" />
                 <div className="w-3 h-3 rounded-full bg-emerald-400/60" />
               </div>
-              <div className="flex-1 flex justify-center">
-                <div className="px-4 py-1.5 rounded-lg bg-background border border-border text-[10px] text-muted-foreground font-mono">
+              <div className="flex-1 flex justify-center min-w-0">
+                <div className="px-3 py-1.5 rounded-lg bg-background border border-border text-[10px] text-muted-foreground font-mono truncate">
                   dropshiphub.com/dashboard
                 </div>
               </div>
             </div>
 
             <div className="relative p-4 md:p-6 bg-background/50 min-h-[360px] md:min-h-[460px]">
-              <div className="glass rounded-xl p-3 flex items-center gap-3 mb-4 border border-accent/20">
+              <div className="glass rounded-xl p-3 flex items-center gap-2 mb-4 border border-accent/20">
                 <Sparkles className="h-4 w-4 text-accent shrink-0" />
                 <span className="text-xs font-medium text-foreground whitespace-nowrap">AI is monitoring</span>
                 <span className="relative flex h-2 w-2 shrink-0">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
                 </span>
-                <span className="text-[11px] text-muted-foreground truncate">
+                <span className="text-[11px] text-muted-foreground truncate min-w-0">
                   Pet GPS trackers trending +41% — strong buy signal with 58% margin
                 </span>
                 <div className="hidden md:flex items-center gap-2 ml-auto shrink-0">
@@ -173,11 +173,11 @@ export default function Hero() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
                               <span className="text-[11px] font-semibold text-foreground truncate">{p.name}</span>
-                              <span className="text-[9px] text-muted-foreground">{p.platform}</span>
+                              <span className="text-[9px] text-muted-foreground hidden sm:inline">{p.platform}</span>
                               <span className="px-1.5 py-0.5 rounded bg-accent/10 text-[8px] font-medium text-accent hidden sm:inline-block">High demand</span>
                             </div>
                           </div>
-                          <MiniSparkline points={[20, 25, 22, 28, 30, 35, 32]} id={"prod" + String(i)} />
+                          <span className="hidden sm:block"><MiniSparkline points={[20, 25, 22, 28, 30, 35, 32]} id={"prod" + String(i)} /></span>
                           <ConfidenceRing score={p.confidence} />
                           <div className="text-right shrink-0">
                             <span className="text-[10px] font-bold text-emerald-400">{p.profit}</span>
@@ -218,7 +218,7 @@ export default function Hero() {
           </div>
         </div>
 
-        <div className="relative max-w-5xl mx-auto">
+        <div className="relative max-w-5xl mx-auto px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             <Link href="/dashboard" className="group glass rounded-2xl p-4 md:p-5 hover:border-accent/20 transition-all hover:bg-surface-hover hover:scale-[1.02] cursor-pointer block">
               <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-accent/10 mb-3">

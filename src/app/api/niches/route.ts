@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { getCJAccessToken } from "@/lib/cj-auth";
 import { safeErrorMessage } from "@/lib/api-errors";
+import { getFeedCache, setFeedCache } from "@/lib/feed-cache";
 
 const CJ_API_KEY = process.env.CJ_API_KEY;
 
@@ -32,8 +33,8 @@ interface CJProductResponse {
   };
 }
 
-let cachedNiches: { niches: unknown[]; timestamp: number } | null = null;
-const CACHE_TTL = 30 * 60 * 1000;
+const CACHE_NAMESPACE = "discovery-feed";
+const CACHE_TTL_SECONDS = 30 * 60;
 
 async function getCJCategories(token: string): Promise<CJCategory[]> {
   const res = await fetch("https://developers.cjdropshipping.com/api2.0/v1/product/getCategory", {
@@ -193,6 +194,29 @@ function generateWeeklyData(heat: number, growth: number): number[] {
   });
 }
 
+// Deterministic pseudo-random source so synthetic companion stats (store
+// counts, ratings, shipping windows) are stable across requests. Seeded by
+// niche identity instead of using Math.random().
+function seededRandom(seed: string): () => number {
+  let h = 1779033703 ^ seed.length;
+  for (let i = 0; i < seed.length; i++) {
+    h = Math.imul(h ^ seed.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  let state = h >>> 0 || 1;
+  return () => {
+    state |= 0;
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function randIn(rng: () => number, min: number, max: number): number {
+  return Math.round(min + rng() * (max - min));
+}
+
 function generateSeasonalTrend(heat: number): { month: string; demand: number; isPeak: boolean }[] {
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const seasonalMultipliers = [0.7, 0.65, 0.8, 0.85, 0.9, 0.85, 0.8, 0.75, 0.9, 0.95, 1.0, 1.1];
@@ -207,12 +231,13 @@ function generateSeasonalTrend(heat: number): { month: string; demand: number; i
 function generateGeographicDemand(categoryName: string): { country: string; demand: number; avgOrderValue: number }[] {
   const lower = (categoryName || "").toLowerCase();
   const baseDemand = lower.includes("fashion") ? 85 : lower.includes("electron") ? 80 : 70;
+  const rng = seededRandom(`geo-${categoryName}`);
   return [
-    { country: "United States", demand: baseDemand, avgOrderValue: Math.round(25 + Math.random() * 30) },
-    { country: "United Kingdom", demand: Math.round(baseDemand * 0.7), avgOrderValue: Math.round(20 + Math.random() * 25) },
-    { country: "Germany", demand: Math.round(baseDemand * 0.6), avgOrderValue: Math.round(22 + Math.random() * 28) },
-    { country: "Australia", demand: Math.round(baseDemand * 0.5), avgOrderValue: Math.round(28 + Math.random() * 35) },
-    { country: "Canada", demand: Math.round(baseDemand * 0.55), avgOrderValue: Math.round(24 + Math.random() * 30) },
+    { country: "United States", demand: baseDemand, avgOrderValue: randIn(rng, 25, 55) },
+    { country: "United Kingdom", demand: Math.round(baseDemand * 0.7), avgOrderValue: randIn(rng, 20, 45) },
+    { country: "Germany", demand: Math.round(baseDemand * 0.6), avgOrderValue: randIn(rng, 22, 50) },
+    { country: "Australia", demand: Math.round(baseDemand * 0.5), avgOrderValue: randIn(rng, 28, 63) },
+    { country: "Canada", demand: Math.round(baseDemand * 0.55), avgOrderValue: randIn(rng, 24, 54) },
   ];
 }
 
@@ -229,6 +254,9 @@ function buildNicheFromCategory(
   const avgSellPrice = prices.length ? prices.reduce((a, b) => a + b, 0) / prices.length : 10;
   const avgCost = costs.length ? costs.reduce((a, b) => a + b, 0) / costs.length : 5;
   const avgMargin = avgCost > 0 ? Math.round(((avgSellPrice - avgCost) / avgSellPrice) * 100) : 45;
+
+  // Deterministic seed derived from the category so stats stay stable
+  const rng = seededRandom(`${cat.cid ?? index}-${cat.categoryName ?? ""}-${productCount}`);
 
   const sortedByValue = validProducts.length
     ? [...validProducts].sort((a, b) => Number(b.sellPrice) - Number(a.sellPrice))
@@ -290,35 +318,35 @@ function buildNicheFromCategory(
 
   const estimatedMonthlyRevenue = Math.round(avgSellPrice * productCount * (growth > 0 ? 1.2 : 0.9) * 100) / 100;
   const profitPerUnit = Math.round((avgSellPrice - avgCost) * 100) / 100;
-  const avgShippingDays = Math.round(5 + Math.random() * 10);
-  const avgReturnRate = Math.round((2 + Math.random() * 8) * 10) / 10;
+  const avgShippingDays = randIn(rng, 5, 15);
+  const avgReturnRate = randIn(rng, 2, 10) / 10;
 
   const topProducts = sortedByValue.slice(0, 10).map((p) => {
     const sell = Number(p.sellPrice);
     const cost = Number(p.productPrice);
     return {
-      id: p.pid || `prod-${Math.random().toString(36).slice(2, 9)}`,
+      id: p.pid || `prod-${seededRandom(`${cat.cid ?? index}-${p.productNameEn}`)().toString(36).slice(2, 10)}`,
       name: (p.productNameEn || "Unknown Product").slice(0, 60),
       image: p.productImage || "",
       sellPrice: sell,
       costPrice: cost,
       margin: sell > 0 ? Math.round(((sell - cost) / sell) * 100) : 0,
-      orders: Math.round(10 + Math.random() * 200),
-      rating: Math.round((3.5 + Math.random() * 1.5) * 10) / 10,
-      shippingDays: Math.round(5 + Math.random() * 12),
-      returnRate: Math.round((1 + Math.random() * 6) * 10) / 10,
+      orders: randIn(rng, 10, 210),
+      rating: Math.round((3.5 + rng() * 1.5) * 10) / 10,
+      shippingDays: randIn(rng, 5, 17),
+      returnRate: randIn(rng, 1, 7) / 10,
     };
   });
 
-  const avgStoreRating = Math.round((3.8 + Math.random() * 1.2) * 10) / 10;
-  const storeCount = Math.round(50 + Math.random() * 500);
+  const avgStoreRating = Math.round((3.8 + rng() * 1.2) * 10) / 10;
+  const storeCount = randIn(rng, 50, 550);
   const priceMin = Math.round(avgSellPrice * 0.6 * 100) / 100;
   const priceMax = Math.round(avgSellPrice * 1.8 * 100) / 100;
 
   const suppliers = [
-    { name: "CJ Dropshipping", badge: "gold" as const, reliability: Math.round(90 + Math.random() * 9), avgShippingDays: Math.round(5 + Math.random() * 7), price: Math.round(avgCost * 100) / 100, moq: 1, responseRate: Math.round(92 + Math.random() * 8) },
-    { name: "Factory Direct", badge: "silver" as const, reliability: Math.round(80 + Math.random() * 12), avgShippingDays: Math.round(7 + Math.random() * 10), price: Math.round(avgCost * 0.9 * 100) / 100, moq: Math.round(5 + Math.random() * 20), responseRate: Math.round(85 + Math.random() * 12) },
-    { name: "Global Supply Co", badge: "bronze" as const, reliability: Math.round(70 + Math.random() * 15), avgShippingDays: Math.round(8 + Math.random() * 14), price: Math.round(avgCost * 0.85 * 100) / 100, moq: Math.round(10 + Math.random() * 50), responseRate: Math.round(78 + Math.random() * 15) },
+    { name: "CJ Dropshipping", badge: "gold" as const, reliability: randIn(rng, 90, 99), avgShippingDays: randIn(rng, 5, 12), price: Math.round(avgCost * 100) / 100, moq: 1, responseRate: randIn(rng, 92, 100) },
+    { name: "Factory Direct", badge: "silver" as const, reliability: randIn(rng, 80, 92), avgShippingDays: randIn(rng, 7, 17), price: Math.round(avgCost * 0.9 * 100) / 100, moq: randIn(rng, 5, 25), responseRate: randIn(rng, 85, 97) },
+    { name: "Global Supply Co", badge: "bronze" as const, reliability: randIn(rng, 70, 85), avgShippingDays: randIn(rng, 8, 22), price: Math.round(avgCost * 0.85 * 100) / 100, moq: randIn(rng, 10, 60), responseRate: randIn(rng, 78, 93) },
   ];
 
   const aiInsight = `Analyzed ${productCount} CJ products in ${nicheName}. ` +
@@ -394,8 +422,9 @@ function getFallbackNiches(): Record<string, unknown>[] {
 
 export const GET = withAuth(async () => {
   try {
-    if (cachedNiches && Date.now() - cachedNiches.timestamp < CACHE_TTL) {
-      return NextResponse.json({ niches: cachedNiches.niches, cached: true });
+    const cachedNiches = await getFeedCache<Record<string, unknown>[]>(CACHE_NAMESPACE, "niches", CACHE_TTL_SECONDS);
+    if (cachedNiches && cachedNiches.length > 0) {
+      return NextResponse.json({ niches: cachedNiches, cached: true });
     }
 
     if (!CJ_API_KEY) {
@@ -436,7 +465,7 @@ export const GET = withAuth(async () => {
       }
     }
 
-    cachedNiches = { niches, timestamp: Date.now() };
+    await setFeedCache(CACHE_NAMESPACE, "niches", niches, CACHE_TTL_SECONDS);
     return NextResponse.json({ niches, source: "cj", count: niches.length });
   } catch (error) {
     const fallbackNiches = getFallbackNiches();

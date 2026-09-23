@@ -49,6 +49,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
       relatedTrends: result.relatedTrends,
       analysisTime: result.analysisTime,
       provider: result.provider,
+      geoData: result.geoData,
     });
   } catch (error) {
     return NextResponse.json(

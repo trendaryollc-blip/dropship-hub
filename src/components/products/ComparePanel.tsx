@@ -20,7 +20,7 @@ interface ComparePanelProps {
   selectedProducts: SearchResult[];
   onRemove: (id: string) => void;
   onClearAll: () => void;
-  onAICompare?: (products: SearchResult[]) => void;
+  onAICompare?: (products: SearchResult[]) => void | Promise<void>;
 }
 
 export default function ComparePanel({ selectedProducts, onRemove, onClearAll, onAICompare }: ComparePanelProps) {
@@ -32,8 +32,11 @@ export default function ComparePanel({ selectedProducts, onRemove, onClearAll, o
   const handleAICompare = async () => {
     if (!onAICompare) return;
     setAiLoading(true);
-    onAICompare(selectedProducts);
-    setAiLoading(false);
+    try {
+      await onAICompare(selectedProducts);
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const platformIcons: Record<string, string> = {
@@ -44,11 +47,12 @@ export default function ComparePanel({ selectedProducts, onRemove, onClearAll, o
 
   return (
     <div className="glass rounded-2xl border border-accent/20 bg-accent/5 overflow-hidden">
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between p-4 hover:bg-accent/5 transition-colors"
-      >
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-2 p-4">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          aria-expanded={expanded}
+          className="flex items-center gap-3 hover:bg-accent/5 transition-colors rounded-lg text-left"
+        >
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15">
             <GitCompare className="h-4.5 w-4.5 text-accent" />
           </div>
@@ -60,17 +64,17 @@ export default function ComparePanel({ selectedProducts, onRemove, onClearAll, o
               {selectedProducts.length < 2 ? "Select at least 2 products to compare" : "Ready to compare"}
             </p>
           </div>
-        </div>
+        </button>
         <div className="flex items-center gap-2">
           <button
-            onClick={(e) => { e.stopPropagation(); onClearAll(); }}
+            onClick={onClearAll}
             className="text-[10px] text-muted-foreground hover:text-foreground transition-colors px-2 py-1"
           >
             Clear all
           </button>
           <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
         </div>
-      </button>
+      </div>
 
       {expanded && (
         <div className="px-4 pb-4">

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Bell, CheckCheck } from "lucide-react";
+import { formatDate } from "@/lib/dates";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Notification {
@@ -147,7 +148,7 @@ export default function NotificationCenter({ uid, className = "" }: Notification
                         <p className="text-xs font-medium text-foreground">{n.title}</p>
                         <p className="text-[10px] text-muted-foreground line-clamp-2">{n.message}</p>
                         <p className="text-[9px] text-muted-foreground mt-1">
-                          {new Date(n.createdAt).toLocaleDateString()}
+                          {formatDate(n.createdAt)}
                         </p>
                       </div>
                     </div>

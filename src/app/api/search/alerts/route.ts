@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth";
+import { LIMITS } from "@/lib/rate-limit";
 import {
   createAlert,
   getUserAlerts,
@@ -40,91 +42,105 @@ function getFirestoreAlertStore(): AlertStore {
       if (data && data.userId === userId) return data;
       return null;
     },
-    async delete(_userId, alertId) {
+    async delete(userId, alertId) {
       const { getAdminDB } = await import("@/lib/firebase-admin");
       const db = await getAdminDB();
-      await db.collection("searchAlerts").doc(alertId).delete();
+      const ref = db.collection("searchAlerts").doc(alertId);
+      const doc = await ref.get();
+      const data = doc.data() as SearchAlert | undefined;
+      if (!data || data.userId !== userId) {
+        throw new Error("Not found");
+      }
+      await ref.delete();
     },
-    async update(_userId, alertId, data) {
+    async update(userId, alertId, data) {
       const { getAdminDB } = await import("@/lib/firebase-admin");
       const db = await getAdminDB();
-      await db.collection("searchAlerts").doc(alertId).update(data);
+      const ref = db.collection("searchAlerts").doc(alertId);
+      const doc = await ref.get();
+      const existing = doc.data() as SearchAlert | undefined;
+      if (!existing || existing.userId !== userId) {
+        throw new Error("Not found");
+      }
+      await ref.update(data);
     },
   };
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-    if (!userId) {
-      return NextResponse.json({ error: "userId required" }, { status: 401 });
-    }
     const store = getFirestoreAlertStore();
-    const alerts = await getUserAlerts(store, userId);
+    const alerts = await getUserAlerts(store, uid);
     return NextResponse.json({ alerts });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-}
+}, LIMITS.DEFAULT);
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const body = await request.json();
-    const { userId, query, platforms, priceMin, priceMax, minRating, notifyOn, threshold } = body;
+    const { query, platforms, priceMin, priceMax, minRating, notifyOn, threshold } = body;
 
-    if (!userId || !query) {
-      return NextResponse.json({ error: "userId and query required" }, { status: 400 });
+    if (!query || typeof query !== "string" || !query.trim()) {
+      return NextResponse.json({ error: "query required" }, { status: 400 });
     }
 
     const store = getFirestoreAlertStore();
-    const alert = await createAlert(store, userId, {
-      query,
-      platforms: platforms || [],
-      priceMin,
-      priceMax,
-      minRating,
-      notifyOn: notifyOn || "any",
-      threshold,
+    const alert = await createAlert(store, uid, {
+      query: query.trim().slice(0, 200),
+      platforms: Array.isArray(platforms) ? platforms.filter((p): p is string => typeof p === "string").slice(0, 20) : [],
+      priceMin: typeof priceMin === "number" ? priceMin : undefined,
+      priceMax: typeof priceMax === "number" ? priceMax : undefined,
+      minRating: typeof minRating === "number" ? minRating : undefined,
+      notifyOn: notifyOn === "new_product" || notifyOn === "price_drop" ? notifyOn : "any",
+      threshold: typeof threshold === "number" ? threshold : undefined,
     });
 
-    return NextResponse.json({ alert });
+    return NextResponse.json({ success: true, alert });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-}
+}, LIMITS.DEFAULT);
 
-export async function DELETE(request: NextRequest) {
+export const DELETE = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
     const alertId = searchParams.get("alertId");
 
-    if (!userId || !alertId) {
-      return NextResponse.json({ error: "userId and alertId required" }, { status: 400 });
+    if (!alertId) {
+      return NextResponse.json({ error: "alertId required" }, { status: 400 });
     }
 
     const store = getFirestoreAlertStore();
-    await deleteAlert(store, userId, alertId);
+    try {
+      await deleteAlert(store, uid, alertId);
+    } catch {
+      return NextResponse.json({ error: "Alert not found" }, { status: 404 });
+    }
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-}
+}, LIMITS.DEFAULT);
 
-export async function PATCH(request: NextRequest) {
+export const PATCH = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const body = await request.json();
-    const { userId, alertId, active } = body;
+    const { alertId, active } = body;
 
-    if (!userId || !alertId || typeof active !== "boolean") {
-      return NextResponse.json({ error: "userId, alertId, and active required" }, { status: 400 });
+    if (!alertId || typeof active !== "boolean") {
+      return NextResponse.json({ error: "alertId and active required" }, { status: 400 });
     }
 
     const store = getFirestoreAlertStore();
-    await toggleAlert(store, userId, alertId, active);
+    try {
+      await toggleAlert(store, uid, alertId, active);
+    } catch {
+      return NextResponse.json({ error: "Alert not found" }, { status: 404 });
+    }
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-}
+}, LIMITS.DEFAULT);

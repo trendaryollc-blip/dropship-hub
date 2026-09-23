@@ -607,7 +607,7 @@ function CompetitorsContent() {
                     )}
                     <div className="flex-1 min-w-0">
                       <h4 className="font-display text-sm font-semibold text-foreground truncate">{importedProduct.title}</h4>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-muted-foreground">
                         {importedProduct.price != null && <span className="font-medium text-foreground">${importedProduct.price.toFixed(2)}</span>}
                         <span>{importedProduct.source}</span>
                         {importedProduct.rating != null && <span>{importedProduct.rating}/5</span>}

@@ -71,7 +71,7 @@ export default function RefundProcessor({ returnRequest, onRefund, onClose }: Re
           {/* Refund Method */}
           <div>
             <label className="text-xs font-medium text-foreground mb-2 block">Refund Method</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {[
                 { id: "original" as const, label: "Original", desc: "Back to source" },
                 { id: "store_credit" as const, label: "Store Credit", desc: "Credit balance" },

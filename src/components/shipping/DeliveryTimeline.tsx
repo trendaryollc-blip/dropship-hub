@@ -123,7 +123,7 @@ export default function DeliveryTimeline({ prediction }: DeliveryTimelineProps) 
       </div>
 
       {/* Date Range */}
-      <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-3 gap-2 mb-4">
+      <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
         <motion.div variants={item} className="p-2 rounded-lg bg-surface/50 text-center hover:bg-surface transition-colors">
           <p className="text-[9px] text-muted-foreground">Earliest</p>
           <p className="text-xs font-bold text-emerald-400">{prediction.estimatedArrival.earliest}</p>

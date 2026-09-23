@@ -153,7 +153,7 @@ function CommunityScoreCard({ score }: { score: SupplierCommunityScore }) {
           <span className="text-xs font-bold text-foreground">{score.avgRating}</span>
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <div className="text-center p-1.5 rounded-lg bg-white/5">
           <p className="text-[8px] text-muted-foreground">Reviews</p>
           <p className="text-xs font-medium text-foreground">{score.totalReviews}</p>

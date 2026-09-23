@@ -50,6 +50,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
       }, {
         autonomyLevel,
         dollarThreshold: prefs.guardrails.dollarThresholdForConfirmation,
+        guardrails: prefs.guardrails,
       });
 
       return NextResponse.json({
@@ -92,6 +93,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
       }, {
         autonomyLevel,
         dollarThreshold: prefs.guardrails.dollarThresholdForConfirmation,
+        guardrails: prefs.guardrails,
       });
 
       return NextResponse.json({

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
-import { validateBody, TrendWatchlistInputSchema } from "@/lib/validation";
-import { addTrendWatchlistEntry, getTrendWatchlist, deleteTrendWatchlistEntry } from "@/lib/data/trend-predictor";
+import { validateBody, TrendWatchlistInputSchema, TrendWatchlistUpdateSchema } from "@/lib/validation";
+import { addTrendWatchlistEntry, getTrendWatchlist, deleteTrendWatchlistEntry, updateTrendWatchlist } from "@/lib/data/trend-predictor";
 import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
@@ -37,6 +37,35 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to add to watchlist", details: safeErrorMessage(error, "Unknown error") },
+      { status: 500 }
+    );
+  }
+}, LIMITS.DEFAULT);
+
+export const PUT = withAuth(async (request: NextRequest, uid: string) => {
+  try {
+    const body = await request.json();
+    const validation = validateBody(TrendWatchlistUpdateSchema, body);
+
+    if (!validation.success) {
+      return validation.response;
+    }
+
+    const { id, ...updates } = validation.data;
+    if (!id) {
+      return NextResponse.json({ error: "Missing entry ID" }, { status: 400 });
+    }
+
+    const success = await updateTrendWatchlist(uid, id, updates);
+
+    if (!success) {
+      return NextResponse.json({ error: "Failed to update watchlist entry" }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json(
+      { error: "Failed to update watchlist entry", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
     );
   }

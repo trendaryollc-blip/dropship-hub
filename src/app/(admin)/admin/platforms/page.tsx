@@ -370,7 +370,7 @@ export default function AdminPlatformsPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-display font-bold text-foreground mb-2 flex items-center gap-3">
             <Globe className="h-6 w-6 text-purple-400" /> Platform Management
@@ -378,7 +378,7 @@ export default function AdminPlatformsPage() {
           <p className="text-muted-foreground">Manage API keys, add new platforms, and monitor health.</p>
           {seedResult && <p className="text-xs text-accent mt-2">{seedResult}</p>}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button onClick={handleSeed} disabled={seeding}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-muted-foreground hover:text-foreground hover:border-accent/30 transition-all disabled:opacity-50">
             {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
@@ -399,7 +399,7 @@ export default function AdminPlatformsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 rounded-xl bg-surface border border-border">
+      <div className="flex gap-1 p-1 rounded-xl bg-surface border border-border overflow-x-auto">
         {([
           { key: "platforms" as const, label: "Platforms", icon: <Layers className="h-3.5 w-3.5" /> },
           { key: "curated" as const, label: "Curated", icon: <Store className="h-3.5 w-3.5" /> },
@@ -407,7 +407,7 @@ export default function AdminPlatformsPage() {
           { key: "ai" as const, label: "AI Setup", icon: <Brain className="h-3.5 w-3.5" /> },
         ]).map((t) => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap shrink-0 ${
               tab === t.key ? "bg-accent text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background/50"
             }`}>
             {t.icon} {t.label}
@@ -464,15 +464,15 @@ export default function AdminPlatformsPage() {
                     platform.enabled ? "border-border hover:border-accent/30" : "border-border/50 opacity-60"
                   }`}>
                   <div className="p-5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-3 h-3 rounded-full ${
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className={`w-3 h-3 rounded-full shrink-0 ${
                           platform.lastHealth === "healthy" ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]"
                           : platform.lastHealth === "error" ? "bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.5)]"
                           : "bg-muted-foreground/40"
                         }`} />
-                        <div>
-                          <div className="flex items-center gap-3">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-3">
                             <h3 className="font-display font-semibold text-foreground text-lg">{platform.name}</h3>
                             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-surface border border-border text-muted-foreground uppercase">
                               {METHOD_OPTIONS.find((m) => m.value === platform.method)?.label || platform.method}
@@ -486,7 +486,7 @@ export default function AdminPlatformsPage() {
                           <p className="text-xs text-muted-foreground mt-0.5">ID: {platform.id}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                         {PLATFORM_WEBSITES[platform.id] && (
                           <a href={PLATFORM_WEBSITES[platform.id]} target="_blank" rel="noopener noreferrer"
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border text-xs text-muted-foreground hover:text-foreground hover:border-accent/30 transition-all">
@@ -544,7 +544,7 @@ export default function AdminPlatformsPage() {
                               }`}>
                               {editingKey?.platformId === platform.id && editingKey?.keyId === key.id ? (
                                 <div className="space-y-3">
-                                  <div className="grid grid-cols-2 gap-3">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div><label className="text-[10px] text-muted-foreground uppercase tracking-wider">Key Value</label>
                                       <input type="text" value={editKeyVal} onChange={(e) => setEditKeyVal(e.target.value)} className="w-full mt-1 px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm font-mono focus:outline-none focus:border-accent/50" /></div>
                                     <div><label className="text-[10px] text-muted-foreground uppercase tracking-wider">Label</label>
@@ -560,7 +560,7 @@ export default function AdminPlatformsPage() {
                                   </div>
                                 </div>
                               ) : (
-                                <div className="flex items-start justify-between gap-4">
+                                <div className="flex flex-col gap-3 xl:flex-row xl:items-start justify-between">
                                   <div className="flex items-start gap-4 min-w-0 flex-1">
                                     <div className="flex items-center gap-1.5 cursor-grab active:cursor-grabbing mt-0.5">
                                       <GripVertical className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-accent transition-colors" />
@@ -585,8 +585,8 @@ export default function AdminPlatformsPage() {
                                       </div>
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-4">
-                                    <div className="text-right min-w-[100px]">
+                                  <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+                                    <div className="text-right min-w-0 sm:min-w-[100px]">
                                       <div className="flex items-center gap-1.5 justify-end mb-1">
                                         <span className="text-xs text-muted-foreground">{key.requestsUsed}/{key.requestsLimit}</span>
                                       </div>
@@ -631,7 +631,7 @@ export default function AdminPlatformsPage() {
                       {showAddKeyFor === platform.id && (
                         <div className="p-4 rounded-xl bg-accent/5 border border-accent/20 space-y-3">
                           <h5 className="text-xs font-semibold text-accent uppercase tracking-wider">Add New API Key</h5>
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div><label className="text-[10px] text-muted-foreground uppercase tracking-wider">API Key</label>
                               <input type="text" value={addKeyVal} onChange={(e) => setAddKeyVal(e.target.value)} placeholder="Enter API key" className="w-full mt-1 px-3 py-2 rounded-lg bg-background border border-border text-foreground text-sm font-mono focus:outline-none focus:border-accent/50" /></div>
                             <div><label className="text-[10px] text-muted-foreground uppercase tracking-wider">Label</label>
@@ -681,7 +681,7 @@ export default function AdminPlatformsPage() {
                   <div><label className="text-xs text-muted-foreground uppercase tracking-wider">API Key</label>
                     <input type="text" value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="Optional: Enter API key"
                       className="w-full mt-1 px-3 py-2.5 rounded-xl bg-background border border-border text-foreground text-sm font-mono focus:outline-none focus:border-accent/50" /></div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div><label className="text-xs text-muted-foreground uppercase tracking-wider">Key Label</label>
                       <input type="text" value={newKeyLabel} onChange={(e) => setNewKeyLabel(e.target.value)} placeholder="Primary"
                         className="w-full mt-1 px-3 py-2.5 rounded-xl bg-background border border-border text-foreground text-sm focus:outline-none focus:border-accent/50" /></div>

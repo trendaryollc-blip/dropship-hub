@@ -35,7 +35,7 @@ export function SupplierNetwork({ suppliers }: { suppliers: SupplierStatus[] }) 
             <p className="font-display text-3xl font-bold text-white">{suppliers.length}</p>
             <p className="text-[10px] text-gray-500 uppercase">Total Suppliers</p>
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <div className="text-center p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/15">
               <p className="font-display text-lg font-bold text-emerald-400">{online}</p>
               <p className="text-[8px] text-emerald-400/70 uppercase">Online</p>

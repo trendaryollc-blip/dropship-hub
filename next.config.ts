@@ -17,10 +17,9 @@ const securityHeaders = [
     key: "X-Frame-Options",
     value: "SAMEORIGIN",
   },
-  {
-    key: "X-XSS-Protection",
-    value: "1; mode=block",
-  },
+  // X-XSS-Protection removed: the legacy header is deprecated and can
+  // actually introduce vulnerabilities in older browsers. Modern XSS
+  // protection comes from the Content-Security-Policy below.
   {
     key: "Referrer-Policy",
     value: "strict-origin-when-cross-origin",

@@ -618,7 +618,7 @@ export default function FulfillmentPage() {
                   {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
                   Sync Orders
             </button>
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-card border border-white/10 rounded-lg text-[10px] text-muted-foreground whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-lg z-50">
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-card border border-white/10 rounded-lg text-[10px] text-muted-foreground w-max max-w-[85vw] whitespace-normal text-center opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-lg z-50">
               Pull latest orders from all connected stores
               <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-card" />
             </div>
@@ -679,8 +679,8 @@ export default function FulfillmentPage() {
 
             {/* Pagination */}
             {totalFilteredPages > 1 && (
-              <div className="flex items-center justify-between pt-4">
-                <p className="text-xs text-muted-foreground">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4">
+                <p className="text-xs text-muted-foreground text-center sm:text-left">
                   Showing {((safePage - 1) * pageSize) + 1}–{Math.min(safePage * pageSize, tabOrders.length)} of {tabOrders.length} orders
                 </p>
                 <div className="flex items-center gap-2">

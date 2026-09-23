@@ -39,6 +39,22 @@ export async function deleteSocialContent(uid: string, contentId: string): Promi
     return false;
   }
 }
+export async function updateSocialContent(
+  uid: string,
+  contentId: string,
+  updates: Partial<Omit<SocialContentDoc, "id" | "createdAt">>
+): Promise<boolean> {
+  try {
+    const db = await getAdminDB();
+    await db.collection("users").doc(uid).collection(CONTENT_COLLECTION).doc(contentId).update(updates);
+    return true;
+  } catch (error) {
+    handleFirestoreError("updateSocialContent", error);
+    return false;
+  }
+}
+
+
 
 export async function addCalendarEntry(uid: string, entry: Omit<ContentCalendarEntry, "id" | "createdAt">): Promise<string | undefined> {
   try {

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { stableAlertId } from "./route";
 
 const mockSearchCJProducts = vi.fn();
 const mockGetAdminDB = vi.fn();
@@ -134,7 +135,6 @@ describe("/api/dashboard", () => {
       expect(Array.isArray(data.actionStats)).toBe(true);
       expect(data.briefing).toBeDefined();
       expect(data.revenueStats).toBeDefined();
-      expect(data.pulse).toBeDefined();
       expect(data.fulfillmentPipeline).toBeDefined();
       expect(data.contextualActions).toBeDefined();
     });
@@ -186,6 +186,7 @@ describe("/api/dashboard", () => {
       expect(data.revenueStats.orders).toBe(10);
       expect(data.revenueStats.growth).toBeDefined();
       expect(data.revenueStats.avgOrder).toBe(50);
+      expect(data.revenueStats.profit).toBe(150);
     });
 
     it("builds revenueChart from last 14 days", async () => {
@@ -239,6 +240,7 @@ describe("/api/dashboard", () => {
       expect(data.fulfillmentPipeline.recentOrders.length).toBe(3);
       expect(data.fulfillmentPipeline.recentOrders[0].customer).toBe("Alice");
       expect(data.fulfillmentPipeline.recentOrders[0].status).toBe("pending");
+      expect(data.fulfillmentPipeline.recentOrders[0].id).toBeDefined();
     });
 
     it("counts connected stores correctly", async () => {
@@ -309,7 +311,7 @@ describe("/api/dashboard", () => {
       expect(response.status).toBe(200);
       expect(data.ticker).toEqual([]);
       expect(data.aiDailyPick).toBeNull();
-      expect(data.revenueStats).toEqual({ revenue: 0, growth: 0, orders: 0, avgOrder: 0 });
+      expect(data.revenueStats).toEqual({ revenue: 0, growth: 0, orders: 0, avgOrder: 0, profit: 0 });
       expect(data.revenueChart).toEqual([]);
       expect(data.alerts).toEqual([]);
       expect(data.nicheCards).toEqual([]);
@@ -317,7 +319,6 @@ describe("/api/dashboard", () => {
       expect(data.heatmap).toEqual([]);
       expect(data.trending).toEqual([]);
       expect(data.briefing.insights[0]).toContain("temporarily unavailable");
-      expect(data.pulse).toBeNull();
       expect(data.actionStats).toEqual([]);
       expect(data.fulfillmentPipeline).toEqual({
         pending: 0,
@@ -492,7 +493,8 @@ describe("/api/dashboard", () => {
       const data = await response.json();
 
       expect(data.revenueStats.revenue).toBe(200);
-      expect(data.revenueStats.growth).toBe(100);
+      expect(data.revenueStats.growth).toBe(0);
+      expect(data.revenueStats.profit).toBe(60);
     });
 
     it("computes positive growth correctly", async () => {
@@ -660,6 +662,25 @@ describe("/api/dashboard", () => {
         expect(h.weeklyData.length).toBe(7);
       });
     });
+
+    it("keeps heat within the 0..100 intensity range", async () => {
+      mockSearchCJProducts.mockImplementation(async (cat: string) => ({
+        search_results: Array.from({ length: 20 }, (_, i) =>
+          makeProduct({ price: 10, category: cat, title: `H${i}` })
+        ),
+      }));
+      mockGetAdminDB.mockResolvedValue(buildFirestoreMocks());
+
+      const { GET } = await import("./route");
+      const response = await GET(makeRequest("u1"));
+      const data = await response.json();
+
+      expect(data.heatmap.length).toBeGreaterThan(0);
+      data.heatmap.forEach((h: any) => {
+        expect(h.heat).toBeGreaterThanOrEqual(0);
+        expect(h.heat).toBeLessThanOrEqual(100);
+      });
+    });
   });
 
   describe("Trending products edge cases", () => {
@@ -760,6 +781,43 @@ describe("/api/dashboard", () => {
       warningAlerts.forEach((alert: any) => {
         expect(alert.actionHref).toBe("/ai");
       });
+    });
+
+    it("uses content-derived alert ids, not slots, so read state tracks content", async () => {
+      mockSearchCJProducts.mockImplementation(async (cat: string) => ({
+        search_results: [makeProduct({ price: 5, rating: 4.8, reviews: 200, category: cat, title: `High Margin Item ${cat}` })],
+      }));
+      mockGetAdminDB.mockResolvedValue(buildFirestoreMocks());
+
+      const { GET } = await import("./route");
+      const first = await (await GET(makeRequest("u1"))).json();
+      const second = await (await GET(makeRequest("u1"))).json();
+
+      const idsA = first.alerts.map((a: any) => a.id);
+      const idsB = second.alerts.map((a: any) => a.id);
+
+      // No more slot-pattern ids (opp-0, risk-0, ...) that would make a new
+      // alert silently inherit the previous alert's persisted read state.
+      first.alerts.forEach((alert: any) => {
+        expect(alert.id).not.toMatch(/^(opp|risk|info|warn)-\d+$/);
+      });
+
+      const uniq = new Set(idsA);
+      expect(uniq.size).toBe(idsA.length);
+      // Deterministic for the same feed content.
+      expect(idsA).toEqual(idsB);
+    });
+  });
+
+  describe("stableAlertId", () => {
+    it("is stable for identical payloads and differs for different ones", () => {
+      expect(stableAlertId("opp", "Widget@14.99")).toBe(stableAlertId("opp", "Widget@14.99"));
+      expect(stableAlertId("opp", "Widget@14.99")).not.toBe(stableAlertId("opp", "Widget@15.99"));
+      expect(stableAlertId("opp", "Widget@14.99")).not.toBe(stableAlertId("risk", "Widget@14.99"));
+    });
+
+    it("never emits the old slot-based numeric pattern", () => {
+      expect(stableAlertId("opp", "Widget@14.99")).not.toMatch(/^(opp|risk|info|warn)-\d+$/);
     });
   });
 

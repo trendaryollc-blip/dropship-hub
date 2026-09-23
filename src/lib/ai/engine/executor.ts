@@ -7,6 +7,7 @@ import type {
   ToolExecutionRecord,
   WorkflowDefinition,
   WorkflowStep,
+  GuardrailConfig,
 } from "../types";
 
 // ─── AI Execution Engine ────────────────────────────────────────────────────
@@ -101,6 +102,7 @@ export async function executeToolCalls(
     autonomyLevel?: number;
     dollarThreshold?: number;
     sequential?: boolean;
+    guardrails?: GuardrailConfig;
   }
 ): Promise<ExecutionResult> {
   const results: ExecutionResult["results"] = [];
@@ -112,6 +114,7 @@ export async function executeToolCalls(
     const result = await runTool(toolCall.tool, toolCall.input, context, {
       autonomyLevel: options?.autonomyLevel ?? 1,
       dollarThreshold: options?.dollarThreshold ?? 100,
+      guardrails: options?.guardrails,
     });
 
     results.push({

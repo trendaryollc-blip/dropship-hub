@@ -6,6 +6,14 @@ vi.mock("@/lib/auth", () => ({
   }),
 }));
 
+// The URL-safety layer resolves allowlisted hostnames to guard against DNS
+// rebinding. Mock it so tests never touch the real network.
+const dnsLookupMock = vi.fn().mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
+vi.mock("node:dns/promises", () => ({
+  default: { lookup: dnsLookupMock },
+  lookup: dnsLookupMock,
+}));
+
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
@@ -52,7 +60,7 @@ describe("Product Images API Route", () => {
   });
 
   it("POST extracts images from HTML with og:image meta tag", async () => {
-    const html = '<html><head><meta property="og:image" content="https://example.com/product-main.jpg"></head><body></body></html>';
+    const html = '<html><head><meta property="og:image" content="https://www.walmart.com/img/product-main.jpg"></head><body></body></html>';
     mockFetch
       .mockResolvedValueOnce({
         ok: true,
@@ -64,9 +72,52 @@ describe("Product Images API Route", () => {
         headers: { get: () => "text/html" },
       });
     const { POST } = await import("./route");
-    const req = { json: async () => ({ url: "https://example.com/product", source: "other" }) } as any;
+    const req = { json: async () => ({ url: "https://www.walmart.com/ip/123", source: "walmart" }) } as any;
     const res = await POST(req);
     const body = await res.json();
     expect(body.images).toBeDefined();
+  });
+
+  it("POST blocks SSRF attempts against private/cloud-metadata IPs", async () => {
+    const { POST } = await import("./route");
+    const req = { json: async () => ({ url: "http://169.254.169.254/latest/meta-data/", source: "walmart" }) } as any;
+    const res = await POST(req);
+    const body = await res.json();
+    expect(body.images).toEqual([]);
+    // The internal host must never be hit
+    expect(mockFetch).not.toHaveBeenCalledWith(expect.stringContaining("169.254.169.254"));
+  });
+
+  it("POST blocks SSRF via redirect to a private address", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 302,
+      headers: { get: (k: string) => (k === "location" ? "http://169.254.169.254/latest/meta-data/" : null) },
+    });
+    const { POST } = await import("./route");
+    const req = { json: async () => ({ url: "https://www.walmart.com/redirects", source: "walmart" }) } as any;
+    const res = await POST(req);
+    const body = await res.json();
+    expect(body.images).toEqual([]);
+    const fetchUrls = mockFetch.mock.calls.map((c) => String(c[0]));
+    expect(fetchUrls.every((u) => !u.includes("169.254.169.254"))).toBe(true);
+  });
+
+  it("POST blocks non-allowlisted hosts entirely", async () => {
+    const { POST } = await import("./route");
+    const req = { json: async () => ({ url: "http://internal.corp.local/health", source: "walmart" }) } as any;
+    const res = await POST(req);
+    const body = await res.json();
+    expect(body.images).toEqual([]);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("POST blocks non-http(s) schemes", async () => {
+    const { POST } = await import("./route");
+    const req = { json: async () => ({ url: "file:///etc/passwd", source: "walmart" }) } as any;
+    const res = await POST(req);
+    const body = await res.json();
+    expect(body.images).toEqual([]);
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 });

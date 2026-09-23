@@ -22,6 +22,13 @@ export default function CursorGlow() {
   }, []);
 
   useEffect(() => {
+    if (
+      window.matchMedia("(pointer: coarse)").matches ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
     const handleMouseMove = (e: MouseEvent) => {
       setPosition({ x: e.clientX, y: e.clientY });
       setVisible(true);

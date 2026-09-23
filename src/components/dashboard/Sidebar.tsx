@@ -233,7 +233,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
         <button
           onClick={onClose}
-          className="md:hidden p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors"
+          className="desk:hidden p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors"
           aria-label="Close menu"
         >
           <X className="h-5 w-5" />
@@ -357,7 +357,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     <>
       {/* Desktop sidebar */}
       <aside
-        className={`hidden md:flex fixed left-0 top-0 bottom-0 z-40 flex-col border-r border-white/[0.04] backdrop-blur-xl transition-all duration-300 ${
+        className={`hidden desk:flex fixed left-0 top-0 bottom-0 z-40 flex-col border-r border-white/[0.04] backdrop-blur-xl transition-all duration-300 ${
           collapsed ? "w-[68px]" : "w-[240px]"
         }`}
         style={{ backgroundColor: "var(--sidebar)" }}
@@ -374,7 +374,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       {/* Mobile overlay */}
       {isOpen && (
-        <div className="md:hidden fixed inset-0 z-50">
+        <div className="desk:hidden fixed inset-0 z-50">
           <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
             onClick={onClose}

@@ -12,6 +12,67 @@ import { safeErrorMessage } from "@/lib/api-errors";
 
 const logger = createLogger({ route: "api/search-all" });
 
+// Cap on user-supplied search input so a single request can't trigger
+// unbounded upstream provider calls or crash downstream normalizers.
+const MAX_QUERY_LENGTH = 200;
+const MAX_PLATFORMS = 20;
+const PLATFORM_ID_PATTERN = /^[a-z0-9_]+$/;
+const INTENT_KEYS = [
+  "keywords", "priceMin", "priceMax", "platforms", "sortBy",
+  "minRating", "categories", "brand", "trending", "confidence",
+];
+
+/**
+ * Validate and normalize the search request body. Returns an error response
+ * payload when invalid, otherwise the cleaned inputs.
+ */
+function sanitizeSearchInput(body: unknown): {
+  error?: { message: string; status: number };
+  query?: string;
+  platforms?: string[];
+  intent?: Record<string, unknown>;
+} {
+  if (!body || typeof body !== "object") {
+    return { error: { message: "Invalid request body", status: 400 } };
+  }
+  const record = body as Record<string, unknown>;
+
+  if (typeof record.query !== "string") {
+    return { error: { message: "Query is required", status: 400 } };
+  }
+  const rawQuery = record.query.trim();
+  if (rawQuery.length === 0) {
+    return { error: { message: "Query is required", status: 400 } };
+  }
+  if (rawQuery.length > MAX_QUERY_LENGTH) {
+    return { error: { message: `Query is too long (max ${MAX_QUERY_LENGTH} characters)`, status: 400 } };
+  }
+
+  let platforms: string[] | undefined;
+  if (record.platforms !== undefined) {
+    if (!Array.isArray(record.platforms)) {
+      return { error: { message: "platforms must be an array", status: 400 } };
+    }
+    platforms = [
+      ...new Set(
+        record.platforms
+          .filter((p): p is string => typeof p === "string" && p.length > 0 && p.length <= 50 && PLATFORM_ID_PATTERN.test(p))
+      ),
+    ].slice(0, MAX_PLATFORMS);
+  }
+
+  let intent: Record<string, unknown> | undefined;
+  if (record.intent && typeof record.intent === "object") {
+    const rawIntent = record.intent as Record<string, unknown>;
+    intent = {};
+    for (const key of INTENT_KEYS) {
+      if (key in rawIntent) intent[key] = rawIntent[key];
+    }
+  }
+
+  return { query: rawQuery, platforms, intent };
+}
+
 // Streaming version of search-all
 async function searchAllStreaming(
   query: string,
@@ -238,15 +299,22 @@ function normalizeForDedup(platform: string, data: unknown): DedupSearchResult[]
 
 export const POST = withAuth(async (request: NextRequest, _uid: string) => {
   try {
-    const { query, platforms: selectedPlatforms, intent: requestIntent, stream } = await request.json();
+    const body = await request.json();
+    const sanitized = sanitizeSearchInput(body);
+    if (sanitized.error) {
+      return NextResponse.json({ error: sanitized.error.message }, { status: sanitized.error.status });
+    }
 
-    if (!query) return NextResponse.json({ error: "Query is required" }, { status: 400 });
+    const query = sanitized.query as string;
+    const selectedPlatforms = sanitized.platforms || [];
+    const requestIntent = sanitized.intent;
+    const stream = (body as Record<string, unknown>).stream === true;
 
     // Check if streaming is requested
-    if (stream === true) {
+    if (stream) {
       const searchStream = await searchAllStreaming(
         query,
-        selectedPlatforms || [],
+        selectedPlatforms,
         request.signal
       );
       

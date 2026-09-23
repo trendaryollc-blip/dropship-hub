@@ -325,7 +325,7 @@ function AutoSwitchPanel({ rules, scorecards, onAddRule, onDeleteRule }: {
           <option value="">Select supplier</option>
           {scorecards.map((s) => <option key={s.supplierId} value={s.supplierId}>{s.supplierName}</option>)}
         </select>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <select value={metric} onChange={(e) => setMetric(e.target.value as AutoSwitchRule["metric"])} className="px-2 py-1.5 rounded-lg bg-surface border border-border text-[10px] text-foreground focus:outline-none focus:border-accent/50">
             <option value="overall_score">Overall</option>
             <option value="speed">Speed</option>

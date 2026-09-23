@@ -62,7 +62,7 @@ export default function ReviewIntelligence({ data }: { data: ReviewData | null }
         </div>
 
         {/* Sentiment — quote-style cards */}
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           <div className="sentiment-card sentiment-positive">
             <div className="flex items-center gap-1.5 mb-2.5">
               <ThumbsUp className="h-3.5 w-3.5 text-emerald-400" />

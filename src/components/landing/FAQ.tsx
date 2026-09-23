@@ -63,7 +63,10 @@ export default function FAQ() {
               style={{ transitionDelay: `${i * 80}ms` }}
             >
               <button
+                type="button"
                 onClick={() => setOpenIndex(openIndex === i ? null : i)}
+                aria-expanded={openIndex === i}
+                aria-controls={`faq-panel-${i}`}
                 className="w-full flex items-center justify-between p-5 text-left"
               >
                 <span className="font-display text-sm font-semibold text-foreground pr-4">
@@ -76,13 +79,16 @@ export default function FAQ() {
                 />
               </button>
               <div
-                className={`overflow-hidden transition-all duration-300 ${
-                  openIndex === i ? "max-h-40" : "max-h-0"
+                id={`faq-panel-${i}`}
+                className={`grid transition-all duration-300 ${
+                  openIndex === i ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
                 }`}
               >
-                <p className="px-5 pb-5 text-sm text-muted-foreground leading-relaxed">
-                  {faq.a}
-                </p>
+                <div className="overflow-hidden">
+                  <p className="px-5 pb-5 text-sm text-muted-foreground leading-relaxed">
+                    {faq.a}
+                  </p>
+                </div>
               </div>
             </div>
           ))}

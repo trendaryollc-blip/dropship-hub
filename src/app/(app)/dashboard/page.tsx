@@ -60,6 +60,7 @@ export default function DashboardHome() {
     growth: data.revenueStats?.growth ?? 0,
     orders: data.revenueStats?.orders ?? 0,
     avgOrder: data.revenueStats?.avgOrder ?? 0,
+    profit: data.revenueStats?.profit ?? 0,
   }), [data.revenueStats]);
 
   const onlineSuppliers = useMemo(

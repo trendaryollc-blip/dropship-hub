@@ -3,8 +3,8 @@ import { Zap } from "lucide-react";
 
 const footerLinks = {
   Product: [
-    { label: "Features", href: "#features" },
-    { label: "How It Works", href: "#how-it-works" },
+    { label: "Features", href: "/#features" },
+    { label: "How It Works", href: "/#how-it-works" },
     { label: "Dashboard", href: "/dashboard" },
     { label: "Calculator", href: "/calculator" },
   ],

@@ -1,5 +1,11 @@
 "use client";
 
+// TODO: SECURITY REVIEW
+// - Server endpoints under `/api/fulfillment` and `/api/fulfillment/bulk` must
+//   enforce authorization, rate-limiting, and action-level permissions (who can
+//   cancel, send to supplier, or trigger refunds). Client-side confirmations
+//   are helpful but insufficient for production safety.
+
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import Image from "next/image";
@@ -100,6 +106,12 @@ function getDateRangeFilter(dateRange: DateRange, customStart?: string, customEn
 }
 
 function exportToCSV(data: FulfillmentOrder[], filename: string) {
+  // Guard: prevent extremely large client-side exports which can OOM the browser.
+  if (data.length > 5000) {
+    alert("Export too large for client-side download. Please narrow selection or use server-side export.");
+    return;
+  }
+
   const headers = [
     "Order Number", "Customer Name", "Customer Email", "Status",
     "Revenue", "Cost", "Profit", "Supplier", "Store Platform",
@@ -125,7 +137,7 @@ function exportToCSV(data: FulfillmentOrder[], filename: string) {
     o.shippingAddress.zipCode,
     o.shippingAddress.country,
   ]);
-  const csv = [headers.join(","), ...rows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(","))].join("\n");
+  const csv = [headers.join(","), ...rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""') }"`).join(","))].join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -133,6 +145,29 @@ function exportToCSV(data: FulfillmentOrder[], filename: string) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// Safe clipboard helper used across the page. Uses navigator.clipboard when available,
+// otherwise falls back to a textarea + execCommand approach.
+async function safeCopy(text: string) {
+  try {
+    if (typeof navigator !== "undefined" && navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
 }
 
 // ─── Order Detail Panel ───────────────────────────────────────────────────────
@@ -205,7 +240,7 @@ function OrderDetailPanel({
           {activeTab === "details" && (
             <>
               {/* Quick Stats */}
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div className="p-3 rounded-xl bg-surface/50 border border-white/5 text-center">
                   <DollarSign className="h-4 w-4 text-emerald-400 mx-auto mb-1" />
                   <p className="text-sm font-bold text-foreground">${order.totalRevenue.toFixed(2)}</p>
@@ -421,7 +456,10 @@ function OrderDetailPanel({
                         <Truck className="h-3 w-3 text-accent" />
                         <span className="font-mono text-foreground">{po.trackingNumber}</span>
                         <button
-                          onClick={() => navigator.clipboard.writeText(po.trackingNumber || "")}
+                          onClick={async () => {
+                            const ok = await safeCopy(po.trackingNumber || "");
+                            if (!ok) alert("Failed to copy tracking number");
+                          }}
                           className="text-muted-foreground hover:text-foreground"
                         >
                           <Copy className="h-3 w-3" />
@@ -483,6 +521,11 @@ function CSVImportPanel({ onClose, onImport }: { onClose: () => void; onImport: 
   const parseCSV = useCallback((f: File) => {
     setParseError(null);
     setPreview([]);
+    // Limit file size to avoid memory blowups in the browser (5 MB)
+    if (f.size > 5 * 1024 * 1024) {
+      setParseError("CSV file too large. Please upload files smaller than 5 MB or use server-side import.");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
@@ -584,7 +627,7 @@ function CSVImportPanel({ onClose, onImport }: { onClose: () => void; onImport: 
 
           {preview.length > 0 && (
             <div className="mt-4">
-              <div className="max-h-48 overflow-y-auto rounded-lg border border-white/10">
+              <div className="max-h-48 overflow-auto rounded-lg border border-white/10">
                 <table className="w-full text-xs">
                   <thead className="bg-surface/50 sticky top-0">
                     <tr>
@@ -672,7 +715,7 @@ function BulkOperationCard({ operation, onViewDetails }: { operation: BulkOperat
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-2 text-center">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
         <div className="p-2 rounded bg-surface/50">
           <p className="text-xs font-bold text-emerald-400">{operation.successfulOrders}</p>
           <p className="text-[10px] text-muted-foreground">Success</p>
@@ -1615,8 +1658,8 @@ export default function BulkOrdersPage() {
 
             {/* Pagination */}
             {sortedOrders.length > 0 && (
-            <div className="px-4 py-3 border-t border-white/5 flex items-center justify-between">
-              <p className="text-[10px] text-muted-foreground">
+            <div className="px-4 py-3 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <p className="text-[10px] text-muted-foreground text-center sm:text-left">
                 Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, sortedOrders.length)} of {sortedOrders.length} orders
               </p>
               <div className="flex items-center gap-1">

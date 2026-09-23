@@ -86,7 +86,7 @@ export default function OrderCard({ order, onAction, storeName }: { order: Fulfi
       </div>
 
       {/* Financial Summary */}
-      <div className="grid grid-cols-3 gap-2 mb-3 p-2 rounded-lg bg-surface/50">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3 p-2 rounded-lg bg-surface/50">
         <div className="text-center">
           <p className="text-[10px] text-muted-foreground">Revenue</p>
           <p className="text-xs font-bold text-foreground">${order.totalRevenue.toFixed(2)}</p>

@@ -89,6 +89,7 @@ function ProfitChart({ data }: { data: DailyProfit[] }) {
   const chartH = h - padding.top - padding.bottom;
   const getX = (i: number) => padding.left + (i / Math.max(data.length - 1, 1)) * chartW;
   const getY = (val: number) => padding.top + chartH - ((val - minVal) / range) * chartH;
+  const tooltipX = tooltip ? Math.max(80, Math.min(tooltip.x, w - padding.right - 80)) : 0;
 
   const revenuePath = data.map((d, i) => `${i === 0 ? "M" : "L"} ${getX(i)} ${getY(d.revenue)}`).join(" ");
   const profitPath = data.map((d, i) => `${i === 0 ? "M" : "L"} ${getX(i)} ${getY(d.profit)}`).join(" ");
@@ -141,8 +142,8 @@ function ProfitChart({ data }: { data: DailyProfit[] }) {
             <g>
               <line x1={tooltip.x} y1={padding.top} x2={tooltip.x} y2={padding.top + chartH} stroke="rgba(255,255,255,0.1)" strokeDasharray="3 3" />
               <circle cx={tooltip.x} cy={tooltip.y} r="5" fill="#3b82f6" stroke="#fff" strokeWidth="2" />
-              <rect x={tooltip.x - 50} y={tooltip.y - 34} width="100" height="24" rx="6" fill="#16161f" stroke="rgba(255,255,255,0.1)" />
-              <text x={tooltip.x} y={tooltip.y - 18} textAnchor="middle" className="fill-foreground text-[9px] font-bold">Rev: ${tooltip.value} | P: ${tooltip.profit}</text>
+              <rect x={tooltipX - 40} y={tooltip.y - 34} width="130" height="24" rx="6" fill="#16161f" stroke="rgba(255,255,255,0.1)" />
+              <text x={tooltipX} y={tooltip.y - 18} textAnchor="middle" className="fill-foreground text-[9px] font-bold">Rev: ${tooltip.value} | P: ${tooltip.profit}</text>
             </g>
           )}
           {data.filter((_, i) => i % 7 === 0 || i === data.length - 1).map((d, i) => (
@@ -308,7 +309,7 @@ export default function ProfitTrackerPage() {
           <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-1">Profit Tracker</h1>
           <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">Per-order cost breakdown, profit margins, and campaign-level profitability. For revenue forecasting, see Revenue Forecast.</p>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="flex items-center bg-surface rounded-xl border border-border p-0.5">
             {(["7d", "30d", "90d", "all"] as const).map((tf) => (
               <button key={tf} onClick={() => setTimeframe(tf)} className={`px-2 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-[11px] font-semibold transition-all ${timeframe === tf ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-muted-foreground hover:text-foreground"}`}>
@@ -374,12 +375,12 @@ export default function ProfitTrackerPage() {
 
           {/* Product Profitability */}
           <div className="glass rounded-2xl p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <div>
                 <h3 className="font-display text-sm sm:text-base font-semibold text-foreground">Product Profitability</h3>
                 <p className="text-[10px] sm:text-[11px] text-muted-foreground">Which products are actually profitable after all costs</p>
               </div>
-              <div className="flex items-center gap-2 text-[10px] sm:text-[11px]">
+              <div className="flex flex-wrap items-center gap-2 text-[10px] sm:text-[11px]">
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400" /> Profitable</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400" /> Breakeven</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400" /> Losing</span>

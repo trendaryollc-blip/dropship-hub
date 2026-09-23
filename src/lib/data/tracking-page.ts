@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { handleFirestoreError } from "./utils";
 import type { TrackingPageConfigDoc, TrackingPageStats, TrackingPageView } from "@/types/tracking-page";
@@ -10,7 +11,21 @@ export async function saveTrackingPageConfig(uid: string, config: Omit<TrackingP
     const db = await getAdminDB();
     const ref = db.collection("users").doc(uid).collection(COLLECTION).doc(config.storeId);
     const now = new Date().toISOString();
-    await ref.set({ ...config, id: ref.id, createdAt: now, updatedAt: now }, { merge: true });
+    const existing = await ref.get();
+    const existingData = existing.exists ? existing.data() : undefined;
+    // Reuse the public id across updates so the public tracking URL stays stable.
+    const existingPublicId = typeof existingData?.publicId === "string" && existingData.publicId ? existingData.publicId : "";
+    const publicId = existingPublicId || randomUUID();
+    await ref.set(
+      {
+        ...config,
+        id: ref.id,
+        publicId,
+        createdAt: existingData?.createdAt || now,
+        updatedAt: now,
+      },
+      { merge: true }
+    );
     return ref.id;
   } catch (error) {
     handleFirestoreError("saveTrackingPageConfig", error);

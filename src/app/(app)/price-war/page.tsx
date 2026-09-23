@@ -1,5 +1,10 @@
 "use client";
 
+// Price War Bot — monitor competitor prices and auto-adjust while protecting margins.
+// All price adjustments are server-side guarded (auth, rate limits, daily caps,
+// margin floors in the price-war engine); the Execute confirm dialog below is a
+// UX safeguard, not a substitute for those server controls.
+
 import { useState, useMemo, useCallback } from "react";
 import {
   DollarSign, Plus, Trash2, Play, Pause, Loader2, TrendingDown, TrendingUp,
@@ -10,12 +15,14 @@ import {
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAPI } from "@/hooks/useAPI";
 import { useToast } from "@/components/ui/Toast";
-import FilterBar from "@/components/ui/FilterBar";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { authJson } from "@/lib/auth-headers";
+import { toDate, formatDate, formatDateTime } from "@/lib/dates";
+import FilterBar from "@/components/ui/FilterBar";
 import Tooltip from "@/components/ui/Tooltip";
 import Tour, { useTour, type TourStep } from "@/components/ui/Tour";
 import { KPICardSkeleton, TableSkeleton } from "@/components/ui/Skeleton";
-import type { PriceRule, PriceAdjustmentLog, PriceWarStats } from "@/types/price-war";
+import type { PriceRule, PriceAdjustmentLog, PriceWarStats, PriceWarSettings, PriceAlert } from "@/types/price-war";
 
 const STRATEGIES = [
   { id: "match_lowest", label: "Match Lowest", desc: "Match the lowest competitor price" },
@@ -39,6 +46,25 @@ const STATUS_COLORS: Record<string, string> = {
   triggered: "bg-blue-400/10 text-blue-400",
   error: "bg-red-400/10 text-red-400",
 };
+
+const DEFAULT_SETTINGS: PriceWarSettings = {
+  enabled: true,
+  checkIntervalMinutes: 60,
+  autoApply: true,
+  maxDailyAdjustments: 50,
+  notifyOnAdjustment: true,
+  notifyOnFloorBreach: true,
+};
+
+const ALERT_SEVERITY_COLORS: Record<string, string> = {
+  low: "bg-blue-400/10 text-blue-400",
+  medium: "bg-amber-400/10 text-amber-400",
+  high: "bg-red-400/10 text-red-400",
+};
+
+function formatAlertTime(value: PriceAlert["createdAt"]): string {
+  return formatDateTime(value);
+}
 
 type SortField = "productTitle" | "myPrice" | "cost" | "margin" | "lastChecked" | "createdAt";
 type SortDir = "asc" | "desc";
@@ -108,21 +134,27 @@ export default function PriceWarPage() {
   const { error: toastError, success: toastSuccess } = useToast();
   const { isOpen: tourOpen, complete: completeTour, skip: skipTour, restart: restartTour } = useTour("price-war");
 
-  const { data: rulesData, mutate: mutateRules, isLoading: rulesLoading } = useAPI<{ rules?: PriceRule[] }>(uid ? `/api/ai/price-war?uid=${uid}` : null);
-  const { data: statsData, isLoading: statsLoading } = useAPI<{ stats?: PriceWarStats }>(uid ? `/api/ai/price-war?type=stats&uid=${uid}` : null);
-  const { data: logsData, mutate: mutateLogs } = useAPI<{ logs?: PriceAdjustmentLog[] }>(uid ? `/api/ai/price-war/history?uid=${uid}&limit=200` : null);
+  const { data: rulesData, mutate: mutateRules, isLoading: rulesLoading, error: rulesError } = useAPI<{ rules?: PriceRule[] }>(uid ? "/api/ai/price-war" : null);
+  const { data: statsData, isLoading: statsLoading } = useAPI<{ stats?: PriceWarStats }>(uid ? "/api/ai/price-war?type=stats" : null);
+  const { data: logsData, mutate: mutateLogs } = useAPI<{ logs?: PriceAdjustmentLog[] }>(uid ? "/api/ai/price-war/history?limit=200" : null);
+  const { data: settingsData, isLoading: settingsLoading, error: settingsError, mutate: mutateSettings } = useAPI<{ settings?: PriceWarSettings }>(uid ? "/api/ai/price-war/settings" : null);
+  const { data: alertsData, isLoading: alertsLoading, error: alertsError, mutate: mutateAlerts } = useAPI<{ alerts?: PriceAlert[] }>(uid ? "/api/ai/price-war/alerts" : null);
 
   const rules = useMemo(() => rulesData?.rules || [], [rulesData]);
   const stats = useMemo(() => statsData?.stats || null, [statsData]);
   const logs = useMemo(() => logsData?.logs || [], [logsData]);
+  const priceAlerts = useMemo(() => alertsData?.alerts || [], [alertsData]);
 
   const [showAdd, setShowAdd] = useState(false);
   const [editingRule, setEditingRule] = useState<PriceRule | null>(null);
   const [executing, setExecuting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; ids: string[] }>({ open: false, ids: [] });
+  const [executeConfirm, setExecuteConfirm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showAlerts, setShowAlerts] = useState(false);
+  const [settingsDraft, setSettingsDraft] = useState<PriceWarSettings | null>(null);
+  const [savingSettings, setSavingSettings] = useState(false);
   const [ruleSort, setRuleSort] = useState<SortConfig>({ field: "createdAt", dir: "desc" });
   const [ruleFilters, setRuleFilters] = useState<Filters>({ search: "", status: "", strategy: "", platform: "" });
   const [rulePage, setRulePage] = useState(1);
@@ -138,6 +170,38 @@ export default function PriceWarPage() {
   });
 
   const getMargin = useCallback((price: number, cost: number) => price > 0 ? Math.round(((price - cost) / price) * 100) : 0, []);
+
+  const settings = settingsDraft ?? settingsData?.settings ?? DEFAULT_SETTINGS;
+
+  const updateSetting = <K extends keyof PriceWarSettings>(key: K, value: PriceWarSettings[K]) => {
+    setSettingsDraft({ ...settings, [key]: value });
+  };
+
+  const handleSaveSettings = async () => {
+    setSavingSettings(true);
+    try {
+      await authJson("/api/ai/price-war/settings", settings, "PUT");
+      setSettingsDraft(null);
+      mutateSettings();
+      toastSuccess("Settings saved");
+    } catch (e) {
+      console.error("[PriceWar] Failed to save settings:", e instanceof Error ? e.message : e);
+      toastError(e instanceof Error ? e.message : "Failed to save settings");
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const handleMarkAlertsRead = async () => {
+    try {
+      await authJson("/api/ai/price-war/alerts", { markAll: true }, "PATCH");
+      mutateAlerts();
+      toastSuccess("Alerts marked as read");
+    } catch (e) {
+      console.error("[PriceWar] Failed to update alerts:", e instanceof Error ? e.message : e);
+      toastError(e instanceof Error ? e.message : "Failed to update alerts");
+    }
+  };
 
   const getMarginStatus = useCallback((margin: number) => {
     if (margin < 5) return "critical";
@@ -175,8 +239,8 @@ export default function PriceWarPage() {
         case "myPrice": return mult * (a.myPrice - b.myPrice);
         case "cost": return mult * (a.cost - b.cost);
         case "margin": return mult * (getMargin(a.myPrice, a.cost) - getMargin(b.myPrice, b.cost));
-        case "lastChecked": return mult * ((a.lastChecked ? new Date(a.lastChecked).getTime() : 0) - (b.lastChecked ? new Date(b.lastChecked).getTime() : 0));
-        case "createdAt": return mult * (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        case "lastChecked": return mult * ((a.lastChecked ? toDate(a.lastChecked)?.getTime() ?? 0 : 0) - (b.lastChecked ? toDate(b.lastChecked)?.getTime() ?? 0 : 0));
+        case "createdAt": return mult * ((toDate(a.createdAt)?.getTime() ?? 0) - (toDate(b.createdAt)?.getTime() ?? 0));
         default: return 0;
       }
     });
@@ -194,11 +258,11 @@ export default function PriceWarPage() {
     }
     if (logFilter.dateFrom) {
       const from = new Date(logFilter.dateFrom).getTime();
-      result = result.filter((l) => new Date(l.createdAt).getTime() >= from);
+      result = result.filter((l) => (toDate(l.createdAt)?.getTime() ?? 0) >= from);
     }
     if (logFilter.dateTo) {
       const to = new Date(logFilter.dateTo).getTime() + 86400000;
-      result = result.filter((l) => new Date(l.createdAt).getTime() <= to);
+      result = result.filter((l) => (toDate(l.createdAt)?.getTime() ?? 0) <= to);
     }
     return result;
   }, [logs, logFilter]);
@@ -226,80 +290,66 @@ export default function PriceWarPage() {
       : <ArrowDown className="h-3 w-3 text-accent" />;
   };
 
-  const handleAdd = async () => {
-    try {
-      const urls = form.competitorUrls.split("\n").map((s) => s.trim()).filter(Boolean);
-      const validUrls = urls.filter((u) => { try { new URL(u); return true; } catch { return false; } });
+  const buildRulePayload = () => {
+    const urls = form.competitorUrls.split("\n").map((s) => s.trim()).filter(Boolean);
+    const validUrls = urls.filter((u) => { try { new URL(u); return true; } catch { return false; } });
+    // Reject raw URLs that fail URL parsing instead of silently discarding them
+    // — a rule with zero usable competitor URLs would otherwise monitor nothing (add)
+    // or wipe its competitor list (edit).
+    if (urls.length > 0 && validUrls.length === 0) {
+      toastError("No valid competitor URLs — enter at least one full URL starting with http(s)://");
+      return null;
+    }
+    return {
+      productTitle: form.productTitle.trim(),
+      myPrice: parseFloat(form.myPrice) || 0,
+      cost: parseFloat(form.cost) || 0,
+      floorPrice: parseFloat(form.floorPrice) || 0,
+      minMargin: parseFloat(form.minMargin) || 0,
+      strategy: form.strategy,
+      strategyConfig: {
+        undercutPercent: parseFloat(form.undercutPercent) || undefined,
+        belowPercent: parseFloat(form.belowPercent) || undefined,
+        targetMargin: parseFloat(form.targetMargin) || undefined,
+        maxIncrease: form.maxIncrease ? parseFloat(form.maxIncrease) : undefined,
+        maxDecrease: form.maxDecrease ? parseFloat(form.maxDecrease) : undefined,
+      },
+      platforms: form.platforms.split(",").map((s) => s.trim()).filter(Boolean),
+      competitorUrls: validUrls,
+      productImage: form.productImage || undefined,
+      productUrl: form.productUrl || undefined,
+    };
+  };
 
-      const res = await fetch("/api/ai/price-war", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productTitle: form.productTitle,
-          myPrice: parseFloat(form.myPrice) || 0,
-          cost: parseFloat(form.cost) || 0,
-          floorPrice: parseFloat(form.floorPrice) || 0,
-          minMargin: parseFloat(form.minMargin) || 0,
-          strategy: form.strategy,
-          strategyConfig: {
-            undercutPercent: parseFloat(form.undercutPercent) || undefined,
-            belowPercent: parseFloat(form.belowPercent) || undefined,
-            targetMargin: parseFloat(form.targetMargin) || undefined,
-            maxIncrease: form.maxIncrease ? parseFloat(form.maxIncrease) : undefined,
-            maxDecrease: form.maxDecrease ? parseFloat(form.maxDecrease) : undefined,
-          },
-          platforms: form.platforms.split(",").map((s) => s.trim()).filter(Boolean),
-          competitorUrls: validUrls.length > 0 ? validUrls : ["https://example.com/competitor"],
-          productImage: form.productImage || undefined,
-          productUrl: form.productUrl || undefined,
-        }),
-      });
-      if (res.ok) {
-        mutateRules();
-        setShowAdd(false);
-        resetForm();
-        toastSuccess("Price rule created");
-      }
-    } catch (e) { console.error("[PriceWar] Failed to add price rule:", e instanceof Error ? e.message : e); toastError("Failed to add price rule"); }
+  const handleAdd = async () => {
+    const payload = buildRulePayload();
+    if (!payload) return;
+    // POST requires ≥1 competitor URL; surface a clear error instead of the
+    // schema's 400 so the user knows what to fix.
+    if (payload.competitorUrls.length === 0) {
+      toastError("Add at least one competitor URL to monitor");
+      return;
+    }
+    try {
+      await authJson("/api/ai/price-war", payload);
+      mutateRules();
+      setShowAdd(false);
+      resetForm();
+      toastSuccess("Price rule created");
+    } catch (e) { console.error("[PriceWar] Failed to add price rule:", e instanceof Error ? e.message : e); toastError(e instanceof Error ? e.message : "Failed to add price rule"); }
   };
 
   const handleEdit = async () => {
     if (!editingRule) return;
+    const payload = buildRulePayload();
+    if (!payload) return;
     try {
-      const urls = form.competitorUrls.split("\n").map((s) => s.trim()).filter(Boolean);
-      const validUrls = urls.filter((u) => { try { new URL(u); return true; } catch { return false; } });
-
-      const res = await fetch("/api/ai/price-war", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ruleId: editingRule.id,
-          productTitle: form.productTitle,
-          myPrice: parseFloat(form.myPrice) || 0,
-          cost: parseFloat(form.cost) || 0,
-          floorPrice: parseFloat(form.floorPrice) || 0,
-          minMargin: parseFloat(form.minMargin) || 0,
-          strategy: form.strategy,
-          strategyConfig: {
-            undercutPercent: parseFloat(form.undercutPercent) || undefined,
-            belowPercent: parseFloat(form.belowPercent) || undefined,
-            targetMargin: parseFloat(form.targetMargin) || undefined,
-            maxIncrease: form.maxIncrease ? parseFloat(form.maxIncrease) : undefined,
-            maxDecrease: form.maxDecrease ? parseFloat(form.maxDecrease) : undefined,
-          },
-          platforms: form.platforms.split(",").map((s) => s.trim()).filter(Boolean),
-          competitorUrls: validUrls.length > 0 ? validUrls : [],
-          productImage: form.productImage || undefined,
-          productUrl: form.productUrl || undefined,
-        }),
-      });
-      if (res.ok) {
-        mutateRules();
-        setEditingRule(null);
-        resetForm();
-        toastSuccess("Price rule updated");
-      }
-    } catch (e) { console.error("[PriceWar] Failed to update rule:", e instanceof Error ? e.message : e); toastError("Failed to update rule"); }
+      await authJson("/api/ai/price-war", { ruleId: editingRule.id, ...payload }, "PUT");
+      mutateRules();
+      setEditingRule(null);
+      resetForm();
+      toastSuccess("Price rule updated");
+    } catch (e) { console.error("[PriceWar] Failed to update rule:", e instanceof Error ? e.message : e); toastError(e instanceof Error ? e.message : "Failed to update rule"); }
   };
 
   const resetForm = () => {
@@ -334,31 +384,32 @@ export default function PriceWarPage() {
   };
 
   const handleExecute = async (dryRun: boolean = false) => {
+    if (!dryRun) {
+      setExecuteConfirm(true);
+      return;
+    }
+    await runExecute(dryRun);
+  };
+
+  const runExecute = async (dryRun: boolean) => {
+    setExecuteConfirm(false);
     setExecuting(true);
     try {
-      await fetch("/api/ai/price-war/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dryRun }),
-      });
+      await authJson("/api/ai/price-war/execute", { dryRun });
       mutateRules();
       mutateLogs();
-      toastSuccess(dryRun ? "Dry run completed" : "Price check executed");
-    } catch (e) { console.error("[PriceWar] Failed to run price check:", e instanceof Error ? e.message : e); toastError("Failed to run price check"); }
+      toastSuccess(dryRun ? "Dry run completed — no prices changed" : "Price check executed and adjustments applied");
+    } catch (e) { console.error("[PriceWar] Failed to run price check:", e instanceof Error ? e.message : e); toastError(e instanceof Error ? e.message : "Failed to run price check"); }
     finally { setExecuting(false); }
   };
 
   const handleToggle = async (rule: PriceRule) => {
     const newStatus = rule.status === "active" ? "paused" : "active";
     try {
-      await fetch("/api/ai/price-war", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...rule, status: newStatus }),
-      });
+      await authJson("/api/ai/price-war", { ruleId: rule.id, status: newStatus }, "PUT");
       mutateRules();
       toastSuccess(`Rule ${newStatus === "active" ? "resumed" : "paused"}`);
-    } catch (e) { console.error("[PriceWar] Failed to update rule status:", e instanceof Error ? e.message : e); toastError("Failed to update rule status"); }
+    } catch (e) { console.error("[PriceWar] Failed to update rule status:", e instanceof Error ? e.message : e); toastError(e instanceof Error ? e.message : "Failed to update rule status"); }
   };
 
   const handleDelete = async (id: string) => {
@@ -371,22 +422,18 @@ export default function PriceWarPage() {
 
     if (ids.length === 1) {
       try {
-        await fetch(`/api/ai/price-war?id=${ids[0]}`, { method: "DELETE" });
+        await authJson(`/api/ai/price-war?id=${encodeURIComponent(ids[0])}`, undefined, "DELETE");
         mutateRules();
         setSelectedIds((prev) => { const next = new Set(prev); next.delete(ids[0]); return next; });
         toastSuccess("Rule deleted");
-      } catch (_e) { toastError("Failed to delete rule"); }
+      } catch (e) { console.error("[PriceWar] Failed to delete rule:", e instanceof Error ? e.message : e); toastError(e instanceof Error ? e.message : "Failed to delete rule"); }
     } else {
       try {
-        await fetch("/api/ai/price-war", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ruleIds: ids, action: "delete" }),
-        });
+        await authJson("/api/ai/price-war", { ruleIds: ids, action: "delete" }, "PATCH");
         mutateRules();
         setSelectedIds(new Set());
         toastSuccess(`${ids.length} rules deleted`);
-      } catch (_e) { toastError("Failed to delete rules"); }
+      } catch (e) { console.error("[PriceWar] Failed to delete rules:", e instanceof Error ? e.message : e); toastError(e instanceof Error ? e.message : "Failed to delete rules"); }
     }
   };
 
@@ -398,15 +445,11 @@ export default function PriceWarPage() {
       return;
     }
     try {
-      await fetch("/api/ai/price-war", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ruleIds: ids, action }),
-      });
+      await authJson("/api/ai/price-war", { ruleIds: ids, action }, "PATCH");
       mutateRules();
       setSelectedIds(new Set());
       toastSuccess(`${ids.length} rules ${action === "pause" ? "paused" : "resumed"}`);
-    } catch (_e) { toastError(`Failed to ${action} rules`); }
+    } catch (e) { console.error("[PriceWar] Failed to bulk update rules:", e instanceof Error ? e.message : e); toastError(e instanceof Error ? e.message : `Failed to ${action} rules`); }
   };
 
   const toggleSelectRule = (id: string) => {
@@ -434,9 +477,14 @@ export default function PriceWarPage() {
       log.newPrice.toFixed(2),
       (log.newPrice - log.previousPrice).toFixed(2),
       log.reason,
-      new Date(log.createdAt).toLocaleDateString(),
+      formatDate(log.createdAt),
     ]);
-    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");
+    // Guard large exports client-side
+    if (filteredLogs.length > 5000) {
+      toastError("Export too large for client-side download. Please narrow the date range.");
+      return;
+    }
+    const csv = [headers, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""') }"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -467,7 +515,7 @@ export default function PriceWarPage() {
             </button>
           </Tooltip>
           <Tooltip content="View competitor price alerts and notifications" position="bottom">
-            <button data-tour="settings" onClick={() => setShowAlerts(!showAlerts)} className="relative px-3 py-1.5 rounded-xl bg-surface border border-border text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-all flex items-center gap-1.5">
+            <button data-tour="alerts" onClick={() => setShowAlerts(!showAlerts)} className="relative px-3 py-1.5 rounded-xl bg-surface border border-border text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-all flex items-center gap-1.5">
               <Bell className="h-3 w-3" />
               Alerts
             </button>
@@ -543,12 +591,52 @@ export default function PriceWarPage() {
             <h3 className="font-display text-sm font-semibold text-foreground flex items-center gap-2">
               <Bell className="h-4 w-4" /> Competitor Alerts
             </h3>
-            <button onClick={() => setShowAlerts(false)} className="p-1 rounded-lg hover:bg-surface-hover"><X className="h-4 w-4 text-muted-foreground" /></button>
+            <div className="flex items-center gap-2">
+              {priceAlerts.some((a) => !a.read) && (
+                <button onClick={handleMarkAlertsRead} className="text-[10px] font-semibold text-accent hover:underline">
+                  Mark all read
+                </button>
+              )}
+              <button onClick={() => setShowAlerts(false)} className="p-1 rounded-lg hover:bg-surface-hover"><X className="h-4 w-4 text-muted-foreground" /></button>
+            </div>
           </div>
-          <div className="p-8 text-center">
-            <Info className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-            <p className="text-xs text-muted-foreground">Alerts will appear here when competitor prices change significantly.</p>
-          </div>
+          {alertsLoading ? (
+            <div className="p-8 text-center">
+              <Loader2 className="h-6 w-6 text-muted-foreground mx-auto mb-2 animate-spin" />
+              <p className="text-xs text-muted-foreground">Loading alerts…</p>
+            </div>
+          ) : alertsError ? (
+            <div className="p-8 text-center">
+              <AlertTriangle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-xs text-muted-foreground mb-3">Couldn&apos;t load alerts.</p>
+              <button onClick={() => mutateAlerts()} className="px-3 py-1.5 rounded-xl bg-surface border border-border text-[10px] font-semibold text-foreground hover:bg-surface-hover transition-all">
+                Retry
+              </button>
+            </div>
+          ) : priceAlerts.length === 0 ? (
+            <div className="p-8 text-center">
+              <Info className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-xs text-muted-foreground">Alerts will appear here when competitor prices change significantly.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {priceAlerts.map((alert) => (
+                <div key={alert.id} className={`p-3 rounded-xl border border-border flex items-start gap-3 ${alert.read ? "opacity-60" : ""}`}>
+                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase shrink-0 ${ALERT_SEVERITY_COLORS[alert.severity] || ALERT_SEVERITY_COLORS.low}`}>
+                    {alert.severity}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-xs ${alert.read ? "text-muted-foreground" : "text-foreground"}`}>{alert.message}</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Competitor ${alert.competitorPrice.toFixed(2)} · Yours ${alert.myPrice.toFixed(2)}
+                      {formatAlertTime(alert.createdAt) && <> · {formatAlertTime(alert.createdAt)}</>}
+                    </p>
+                  </div>
+                  {!alert.read && <span className="w-2 h-2 rounded-full bg-accent shrink-0 mt-1" aria-label="Unread alert" />}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -560,40 +648,94 @@ export default function PriceWarPage() {
             </h3>
             <button onClick={() => setShowSettings(false)} className="p-1 rounded-lg hover:bg-surface-hover"><X className="h-4 w-4 text-muted-foreground" /></button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="flex items-center justify-between p-3 rounded-xl bg-surface border border-border">
-              <div>
-                <p className="text-xs font-medium text-foreground">Auto-Apply Changes</p>
-                <p className="text-[10px] text-muted-foreground">Automatically apply suggested price changes</p>
-              </div>
-              <div className="w-9 h-5 rounded-full bg-accent/20 flex items-center p-0.5 cursor-pointer">
-                <div className="w-4 h-4 rounded-full bg-accent transition-transform translate-x-4" />
-              </div>
+          {settingsLoading ? (
+            <div className="p-8 text-center">
+              <Loader2 className="h-6 w-6 text-muted-foreground mx-auto mb-2 animate-spin" />
+              <p className="text-xs text-muted-foreground">Loading settings…</p>
             </div>
-            <div className="flex items-center justify-between p-3 rounded-xl bg-surface border border-border">
-              <div>
-                <p className="text-xs font-medium text-foreground">Notifications</p>
-                <p className="text-[10px] text-muted-foreground">Get notified on price adjustments</p>
+          ) : settingsError && !settingsData ? (
+            <div className="p-8 text-center">
+              <AlertTriangle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-xs text-muted-foreground mb-3">Couldn&apos;t load settings.</p>
+              <button onClick={() => mutateSettings()} className="px-3 py-1.5 rounded-xl bg-surface border border-border text-[10px] font-semibold text-foreground hover:bg-surface-hover transition-all">
+                Retry
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-surface border border-border">
+                  <div>
+                    <p className="text-xs font-medium text-foreground">Auto-Apply Changes</p>
+                    <p className="text-[10px] text-muted-foreground">Automatically apply suggested price changes</p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={settings.autoApply}
+                    aria-label="Auto-apply changes"
+                    onClick={() => updateSetting("autoApply", !settings.autoApply)}
+                    className={`w-9 h-5 rounded-full flex items-center p-0.5 cursor-pointer transition-colors ${settings.autoApply ? "bg-accent" : "bg-surface-hover"}`}
+                  >
+                    <div className={`w-4 h-4 rounded-full bg-white transition-transform ${settings.autoApply ? "translate-x-4" : ""}`} />
+                  </button>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-xl bg-surface border border-border">
+                  <div>
+                    <p className="text-xs font-medium text-foreground">Notifications</p>
+                    <p className="text-[10px] text-muted-foreground">Get notified on price adjustments</p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={settings.notifyOnAdjustment}
+                    aria-label="Notify on price adjustments"
+                    onClick={() => updateSetting("notifyOnAdjustment", !settings.notifyOnAdjustment)}
+                    className={`w-9 h-5 rounded-full flex items-center p-0.5 cursor-pointer transition-colors ${settings.notifyOnAdjustment ? "bg-accent" : "bg-surface-hover"}`}
+                  >
+                    <div className={`w-4 h-4 rounded-full bg-white transition-transform ${settings.notifyOnAdjustment ? "translate-x-4" : ""}`} />
+                  </button>
+                </div>
+                <div className="p-3 rounded-xl bg-surface border border-border">
+                  <label htmlFor="pw-check-interval" className="text-xs font-medium text-foreground mb-2 block">Check Interval</label>
+                  <select
+                    id="pw-check-interval"
+                    value={settings.checkIntervalMinutes}
+                    onChange={(e) => updateSetting("checkIntervalMinutes", Number(e.target.value))}
+                    className="w-full px-2 py-1.5 rounded-lg bg-background border border-border text-xs text-foreground"
+                  >
+                    <option value={15}>Every 15 minutes</option>
+                    <option value={30}>Every 30 minutes</option>
+                    <option value={60}>Every hour</option>
+                    <option value={120}>Every 2 hours</option>
+                    <option value={240}>Every 4 hours</option>
+                  </select>
+                </div>
+                <div className="p-3 rounded-xl bg-surface border border-border">
+                  <label htmlFor="pw-max-daily" className="text-xs font-medium text-foreground mb-2 block">Max Daily Adjustments</label>
+                  <input
+                    id="pw-max-daily"
+                    type="number"
+                    value={settings.maxDailyAdjustments}
+                    min={1}
+                    max={100}
+                    onChange={(e) => updateSetting("maxDailyAdjustments", Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
+                    className="w-full px-2 py-1.5 rounded-lg bg-background border border-border text-xs text-foreground"
+                  />
+                </div>
               </div>
-              <div className="w-9 h-5 rounded-full bg-accent/20 flex items-center p-0.5 cursor-pointer">
-                <div className="w-4 h-4 rounded-full bg-accent transition-transform translate-x-4" />
+              <div className="flex justify-end">
+                <button
+                  onClick={handleSaveSettings}
+                  disabled={savingSettings}
+                  className="px-4 py-2 rounded-xl bg-accent text-white text-xs font-semibold hover:bg-accent/80 disabled:opacity-50 transition-all flex items-center gap-1.5"
+                >
+                  {savingSettings ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  Save Settings
+                </button>
               </div>
-            </div>
-            <div className="p-3 rounded-xl bg-surface border border-border">
-              <p className="text-xs font-medium text-foreground mb-2">Check Interval</p>
-              <select className="w-full px-2 py-1.5 rounded-lg bg-background border border-border text-xs text-foreground">
-                <option value="15">Every 15 minutes</option>
-                <option value="30">Every 30 minutes</option>
-                <option value="60" selected>Every hour</option>
-                <option value="120">Every 2 hours</option>
-                <option value="240">Every 4 hours</option>
-              </select>
-            </div>
-            <div className="p-3 rounded-xl bg-surface border border-border">
-              <p className="text-xs font-medium text-foreground mb-2">Max Daily Adjustments</p>
-              <input type="number" defaultValue={50} min={1} max={100} className="w-full px-2 py-1.5 rounded-lg bg-background border border-border text-xs text-foreground" />
-            </div>
-          </div>
+            </>
+          )}
         </div>
       )}
 
@@ -622,7 +764,7 @@ export default function PriceWarPage() {
                     {s.label}
                   </button>
                   {expandedStrategy === s.id && (
-                    <div className="absolute z-10 bottom-full left-0 mb-1 px-2 py-1 rounded-lg bg-background border border-border text-[9px] text-muted-foreground whitespace-nowrap shadow-lg">
+                    <div className="absolute z-10 bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 rounded-lg bg-background border border-border text-[9px] text-muted-foreground w-max max-w-[85vw] whitespace-normal text-center shadow-lg">
                       {s.desc}
                     </div>
                   )}
@@ -688,9 +830,9 @@ export default function PriceWarPage() {
       )}
 
       {selectedIds.size > 0 && (
-        <div className="glass rounded-2xl p-3 flex items-center justify-between">
+        <div className="glass rounded-2xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-2">
           <span className="text-xs text-muted-foreground">{selectedIds.size} rule{selectedIds.size > 1 ? "s" : ""} selected</span>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Tooltip content="Pause all selected rules" position="top">
               <button onClick={() => handleBulkAction("pause")} className="px-2.5 py-1 rounded-lg bg-amber-400/10 text-amber-400 text-[10px] font-semibold hover:bg-amber-400/20 transition-all flex items-center gap-1">
                 <Pause className="h-3 w-3" /> Pause
@@ -740,6 +882,14 @@ export default function PriceWarPage() {
 
         {rulesLoading ? (
           <TableSkeleton rows={5} cols={6} />
+        ) : rulesError ? (
+          <div className="p-12 text-center">
+            <AlertTriangle className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground mb-3">Couldn&apos;t load price rules.</p>
+            <button onClick={() => mutateRules()} className="px-4 py-2 rounded-xl bg-surface border border-border text-xs font-semibold text-foreground hover:bg-surface-hover transition-all">
+              Retry
+            </button>
+          </div>
         ) : paginatedRules.length === 0 ? (
           <div className="p-12 text-center">
             <DollarSign className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
@@ -807,17 +957,17 @@ export default function PriceWarPage() {
                         <td className="p-3">
                           <div data-tour="rule-actions" className="flex items-center justify-end gap-1">
                             <Tooltip content="Edit this rule's settings" position="top">
-                              <button onClick={() => openEditForm(rule)} className="p-1.5 rounded-lg hover:bg-surface-hover transition-colors">
+                              <button onClick={() => openEditForm(rule)} aria-label={`Edit price rule for ${rule.productTitle}`} className="p-1.5 rounded-lg hover:bg-surface-hover transition-colors">
                                 <Edit3 className="h-3.5 w-3.5 text-muted-foreground" />
                               </button>
                             </Tooltip>
                             <Tooltip content={rule.status === "active" ? "Pause monitoring for this rule" : "Resume monitoring for this rule"} position="top">
-                              <button onClick={() => handleToggle(rule)} className="p-1.5 rounded-lg hover:bg-surface-hover transition-colors">
+                              <button onClick={() => handleToggle(rule)} aria-label={`${rule.status === "active" ? "Pause" : "Resume"} monitoring for ${rule.productTitle}`} className="p-1.5 rounded-lg hover:bg-surface-hover transition-colors">
                                 {rule.status === "active" ? <Pause className="h-3.5 w-3.5 text-amber-400" /> : <Play className="h-3.5 w-3.5 text-emerald-400" />}
                               </button>
                             </Tooltip>
                             <Tooltip content="Permanently delete this rule" position="top">
-                              <button onClick={() => handleDelete(rule.id)} className="p-1.5 rounded-lg hover:bg-surface-hover transition-colors">
+                              <button onClick={() => handleDelete(rule.id)} aria-label={`Delete price rule for ${rule.productTitle}`} className="p-1.5 rounded-lg hover:bg-surface-hover transition-colors">
                                 <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
                               </button>
                             </Tooltip>
@@ -919,7 +1069,7 @@ export default function PriceWarPage() {
                       </span>
                       <div className="text-right">
                         <span className={`font-semibold block ${change > 0 ? "text-red-400" : change < 0 ? "text-emerald-400" : "text-foreground"}`}>${log.newPrice.toFixed(2)}</span>
-                        <span className="text-muted-foreground block">{new Date(log.createdAt).toLocaleDateString()}</span>
+                        <span className="text-muted-foreground block">{formatDate(log.createdAt)}</span>
                       </div>
                     </div>
                   </div>
@@ -963,6 +1113,15 @@ export default function PriceWarPage() {
         danger
         onConfirm={confirmDeleteAction}
         onCancel={() => setConfirmDelete({ open: false, ids: [] })}
+      />
+      <ConfirmDialog
+        open={executeConfirm}
+        title="Execute live price check?"
+        description="This fetches current competitor prices and may apply automated price adjustments to live listings. Use Dry Run first to preview changes safely."
+        confirmLabel="Execute"
+        danger
+        onConfirm={() => void runExecute(false)}
+        onCancel={() => setExecuteConfirm(false)}
       />
     </div>
   );

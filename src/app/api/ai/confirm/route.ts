@@ -5,7 +5,7 @@ import { validateBody } from "@/lib/validation";
 import { z } from "zod";
 import { confirmExecution, cancelExecution, getExecutionRecord } from "@/lib/ai/engine/runner";
 import { logToolConfirmed, logToolCancelled } from "@/lib/ai/safety/audit-log";
-import { getAutonomyLevel } from "@/lib/ai/modes/user-prefs";
+import { getAutonomyLevel, getModePreferences } from "@/lib/ai/modes/user-prefs";
 import { safeErrorMessage } from "@/lib/api-errors";
 
 // ─── POST /api/ai/confirm ───────────────────────────────────────────────────
@@ -23,9 +23,10 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     const { executionId, action } = parseResult.data;
 
     const autonomyLevel = await getAutonomyLevel(uid);
+    const prefs = await getModePreferences(uid);
 
     if (action === "confirm") {
-      const result = await confirmExecution(uid, executionId);
+      const result = await confirmExecution(uid, executionId, prefs.guardrails);
       if (!result) {
         return NextResponse.json(
           { error: "Execution not found or not awaiting confirmation" },
