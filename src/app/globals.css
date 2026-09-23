@@ -363,19 +363,30 @@ body {
   animation: fade-in 0.8s ease-out forwards;
 }
 
-/* Glassmorphism */
-.glass {
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-}
+/* Glassmorphism — layered so Tailwind utilities can still override border/background */
+@layer components {
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+  }
 
-.glass-light {
-  background: var(--glass-bg);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--glass-border);
+  .glass-light {
+    background: var(--glass-bg);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--glass-border);
+  }
+
+  /* Primary CTA — darken accent so white text passes WCAG AA (4.5:1) on every theme */
+  .btn-accent {
+    background-color: color-mix(in srgb, var(--accent) 78%, black);
+    color: #fff;
+  }
+  .btn-accent:hover {
+    background-color: color-mix(in srgb, var(--accent) 65%, black);
+  }
 }
 
 /* Surface Hierarchy — Layered depth system */
@@ -859,31 +870,6 @@ body {
   animation: shimmer-gradient 1.8s ease-in-out infinite;
 }
 
-/* Cursor-following glow (applied via JS) */
-.cursor-glow {
-  position: relative;
-}
-.cursor-glow::after {
-  content: "";
-  position: absolute;
-  width: 200px;
-  height: 200px;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgba(var(--glow-color), 0.08),
-    transparent 70%
-  );
-  pointer-events: none;
-  transform: translate(-50%, -50%);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  z-index: 0;
-}
-.cursor-glow:hover::after {
-  opacity: 1;
-}
-
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -892,6 +878,10 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  html {
+    scroll-behavior: auto;
   }
 }
 
@@ -1969,51 +1959,6 @@ body {
 
 .hero-search-focused {
   animation: focus-ring-pulse 2s ease-in-out infinite;
-}
-
-/* Floating particles effect for hero */
-@keyframes float-particle {
-  0%,
-  100% {
-    transform: translateY(0) translateX(0);
-    opacity: 0;
-  }
-  10% {
-    opacity: 0.5;
-  }
-  90% {
-    opacity: 0.5;
-  }
-  100% {
-    transform: translateY(-100px) translateX(20px);
-    opacity: 0;
-  }
-}
-
-.hero-particle {
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: rgba(var(--glow-color), 0.3);
-  animation: float-particle 3s ease-in-out infinite;
-}
-
-.hero-particle:nth-child(1) {
-  animation-delay: 0s;
-  left: 20%;
-}
-.hero-particle:nth-child(2) {
-  animation-delay: 0.5s;
-  left: 40%;
-}
-.hero-particle:nth-child(3) {
-  animation-delay: 1s;
-  left: 60%;
-}
-.hero-particle:nth-child(4) {
-  animation-delay: 1.5s;
-  left: 80%;
 }
 
 /* Platform chip hover effect */

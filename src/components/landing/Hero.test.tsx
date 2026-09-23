@@ -21,7 +21,8 @@ vi.mock("./TypeWriter", () => ({
 describe("Hero", () => {
   it("renders main heading", () => {
     render(<Hero />);
-    expect(screen.getByText(/Your AI-Powered/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Your AI-Powered/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Your AI-Powered Dropshipping Command Center")).toBeInTheDocument();
   });
 
   it("renders subheading", () => {

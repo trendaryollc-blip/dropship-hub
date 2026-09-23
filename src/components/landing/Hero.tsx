@@ -18,6 +18,13 @@ const nicheCards = [
   { name: "Outdoor Gear", score: 78, growth: "+31%" },
 ];
 
+const typeWriterWords = [
+  "Command Center",
+  "Profit Engine",
+  "Market Intelligence",
+  "Winning Edge",
+];
+
 function MiniSparkline({ points, id }: { points: number[]; id: string }) {
   const w = 60;
   const h = 20;
@@ -84,15 +91,20 @@ export default function Hero() {
 
           <div className="text-center max-w-4xl mx-auto">
             <h1 className="animate-slide-up font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] mb-6">
-              <span className="text-foreground">Your AI-Powered</span>
-              <br />
-              <span className="gradient-text">
-                Dropshipping {" "}
-                <TypeWriter
-                  words={["Command Center", "Profit Engine", "Market Intelligence", "Winning Edge"]}
-                  typingSpeed={80}
-                  pauseTime={2000}
-                />
+              <span className="sr-only">
+                Your AI-Powered Dropshipping Command Center
+              </span>
+              <span aria-hidden="true">
+                <span className="text-foreground">Your AI-Powered</span>
+                <br />
+                <span className="gradient-text">
+                  Dropshipping{" "}
+                  <TypeWriter
+                    words={typeWriterWords}
+                    typingSpeed={80}
+                    pauseTime={2000}
+                  />
+                </span>
               </span>
             </h1>
 
@@ -103,7 +115,7 @@ export default function Hero() {
             <div className="animate-slide-up-delay-2 flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
               <Link
                 href="/sign-up"
-                className="group relative inline-flex items-center gap-2 px-6 sm:px-8 py-4 text-base font-semibold text-white rounded-2xl bg-accent hover:bg-accent-hover transition-all hover:shadow-[0_0_30px_rgba(var(--glow-color),0.4)] active:scale-[0.97]"
+                className="group relative inline-flex items-center gap-2 px-6 sm:px-8 py-4 text-base font-semibold rounded-2xl btn-accent transition-all hover:shadow-[0_0_30px_rgba(var(--glow-color),0.4)] active:scale-[0.97]"
               >
                 Start For Free
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -173,16 +185,16 @@ export default function Hero() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
                               <span className="text-[11px] font-semibold text-foreground truncate">{p.name}</span>
-                              <span className="text-[9px] text-muted-foreground hidden sm:inline">{p.platform}</span>
-                              <span className="px-1.5 py-0.5 rounded bg-accent/10 text-[8px] font-medium text-accent hidden sm:inline-block">High demand</span>
+                              <span className="text-[10px] text-muted-foreground hidden sm:inline">{p.platform}</span>
+                              <span className="px-1.5 py-0.5 rounded bg-accent/10 text-[10px] font-medium text-accent hidden sm:inline-block">High demand</span>
                             </div>
                           </div>
                           <span className="hidden sm:block"><MiniSparkline points={[20, 25, 22, 28, 30, 35, 32]} id={"prod" + String(i)} /></span>
                           <ConfidenceRing score={p.confidence} />
                           <div className="text-right shrink-0">
-                            <span className="text-[10px] font-bold text-emerald-400">{p.profit}</span>
-                            <span className="text-[9px] text-muted-foreground"> / {p.margin}%</span>
-                            <div className="text-[9px] font-medium text-emerald-400">{p.trend}%</div>
+                            <span className="text-[11px] font-bold text-emerald-400">{p.profit}</span>
+                            <span className="text-[10px] text-muted-foreground"> / {p.margin}%</span>
+                            <div className="text-[10px] font-medium text-emerald-400">{p.trend}%</div>
                           </div>
                         </div>
                       );
@@ -206,7 +218,7 @@ export default function Hero() {
                             <div className="flex-1 h-1.5 rounded-full bg-surface overflow-hidden">
                               <div className="h-full rounded-full bg-gradient-to-r from-accent to-emerald-400 transition-all duration-700" style={{ width: n.score + "%" }} />
                             </div>
-                            <span className="text-[9px] font-medium text-emerald-400">{n.growth}</span>
+                            <span className="text-[10px] font-medium text-emerald-400">{n.growth}</span>
                           </div>
                         </div>
                       );

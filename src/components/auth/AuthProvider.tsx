@@ -32,6 +32,20 @@ export function useAuth() {
   return context;
 }
 
+/**
+ * Mirror Firebase auth into a first-party cookie so edge middleware can
+ * gate (app)/(admin) routes before React hydrates. This is a UX gate only —
+ * APIs still require a verified Firebase ID token.
+ */
+export function setSessionCookie(active: boolean) {
+  if (typeof document === "undefined") return;
+  if (active) {
+    document.cookie = `dh_session=1; path=/; max-age=${60 * 60 * 24 * 7}; samesite=lax`;
+  } else {
+    document.cookie = "dh_session=; path=/; max-age=0; samesite=lax";
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);
+      setSessionCookie(!!user);
     });
     return unsubscribe;
   }, []);
@@ -48,10 +63,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onIdTokenChanged(auth, (user) => {
       if (!user) {
         setUser(null);
+        setSessionCookie(false);
       }
     }, (error) => {
       logger.error("Token refresh failed", { error: error instanceof Error ? error.message : String(error) });
       setUser(null);
+      setSessionCookie(false);
     });
     return unsubscribe;
   }, []);

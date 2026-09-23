@@ -112,8 +112,18 @@ export default function ThemeGallery() {
         restoreTheme();
       }
     }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setOpen(false);
+        restoreTheme();
+      }
+    }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [restoreTheme]);
 
   const handleEnter = useCallback(
@@ -143,6 +153,7 @@ export default function ThemeGallery() {
     <div ref={ref} className="relative">
       {/* Trigger Button */}
       <button
+        type="button"
         onClick={() => {
           if (open) {
             restoreTheme();
@@ -152,7 +163,9 @@ export default function ThemeGallery() {
           }
         }}
         className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-all duration-200"
-        aria-label="Open theme gallery"
+        aria-label={open ? "Close theme gallery" : "Open theme gallery"}
+        aria-expanded={open}
+        aria-haspopup="dialog"
       >
         <Palette className="h-4 w-4" />
         <span className="hidden sm:inline">Themes</span>

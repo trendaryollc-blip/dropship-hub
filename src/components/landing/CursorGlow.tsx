@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function CursorGlow() {
-  const [position, setPosition] = useState({ x: -100, y: -100 });
   const [visible, setVisible] = useState(false);
-  const [glowColor, setGlowColor] = useState("59,130,246");
+  const glowRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const updateGlowColor = () => {
       const color = getComputedStyle(document.documentElement).getPropertyValue("--glow-color").trim();
-      if (color) setGlowColor(color);
+      const c = color || "59,130,246";
+      if (glowRef.current) {
+        glowRef.current.style.background = `radial-gradient(circle, rgba(${c},0.06) 0%, transparent 70%)`;
+      }
     };
 
     updateGlowColor();
@@ -30,7 +32,11 @@ export default function CursorGlow() {
     }
 
     const handleMouseMove = (e: MouseEvent) => {
-      setPosition({ x: e.clientX, y: e.clientY });
+      const glow = glowRef.current;
+      if (glow) {
+        glow.style.left = `${e.clientX - 200}px`;
+        glow.style.top = `${e.clientY - 200}px`;
+      }
       setVisible(true);
     };
 
@@ -52,15 +58,16 @@ export default function CursorGlow() {
     <div
       className="pointer-events-none fixed inset-0 z-50 transition-opacity duration-300"
       style={{ opacity: visible ? 1 : 0 }}
+      aria-hidden="true"
     >
       <div
+        ref={glowRef}
         className="absolute rounded-full blur-[120px]"
         style={{
-          left: position.x - 200,
-          top: position.y - 200,
+          left: -300,
+          top: -300,
           width: 400,
           height: 400,
-          background: `radial-gradient(circle, rgba(${glowColor},0.06) 0%, transparent 70%)`,
         }}
       />
     </div>

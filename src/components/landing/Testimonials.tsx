@@ -85,9 +85,12 @@ export default function Testimonials() {
               style={{ transitionDelay: `${i * 100}ms` }}
             >
               <div className="flex items-center gap-1 mb-4">
-                {Array.from({ length: t.stars }).map((_, j) => (
-                  <Star key={j} className="h-4 w-4 fill-amber-400 text-amber-400" />
-                ))}
+                <span className="sr-only">{t.stars} out of 5 stars</span>
+                <span aria-hidden="true" className="inline-flex items-center gap-1">
+                  {Array.from({ length: t.stars }).map((_, j) => (
+                    <Star key={j} className="h-4 w-4 fill-amber-400 text-amber-400" />
+                  ))}
+                </span>
               </div>
 
               <div className="relative mb-4">
@@ -98,7 +101,10 @@ export default function Testimonials() {
               </div>
 
               <div className="flex items-center gap-3 pt-4 border-t border-border">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold ${t.avatarBg}`}>
+                <div
+                  aria-hidden="true"
+                  className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold ${t.avatarBg}`}
+                >
                   {t.avatar}
                 </div>
                 <div>

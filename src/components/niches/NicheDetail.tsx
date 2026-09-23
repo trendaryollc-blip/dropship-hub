@@ -146,7 +146,7 @@ export default function NicheDetail({ niche, onMission, onWatchlist, onListing }
           <button onClick={() => onListing?.(niche.id)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-400/10 border border-purple-400/20 text-purple-400 text-xs font-semibold hover:bg-purple-400/20 transition-all">
             <Sparkles className="h-3.5 w-3.5" /> Generate Listing
           </button>
-          <Link href={`/products/${niche.id}`} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-border text-muted-foreground text-xs font-semibold hover:text-foreground hover:border-accent/20 transition-all">
+          <Link href={`/products?q=${encodeURIComponent(niche.name)}`} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-border text-muted-foreground text-xs font-semibold hover:text-foreground hover:border-accent/20 transition-all">
             <Eye className="h-3.5 w-3.5" /> View Details
           </Link>
         </div>

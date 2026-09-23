@@ -12,11 +12,16 @@ const stats = [
 
 function StatItem({ stat, isInView }: { stat: typeof stats[0]; isInView: boolean }) {
   const count = useAnimatedCounter(stat.end, 2000, isInView);
+  const display = stat.isFree ? "Free" : `${count}${stat.suffix}`;
+  const fullLabel = stat.isFree ? "Free" : `${stat.end}${stat.suffix} ${stat.label}`;
 
   return (
     <div className="text-center">
-      <p className="font-display text-4xl md:text-5xl font-bold gradient-text mb-2">
-        {stat.isFree ? "Free" : `${count}${stat.suffix}`}
+      <p
+        className="font-display text-4xl md:text-5xl font-bold gradient-text mb-2"
+        aria-label={fullLabel}
+      >
+        {display}
       </p>
       <p className="font-display text-sm font-semibold text-foreground mb-1">
         {stat.label}

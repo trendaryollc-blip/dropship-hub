@@ -5,10 +5,12 @@ import {
   Target, Search, Flame, BarChart3, TrendingUp, RefreshCw,
   SlidersHorizontal, X, DollarSign, ArrowLeftRight,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useInView } from "@/hooks/useInView";
 import type { NicheData } from "@/types/niches";
 import { useAPI } from "@/hooks/useAPI";
-import { logger } from "@/lib/logger";
+import { useToast } from "@/components/ui/Toast";
+import { authJson } from "@/lib/auth-headers";
 import NicheHeatmapCard from "@/components/niches/NicheHeatmapCard";
 import NicheListItem from "@/components/niches/NicheListItem";
 import NicheDetail from "@/components/niches/NicheDetail";
@@ -113,6 +115,54 @@ export default function NichesPage() {
 
   const hasActiveFilters = minMargin > 0 || maxMargin < 100 || minHeat > 0 || competitionFilter !== "all" || riskFilter !== "all" || trendFilter !== "all" || categoryFilter !== "all";
 
+  const router = useRouter();
+  const { success: toastSuccess, error: toastError } = useToast();
+
+  const handleStartMission = async (id: string) => {
+    const niche = niches.find((n) => n.id === id);
+    if (!niche) return;
+    try {
+      await authJson("/api/ai/missions", {
+        action: "create",
+        text: `Research ${niche.name} niche: analyze top products and competition`,
+        priority: "medium",
+        category: "custom",
+        type: "daily",
+      }, "PATCH");
+      toastSuccess(`Mission created for "${niche.name}"`);
+      router.push("/missions");
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Failed to create mission");
+    }
+  };
+
+  const handleAddToWatchlist = async (id: string) => {
+    const niche = niches.find((n) => n.id === id);
+    if (!niche) return;
+    try {
+      await authJson("/api/ai/trends/watchlist", {
+        keyword: niche.name,
+        category: niche.category || "general",
+        alertOnRising: true,
+        alertOnPeak: true,
+        alertOnSaturation: false,
+      });
+      toastSuccess(`Added "${niche.name}" to watchlist`);
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Failed to add to watchlist");
+    }
+  };
+
+  const handleGenerateListing = (id: string) => {
+    const niche = niches.find((n) => n.id === id);
+    if (!niche) return;
+    const params = new URLSearchParams({
+      title: niche.topProduct || niche.name,
+      category: niche.category,
+    });
+    router.push(`/product-listings?${params.toString()}`);
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 pb-16 md:pb-24">
       {/* Hero */}
@@ -176,7 +226,7 @@ export default function NichesPage() {
             </button>
             {compareIds.length >= 2 && (
               <button
-                onClick={() => setSelectedNicheId(null)}
+                onClick={() => setCompareIds([])}
                 className="px-4 py-3 rounded-xl bg-accent/10 border border-accent/30 text-accent text-sm min-h-[44px] flex items-center gap-2"
               >
                 <ArrowLeftRight className="h-4 w-4" /> Comparing ({compareIds.length})
@@ -310,9 +360,9 @@ export default function NichesPage() {
           {selectedNiche && (
             <NicheDetail
               niche={selectedNiche}
-              onMission={(id) => { logger.debug("Niche action", { action: "mission", id }); }}
-              onWatchlist={(id) => { logger.debug("Niche action", { action: "watchlist", id }); }}
-              onListing={(id) => { logger.debug("Niche action", { action: "listing", id }); }}
+              onMission={handleStartMission}
+              onWatchlist={handleAddToWatchlist}
+              onListing={handleGenerateListing}
             />
           )}
 
@@ -327,9 +377,9 @@ export default function NichesPage() {
                   index={i}
                   onSelect={(id) => setSelectedNicheId(id === selectedNicheId ? null : id)}
                   onCompare={toggleCompare}
-                  onMission={(id) => { logger.debug("Niche action", { action: "mission", id }); }}
-                  onWatchlist={(id) => { logger.debug("Niche action", { action: "watchlist", id }); }}
-                  onListing={(id) => { logger.debug("Niche action", { action: "listing", id }); }}
+                  onMission={handleStartMission}
+                  onWatchlist={handleAddToWatchlist}
+                  onListing={handleGenerateListing}
                   compareIds={compareIds}
                 />
               ))}

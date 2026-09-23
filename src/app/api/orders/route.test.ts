@@ -30,7 +30,13 @@ function buildQueryChain(docs: any[]) {
     orderBy: vi.fn().mockReturnThis(),
     offset: vi.fn().mockReturnThis(),
     limit: vi.fn().mockReturnThis(),
-    get: vi.fn().mockResolvedValue({ docs: buildMockDocs(docs), empty: docs.length === 0, size: docs.length }),
+    count: vi.fn().mockReturnThis(),
+    get: vi.fn().mockResolvedValue({
+      docs: buildMockDocs(docs),
+      empty: docs.length === 0,
+      size: docs.length,
+      data: () => ({ count: docs.length }),
+    }),
   };
 }
 function buildMockDb(collectionMap: Record<string, any[]>) {

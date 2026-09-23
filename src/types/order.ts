@@ -52,6 +52,8 @@ export interface RoutingAnalytics {
   optimizationBreakdown: { type: string; count: number }[];
   costSavings: number;
   timeSavings: number;
+  /** Orders per day for the selected window (real data from the API). */
+  dailyCounts?: { date: string; count: number }[];
 }
 
 export interface RoutingHistory {

@@ -63,14 +63,11 @@ export default function HowItWorks() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 relative">
-          {/* Mobile connector lines */}
-          <div className="md:hidden absolute left-8 top-16 bottom-16 w-px bg-gradient-to-b from-accent/30 via-accent-warm/30 to-emerald-400/30" />
-
           {steps.map((step, index) => (
             <div key={step.number} className={`relative transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`} style={{ transitionDelay: `${index * 150}ms` }}>
-              {/* Desktop connector line */}
+              {/* Desktop connector — spans only the grid gap, never crosses cards */}
               {index < steps.length - 1 && (
-                <div className="hidden md:block absolute top-12 left-[calc(50%+80px)] right-[calc(-50%+80px)] h-px bg-gradient-to-r from-border via-border to-transparent" />
+                <div className="hidden md:block absolute top-12 left-full w-8 h-px bg-gradient-to-r from-border to-border/40" />
               )}
 
               <Link href={step.href} className="glass rounded-2xl p-8 text-center relative block group hover:border-accent/20 transition-all hover:bg-surface-hover cursor-pointer">

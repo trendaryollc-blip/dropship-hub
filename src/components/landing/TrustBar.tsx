@@ -36,13 +36,13 @@ export default function TrustBar() {
           <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
           <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
 
-          {/* Scrolling brand row */}
+          {/* Scrolling brand row — each chip carries its own trailing margin so -50% loops seamlessly */}
           <div className="flex overflow-hidden" aria-hidden="true">
-            <div className={`flex items-center gap-12 whitespace-nowrap ${isInView ? "animate-scroll" : ""}`}>
+            <div className={`flex items-center whitespace-nowrap ${isInView ? "animate-scroll" : ""}`}>
               {[...brands, ...brands].map((brand, i) => (
                 <div
                   key={`${brand.name}-${i}`}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl glass border border-border/50 hover:border-accent/20 transition-all cursor-default shrink-0"
+                  className="flex items-center gap-2 px-6 py-3 mr-12 rounded-xl glass border border-border/50 hover:border-accent/20 transition-all cursor-default shrink-0"
                 >
                   <div className="w-6 h-6 rounded bg-accent/10 flex items-center justify-center">
                     <span className="text-[10px] font-bold text-accent">{brand.name[0]}</span>

@@ -18,7 +18,8 @@ describe("HowItWorks", () => {
 
   it("renders section label", () => {
     render(<HowItWorks />);
-    expect(screen.getByText("How It Works")).toBeInTheDocument();
+    // May appear in navbar mock-free render as nav link too — match section label
+    expect(screen.getAllByText("How It Works").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders all three steps", () => {

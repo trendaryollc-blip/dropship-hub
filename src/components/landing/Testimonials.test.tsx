@@ -42,4 +42,9 @@ describe("Testimonials", () => {
     render(<Testimonials />);
     expect(screen.getByText(/replaced all of them/)).toBeInTheDocument();
   });
+
+  it("exposes star ratings to screen readers", () => {
+    render(<Testimonials />);
+    expect(screen.getAllByText("5 out of 5 stars").length).toBe(6);
+  });
 });

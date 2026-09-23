@@ -44,9 +44,9 @@ export default function Footer() {
 
           {Object.entries(footerLinks).map(([category, links]) => (
             <div key={category}>
-              <p className="font-display text-sm font-semibold text-foreground mb-4">
+              <h2 className="font-display text-sm font-semibold text-foreground mb-4">
                 {category}
-              </p>
+              </h2>
               <ul className="space-y-3">
                 {links.map((link) => (
                   <li key={link.label}>
@@ -64,7 +64,7 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-border pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground" suppressHydrationWarning>
             &copy; {new Date().getFullYear()} DropShip Hub. All rights reserved.
           </p>
           <div className="flex items-center gap-6">

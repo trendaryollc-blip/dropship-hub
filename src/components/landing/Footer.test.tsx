@@ -14,9 +14,9 @@ describe("Footer", () => {
 
   it("renders category headings", () => {
     render(<Footer />);
-    expect(screen.getByText("Product")).toBeInTheDocument();
-    expect(screen.getByText("Tools")).toBeInTheDocument();
-    expect(screen.getByText("Account")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Product", level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Tools", level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Account", level: 2 })).toBeInTheDocument();
   });
 
   it("renders product links", () => {

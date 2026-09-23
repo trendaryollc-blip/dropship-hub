@@ -8,17 +8,32 @@ export default function ScrollProgress() {
   useEffect(() => {
     const handleScroll = () => {
       const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
-      if (totalHeight <= 0) return;
+      if (totalHeight <= 0) {
+        setProgress(0);
+        return;
+      }
       const scrolled = Math.min(100, Math.max(0, (window.scrollY / totalHeight) * 100));
       setProgress(scrolled);
     };
 
+    handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    window.addEventListener("resize", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
   }, []);
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[100] h-[2px]">
+    <div
+      className="fixed top-0 left-0 right-0 z-[100] h-[2px]"
+      role="progressbar"
+      aria-label="Page scroll progress"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(progress)}
+    >
       <div
         className="h-full bg-gradient-to-r from-accent via-purple-500 to-accent-warm transition-[width] duration-150 ease-out"
         style={{ width: `${progress}%` }}

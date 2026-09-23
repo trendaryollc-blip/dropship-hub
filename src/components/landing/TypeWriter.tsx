@@ -21,7 +21,18 @@ export default function TypeWriter({
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    const currentWord = words[currentWordIndex];
+    if (words.length === 0) {
+      setCurrentText("");
+      return;
+    }
+
+    // Respect prefers-reduced-motion: show the first word statically
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setCurrentText(words[0] ?? "");
+      return;
+    }
+
+    const currentWord = words[currentWordIndex] ?? words[0] ?? "";
 
     // Phase 1: Typing
     if (!isFading) {

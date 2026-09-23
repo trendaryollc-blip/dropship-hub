@@ -37,11 +37,13 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     if (!loading) return;
     const timer = setTimeout(() => {
       if (loading) {
-        router.push("/sign-in");
+        // Keep the intended destination so a slow session restore still
+        // returns the user to the page they asked for.
+        router.push(`/sign-in?callbackUrl=${encodeURIComponent(pathname)}`);
       }
     }, 10_000);
     return () => clearTimeout(timer);
-  }, [loading, router]);
+  }, [loading, router, pathname]);
 
   if (loading) {
     return (

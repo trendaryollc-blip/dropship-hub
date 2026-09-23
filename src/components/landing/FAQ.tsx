@@ -80,6 +80,7 @@ export default function FAQ() {
               </button>
               <div
                 id={`faq-panel-${i}`}
+                aria-hidden={openIndex !== i}
                 className={`grid transition-all duration-300 ${
                   openIndex === i ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
                 }`}

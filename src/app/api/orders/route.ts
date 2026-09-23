@@ -4,6 +4,28 @@ import { withAuth } from "@/lib/auth";
 import { RoutingDecisionSchema, SavePreferencesSchema, RouteOrderSchema, ReRouteSchema, validateBody } from "@/lib/validation";
 import { safeErrorMessage } from "@/lib/api-errors";
 
+/** Bounded Firestore scan window for in-memory search/filter. */
+const SEARCH_WINDOW = 500;
+
+function supplierDisplayName(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object") {
+    const name = (value as Record<string, unknown>).supplierName;
+    if (typeof name === "string") return name;
+  }
+  return "";
+}
+
+function decisionMatches(d: Record<string, unknown>, q: string, supplier: string): boolean {
+  if (supplier && supplierDisplayName(d.selectedSupplier) !== supplier) return false;
+  if (!q) return true;
+  const title = typeof d.productTitle === "string" ? d.productTitle.toLowerCase() : "";
+  const orderId = typeof d.orderId === "string" ? d.orderId.toLowerCase() : "";
+  const custLoc = typeof d.customerLocation === "string" ? d.customerLocation.toLowerCase() : "";
+  const supName = supplierDisplayName(d.selectedSupplier).toLowerCase();
+  return title.includes(q) || orderId.includes(q) || custLoc.includes(q) || supName.includes(q);
+}
+
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const { searchParams } = new URL(request.url);
@@ -25,29 +47,29 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
       if (status) {
         queryRef = queryRef.where("status", "==", status);
       }
-      if (supplier) {
-        queryRef = queryRef.where("selectedSupplier", "==", supplier);
-      }
 
       const sortField = sortBy === "totalCost" ? "totalCost" : sortBy === "shippingDays" ? "shippingDays" : "createdAt";
       queryRef = queryRef.orderBy(sortField, sortOrder === "asc" ? "asc" : "desc");
 
-      const countSnap = await queryRef.get();
-      const totalCount = countSnap.size;
+      const q = search.trim().toLowerCase();
+
+      if (q || supplier) {
+        // contains() and object-field equality aren't expressible in Firestore —
+        // scan a bounded window, filter in memory, then paginate.
+        const windowSnap = await queryRef.limit(SEARCH_WINDOW).get();
+        const matched = windowSnap.docs
+          .map((d) => ({ id: d.id, ...d.data() }) as Record<string, unknown>)
+          .filter((d) => decisionMatches(d, q, supplier));
+        const totalCount = matched.length;
+        const decisions = matched.slice(offset, offset + limitParam);
+        return NextResponse.json({ decisions, totalCount, page, limit: limitParam, totalPages: Math.ceil(totalCount / limitParam) });
+      }
+
+      const countSnap = await queryRef.count().get();
+      const totalCount = countSnap.data().count;
 
       const snap = await queryRef.offset(offset).limit(limitParam).get();
-      let decisions = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Array<Record<string, unknown>>;
-
-      if (search) {
-        const q = search.toLowerCase();
-        decisions = decisions.filter((d) => {
-          const title = typeof d.productTitle === "string" ? d.productTitle.toLowerCase() : "";
-          const orderId = typeof d.orderId === "string" ? d.orderId.toLowerCase() : "";
-          const custLoc = typeof d.customerLocation === "string" ? d.customerLocation.toLowerCase() : "";
-          const supName = typeof d.selectedSupplier === "string" ? d.selectedSupplier.toLowerCase() : "";
-          return title.includes(q) || orderId.includes(q) || custLoc.includes(q) || supName.includes(q);
-        });
-      }
+      const decisions = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Record<string, unknown>);
 
       return NextResponse.json({ decisions, totalCount, page, limit: limitParam, totalPages: Math.ceil(totalCount / limitParam) });
     }
@@ -133,11 +155,9 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
           avgShippingDays: +(totalShippingDays / count).toFixed(1),
           avgCost: +(totalCost / count).toFixed(2),
           supplierDistribution,
-          optimizationBreakdown: [
-            { type: "Speed", count: optCounts.Speed || Math.floor(count * 0.33) },
-            { type: "Cost", count: optCounts.Cost || Math.floor(count * 0.33) },
-            { type: "Balanced", count: optCounts.Balanced || (count - Math.floor(count * 0.66)) },
-          ],
+          optimizationBreakdown: Object.entries(optCounts)
+            .map(([type, c]) => ({ type, count: c }))
+            .filter((o) => o.count > 0),
           costSavings: +totalSavings.toFixed(2),
           timeSavings: count > 0 ? +(totalTimeSavings / count).toFixed(1) : 0,
           dailyCounts: dailyCountsArray,
@@ -149,10 +169,8 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
       let queryRef: FirebaseFirestore.Query = db.collection("users").doc(uid).collection("routingDecisions").orderBy("createdAt", "desc");
 
       if (status) queryRef = queryRef.where("status", "==", status);
-      if (supplier) queryRef = queryRef.where("selectedSupplier", "==", supplier);
 
-      const snap = await queryRef.offset(offset).limit(limitParam).get();
-      let history = snap.docs.map((d) => {
+      const mapHistory = (d: { id: string; data: () => FirebaseFirestore.DocumentData }) => {
         const data = d.data();
         const supplierObj = typeof data.selectedSupplier === "object" && data.selectedSupplier !== null ? data.selectedSupplier as Record<string, unknown> : null;
         return {
@@ -169,19 +187,26 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
           status: data.status || "routed",
           routedAt: data.routedAt || data.createdAt || "",
         };
-      });
+      };
 
-      if (search) {
-        const q = search.toLowerCase();
-        history = history.filter((h) => {
-          return h.orderId.toLowerCase().includes(q) ||
-            h.productTitle.toLowerCase().includes(q) ||
-            h.customerLocation.toLowerCase().includes(q) ||
-            h.selectedSupplier.toLowerCase().includes(q);
-        });
+      const q = search.trim().toLowerCase();
+      const matchesHistory = (h: { orderId: string; productTitle: string; customerLocation: string; selectedSupplier: string }) => {
+        if (supplier && h.selectedSupplier !== supplier) return false;
+        if (!q) return true;
+        return h.orderId.toLowerCase().includes(q) || h.productTitle.toLowerCase().includes(q) ||
+          h.customerLocation.toLowerCase().includes(q) || h.selectedSupplier.toLowerCase().includes(q);
+      };
+
+      if (q || supplier) {
+        // contains() and object-field equality aren't expressible in Firestore —
+        // scan a bounded window, filter in memory, then paginate.
+        const windowSnap = await queryRef.limit(SEARCH_WINDOW).get();
+        const history = windowSnap.docs.map(mapHistory).filter(matchesHistory).slice(offset, offset + limitParam);
+        return NextResponse.json({ history });
       }
 
-      return NextResponse.json({ history });
+      const snap = await queryRef.offset(offset).limit(limitParam).get();
+      return NextResponse.json({ history: snap.docs.map(mapHistory) });
     }
 
     if (type === "suppliers") {

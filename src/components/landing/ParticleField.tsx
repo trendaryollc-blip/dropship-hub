@@ -69,7 +69,7 @@ export default function ParticleField() {
         ctx.fill();
       });
 
-      // Draw connections (with spatial optimization — only check nearby particles)
+      // Draw connections (spatial grid, only check nearby cells; skip already-paired links)
       const gridSize = 120;
       const grid = new Map<string, Particle[]>();
       for (const p of particles) {
@@ -96,7 +96,7 @@ export default function ParticleField() {
               const ddy = pi.y - pj.y;
               const dist = Math.sqrt(ddx * ddx + ddy * ddy);
 
-              if (dist < 120) {
+              if (dist < 120 && (pi.x < pj.x || (pi.x === pj.x && pi.y < pj.y))) {
                 ctx.beginPath();
                 ctx.moveTo(pi.x, pi.y);
                 ctx.lineTo(pj.x, pj.y);

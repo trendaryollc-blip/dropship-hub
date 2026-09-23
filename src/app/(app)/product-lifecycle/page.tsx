@@ -13,6 +13,8 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import type { ProductLifecycle, LifecycleAlert, LifecycleStage, LifecycleStageInfo } from "@/types/product";
 import { useAPI } from "@/hooks/useAPI";
 import { useToast } from "@/components/ui/Toast";
+import { authJson } from "@/lib/auth-headers";
+import { toDate, formatDate } from "@/lib/dates";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import EmptyState from "@/components/ui/EmptyState";
 
@@ -36,12 +38,7 @@ type SortDir = "asc" | "desc";
 type ViewMode = "grid" | "list" | "kanban";
 
 function parseDate(dateStr: string | undefined): number {
-  if (!dateStr) return 0;
-  if (typeof dateStr === "object" && "toDate" in (dateStr as Record<string, unknown>)) {
-    return (dateStr as { toDate: () => Date }).toDate().getTime();
-  }
-  const t = new Date(dateStr).getTime();
-  return isNaN(t) ? 0 : t;
+  return toDate(dateStr)?.getTime() ?? 0;
 }
 
 // ─── Add Product Modal ──────────────────────────────────────────
@@ -49,7 +46,7 @@ function parseDate(dateStr: string | undefined): number {
 function AddProductModal({ open, onClose, onAdd }: {
   open: boolean;
   onClose: () => void;
-  onAdd: (data: { productTitle: string; productImage: string; category: string; currentStage: LifecycleStage; supplierUrl: string; storeUrl: string; notes: string }) => void;
+  onAdd: (data: { productTitle: string; productImage: string; category: string; currentStage: LifecycleStage; supplierUrl: string; storeUrl: string; notes: string }) => Promise<boolean>;
 }) {
   const [title, setTitle] = useState("");
   const [image, setImage] = useState("");
@@ -82,10 +79,13 @@ function AddProductModal({ open, onClose, onAdd }: {
     e.preventDefault();
     if (!title.trim() || submitting) return;
     setSubmitting(true);
-    onAdd({ productTitle: title.trim(), productImage: image.trim(), category: category.trim(), currentStage: stage, supplierUrl: supplierUrl.trim(), storeUrl: storeUrl.trim(), notes: notes.trim() });
-    reset();
+    // Only close on success — a failed save keeps the form so input isn't lost.
+    const ok = await onAdd({ productTitle: title.trim(), productImage: image.trim(), category: category.trim(), currentStage: stage, supplierUrl: supplierUrl.trim(), storeUrl: storeUrl.trim(), notes: notes.trim() });
     setSubmitting(false);
-    onClose();
+    if (ok) {
+      reset();
+      onClose();
+    }
   };
 
   if (!open) return null;
@@ -358,7 +358,7 @@ function ProductDetailModal({ product, open, onClose, onStageChange, onDelete }:
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] text-muted-foreground">Stage Entered</span>
-                  <span className="text-xs font-bold text-foreground">{new Date(product.stageEnteredAt).toLocaleDateString()}</span>
+                  <span className="text-xs font-bold text-foreground">{formatDate(product.stageEnteredAt) || "—"}</span>
                 </div>
               </div>
               <div className="p-4 rounded-xl bg-surface text-center">
@@ -693,14 +693,14 @@ export default function ProductLifecyclePage() {
   const { success, error: showError } = useToast();
   const uid = user?.uid || "";
 
-  const { data: pData, mutate: mutateProducts } = useAPI<{ products?: ProductLifecycle[] }>(uid ? `/api/products/lifecycle?type=overview&uid=${uid}` : null);
-  const { data: aData, mutate: mutateAlerts } = useAPI<{ alerts?: (LifecycleAlert & { productTitle: string; productImage: string })[] }>(uid ? `/api/products/lifecycle?type=alerts&uid=${uid}` : null);
-  const { data: sData } = useAPI<{ stages?: { stage: LifecycleStage; count: number; products: string[] }[] }>(uid ? `/api/products/lifecycle?type=stages&uid=${uid}` : null);
+  const { data: pData, error: pError, isLoading: pLoading, mutate: mutateProducts } = useAPI<{ products?: ProductLifecycle[] }>(uid ? "/api/products/lifecycle?type=overview" : null);
+  const { data: aData, error: aError, mutate: mutateAlerts } = useAPI<{ alerts?: (LifecycleAlert & { productTitle: string; productImage: string })[] }>(uid ? "/api/products/lifecycle?type=alerts" : null);
+  const { data: sData } = useAPI<{ stages?: { stage: LifecycleStage; count: number; products: string[] }[] }>(uid ? "/api/products/lifecycle?type=stages" : null);
 
   const products = useMemo(() => pData?.products || [], [pData]);
   const alerts = useMemo(() => aData?.alerts || [], [aData]);
   const stages = useMemo(() => sData?.stages || [], [sData]);
-  const isLoading = !user || (!pData && !sData);
+  const isLoading = !user || (pLoading && !pData);
 
   const [activeTab, setActiveTab] = useState<"pipeline" | "products" | "alerts">("pipeline");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
@@ -751,93 +751,62 @@ export default function ProductLifecyclePage() {
     return { totalRevenue, totalProfit, totalOrders, avgMargin, totalProducts: active.length };
   }, [products]);
 
-  const handleAddProduct = useCallback(async (data: { productTitle: string; productImage: string; category: string; currentStage: LifecycleStage; supplierUrl: string; storeUrl: string; notes: string }) => {
+  const handleAddProduct = useCallback(async (data: { productTitle: string; productImage: string; category: string; currentStage: LifecycleStage; supplierUrl: string; storeUrl: string; notes: string }): Promise<boolean> => {
     try {
-      const res = await fetch("/api/products/lifecycle", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productId: `prod_${Date.now()}`,
-          productTitle: data.productTitle,
-          productImage: data.productImage,
-          category: data.category,
-          currentStage: data.currentStage,
-          stageEnteredAt: new Date().toISOString(),
-          totalDaysTracked: 0,
-          supplierUrl: data.supplierUrl,
-          storeUrl: data.storeUrl,
-          notes: data.notes,
-        }),
-      });
-      if (res.ok) {
-        success("Product added to lifecycle");
-        mutateProducts();
-      } else {
-        const err = await res.json().catch(() => ({}));
-        showError(err.error || "Failed to add product");
-      }
-    } catch {
-      showError("Failed to add product");
+      await authJson("/api/products/lifecycle", {
+        productId: `prod_${Date.now()}`,
+        productTitle: data.productTitle,
+        productImage: data.productImage,
+        category: data.category,
+        currentStage: data.currentStage,
+        stageEnteredAt: new Date().toISOString(),
+        totalDaysTracked: 0,
+        supplierUrl: data.supplierUrl,
+        storeUrl: data.storeUrl,
+        notes: data.notes,
+      }, "POST");
+      success("Product added to lifecycle");
+      mutateProducts();
+      return true;
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "Failed to add product");
+      return false;
     }
   }, [mutateProducts, success, showError]);
 
   const handleStageChange = useCallback(async (productId: string, newStage: LifecycleStage) => {
     try {
-      const res = await fetch("/api/products/lifecycle?action=stage", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId, newStage }),
-      });
-      if (res.ok) {
-        success(`Product moved to ${stageInfo[newStage].label}`);
-        mutateProducts();
-        mutateAlerts();
-        // Update selected product in detail modal
-        setSelectedProduct((prev) => prev?.productId === productId ? { ...prev, currentStage: newStage } : prev);
-      } else {
-        const err = await res.json().catch(() => ({}));
-        showError(err.error || "Failed to update stage");
-      }
-    } catch {
-      showError("Failed to update stage");
+      await authJson("/api/products/lifecycle?action=stage", { productId, newStage }, "PATCH");
+      success(`Product moved to ${stageInfo[newStage].label}`);
+      mutateProducts();
+      mutateAlerts();
+      // Update selected product in detail modal
+      setSelectedProduct((prev) => prev?.productId === productId ? { ...prev, currentStage: newStage } : prev);
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "Failed to update stage");
     }
   }, [mutateProducts, mutateAlerts, success, showError]);
 
   const handleDelete = useCallback(async (productId: string) => {
     try {
-      const res = await fetch("/api/products/lifecycle", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId }),
-      });
-      if (res.ok) {
-        success("Product deleted");
-        mutateProducts();
-        setShowDetailModal(false);
-        setSelectedProduct(null);
-      } else {
-        const err = await res.json().catch(() => ({}));
-        showError(err.error || "Failed to delete product");
-      }
-    } catch {
-      showError("Failed to delete product");
+      await authJson("/api/products/lifecycle", { productId }, "DELETE");
+      success("Product deleted");
+      mutateProducts();
+      setShowDetailModal(false);
+      setSelectedProduct(null);
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "Failed to delete product");
     }
   }, [mutateProducts, success, showError]);
 
   const handleMarkAlertsRead = useCallback(async (alertIds: string[]) => {
     try {
-      const res = await fetch("/api/products/lifecycle?action=alerts-read", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ alertIds }),
-      });
-      if (res.ok) {
-        mutateAlerts();
-      }
-    } catch {
-      // silent
+      await authJson("/api/products/lifecycle?action=alerts-read", { alertIds }, "PATCH");
+      mutateAlerts();
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "Failed to update alerts");
     }
-  }, [mutateAlerts]);
+  }, [mutateAlerts, showError]);
 
   const handleExport = useCallback(() => {
     const csv = [
@@ -902,6 +871,15 @@ export default function ProductLifecyclePage() {
           <div className="h-10 w-10 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-sm text-muted-foreground">Loading lifecycle data...</p>
         </div>
+      ) : pError && !pData ? (
+        <div className="glass rounded-2xl p-12 text-center">
+          <AlertTriangle className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+          <h3 className="font-display text-lg font-semibold text-foreground mb-2">Failed to load lifecycle data</h3>
+          <p className="text-sm text-muted-foreground mb-4">{pError instanceof Error ? pError.message : "Something went wrong."}</p>
+          <button onClick={() => mutateProducts()} className="px-4 py-2 rounded-xl bg-accent text-white text-xs font-semibold hover:bg-accent/80 transition-all">
+            Retry
+          </button>
+        </div>
       ) : (
         <>
           {/* Pipeline Tab */}
@@ -927,7 +905,7 @@ export default function ProductLifecyclePage() {
               </div>
 
               {/* Stage Pipeline */}
-              <StagePipeline distribution={stages} />
+              {sData && <StagePipeline distribution={stages} />}
 
               {/* Recent Alerts */}
               <div>
@@ -938,7 +916,15 @@ export default function ProductLifecyclePage() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  {alerts.length === 0 ? (
+                  {aError && alerts.length === 0 ? (
+                    <div className="glass rounded-xl p-6 text-center">
+                      <AlertTriangle className="h-8 w-8 text-amber-400/50 mx-auto mb-2" />
+                      <p className="text-xs text-muted-foreground mb-3">Couldn&apos;t load alerts</p>
+                      <button onClick={() => mutateAlerts()} className="px-3 py-1.5 rounded-xl bg-surface border border-border text-[10px] font-semibold text-foreground hover:bg-surface-hover transition-all">
+                        Retry
+                      </button>
+                    </div>
+                  ) : alerts.length === 0 ? (
                     <div className="glass rounded-xl p-6 text-center">
                       <CheckCircle2 className="h-8 w-8 text-emerald-400/30 mx-auto mb-2" />
                       <p className="text-xs text-muted-foreground">No alerts - all clear!</p>
@@ -1044,7 +1030,16 @@ export default function ProductLifecyclePage() {
           {/* Alerts Tab */}
           {activeTab === "alerts" && (
             <div className="space-y-3">
-              {alerts.length === 0 ? (
+              {aError && alerts.length === 0 ? (
+                <div className="glass rounded-2xl p-8 text-center">
+                  <AlertTriangle className="h-10 w-10 text-amber-400/50 mx-auto mb-3" />
+                  <h3 className="font-display text-lg font-semibold text-foreground mb-2">Couldn&apos;t load alerts</h3>
+                  <p className="text-sm text-muted-foreground mb-4">{aError instanceof Error ? aError.message : "Something went wrong."}</p>
+                  <button onClick={() => mutateAlerts()} className="px-4 py-2 rounded-xl bg-accent text-white text-xs font-semibold hover:bg-accent/80 transition-all">
+                    Retry
+                  </button>
+                </div>
+              ) : alerts.length === 0 ? (
                 <div className="glass rounded-2xl p-8 text-center">
                   <CheckCircle2 className="h-12 w-12 text-emerald-400/30 mx-auto mb-4" />
                   <h3 className="font-display text-lg font-semibold text-foreground mb-2">All Clear</h3>

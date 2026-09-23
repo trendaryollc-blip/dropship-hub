@@ -18,9 +18,24 @@ const rows = [
 ];
 
 function StatusIcon({ status }: { status: string }) {
-  if (status === "check") return <Check className="h-4 w-4 text-emerald-400" />;
-  if (status === "x") return <X className="h-4 w-4 text-red-400" />;
-  return <Minus className="h-4 w-4 text-amber-400" />;
+  const label =
+    status === "check"
+      ? "Included"
+      : status === "x"
+        ? "Not included"
+        : "Partial";
+  return (
+    <span className="inline-flex items-center justify-center">
+      <span className="sr-only">{label}</span>
+      {status === "check" && (
+        <Check className="h-4 w-4 text-emerald-400" aria-hidden="true" />
+      )}
+      {status === "x" && <X className="h-4 w-4 text-red-400" aria-hidden="true" />}
+      {status === "partial" && (
+        <Minus className="h-4 w-4 text-amber-400" aria-hidden="true" />
+      )}
+    </span>
+  );
 }
 
 export default function Comparison() {
@@ -59,51 +74,25 @@ export default function Comparison() {
         <div className={`glass rounded-2xl overflow-hidden transition-all duration-700 delay-200 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
           {/* Visual slider comparison */}
           <div
-            className="relative h-48 md:h-64 overflow-hidden cursor-col-resize select-none touch-none"
-            role="slider"
-            tabIndex={0}
-            aria-label="Before and after comparison"
-            aria-valuemin={10}
-            aria-valuemax={90}
-            aria-valuenow={Math.round(sliderPos)}
-            onKeyDown={(e) => {
-              if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
-                e.preventDefault();
-                nudge(-5);
-              } else if (e.key === "ArrowRight" || e.key === "ArrowUp") {
-                e.preventDefault();
-                nudge(5);
-              } else if (e.key === "Home") {
-                e.preventDefault();
-                setSliderPos(10);
-              } else if (e.key === "End") {
-                e.preventDefault();
-                setSliderPos(90);
-              }
-            }}
-            onMouseDown={(e) => {
+            className="relative h-48 md:h-64 overflow-hidden cursor-col-resize select-none"
+            style={{ touchAction: "pan-y" }}
+            onPointerDown={(e) => {
+              e.currentTarget.setPointerCapture(e.pointerId);
               setIsDragging(true);
               handleMove(e.clientX, e.currentTarget.getBoundingClientRect());
             }}
-            onMouseMove={(e) => {
-              if (isDragging) handleMove(e.clientX, e.currentTarget.getBoundingClientRect());
+            onPointerMove={(e) => {
+              if (isDragging) {
+                handleMove(e.clientX, e.currentTarget.getBoundingClientRect());
+              }
             }}
-            onMouseUp={() => setIsDragging(false)}
-            onMouseLeave={() => setIsDragging(false)}
-            onTouchStart={(e) => {
-              setIsDragging(true);
-              handleMove(e.touches[0].clientX, e.currentTarget.getBoundingClientRect());
-            }}
-            onTouchMove={(e) => {
-              if (isDragging) handleMove(e.touches[0].clientX, e.currentTarget.getBoundingClientRect());
-            }}
-            onTouchEnd={() => setIsDragging(false)}
-            onTouchCancel={() => setIsDragging(false)}
+            onPointerUp={() => setIsDragging(false)}
+            onPointerCancel={() => setIsDragging(false)}
           >
             {/* Before (Manual) side */}
             <div className="absolute inset-0 bg-gradient-to-br from-red-400/10 via-red-400/5 to-background">
               <div className="absolute inset-0 flex flex-col items-end justify-center p-6 sm:p-8 sm:pr-16">
-                <div className="flex gap-2 mb-4">
+                <div className="flex gap-2 mb-4" aria-hidden="true">
                   <div className="w-10 h-10 rounded-xl bg-red-400/10 flex items-center justify-center">
                     <span className="text-lg">📊</span>
                   </div>
@@ -130,7 +119,7 @@ export default function Comparison() {
               style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}
             >
               <div className="absolute inset-0 flex flex-col items-start justify-center p-6 sm:p-8 sm:pl-16">
-                <div className="flex gap-2 mb-4">
+                <div className="flex gap-2 mb-4" aria-hidden="true">
                   <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
                     <span className="text-lg">🚀</span>
                   </div>
@@ -156,13 +145,36 @@ export default function Comparison() {
               className="absolute top-0 bottom-0 w-1 bg-accent shadow-[0_0_15px_rgba(var(--glow-color),0.5)] z-20"
               style={{ left: `${sliderPos}%`, transform: "translateX(-50%)" }}
             >
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-14 rounded-full bg-accent border-2 border-white/20 flex items-center justify-center cursor-col-resize shadow-lg">
-                <GripVertical className="h-4 w-4 text-white" />
+              <div
+                role="slider"
+                tabIndex={0}
+                aria-label="Before and after comparison"
+                aria-valuemin={10}
+                aria-valuemax={90}
+                aria-valuenow={Math.round(sliderPos)}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+                    e.preventDefault();
+                    nudge(-5);
+                  } else if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+                    e.preventDefault();
+                    nudge(5);
+                  } else if (e.key === "Home") {
+                    e.preventDefault();
+                    setSliderPos(10);
+                  } else if (e.key === "End") {
+                    e.preventDefault();
+                    setSliderPos(90);
+                  }
+                }}
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-14 rounded-full bg-accent border-2 border-white/20 flex items-center justify-center cursor-col-resize shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                <GripVertical className="h-4 w-4 text-white" aria-hidden="true" />
               </div>
             </div>
 
             {/* Labels */}
-            <div className="absolute top-4 left-4 z-10 px-3 py-1 rounded-full bg-accent text-white text-xs font-bold">
+            <div className="absolute top-4 left-4 z-10 px-3 py-1 rounded-full btn-accent text-xs font-bold">
               DropShip Hub
             </div>
             <div className="absolute top-4 right-4 z-10 px-3 py-1 rounded-full bg-surface border border-border text-muted-foreground text-xs font-bold">

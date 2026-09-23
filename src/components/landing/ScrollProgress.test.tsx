@@ -19,4 +19,12 @@ describe("ScrollProgress", () => {
     const innerBar = container.querySelector(".bg-gradient-to-r");
     expect(innerBar).toBeInTheDocument();
   });
+
+  it("exposes progressbar role with values", () => {
+    const { container } = render(<ScrollProgress />);
+    const bar = container.firstChild as HTMLElement;
+    expect(bar).toHaveAttribute("role", "progressbar");
+    expect(bar).toHaveAttribute("aria-valuemin", "0");
+    expect(bar).toHaveAttribute("aria-valuemax", "100");
+  });
 });

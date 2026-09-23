@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import TypeWriter from "./TypeWriter";
 
 describe("TypeWriter", () => {
@@ -23,5 +23,10 @@ describe("TypeWriter", () => {
     const { container } = render(<TypeWriter words={["Hello World"]} />);
     const textSpan = container.querySelector(".transition-opacity");
     expect(textSpan).toBeInTheDocument();
+  });
+
+  it("does not crash with empty words array", () => {
+    const { container } = render(<TypeWriter words={[]} />);
+    expect(container.querySelector(".animate-pulse")).toBeInTheDocument();
   });
 });

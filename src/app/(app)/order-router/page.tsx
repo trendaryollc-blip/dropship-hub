@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Route, Clock, DollarSign, TrendingUp,
   ArrowRight, MapPin, Truck, Settings, Search,
@@ -15,6 +15,7 @@ import { useAPI, useMutation, revalidate } from "@/hooks/useAPI";
 import { useToast } from "@/components/ui/Toast";
 import type { RoutingDecision, RoutingPreferences, RoutingAnalytics, RoutingHistory } from "@/types/order";
 import { cn } from "@/lib/utils";
+import { formatDate, formatDateTime } from "@/lib/dates";
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -35,7 +36,7 @@ function exportToCSV(data: RoutingHistory[]) {
   const rows = data.map((h) => [
     h.orderId, h.productTitle, h.customerLocation, h.selectedSupplier,
     String(h.shippingDays), `$${h.shippingCost.toFixed(2)}`, h.status || "routed",
-    h.routedAt ? new Date(h.routedAt).toLocaleDateString() : "",
+    formatDate(h.routedAt),
   ]);
   const csv = [headers, ...rows].map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv" });
@@ -69,7 +70,7 @@ function MiniSparkline({ points, color }: { points: number[]; color: string }) {
 }
 
 function KPICard({ label, value, prefix, suffix, icon: Icon, color, sparkline, delay }: {
-  label: string; value: number; prefix?: string; suffix?: string; icon: typeof Route; color: string; sparkline: number[]; delay: number;
+  label: string; value: number; prefix?: string; suffix?: string; icon: typeof Route; color: string; sparkline?: number[]; delay: number;
 }) {
   const { ref, isInView } = useInView({ threshold: 0.3 });
   const count = useAnimatedCounter(value, 1500, isInView);
@@ -85,7 +86,7 @@ function KPICard({ label, value, prefix, suffix, icon: Icon, color, sparkline, d
         <div className={cn("flex h-7 w-7 sm:h-9 sm:w-9 items-center justify-center rounded-lg", `${color}/10`)}>
           <Icon className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", color)} />
         </div>
-        {sparkline.length > 0 && <MiniSparkline points={sparkline} color={colorMap[color] || "#3b82f6"} />}
+        {sparkline && sparkline.length > 0 && <MiniSparkline points={sparkline} color={colorMap[color] || "#3b82f6"} />}
       </div>
       <p className="font-display text-lg sm:text-2xl font-bold text-foreground">{prefix || ""}{count.toLocaleString()}{suffix || ""}</p>
       <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-1">{label}</p>
@@ -294,7 +295,7 @@ function OrderDetailModal({ decision, onClose }: { decision: RoutingDecision | n
           )}
 
           <div className="flex items-center justify-between text-[9px] text-muted-foreground">
-            <span>Routed: {decision.routedAt ? new Date(decision.routedAt).toLocaleString() : "N/A"}</span>
+            <span>Routed: {formatDateTime(decision.routedAt) || "N/A"}</span>
             {decision.orderDate && <span>Order Date: {decision.orderDate}</span>}
           </div>
         </div>
@@ -303,7 +304,7 @@ function OrderDetailModal({ decision, onClose }: { decision: RoutingDecision | n
   );
 }
 
-function EditableSettingsPanel({ preferences, onSave }: { preferences: RoutingPreferences | null; onSave: (prefs: RoutingPreferences) => void }) {
+function EditableSettingsPanel({ preferences, onSave, prefsLoaded }: { preferences: RoutingPreferences | null; onSave: () => void; prefsLoaded?: boolean }) {
   const { ref, isInView } = useInView({ threshold: 0.3 });
   const toast = useToast();
   const [editing, setEditing] = useState(false);
@@ -314,10 +315,21 @@ function EditableSettingsPanel({ preferences, onSave }: { preferences: RoutingPr
   const [localWh, setLocalWh] = useState(preferences?.preferLocalWarehouse || false);
   const [autoFB, setAutoFB] = useState(preferences?.autoFallback !== false);
 
+  // Server preferences arrive async — keep the form in sync with them so an
+  // early edit never saves stale defaults over the user's real settings.
+  useEffect(() => {
+    if (!preferences || editing) return;
+    setOpt(preferences.optimization);
+    setMaxShip(preferences.maxShippingDays);
+    setMinQuality(preferences.minQualityScore);
+    setLocalWh(preferences.preferLocalWarehouse);
+    setAutoFB(preferences.autoFallback);
+  }, [preferences, editing]);
+
   const saveMutation = useMutation<{ success: boolean; message: string }>("/api/orders", {
     onSuccess: () => {
       toast.success("Routing preferences saved");
-      onSave({ optimization: opt, maxShippingDays: maxShip, minQualityScore: minQuality, preferLocalWarehouse: localWh, autoFallback: autoFB, maxFallbackAttempts: preferences?.maxFallbackAttempts || 3 });
+      onSave();
       setEditing(false);
     },
   });
@@ -350,7 +362,7 @@ function EditableSettingsPanel({ preferences, onSave }: { preferences: RoutingPr
           <h3 className="font-display text-sm sm:text-base font-semibold text-foreground">Routing Preferences</h3>
         </div>
         {!editing ? (
-          <button onClick={() => setEditing(true)} className="px-3 py-1.5 rounded-xl text-[10px] sm:text-[11px] font-medium text-accent hover:bg-accent/10 border border-accent/20 transition-all">
+          <button onClick={() => setEditing(true)} disabled={prefsLoaded === false} className="px-3 py-1.5 rounded-xl text-[10px] sm:text-[11px] font-medium text-accent hover:bg-accent/10 border border-accent/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
             Edit Settings
           </button>
         ) : (
@@ -358,7 +370,7 @@ function EditableSettingsPanel({ preferences, onSave }: { preferences: RoutingPr
             <button onClick={() => setEditing(false)} className="px-3 py-1.5 rounded-xl text-[10px] sm:text-[11px] font-medium text-muted-foreground hover:bg-surface-hover border border-border transition-all">
               Cancel
             </button>
-            <button onClick={handleSave} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] sm:text-[11px] font-medium text-white bg-accent hover:bg-accent/80 transition-all disabled:opacity-50">
+            <button onClick={handleSave} disabled={saving || prefsLoaded === false} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] sm:text-[11px] font-medium text-white bg-accent hover:bg-accent/80 transition-all disabled:opacity-50">
               {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
               Save
             </button>
@@ -509,8 +521,8 @@ function SortHeader({ field, sortField, onSort, children }: {
   );
 }
 
-function HistoryTable({ history, onSearch, search, onExport, onDelete }: {
-  history: RoutingHistory[]; onSearch: (s: string) => void; search: string; onExport: () => void; onDelete: (id: string) => void;
+function HistoryTable({ history, onSearch, search, onExport, onDelete, error, onRetry }: {
+  history: RoutingHistory[]; onSearch: (s: string) => void; search: string; onExport: () => void; onDelete: (id: string) => void; error?: unknown; onRetry?: () => void;
 }) {
   const { ref, isInView } = useInView({ threshold: 0.2 });
   const [sortField, setSortField] = useState<string>("routedAt");
@@ -591,11 +603,20 @@ function HistoryTable({ history, onSearch, search, onExport, onDelete }: {
         </tbody>
       </table>
 
-      {sorted.length === 0 && (
+      {error && sorted.length === 0 ? (
         <div className="py-8 text-center">
-          <p className="text-xs text-muted-foreground">No history entries found</p>
+          <p className="text-xs text-muted-foreground mb-3">Couldn&apos;t load routing history.</p>
+          {onRetry && (
+            <button onClick={onRetry} className="px-3 py-1.5 rounded-xl bg-surface border border-border text-[10px] font-semibold text-foreground hover:bg-surface-hover transition-all">
+              Retry
+            </button>
+          )}
         </div>
-      )}
+      ) : sorted.length === 0 ? (
+        <div className="py-8 text-center">
+          <p className="text-xs text-muted-foreground">{search ? "No history entries match your search" : "No history entries found"}</p>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -616,6 +637,8 @@ function RouteOrderModal({ open, onClose, onRoute }: { open: boolean; onClose: (
       await onRoute({ orderId: orderId.trim(), customerLocation: location.trim(), productTitle: product.trim(), customerName: customer.trim() || "Customer", quantity: qty, totalPrice: price });
       setOrderId(""); setLocation(""); setProduct(""); setCustomer(""); setQty(1); setPrice(0);
       onClose();
+    } catch {
+      // Parent already toasted the failure — keep the form filled so input isn't lost.
     } finally {
       setLoading(false);
     }
@@ -701,17 +724,17 @@ export default function OrderRouterPage() {
     return p;
   }, [search, statusFilter, supplierFilter]);
 
-  const { data: dData } = useAPI<{ decisions?: RoutingDecision[]; totalCount?: number; page?: number; limit?: number; totalPages?: number }>(
+  const { data: dData, error: dError, isLoading: dLoading, mutate: mutateDecisions } = useAPI<{ decisions?: RoutingDecision[]; totalCount?: number; page?: number; limit?: number; totalPages?: number }>(
     uid ? `/api/orders?type=decisions&page=${page}&limit=${pageSize}&${buildQueryParams(baseParams)}` : null
   );
-  const { data: pData } = useAPI<{ preferences?: RoutingPreferences }>(
+  const { data: pData, error: pError } = useAPI<{ preferences?: RoutingPreferences }>(
     uid ? `/api/orders?type=preferences` : null
   );
-  const { data: aData } = useAPI<{ analytics?: RoutingAnalytics }>(
+  const { data: aData, error: aError, isLoading: aLoading, mutate: mutateAnalytics } = useAPI<{ analytics?: RoutingAnalytics }>(
     uid ? `/api/orders?type=analytics&days=${dateRange}` : null
   );
-  const { data: hData } = useAPI<{ history?: RoutingHistory[] }>(
-    uid ? `/api/orders?type=history&${buildQueryParams(baseParams)}` : null
+  const { data: hData, error: hError, mutate: mutateHistory } = useAPI<{ history?: RoutingHistory[] }>(
+    uid ? `/api/orders?type=history&limit=100&${buildQueryParams(baseParams)}` : null
   );
   const { data: sData } = useAPI<{ suppliers?: string[] }>(
     uid ? `/api/orders?type=suppliers` : null
@@ -724,7 +747,8 @@ export default function OrderRouterPage() {
   const suppliers = sData?.suppliers || [];
   const totalPages = dData?.totalPages || 1;
   const totalCount = dData?.totalCount || 0;
-  const loading = !user || (!dData && !pData && !aData);
+  const prefsLoaded = pData !== undefined || pError != null;
+  const loading = !user || (dLoading && !dData);
 
   const routeMutation = useMutation<{ success: boolean; message: string }>("/api/orders", {
     onSuccess: () => {
@@ -750,8 +774,9 @@ export default function OrderRouterPage() {
         body: { action: "route", ...data },
         method: "POST",
       });
-    } catch {
+    } catch (e) {
       toast.error("Failed to route order. Please try again.");
+      throw e;
     }
   };
 
@@ -777,31 +802,19 @@ export default function OrderRouterPage() {
     }
   };
 
-  const handleSavePreferences = (prefs: RoutingPreferences) => {
-    toast.success("Routing preferences saved");
+  const handleSavePreferences = () => {
+    // The panel's own saveMutation already toasted success; just refresh the cached prefs.
     revalidate("/api/orders?type=preferences");
   };
 
   const pendingCount = decisions.filter((d) => d.status === "pending").length;
 
-  // Dynamic sparklines from analytics daily data
-  const sparklines = useMemo(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const daily = (analytics as any)?.dailyCounts as Array<{ date: string; count: number }> | undefined;
-    if (daily && daily.length >= 2) {
-      return {
-        orders: daily.slice(-7).map((d) => d.count),
-        shipping: daily.slice(-7).map((d) => d.count * 0.8),
-        cost: daily.slice(-7).map((d) => d.count * 12),
-        savings: daily.slice(-7).map((d) => d.count * 3),
-      };
-    }
-    return {
-      orders: [12, 14, 15, 16, 18, 19, 20],
-      shipping: [10, 9.5, 9, 8.5, 8.2, 8, 7.8],
-      cost: [12, 11, 10.5, 10, 9.8, 9.5, 9.2],
-      savings: [20, 25, 30, 35, 40, 45, 48],
-    };
+  // Only the orders KPI has a real daily series in the API — never fabricate
+  // sparkline shapes for shipping/cost/savings.
+  const ordersSparkline = useMemo(() => {
+    const daily = analytics?.dailyCounts;
+    if (!daily || daily.length < 2) return [];
+    return daily.slice(-7).map((d) => d.count);
   }, [analytics]);
 
   return (
@@ -840,17 +853,28 @@ export default function OrderRouterPage() {
           <div className="h-10 w-10 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-sm text-muted-foreground">Loading routing data...</p>
         </div>
+      ) : dError && !dData ? (
+        <div className="glass rounded-2xl p-12 text-center">
+          <AlertCircle className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground mb-1">Couldn&apos;t load routing data.</p>
+          <p className="text-xs text-muted-foreground/70 mb-4">{dError instanceof Error ? dError.message : "Something went wrong."}</p>
+          <button onClick={() => mutateDecisions()} className="px-4 py-2 rounded-xl bg-surface border border-border text-xs font-semibold text-foreground hover:bg-surface-hover transition-all">
+            Retry
+          </button>
+        </div>
       ) : (
         <>
           {/* Queue Tab */}
-          {activeTab === "queue" && analytics && (
+          {activeTab === "queue" && (
             <>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-                <KPICard label="Orders Routed" value={analytics.totalRouted} icon={Route} color="text-emerald-400" sparkline={sparklines.orders} delay={0} />
-                <KPICard label="Avg Shipping" value={analytics.avgShippingDays} suffix="d" icon={Clock} color="text-blue-400" sparkline={sparklines.shipping} delay={100} />
-                <KPICard label="Avg Cost" value={analytics.avgCost} prefix="$" icon={DollarSign} color="text-purple-400" sparkline={sparklines.cost} delay={200} />
-                <KPICard label="Cost Savings" value={analytics.costSavings} prefix="$" icon={TrendingUp} color="text-amber-400" sparkline={sparklines.savings} delay={300} />
-              </div>
+              {analytics && (
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+                  <KPICard label="Orders Routed" value={analytics.totalRouted} icon={Route} color="text-emerald-400" sparkline={ordersSparkline} delay={0} />
+                  <KPICard label="Avg Shipping" value={analytics.avgShippingDays} suffix="d" icon={Clock} color="text-blue-400" delay={100} />
+                  <KPICard label="Avg Cost" value={analytics.avgCost} prefix="$" icon={DollarSign} color="text-purple-400" delay={200} />
+                  <KPICard label="Cost Savings" value={analytics.costSavings} prefix="$" icon={TrendingUp} color="text-amber-400" delay={300} />
+                </div>
+              )}
 
               {/* Filters */}
               <div className="flex flex-wrap items-center gap-2">
@@ -898,8 +922,8 @@ export default function OrderRouterPage() {
                       ))}
                     </div>
                     <div className="space-y-4">
-                      <EditableSettingsPanel preferences={preferences} onSave={handleSavePreferences} />
-                      <AnalyticsPanel analytics={analytics} dateRange={dateRange} onDateRangeChange={setDateRange} />
+                      <EditableSettingsPanel preferences={preferences} onSave={handleSavePreferences} prefsLoaded={prefsLoaded} />
+                      {analytics && <AnalyticsPanel analytics={analytics} dateRange={dateRange} onDateRangeChange={setDateRange} />}
                     </div>
                   </div>
 
@@ -928,9 +952,22 @@ export default function OrderRouterPage() {
           )}
 
           {/* Analytics Tab */}
-          {activeTab === "analytics" && analytics && (
+          {activeTab === "analytics" && (analytics ? (
             <AnalyticsPanel analytics={analytics} dateRange={dateRange} onDateRangeChange={setDateRange} />
-          )}
+          ) : aLoading ? (
+            <div className="glass rounded-2xl p-12 text-center">
+              <div className="h-10 w-10 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-sm text-muted-foreground">Loading analytics...</p>
+            </div>
+          ) : (
+            <div className="glass rounded-2xl p-12 text-center">
+              <p className="text-sm text-muted-foreground mb-1">Couldn&apos;t load analytics.</p>
+              {aError && <p className="text-xs text-muted-foreground/70 mb-4">{aError instanceof Error ? aError.message : "Something went wrong."}</p>}
+              <button onClick={() => mutateAnalytics()} className="px-4 py-2 rounded-xl bg-surface border border-border text-xs font-semibold text-foreground hover:bg-surface-hover transition-all">
+                Retry
+              </button>
+            </div>
+          ))}
 
           {/* History Tab */}
           {activeTab === "history" && (
@@ -940,13 +977,15 @@ export default function OrderRouterPage() {
               onSearch={(s) => { setSearch(s); setPage(1); }}
               onExport={() => exportToCSV(history)}
               onDelete={handleDelete}
+              error={hError}
+              onRetry={() => mutateHistory()}
             />
           )}
 
           {/* Settings Tab */}
           {activeTab === "settings" && (
             <div className="max-w-2xl mx-auto">
-              <EditableSettingsPanel preferences={preferences} onSave={handleSavePreferences} />
+              <EditableSettingsPanel preferences={preferences} onSave={handleSavePreferences} prefsLoaded={prefsLoaded} />
             </div>
           )}
         </>

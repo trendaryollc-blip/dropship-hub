@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Zap, Mail, Lock, User, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 
@@ -21,9 +21,17 @@ function SignUpContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signUpWithEmail, signInWithGoogle } = useAuth();
+  const { signUpWithEmail, signInWithGoogle, user, loading: authLoading } = useAuth();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const callbackUrl = sanitizeCallbackUrl(searchParams.get("callbackUrl"));
+
+  // Already signed in — skip the form and continue to the target page.
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace(callbackUrl);
+    }
+  }, [authLoading, user, callbackUrl, router]);
 
   const handleEmailSignUp = async (e: React.FormEvent) => {
     e.preventDefault();

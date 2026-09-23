@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Zap, Mail, Lock, ArrowRight, Eye, EyeOff, Loader2, AlertTriangle } from "lucide-react";
 
@@ -20,10 +20,19 @@ function SignInContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signInWithEmail, signInWithGoogle } = useAuth();
+  const { signInWithEmail, signInWithGoogle, user, loading: authLoading } = useAuth();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const expired = searchParams.get("expired") === "1";
   const callbackUrl = sanitizeCallbackUrl(searchParams.get("callbackUrl"));
+
+  // Already signed in (e.g. middleware bounced a user whose Firebase session
+  // had not yet written the dh_session cookie) — continue to the target page.
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace(callbackUrl);
+    }
+  }, [authLoading, user, callbackUrl, router]);
 
   const getFirebaseAuthErrorMessage = (error: unknown): string => {
     if (error && typeof error === "object" && "code" in error) {
