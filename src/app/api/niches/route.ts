@@ -145,21 +145,65 @@ const NICHE_IMAGES: Record<string, string> = {
   "Gym": "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&h=250&fit=crop",
 };
 
-function getNicheImage(categoryName: string, products: CJProduct[], parentCategory?: string): string {
+const DEFAULT_NICHE_IMAGE = "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=400&h=250&fit=crop";
+
+function collectProductImageUrls(products: CJProduct[]): string[] {
+  const urls: string[] = [];
   for (const p of products) {
-    if (p.productImage && p.productImage.startsWith("http")) return p.productImage;
+    if (p.productImage && p.productImage.startsWith("http")) urls.push(p.productImage);
     if (Array.isArray(p.productImageSet)) {
       for (const img of p.productImageSet) {
-        const url = typeof img === "string" ? img : typeof img === "object" && img ? String(img.url || img.image || "") : "";
-        if (url && url.startsWith("http")) return url;
+        const url = typeof img === "string" ? img : img && typeof img === "object" ? String(img.url || img.image || "") : "";
+        if (url && url.startsWith("http")) urls.push(url);
       }
     }
   }
-  const searchText = `${parentCategory || ""} ${categoryName || ""}`.toLowerCase();
-  for (const [key, url] of Object.entries(NICHE_IMAGES)) {
-    if (searchText.includes(key.toLowerCase())) return url;
+  return urls;
+}
+
+function hashString(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
   }
-  return "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=400&h=250&fit=crop";
+  return h >>> 0;
+}
+
+function getNicheImage(
+  categoryName: string,
+  products: CJProduct[],
+  parentCategory?: string,
+  usedImages?: Set<string>,
+): string {
+  const isUnused = (url: string) => !usedImages || !usedImages.has(url);
+
+  // Prefer real product images, skipping any URL already used by another niche
+  for (const url of collectProductImageUrls(products)) {
+    if (isUnused(url)) return url;
+  }
+
+  // Thematic stock image matching the category keywords
+  const searchText = `${parentCategory || ""} ${categoryName || ""}`.toLowerCase();
+  const keywordMatches: string[] = [];
+  for (const [key, url] of Object.entries(NICHE_IMAGES)) {
+    if (searchText.includes(key.toLowerCase()) && !keywordMatches.includes(url)) {
+      keywordMatches.push(url);
+    }
+  }
+  for (const url of keywordMatches) {
+    if (isUnused(url)) return url;
+  }
+
+  // Deterministic rotation through the stock pool so no two niches repeat
+  const pool = Array.from(new Set(Object.values(NICHE_IMAGES)));
+  const start = hashString(`${categoryName}|${parentCategory || ""}`) % pool.length;
+  for (let i = 0; i < pool.length; i++) {
+    const url = pool[(start + i) % pool.length];
+    if (isUnused(url)) return url;
+  }
+
+  return keywordMatches[0] || DEFAULT_NICHE_IMAGE;
 }
 
 function computeGrade(score: number): "A+" | "A" | "B+" | "B" | "C+" | "C" {
@@ -245,6 +289,7 @@ function buildNicheFromCategory(
   cat: CJCategory,
   products: CJProduct[],
   index: number,
+  usedImages?: Set<string>,
 ): Record<string, unknown> {
   const validProducts = products.filter((p) => Number(p.sellPrice) > 0 && Number(p.productPrice) > 0);
   const productCount = validProducts.length || 1;
@@ -359,7 +404,7 @@ function buildNicheFromCategory(
     id: `cj-niche-${cat.cid || index}`,
     name: nicheName,
     icon: getCategoryIcon(nicheName),
-    image: getNicheImage(nicheName, products, cat.parentCategory),
+    image: getNicheImage(nicheName, products, cat.parentCategory, usedImages),
     category: nicheName,
     heat,
     productCount,
@@ -413,16 +458,17 @@ function getFallbackNiches(): Record<string, unknown>[] {
     { name: "Sports Gear", category: "Sports", icon: "\u26bd" },
     { name: "Auto Parts", category: "Automotive", icon: "\ud83d\ude97" },
   ];
-  return fallbacks.map((f, i) => buildNicheFromCategory(
-    { cid: 9000 + i, categoryName: f.category },
-    [],
-    i,
-  ));
+  const usedImages = new Set<string>();
+  return fallbacks.map((f, i) => {
+    const niche = buildNicheFromCategory({ cid: 9000 + i, categoryName: f.category }, [], i, usedImages);
+    if (typeof niche.image === "string" && niche.image) usedImages.add(niche.image);
+    return niche;
+  });
 }
 
 export const GET = withAuth(async () => {
   try {
-    const cachedNiches = await getFeedCache<Record<string, unknown>[]>(CACHE_NAMESPACE, "niches", CACHE_TTL_SECONDS);
+    const cachedNiches = await getFeedCache<Record<string, unknown>[]>(CACHE_NAMESPACE, "niches-v2", CACHE_TTL_SECONDS);
     if (cachedNiches && cachedNiches.length > 0) {
       return NextResponse.json({ niches: cachedNiches, cached: true });
     }
@@ -446,9 +492,11 @@ export const GET = withAuth(async () => {
 
     const topCategories = categories.slice(0, 8);
     const niches: Record<string, unknown>[] = [];
+    const usedImages = new Set<string>();
 
     for (let i = 0; i < topCategories.length; i++) {
       const cat = topCategories[i];
+      let niche: Record<string, unknown>;
       try {
         const searchTerm = cat.parentCategory
           ? `${cat.parentCategory} ${cat.categoryName}`
@@ -459,13 +507,15 @@ export const GET = withAuth(async () => {
           const retryRes = await searchCJProducts(token, cat.categoryName, 1, 20);
           products = retryRes.data?.list || [];
         }
-        niches.push(buildNicheFromCategory(cat, products, i));
+        niche = buildNicheFromCategory(cat, products, i, usedImages);
       } catch {
-        niches.push(buildNicheFromCategory(cat, [], i));
+        niche = buildNicheFromCategory(cat, [], i, usedImages);
       }
+      if (typeof niche.image === "string" && niche.image) usedImages.add(niche.image);
+      niches.push(niche);
     }
 
-    await setFeedCache(CACHE_NAMESPACE, "niches", niches, CACHE_TTL_SECONDS);
+    await setFeedCache(CACHE_NAMESPACE, "niches-v2", niches, CACHE_TTL_SECONDS);
     return NextResponse.json({ niches, source: "cj", count: niches.length });
   } catch (error) {
     const fallbackNiches = getFallbackNiches();
