@@ -71,7 +71,9 @@ export function proxy(request: NextRequest) {
 
   const url = request.nextUrl.clone();
   url.pathname = "/sign-in";
-  url.search = `?callbackUrl=${encodeURIComponent(pathname)}`;
+  // Preserve the full original location (path + query) so shareable links such
+  // as /products?q=... keep their params after the auth bounce.
+  url.search = `?callbackUrl=${encodeURIComponent(pathname + request.nextUrl.search)}`;
   return NextResponse.redirect(url);
 }
 

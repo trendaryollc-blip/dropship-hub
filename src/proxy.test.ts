@@ -116,6 +116,14 @@ describe("proxy", () => {
     expect(loc).toContain(encodeURIComponent("/products/niches"));
   });
 
+  it("preserves query params in the callbackUrl", () => {
+    const loc = locationOf(proxy(req("/products?q=wireless+earbuds&maxPrice=30")));
+    expect(loc).toContain("/sign-in");
+    expect(loc).toContain("callbackUrl=");
+    expect(loc).toContain(encodeURIComponent("/products?q=wireless+earbuds&maxPrice=30"));
+    expect(loc).not.toContain("q=wireless");
+  });
+
   it("redirects /admin when no session", () => {
     expect(locationOf(proxy(req("/admin")))).toContain("/sign-in");
   });
