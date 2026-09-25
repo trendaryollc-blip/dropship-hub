@@ -100,7 +100,7 @@ function KPICard({
   prefix?: string;
   suffix?: string;
   change: string;
-  up: boolean;
+  up: boolean | null;
   icon: typeof DollarSign;
   color: string;
   sparkline: number[];
@@ -119,10 +119,16 @@ function KPICard({
         <div className={`flex h-7 w-7 sm:h-9 sm:w-9 items-center justify-center rounded-lg ${color}/10 group-hover:scale-110 transition-transform`}>
           <Icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${color}`} />
         </div>
-        <span className={`flex items-center gap-0.5 text-[10px] sm:text-[11px] font-semibold ${up ? "text-emerald-400" : "text-red-400"}`}>
-          {up ? <TrendingUp className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> : <TrendingDown className="h-2.5 w-2.5 sm:h-3 sm:w-3" />}
-          {change}
-        </span>
+        {up === null ? (
+          <span className="flex items-center gap-0.5 text-[10px] sm:text-[11px] font-semibold text-muted-foreground">
+            {change}
+          </span>
+        ) : (
+          <span className={`flex items-center gap-0.5 text-[10px] sm:text-[11px] font-semibold ${up ? "text-emerald-400" : "text-red-400"}`}>
+            {up ? <TrendingUp className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> : <TrendingDown className="h-2.5 w-2.5 sm:h-3 sm:w-3" />}
+            {change}
+          </span>
+        )}
       </div>
       <p className="font-display text-lg sm:text-2xl font-bold text-foreground">
         {prefix || ""}{count.toLocaleString()}{suffix || ""}
@@ -185,17 +191,23 @@ function RevenueChart({ actual, predicted }: { actual: { date: string; value: nu
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
         <div>
           <h3 className="font-display text-sm sm:text-base font-semibold text-foreground">Revenue Trend</h3>
-          <p className="text-[10px] sm:text-[11px] text-muted-foreground">Last 30 days actual + 14-day projection</p>
+          <p className="text-[10px] sm:text-[11px] text-muted-foreground">
+            {predicted.length > 0
+              ? "Last 30 days actual + 14-day est. projection (trailing trend — Estimated)"
+              : "Last 30 days actual"}
+          </p>
         </div>
         <div className="flex items-center gap-3 sm:gap-4 text-[10px] sm:text-[11px]">
           <span className="flex items-center gap-1.5">
             <span className="w-3 h-0.5 rounded bg-accent" />
             <span className="text-muted-foreground">Actual</span>
           </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-3 h-0.5 rounded border-dashed" style={{ borderTop: "2px dashed #a855f7", height: 0 }} />
-            <span className="text-muted-foreground">Predicted</span>
-          </span>
+          {predicted.length > 0 && (
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-0.5 rounded border-dashed" style={{ borderTop: "2px dashed #a855f7", height: 0 }} />
+              <span className="text-muted-foreground">Est. projection</span>
+            </span>
+          )}
         </div>
       </div>
 
@@ -225,7 +237,7 @@ function RevenueChart({ actual, predicted }: { actual: { date: string; value: nu
 
           {isInView && <path d={actualArea} fill="url(#revChartGradient)" className="animate-fade-in" />}
           {isInView && <path d={actualPath} fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" className="animate-chart-draw" />}
-          {isInView && <path d={predictedPath} fill="none" stroke="#a855f7" strokeWidth="2" strokeLinecap="round" strokeDasharray="6 4" className="animate-chart-draw" style={{ animationDelay: "1s" }} />}
+          {predicted.length > 0 && isInView && <path d={predictedPath} fill="none" stroke="#a855f7" strokeWidth="2" strokeLinecap="round" strokeDasharray="6 4" className="animate-chart-draw" style={{ animationDelay: "1s" }} />}
 
           {actual.filter((_, i) => i % 5 === 0 || i === actual.length - 1).map((p, i) => (
             <circle key={i} cx={getX(actual.indexOf(p), allPoints.length)} cy={getY(p.value)} r="3" fill="#3b82f6" stroke="#0f0f17" strokeWidth="2" />
@@ -401,6 +413,35 @@ function InsightCard({ icon: Icon, title, description, type, delay }: { icon: ty
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
+function periodChange(values: number[]): number | null {
+  if (values.length < 4) return null;
+  const half = Math.floor(values.length / 2);
+  const first = values.slice(0, half);
+  const second = values.slice(half);
+  const firstAvg = first.reduce((s, v) => s + v, 0) / first.length;
+  const secondAvg = second.reduce((s, v) => s + v, 0) / second.length;
+  if (firstAvg === 0) return null;
+  return ((secondAvg - firstAvg) / firstAvg) * 100;
+}
+
+function periodDelta(values: number[]): number | null {
+  if (values.length < 4) return null;
+  const half = Math.floor(values.length / 2);
+  const first = values.slice(0, half);
+  const second = values.slice(half);
+  return second.reduce((s, v) => s + v, 0) / second.length - first.reduce((s, v) => s + v, 0) / first.length;
+}
+
+function formatChange(value: number | null, unit: string): string {
+  if (value === null || !Number.isFinite(value)) return "—";
+  return `${value >= 0 ? "+" : ""}${value.toFixed(1)}${unit}`;
+}
+
+function changeDirection(value: number | null): boolean | null {
+  if (value === null || !Number.isFinite(value) || value === 0) return null;
+  return value > 0;
+}
+
 export default function RevenuePage() {
   const { user } = useAuth();
   const [timeframe, setTimeframe] = useState<Timeframe>("30d");
@@ -424,18 +465,30 @@ export default function RevenuePage() {
   const loading = loading7d || loading30d || loading90d;
 
   const buildKpiForTimeframe = useCallback((data: ProfitResponse | undefined) => {
-    if (!data?.summary) return { revenue: 0, profit: 0, orders: 0, margin: 0, revenueChange: "0%", profitChange: "0%", ordersChange: "0%", marginChange: "0%", revenueSparkline: [] as number[], profitSparkline: [] as number[], ordersSparkline: [] as number[], marginSparkline: [] as number[] };
+    if (!data?.summary) return { revenue: 0, profit: 0, orders: 0, margin: 0, revenueChange: "—", profitChange: "—", ordersChange: "—", marginChange: "—", revenueUp: null as boolean | null, profitUp: null as boolean | null, ordersUp: null as boolean | null, marginUp: null as boolean | null, revenueSparkline: [] as number[], profitSparkline: [] as number[], ordersSparkline: [] as number[], marginSparkline: [] as number[] };
     const summary = data.summary;
     const daily: Array<{ date: string; revenue: number; profit: number; orders: number }> = data.dailyBreakdown ?? [];
+    const revenueValues = daily.map((d) => d.revenue);
+    const profitValues = daily.map((d) => d.profit);
+    const ordersValues = daily.map((d) => d.orders);
+    const marginValues = daily.map((d) => d.revenue > 0 ? (d.profit / d.revenue) * 100 : 0);
+    const revenueChangeVal = periodChange(revenueValues);
+    const profitChangeVal = periodChange(profitValues);
+    const ordersChangeVal = periodChange(ordersValues);
+    const marginChangeVal = periodDelta(marginValues);
     return {
       revenue: Math.round(summary.totalRevenue),
       profit: Math.round(summary.totalProfit),
       orders: summary.totalOrders,
       margin: summary.avgMargin,
-      revenueChange: "—",
-      profitChange: "—",
-      ordersChange: "—",
-      marginChange: "—",
+      revenueChange: formatChange(revenueChangeVal, "%"),
+      profitChange: formatChange(profitChangeVal, "%"),
+      ordersChange: formatChange(ordersChangeVal, "%"),
+      marginChange: formatChange(marginChangeVal, "pt"),
+      revenueUp: changeDirection(revenueChangeVal),
+      profitUp: changeDirection(profitChangeVal),
+      ordersUp: changeDirection(ordersChangeVal),
+      marginUp: changeDirection(marginChangeVal),
       revenueSparkline: daily.slice(-7).map((d: { revenue: number }) => d.revenue),
       profitSparkline: daily.slice(-7).map((d: { profit: number }) => d.profit),
       ordersSparkline: daily.slice(-7).map((d: { orders: number }) => d.orders),
@@ -457,6 +510,31 @@ export default function RevenuePage() {
     if (primary?.dailyBreakdown?.length) {
       const daily = primary.dailyBreakdown as Array<{ date: string; revenue: number }>;
       result.actual = daily.map((d) => ({ date: d.date.slice(5), value: Math.round(d.revenue) }));
+      const window = daily.slice(-14);
+      if (window.length >= 2) {
+        const n = window.length;
+        const meanX = (n - 1) / 2;
+        const ys = window.map((d) => d.revenue);
+        const meanY = ys.reduce((s, v) => s + v, 0) / n;
+        let num = 0;
+        let den = 0;
+        for (let i = 0; i < n; i++) {
+          num += (i - meanX) * (ys[i] - meanY);
+          den += (i - meanX) * (i - meanX);
+        }
+        const slope = den !== 0 ? num / den : 0;
+        const intercept = meanY - slope * meanX;
+        const [ly, lm, ld] = window[n - 1].date.split("-").map(Number);
+        if (!Number.isFinite(ly) || !Number.isFinite(lm) || !Number.isFinite(ld)) return result;
+        const base = new Date(ly, (lm || 1) - 1, ld || 1);
+        for (let step = 1; step <= 14; step++) {
+          const value = Math.max(0, Math.round(intercept + slope * (n - 1 + step)));
+          const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + step);
+          const mm = String(d.getMonth() + 1).padStart(2, "0");
+          const dd = String(d.getDate()).padStart(2, "0");
+          result.predicted.push({ date: `${mm}-${dd}`, value });
+        }
+      }
     }
     return result;
   }, [data30d]);
@@ -528,7 +606,7 @@ export default function RevenuePage() {
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">
-            Revenue trends, forecasts, and growth analytics across all platforms. For per-order cost breakdown, see Profit Tracker.
+            Revenue trends and estimated projections across all platforms. For per-order cost breakdown, see Profit Tracker.
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
@@ -585,10 +663,10 @@ export default function RevenuePage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-          <KPICard label="Revenue This Month" value={kpi.revenue} prefix="$" change={kpi.revenueChange} up icon={DollarSign} color="text-emerald-400" sparkline={kpi.revenueSparkline} delay={0} />
-          <KPICard label="Est. Profit" value={kpi.profit} prefix="$" change={kpi.profitChange} up icon={TrendingUp} color="text-purple-400" sparkline={kpi.profitSparkline} delay={100} />
-          <KPICard label="Active Orders" value={kpi.orders} change={kpi.ordersChange} up icon={ShoppingCart} color="text-amber-400" sparkline={kpi.ordersSparkline} delay={200} />
-          <KPICard label="Avg. Margin" value={kpi.margin} suffix="%" change={kpi.marginChange} up icon={Target} color="text-blue-400" sparkline={kpi.marginSparkline} delay={300} />
+          <KPICard label="Revenue This Month" value={kpi.revenue} prefix="$" change={kpi.revenueChange} up={kpi.revenueUp} icon={DollarSign} color="text-emerald-400" sparkline={kpi.revenueSparkline} delay={0} />
+          <KPICard label="Est. Profit" value={kpi.profit} prefix="$" change={kpi.profitChange} up={kpi.profitUp} icon={TrendingUp} color="text-purple-400" sparkline={kpi.profitSparkline} delay={100} />
+          <KPICard label="Active Orders" value={kpi.orders} change={kpi.ordersChange} up={kpi.ordersUp} icon={ShoppingCart} color="text-amber-400" sparkline={kpi.ordersSparkline} delay={200} />
+          <KPICard label="Avg. Margin" value={kpi.margin} suffix="%" change={kpi.marginChange} up={kpi.marginUp} icon={Target} color="text-blue-400" sparkline={kpi.marginSparkline} delay={300} />
         </div>
       )}
 
@@ -723,7 +801,7 @@ export default function RevenuePage() {
         <div>
           <div className="mb-3 sm:mb-4">
             <h3 className="font-display text-sm sm:text-base font-semibold text-foreground">Growth Insights</h3>
-            <p className="text-[10px] sm:text-[11px] text-muted-foreground">AI-powered recommendations to boost your revenue</p>
+            <p className="text-[10px] sm:text-[11px] text-muted-foreground">Rule-based recommendations from your metrics</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3">
             {kpi.margin >= 50 && (

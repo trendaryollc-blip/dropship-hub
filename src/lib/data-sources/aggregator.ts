@@ -154,32 +154,9 @@ export async function fetchRealSignals(
     }
   }
 
-  // If no real data came back, generate synthetic signals as fallback
+  // No synthetic fallback — empty means live sources unavailable (UI must say so)
   if (allSignals.length === 0) {
-    const fallbackPlatforms: TrendPlatform[] = ["google_trends", "tiktok", "amazon_movers"];
-    for (const platform of fallbackPlatforms) {
-      const seed = keyword.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) + platform.charCodeAt(0);
-      const volume = 5000 + (seed % 50000);
-      const prevVolume = Math.round(volume * (0.7 + Math.random() * 0.6));
-      const velocity = 20 + Math.round(Math.random() * 60);
-      const acceleration = -20 + Math.round(Math.random() * 40);
-      const saturation = 20 + Math.round(Math.random() * 60);
-
-      allSignals.push({
-        id: `sig-fb-${platform}-${Date.now()}`,
-        platform,
-        keyword,
-        category,
-        volume,
-        previousVolume: prevVolume,
-        growthRate: Math.round(((volume - prevVolume) / prevVolume) * 100 * 10) / 10,
-        direction: determineDirection(velocity, acceleration, saturation),
-        velocity,
-        acceleration,
-        saturationLevel: saturation,
-        fetchedAt: new Date().toISOString(),
-      });
-    }
+    return [];
   }
 
   await setCache("aggregated", allSignals, CACHE_TTL.AGGREGATED, cacheKey);
@@ -199,6 +176,7 @@ export async function analyzeKeyword(
   analysisTime: number;
   provider: string;
   geoData: { region: string; value: number }[];
+  interestOverTime: { date: string; value: number }[];
 }> {
   const startTime = Date.now();
 
@@ -223,6 +201,7 @@ export async function analyzeKeyword(
     analysisTime: Date.now() - startTime,
     provider: "multi-source-aggregator",
     geoData: geoResult.success && geoResult.data ? geoResult.data.interestByRegion : [],
+    interestOverTime: geoResult.success && geoResult.data ? geoResult.data.interestOverTime : [],
   };
 }
 
@@ -249,22 +228,23 @@ export async function getTrendingKeywords(): Promise<{
   const results = await Promise.allSettled(
     keywords.map(async (kw) => {
       const signals = await fetchRealSignals(kw, "general", ["google_trends", "tiktok"], "7d");
-      const aggregated = aggregateSignals(kw, "general", signals);
-      return {
-        keyword: kw,
-        growth: aggregated.growthRate,
-        volume: aggregated.volume,
-        direction: aggregated.direction,
-        platform: aggregated.platform,
-      };
+      return aggregateSignals(kw, "general", signals);
     })
   );
 
   const trending = results
-    .filter((r): r is PromiseFulfilledResult<{ keyword: string; growth: number; volume: number; direction: TrendDirection; platform: TrendPlatform }> =>
+    .filter((r): r is PromiseFulfilledResult<AggregatedSignal> =>
       r.status === "fulfilled"
     )
     .map((r) => r.value)
+    .filter((a) => a.sources.length > 0 && a.confidence > 0)
+    .map((a) => ({
+      keyword: a.keyword,
+      growth: a.growthRate,
+      volume: a.volume,
+      direction: a.direction,
+      platform: a.platform,
+    }))
     .sort((a, b) => b.growth - a.growth)
     .slice(0, 10);
 

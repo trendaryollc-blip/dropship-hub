@@ -34,7 +34,7 @@ export default function NotificationsTab({ notifPrefs, onTogglePref }: Notificat
         { key: "priceAlerts" as const, label: "Price Drop Alerts", description: "Get notified when monitored product prices drop" },
         { key: "stockAlerts" as const, label: "Stock Out Alerts", description: "Get notified when products go out of stock" },
         { key: "orderUpdates" as const, label: "Order Updates", description: "Get notified about order status changes" },
-        { key: "aiRecommendations" as const, label: "AI Recommendations", description: "Get daily AI-powered product recommendations" },
+        { key: "aiRecommendations" as const, label: "AI Recommendations", description: "Get daily product recommendations" },
         { key: "weeklyDigest" as const, label: "Weekly Digest", description: "Receive a weekly summary of your store performance" },
       ].map((pref) => (
         <div key={pref.key} className="glass rounded-2xl p-5 border border-border">

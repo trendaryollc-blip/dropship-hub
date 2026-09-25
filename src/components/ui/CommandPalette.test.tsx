@@ -31,4 +31,18 @@ describe("CommandPalette", () => {
     fireEvent.keyDown(document, { key: "k", ctrlKey: true });
     expect(onOpenChange).toHaveBeenCalledWith(true);
   });
+
+  it("does not claim full AI chat when opening the store assistant", () => {
+    render(<CommandPalette open={true} onOpenChange={vi.fn()} />);
+    expect(screen.getByText("Open Store Assistant")).toBeInTheDocument();
+    expect(screen.queryByText("AI Store Assistant")).not.toBeInTheDocument();
+    expect(screen.getByText(/Opens the store chat panel/)).toBeInTheDocument();
+  });
+
+  it("shows an honest no-results message", () => {
+    render(<CommandPalette open={true} onOpenChange={vi.fn()} />);
+    const input = screen.getByPlaceholderText("Search commands...");
+    fireEvent.change(input, { target: { value: "zzzzzzz" } });
+    expect(screen.getByText("No matching commands.")).toBeInTheDocument();
+  });
 });

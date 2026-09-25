@@ -261,7 +261,7 @@ describe("ProductDetailPage - data fetching", () => {
     setDetailEnv({
       enrich: RICH_ENRICH,
       reviews: { averageRating: 4.2, totalReviews: 900 },
-      marketIntel: { searchVolume: "medium", searchVolumeNumber: 500, trendDirection: "rising", riskScore: 20 },
+      marketIntel: { searchVolume: "medium", interestIndex: 50, trendDirection: "rising", riskScore: 20 },
       listing: { title: "Optimized Listing Title" },
     });
     seedProduct({ images: ["https://img.example.com/h.jpg"] });

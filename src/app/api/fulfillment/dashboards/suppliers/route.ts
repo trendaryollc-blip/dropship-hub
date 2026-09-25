@@ -112,26 +112,31 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     const suppliers: SupplierPerformanceData["suppliers"] = [];
 
     for (const s of supplierMap.values()) {
-      const avgShippingDays = s.shippedCount > 0 ? Math.round((s.totalShippingDays / s.shippedCount) * 10) / 10 : 0;
-      const onTimeRate = s.shippedCount > 0 ? Math.round((s.onTimeCount / s.shippedCount) * 100) : 100;
-      const returnRate = s.orderCount > 0 ? Math.round((s.cancelledCount / s.orderCount) * 100) : 0;
+      const avgShippingDays = s.deliveredCount > 0 ? Math.round((s.totalShippingDays / s.deliveredCount) * 10) / 10 : null;
+      const onTimeRate = s.shippedCount > 0 ? Math.round((s.onTimeCount / s.shippedCount) * 100) : null;
+      const cancellationRate = s.orderCount > 0 ? Math.round((s.cancelledCount / s.orderCount) * 100) : 0;
       const avgQualityScore =
         s.qualityScores.length > 0
           ? Math.round(s.qualityScores.reduce((a, b) => a + b, 0) / s.qualityScores.length)
-          : 75;
-      const avgMargin = s.totalRevenue > 0 ? Math.round(((s.totalRevenue - s.totalCost) / s.totalRevenue) * 100) : 0;
+          : null;
+      const avgMargin = s.totalRevenue > 0 ? Math.round(((s.totalRevenue - s.totalCost) / s.totalRevenue) * 100) : null;
 
+      const hasHistory = s.firstHalfTotal + s.secondHalfTotal > 0;
       const firstHalfRate = s.firstHalfTotal > 0 ? s.firstHalfOnTime / s.firstHalfTotal : 1;
       const secondHalfRate = s.secondHalfTotal > 0 ? s.secondHalfOnTime / s.secondHalfTotal : 1;
-      let reliabilityTrend: "improving" | "stable" | "declining" = "stable";
-      if (secondHalfRate - firstHalfRate > 0.1) reliabilityTrend = "improving";
-      else if (firstHalfRate - secondHalfRate > 0.1) reliabilityTrend = "declining";
+      let reliabilityTrend: "improving" | "stable" | "declining" | "unknown" = hasHistory ? "stable" : "unknown";
+      if (hasHistory) {
+        if (secondHalfRate - firstHalfRate > 0.1) reliabilityTrend = "improving";
+        else if (firstHalfRate - secondHalfRate > 0.1) reliabilityTrend = "declining";
+      }
 
-      let status: "excellent" | "good" | "warning" | "poor" = "good";
-      if (onTimeRate >= 90 && avgQualityScore >= 85) status = "excellent";
-      else if (onTimeRate >= 75 && avgQualityScore >= 70) status = "good";
-      else if (onTimeRate >= 50 || avgQualityScore >= 50) status = "warning";
-      else status = "poor";
+      let status: "excellent" | "good" | "warning" | "poor" | "unknown" = "unknown";
+      if (onTimeRate !== null && avgQualityScore !== null) {
+        if (onTimeRate >= 90 && avgQualityScore >= 85) status = "excellent";
+        else if (onTimeRate >= 75 && avgQualityScore >= 70) status = "good";
+        else if (onTimeRate >= 50 || avgQualityScore >= 50) status = "warning";
+        else status = "poor";
+      }
 
       suppliers.push({
         supplierId: s.supplierId,
@@ -139,7 +144,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
         orderCount: s.orderCount,
         avgShippingDays,
         onTimeRate,
-        returnRate,
+        cancellationRate,
         avgQualityScore,
         totalRevenue: Math.round(s.totalRevenue * 100) / 100,
         totalProfit: Math.round((s.totalRevenue - s.totalCost) * 100) / 100,
@@ -149,16 +154,20 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
       });
     }
 
-    suppliers.sort((a, b) => b.onTimeRate - a.onTimeRate);
+    suppliers.sort((a, b) => (b.onTimeRate ?? -1) - (a.onTimeRate ?? -1));
+
+    const scoredSuppliers = suppliers.filter((s) => s.avgQualityScore !== null);
 
     const summary: SupplierPerformanceData["summary"] = {
       totalSuppliers: suppliers.length,
       bestPerformer: suppliers[0]?.supplierName || "N/A",
       worstPerformer: suppliers[suppliers.length - 1]?.supplierName || "N/A",
       avgOverallScore:
-        suppliers.length > 0
-          ? Math.round(suppliers.reduce((a, s) => a + s.avgQualityScore, 0) / suppliers.length)
-          : 0,
+        scoredSuppliers.length > 0
+          ? Math.round(
+              scoredSuppliers.reduce((a, s) => a + (s.avgQualityScore as number), 0) / scoredSuppliers.length
+            )
+          : null,
     };
 
     return NextResponse.json({ suppliers, summary });

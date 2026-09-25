@@ -277,36 +277,8 @@ export default function HealthPage() {
     }
   }, [user]);
 
-  const handleApplyPreset = useCallback((presetId: string, _focusCategory: string) => {
-    const presetActions: Record<string, () => void> = {
-      beginner: () => {
-        setCategories((prev) => prev.map((cat) => {
-          if (cat.id === "product") {
-            return { ...cat, items: cat.items.map((item, i) => i < 2 ? { ...item, done: true } : item) };
-          }
-          return cat;
-        }));
-      },
-      intermediate: () => {
-        setCategories((prev) => prev.map((cat) => {
-          if (cat.id === "product") {
-            return { ...cat, items: cat.items.map((item) => ({ ...item, done: true })) };
-          }
-          if (cat.id === "supplier" || cat.id === "financial") {
-            return { ...cat, items: cat.items.map((item, i) => i < 2 ? { ...item, done: true } : item) };
-          }
-          return cat;
-        }));
-      },
-      advanced: () => {
-        setCategories((prev) => prev.map((cat) => ({
-          ...cat,
-          items: cat.items.map((item, i) => i < 3 ? { ...item, done: true } : item),
-        })));
-      },
-    };
-
-    presetActions[presetId]?.();
+  const handleApplyPreset = useCallback((_presetId: string, _focusCategory: string) => {
+    document.getElementById("health-checklist")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
   const handleAskAI = useCallback((prompt: string) => {
@@ -528,7 +500,7 @@ export default function HealthPage() {
         </div>
       )}
 
-      {/* Score Chart + AI Analysis */}
+      {/* Score Chart + Health Analysis */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <HealthScoreChart categories={chartCategories} />
         <HealthAIAnalysis
@@ -544,7 +516,7 @@ export default function HealthPage() {
       <HealthAlerts score={percentage} healthData={healthData} />
 
       {/* Category Breakdown */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div id="health-checklist" className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {autoDetectedCategories.map((cat, catIdx) => {
           const catPct = Math.round((cat.items.filter((i) => i.done).length / cat.items.length) * 100);
           const catScore = catScores[catIdx];

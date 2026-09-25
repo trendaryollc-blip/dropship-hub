@@ -134,10 +134,10 @@ export default function LiveIntelligenceFeedCard({
               <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             </div>
             <div>
-              <h3 className="font-display text-sm font-bold text-foreground">Live Intelligence Feed</h3>
+              <h3 className="font-display text-sm font-bold text-foreground">Intelligence Feed</h3>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="flex items-center gap-1 text-[9px] text-emerald-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Latest
                 </span>
                 {unread > 0 && (
                   <span className="text-[9px] text-accent font-semibold">{unread} new</span>

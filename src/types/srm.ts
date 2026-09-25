@@ -5,7 +5,7 @@ export interface SupplierMessage {
   direction: "outgoing" | "incoming";
   subject: string;
   body: string;
-  status: "sent" | "delivered" | "read" | "failed";
+  status: "sent" | "delivered" | "read" | "failed" | "logged";
   messageType: "inquiry" | "negotiation" | "order_issue" | "quality" | "general";
   relatedOrderId?: string;
   cjMessageId?: string;

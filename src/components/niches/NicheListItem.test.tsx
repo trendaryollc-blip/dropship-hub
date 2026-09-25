@@ -76,6 +76,22 @@ describe("NicheListItem", () => {
     expect(screen.getByText("+22%")).toBeDefined();
   });
 
+  it("renders n/a labels when margin and growth are null", () => {
+    render(
+      <NicheListItem
+        niche={{ ...mockNiche, avgMargin: null, growth: null, profitPerUnit: null, avgShippingDays: null, estimatedMonthlyRevenue: null }}
+        index={0}
+        onSelect={vi.fn()}
+      />
+    );
+    expect(screen.getByText("margin n/a")).toBeDefined();
+    expect(screen.getAllByText("—").length).toBeGreaterThan(0);
+    expect(screen.getByText("profit n/a")).toBeDefined();
+    expect(screen.getByText("shipping n/a")).toBeDefined();
+    expect(screen.queryByText("+null%")).toBeNull();
+    expect(screen.queryByText("$null")).toBeNull();
+  });
+
   it("calls onSelect on click", () => {
     const onSelect = vi.fn();
     render(<NicheListItem niche={mockNiche} index={0} onSelect={onSelect} />);

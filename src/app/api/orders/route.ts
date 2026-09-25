@@ -96,35 +96,40 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
         return NextResponse.json({
           analytics: {
             totalRouted: 0,
-            avgShippingDays: 0,
-            avgCost: 0,
+            avgShippingDays: null,
+            avgCost: null,
             supplierDistribution: [],
             optimizationBreakdown: [],
-            costSavings: 0,
-            timeSavings: 0,
+            costSavings: null,
+            timeSavings: null,
             dailyCounts: [],
             monthlyTrend: [],
           },
         });
       }
 
-      let totalShippingDays = 0, totalCost = 0, totalSavings = 0, totalTimeSavings = 0;
+      let totalShippingDays = 0, daysCount = 0, totalCost = 0, costCount = 0;
       const supplierCounts: Record<string, number> = {};
       const optCounts: Record<string, number> = { Speed: 0, Cost: 0, Balanced: 0 };
       const dailyCounts: Record<string, number> = {};
 
       for (const d of decisions) {
         const supplier = typeof d.selectedSupplier === "object" && d.selectedSupplier !== null ? d.selectedSupplier as Record<string, unknown> : null;
-        const days = typeof d.shippingDays === "number" ? d.shippingDays : (supplier && typeof supplier.shippingDays === "number" ? supplier.shippingDays : 0);
-        const cost = typeof d.totalCost === "number" ? d.totalCost : 0;
-        const name = typeof d.selectedSupplier === "string" ? d.selectedSupplier : (supplier && typeof supplier.supplierName === "string" ? supplier.supplierName : "Unknown");
+        const days = typeof d.shippingDays === "number" ? d.shippingDays : (supplier && typeof supplier.shippingDays === "number" ? supplier.shippingDays : null);
+        const cost = typeof d.totalCost === "number" ? d.totalCost : null;
+        const name = typeof d.selectedSupplier === "string" && d.selectedSupplier
+          ? d.selectedSupplier
+          : (supplier && typeof supplier.supplierName === "string" ? supplier.supplierName : null);
 
-        totalShippingDays += days;
-        totalCost += cost;
-        supplierCounts[name] = (supplierCounts[name] || 0) + 1;
-
-        totalSavings += cost > 0 ? cost * 0.3 : 0;
-        totalTimeSavings += days > 0 ? Math.round(days * 0.25) : 0;
+        if (days != null) {
+          totalShippingDays += days;
+          daysCount++;
+        }
+        if (cost != null) {
+          totalCost += cost;
+          costCount++;
+        }
+        if (name) supplierCounts[name] = (supplierCounts[name] || 0) + 1;
 
         const reasoning = (typeof d.reasoning === "string" ? d.reasoning : "").toLowerCase();
         if (reasoning.includes("speed") || reasoning.includes("fast")) optCounts.Speed++;
@@ -139,10 +144,11 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
       }
 
       const count = decisions.length;
+      const supplierTotal = Object.values(supplierCounts).reduce((sum, cnt) => sum + cnt, 0) || 1;
       const supplierDistribution = Object.entries(supplierCounts).map(([name, cnt]) => ({
         name,
         count: cnt,
-        color: cnt / count > 0.5 ? "#22c55e" : cnt / count > 0.3 ? "#3b82f6" : cnt / count > 0.15 ? "#a855f7" : "#f59e0b",
+        color: cnt / supplierTotal > 0.5 ? "#22c55e" : cnt / supplierTotal > 0.3 ? "#3b82f6" : cnt / supplierTotal > 0.15 ? "#a855f7" : "#f59e0b",
       }));
 
       const dailyCountsArray = Object.entries(dailyCounts)
@@ -152,14 +158,14 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
       return NextResponse.json({
         analytics: {
           totalRouted: count,
-          avgShippingDays: +(totalShippingDays / count).toFixed(1),
-          avgCost: +(totalCost / count).toFixed(2),
+          avgShippingDays: daysCount > 0 ? +(totalShippingDays / daysCount).toFixed(1) : null,
+          avgCost: costCount > 0 ? +(totalCost / costCount).toFixed(2) : null,
           supplierDistribution,
           optimizationBreakdown: Object.entries(optCounts)
             .map(([type, c]) => ({ type, count: c }))
             .filter((o) => o.count > 0),
-          costSavings: +totalSavings.toFixed(2),
-          timeSavings: count > 0 ? +(totalTimeSavings / count).toFixed(1) : 0,
+          costSavings: null,
+          timeSavings: null,
           dailyCounts: dailyCountsArray,
         },
       });
@@ -179,10 +185,16 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
           productTitle: data.productTitle || "",
           customerLocation: data.customerLocation || "",
           customerName: data.customerName || "",
-          selectedSupplier: typeof data.selectedSupplier === "string" ? data.selectedSupplier : (supplierObj?.supplierName as string || "Unknown"),
-          shippingDays: typeof data.shippingDays === "number" ? data.shippingDays : (supplierObj?.shippingDays as number || 0),
-          shippingCost: typeof data.shippingCost === "number" ? data.shippingCost : (supplierObj?.shippingCost as number || 0),
-          totalCost: typeof data.totalCost === "number" ? data.totalCost : 0,
+          selectedSupplier: typeof data.selectedSupplier === "string" && data.selectedSupplier
+            ? data.selectedSupplier
+            : (supplierObj && typeof supplierObj.supplierName === "string" ? supplierObj.supplierName : "Pending routing"),
+          shippingDays: typeof data.shippingDays === "number"
+            ? data.shippingDays
+            : (supplierObj && typeof supplierObj.shippingDays === "number" ? supplierObj.shippingDays : null),
+          shippingCost: typeof data.shippingCost === "number"
+            ? data.shippingCost
+            : (supplierObj && typeof supplierObj.shippingCost === "number" ? supplierObj.shippingCost : null),
+          totalCost: typeof data.totalCost === "number" ? data.totalCost : null,
           reason: data.reasoning || "",
           status: data.status || "routed",
           routedAt: data.routedAt || data.createdAt || "",
@@ -250,11 +262,11 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
         customerName: data.customerName,
         quantity: data.quantity,
         totalPrice: data.totalPrice,
-        selectedSupplier: "AI Selected",
-        shippingDays: 0,
-        shippingCost: 0,
-        totalCost: 0,
-        reasoning: "Order queued for AI routing. Supplier will be selected based on current preferences.",
+        selectedSupplier: null,
+        shippingDays: null,
+        shippingCost: null,
+        totalCost: null,
+        reasoning: "Queued for supplier selection based on your routing preferences.",
         status: "pending",
         routedAt: new Date().toISOString(),
         createdAt: new Date().toISOString(),
@@ -332,7 +344,7 @@ export const PATCH = withAuth(async (request: NextRequest, uid: string) => {
 
     await docRef.update({
       status: "pending",
-      reasoning: reason || "Re-routed by user. Pending AI supplier selection.",
+      reasoning: reason || "Re-routed by user. Pending supplier selection.",
       reRoutedAt: new Date().toISOString(),
     });
 

@@ -109,7 +109,7 @@ export default function MultiStoreChatSidebar({ storeCount, totalOrders, totalRe
 
   return (
     <>
-      <button onClick={() => setOpen(!open)} className={`fixed bottom-6 right-6 z-30 p-4 rounded-2xl shadow-2xl transition-all ${open ? "bg-neutral-800 border border-neutral-700 text-neutral-300" : "bg-accent text-white hover:bg-accent-hover glow-accent"}`} title="Multi-Store AI Assistant">
+      <button onClick={() => setOpen(!open)} className={`fixed bottom-6 right-6 z-30 p-4 rounded-2xl shadow-2xl transition-all ${open ? "bg-neutral-800 border border-neutral-700 text-neutral-300" : "bg-accent text-white hover:bg-accent-hover glow-accent"}`} title="Multi-Store Assistant">
         {open ? <X className="h-5 w-5" /> : <MessageSquare className="h-5 w-5" />}
       </button>
       {open && (
@@ -118,8 +118,8 @@ export default function MultiStoreChatSidebar({ storeCount, totalOrders, totalRe
             <div className="flex items-center gap-2">
               <div className="p-1.5 rounded-lg bg-accent/10"><Sparkles className="h-4 w-4 text-accent" /></div>
               <div>
-                <h3 className="text-sm font-semibold text-foreground">Multi-Store AI</h3>
-                <p className="text-[10px] text-muted-foreground">{storeCount} store{storeCount !== 1 ? "s" : ""} · ${totalRevenue.toLocaleString()} revenue</p>
+                <h3 className="text-sm font-semibold text-foreground">Multi-Store Assistant</h3>
+                <p className="text-[10px] text-muted-foreground">{storeCount} store{storeCount !== 1 ? "s" : ""} · {totalOrders} orders · ${totalRevenue.toLocaleString()} (30d)</p>
               </div>
             </div>
             <button onClick={() => setOpen(false)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition-all"><X className="h-4 w-4" /></button>

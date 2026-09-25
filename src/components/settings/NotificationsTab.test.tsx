@@ -64,7 +64,7 @@ describe("NotificationsTab", () => {
     expect(screen.getByText("Get notified when monitored product prices drop")).toBeDefined();
     expect(screen.getByText("Get notified when products go out of stock")).toBeDefined();
     expect(screen.getByText("Get notified about order status changes")).toBeDefined();
-    expect(screen.getByText("Get daily AI-powered product recommendations")).toBeDefined();
+    expect(screen.getByText("Get daily product recommendations")).toBeDefined();
     expect(screen.getByText("Receive a weekly summary of your store performance")).toBeDefined();
   });
 

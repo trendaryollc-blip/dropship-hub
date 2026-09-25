@@ -8,9 +8,9 @@ const steps = [
   {
     number: "01",
     icon: Search,
-    title: "AI Discovers Winners",
+    title: "Find Winning Products",
     description:
-      "Our AI scans 10+ platforms daily, scores products by margin and demand, and hands you the top pick with full market analysis — no more guessing.",
+      "Search across your connected supplier platforms, score products by margin and demand, and get the top pick with full market analysis — no more guessing.",
     color: "text-accent",
     bg: "bg-accent/10",
     border: "border-accent/20",
@@ -57,8 +57,8 @@ export default function HowItWorks() {
             <span className="gradient-text">Profit in 3 Steps</span>
           </h2>
           <p className="text-lg text-muted-foreground leading-relaxed">
-            No complex setup. No learning curve. Let our AI find winners,
-            analyze the market, and help you launch in minutes.
+            No complex setup. No learning curve. Find winning products,
+            analyze the market, and launch in minutes.
           </p>
         </div>
 

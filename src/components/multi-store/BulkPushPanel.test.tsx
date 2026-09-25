@@ -40,8 +40,13 @@ describe("BulkPushPanel", () => {
     expect(enabledBtn).not.toBeDisabled();
   });
 
-  it("shows result after successful push", async () => {
+  it("shows result after successful push with real response counts", async () => {
     const onPushComplete = vi.fn();
+    const { safeFetch } = await import("@/lib/safe-fetch");
+    (safeFetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      success: true, status: "completed", totalPushed: 1, totalFailed: 0,
+    });
+
     render(<BulkPushPanel stores={mockStores} pushedProducts={[]} onPushComplete={onPushComplete} />);
 
     fireEvent.change(screen.getByPlaceholderText("Product title"), { target: { value: "Test Product" } });
@@ -50,9 +55,42 @@ describe("BulkPushPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /Push to 1 Store/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Bulk push job created for 1 stores/i)).toBeInTheDocument();
+      expect(screen.getByText(/Pushed to 1 of 1 stores — all succeeded/i)).toBeInTheDocument();
     });
     expect(onPushComplete).toHaveBeenCalled();
+  });
+
+  it("reports partial failure from response counts instead of unqualified success", async () => {
+    const { safeFetch } = await import("@/lib/safe-fetch");
+    (safeFetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      success: true, status: "partial", totalPushed: 1, totalFailed: 1,
+    });
+
+    render(<BulkPushPanel stores={mockStores} pushedProducts={[]} onPushComplete={vi.fn()} />);
+    fireEvent.change(screen.getByPlaceholderText("Product title"), { target: { value: "Test Product" } });
+    fireEvent.click(screen.getByText("Store A"));
+    fireEvent.click(screen.getByText("Store B"));
+    fireEvent.click(screen.getByRole("button", { name: /Push to 2 Stores/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Pushed to 1 of 2 stores; 1 failed/i)).toBeInTheDocument();
+    });
+  });
+
+  it("does not claim success when all stores fail", async () => {
+    const { safeFetch } = await import("@/lib/safe-fetch");
+    (safeFetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      success: true, status: "failed", totalPushed: 0, totalFailed: 1,
+    });
+
+    render(<BulkPushPanel stores={mockStores} pushedProducts={[]} onPushComplete={vi.fn()} />);
+    fireEvent.change(screen.getByPlaceholderText("Product title"), { target: { value: "Test Product" } });
+    fireEvent.click(screen.getByText("Store A"));
+    fireEvent.click(screen.getByRole("button", { name: /Push to 1 Store/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Push failed for all 1 stores/i)).toBeInTheDocument();
+    });
   });
 
   it("shows error result on failed push", async () => {

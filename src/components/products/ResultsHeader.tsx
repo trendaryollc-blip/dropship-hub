@@ -23,6 +23,11 @@ export default function ResultsHeader({
           <Package className="h-3.5 w-3.5" />
           {platformCount} platforms searched
         </span>
+        {(sortBy === "margin" || sortBy === "golden") && (
+          <span className="text-[10px] text-amber-400/90" title="Scores and margins are Estimated from live price/rating signals — enter real COGS for accuracy">
+            Estimated metrics
+          </span>
+        )}
       </div>
 
       <div className="flex items-center gap-2">
@@ -40,8 +45,8 @@ export default function ResultsHeader({
             <option value="price-desc">Price: High to Low</option>
             <option value="rating">Top Rated</option>
             <option value="reviews">Most Reviews</option>
-            <option value="margin">Highest Margin</option>
-            <option value="golden">Golden Score</option>
+            <option value="margin">Highest Margin (est.)</option>
+            <option value="golden">Golden Score (est.)</option>
           </select>
         </div>
 

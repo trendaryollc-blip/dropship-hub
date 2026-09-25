@@ -56,38 +56,12 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     }
 
     const totalSKUs = productMap.size;
-    const avgStockLevel = totalSKUs > 0 ? Math.round((orders.length / totalSKUs) * 10) / 10 : 0;
+    const avgUnitsPerOrder = totalSKUs > 0 ? Math.round((orders.length / totalSKUs) * 10) / 10 : 0;
 
-    const alerts: InventoryDashboardData["alerts"] = [];
     const topProducts: InventoryDashboardData["topProducts"] = [];
 
     for (const [productId, data] of productMap.entries()) {
       const avgDailyDemand = data.totalSold / 30;
-      const currentStock = Math.max(0, data.totalSold);
-      const reorderPoint = 5;
-      const daysOfStock = avgDailyDemand > 0 ? Math.round(currentStock / avgDailyDemand) : 999;
-
-      let severity: "out_of_stock" | "critical" | "low" = "low";
-      if (currentStock <= 0) severity = "out_of_stock";
-      else if (currentStock < reorderPoint / 2) severity = "critical";
-      else if (currentStock < reorderPoint) severity = "low";
-
-      let status: "healthy" | "low" | "critical" | "stockout" = "healthy";
-      if (daysOfStock <= 0) status = "stockout";
-      else if (daysOfStock <= 3) status = "critical";
-      else if (daysOfStock <= 7) status = "low";
-
-      if (currentStock < reorderPoint) {
-        alerts.push({
-          productId,
-          productName: data.name,
-          supplierName: data.supplierName,
-          currentStock,
-          reorderPoint,
-          severity,
-          lastUpdated: data.lastUpdated,
-        });
-      }
 
       topProducts.push({
         productId,
@@ -95,25 +69,18 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
         totalSold: data.totalSold,
         revenue: Math.round(data.revenue * 100) / 100,
         avgDailyDemand: Math.round(avgDailyDemand * 10) / 10,
-        daysOfStock,
-        status,
       });
     }
 
     topProducts.sort((a, b) => b.revenue - a.revenue);
 
-    const lowStockCount = alerts.filter((a) => a.severity === "low").length;
-    const outOfStockCount = alerts.filter((a) => a.severity === "out_of_stock").length;
-
     const summary: InventoryDashboardData["summary"] = {
       totalSKUs,
-      lowStockCount,
-      outOfStockCount,
-      avgStockLevel,
-      totalInventoryValue: Math.round(totalInventoryValue * 100) / 100,
+      avgUnitsPerOrder,
+      totalCogs30d: Math.round(totalInventoryValue * 100) / 100,
     };
 
-    return NextResponse.json({ summary, alerts, topProducts: topProducts.slice(0, 20) });
+    return NextResponse.json({ summary, topProducts: topProducts.slice(0, 20) });
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to fetch inventory dashboard", details: safeErrorMessage(error, "Unknown") },

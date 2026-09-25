@@ -8,12 +8,11 @@ import { safeErrorMessage } from "@/lib/api-errors";
 interface PlatformPrice {
   platform: string;
   price: number;
-  rating: number;
-  reviews: number;
-  inStock: boolean;
+  rating: number | null;
+  reviews: number | null;
+  inStock: boolean | null;
   url: string;
   brand?: string;
-  isMock?: boolean;
 }
 
 interface EnrichmentResult {
@@ -21,8 +20,9 @@ interface EnrichmentResult {
   cheapest: PlatformPrice | null;
   mostExpensive: PlatformPrice | null;
   priceSpread: number;
-  supplierMatches: { id: string; name: string; trustBadge: string; location: string; flag: string; price: number; shippingToUS: string; shippingToEU: string; reliabilityScore: number; responseTime: string }[];
+  supplierMatches: { id: string; name: string; trustBadge: string; location: string; flag: string; price: number | null; shippingToUS: string; shippingToEU: string; reliabilityScore: number; responseTime: string }[];
   sourcesUsed: string[];
+  coverage: { queried: number; succeeded: number; uniquePlatforms: number };
 }
 
 async function searchPlatformSafely(
@@ -35,37 +35,15 @@ async function searchPlatformSafely(
     return (data.search_results || []).slice(0, 1).map((item) => ({
       platform: platformName,
       price: item.price || 0,
-      rating: item.rating || 0,
-      reviews: item.reviews || 0,
-      inStock: item.price !== null && item.price > 0,
+      rating: typeof item.rating === "number" ? item.rating : null,
+      reviews: typeof item.reviews === "number" ? item.reviews : null,
+      inStock: item.price != null && item.price > 0 ? true : null,
       url: item.link || "#",
       brand: item.brand || undefined,
     }));
   } catch {
     return [];
   }
-}
-
-function generateMockPrices(basePrice: number): PlatformPrice[] {
-  if (basePrice <= 0) return [];
-  const mockPlatforms: { name: string; multiplier: number; rating: number; reviews: number }[] = [
-    { name: "Amazon", multiplier: 1.08, rating: 4.5, reviews: 2340 },
-    { name: "eBay", multiplier: 0.92, rating: 4.2, reviews: 890 },
-    { name: "AliExpress", multiplier: 0.65, rating: 4.0, reviews: 5120 },
-    { name: "Walmart", multiplier: 1.12, rating: 4.3, reviews: 1560 },
-    { name: "Etsy", multiplier: 1.22, rating: 4.7, reviews: 340 },
-    { name: "Temu", multiplier: 0.58, rating: 3.8, reviews: 7800 },
-    { name: "CJ Dropshipping", multiplier: 0.55, rating: 4.1, reviews: 1200 },
-  ];
-  return mockPlatforms.map((p) => ({
-    platform: p.name,
-    price: +(basePrice * p.multiplier).toFixed(2),
-    rating: p.rating,
-    reviews: p.reviews,
-    inStock: true,
-    url: "#",
-    isMock: true,
-  }));
 }
 
 export const POST = withAuth(async (request: NextRequest) => {
@@ -104,22 +82,14 @@ export const POST = withAuth(async (request: NextRequest) => {
       allPrices.unshift({
         platform: source || "Original",
         price: basePrice,
-        rating: 0,
-        reviews: 0,
+        rating: null,
+        reviews: null,
         inStock: true,
         url: "#",
       });
     }
 
     let validPrices = allPrices.filter((p) => p.price > 0);
-
-    const uniquePlatforms = new Set(validPrices.map((p) => p.platform));
-    if (uniquePlatforms.size < 3 && basePrice > 0) {
-      const mockPrices = generateMockPrices(basePrice).filter(
-        (p) => !validPrices.some((v) => v.platform === p.platform)
-      );
-      validPrices.push(...mockPrices);
-    }
 
     const platformBest = new Map<string, PlatformPrice>();
     for (const p of validPrices) {
@@ -144,7 +114,7 @@ export const POST = withAuth(async (request: NextRequest) => {
           trustBadge: s.trustBadge,
           location: s.location,
           flag: s.flag,
-          price: cheapest ? +(cheapest.price * 0.3).toFixed(2) : 0,
+          price: null,
           shippingToUS: `${s.stats.shippingDays}-${s.stats.shippingDays + 5} days`,
           shippingToEU: `${s.stats.shippingDaysEU}-${s.stats.shippingDaysEU + 5} days`,
           reliabilityScore: s.stats.reliabilityScore,
@@ -161,7 +131,11 @@ export const POST = withAuth(async (request: NextRequest) => {
       priceSpread: +priceSpread.toFixed(2),
       supplierMatches,
       sourcesUsed,
-      hasMockData: validPrices.some((p) => p.isMock),
+      coverage: {
+        queried: searchTasks.length,
+        succeeded: sourcesUsed.length,
+        uniquePlatforms: validPrices.length,
+      },
     });
   } catch (error) {
     return NextResponse.json(

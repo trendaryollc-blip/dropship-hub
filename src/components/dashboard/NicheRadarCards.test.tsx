@@ -25,7 +25,7 @@ function renderCard(props: Record<string, any> = {}) {
     grade: "A",
     productCount: 342,
     avgMargin: 58,
-    growth: 22,
+    ratingScore: 22,
     aiInsight: "Pet ownership booming.",
     topProduct: "Pet GPS Tracker",
     ...baseNiche,
@@ -60,14 +60,15 @@ describe("NicheRadarCards", () => {
     expect(screen.getByText("C")).toBeInTheDocument();
   });
 
-  it("renders positive growth with + sign", () => {
-    renderCard({ growth: 22 });
-    expect(screen.getByText("+22%")).toBeInTheDocument();
+  it("renders positive rating score with + sign", () => {
+    renderCard({ ratingScore: 22 });
+    expect(screen.getByText("+22")).toBeInTheDocument();
+    expect(screen.getByText("rating score")).toBeInTheDocument();
   });
 
-  it("renders negative growth", () => {
-    renderCard({ growth: -5 });
-    expect(screen.getByText("-5%")).toBeInTheDocument();
+  it("renders negative rating score", () => {
+    renderCard({ ratingScore: -5 });
+    expect(screen.getByText("-5")).toBeInTheDocument();
   });
 
   it("shows expand toggle button", () => {
@@ -149,7 +150,7 @@ describe("NicheRadarCards", () => {
     expect(screen.getByText("Pets")).toBeInTheDocument();
   });
 
-  it("renders AI insight text", () => {
+  it("renders category insight text", () => {
     renderCard({ aiInsight: "Pet ownership booming." });
     expect(screen.getByText("Pet ownership booming.")).toBeInTheDocument();
   });
@@ -158,8 +159,8 @@ describe("NicheRadarCards", () => {
     render(
       <NicheRadarCards
         niches={[
-          { name: "Card 1", category: "A", scores: { demand: 80, profit: 70, competition: 55, trend: 75, seasonality: 85 }, overallScore: 74, grade: "B", productCount: 100, avgMargin: 45, growth: 10, aiInsight: "Insight 1", topProduct: "Prod 1", demandSparkline: [10, 20, 30] },
-          { name: "Card 2", category: "B", scores: { demand: 90, profit: 80, competition: 60, trend: 85, seasonality: 70 }, overallScore: 82, grade: "A", productCount: 200, avgMargin: 55, growth: 15, aiInsight: "Insight 2", topProduct: "Prod 2", demandSparkline: [40, 50, 60] },
+          { name: "Card 1", category: "A", scores: { demand: 80, profit: 70, competition: 55, trend: 75, seasonality: 85 }, overallScore: 74, grade: "B", productCount: 100, avgMargin: 45, ratingScore: 10, aiInsight: "Insight 1", topProduct: "Prod 1", demandSparkline: [10, 20, 30] },
+          { name: "Card 2", category: "B", scores: { demand: 90, profit: 80, competition: 60, trend: 85, seasonality: 70 }, overallScore: 82, grade: "A", productCount: 200, avgMargin: 55, ratingScore: 15, aiInsight: "Insight 2", topProduct: "Prod 2", demandSparkline: [40, 50, 60] },
         ]}
       />,
     );

@@ -65,7 +65,7 @@ export default function CompetitorAIResults({ open, onClose, title, results, loa
           {loading && results.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Loader2 className="h-8 w-8 text-accent animate-spin mb-3" />
-              <p className="text-sm text-muted-foreground">Running AI analysis...</p>
+              <p className="text-sm text-muted-foreground">Running analysis...</p>
               <p className="text-xs text-muted-foreground/60 mt-1">This may take a moment</p>
             </div>
           )}

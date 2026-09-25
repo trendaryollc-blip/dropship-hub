@@ -34,7 +34,7 @@ export interface SaturationInput {
 
 export interface SaturationResult {
   index: number;
-  level: "unsaturated" | "low" | "moderate" | "saturated" | "hyper-saturated";
+  level: "unsaturated" | "low" | "moderate" | "saturated" | "hyper-saturated" | "unknown";
   sellerCount: number;
   marketConcentration: number;
   priceWarRisk: "low" | "medium" | "high";
@@ -194,7 +194,7 @@ export interface CompetitionAnalysisInput {
 
 export interface CompetitionAnalysisResult {
   score: number;
-  competitivePosition: "dominant" | "strong" | "competitive" | "weak" | "struggling";
+  competitivePosition: "dominant" | "strong" | "competitive" | "weak" | "struggling" | "unknown";
   pricePosition: "premium" | "above-average" | "average" | "below-average" | "budget";
   competitorCount: number;
   topCompetitor: { name: string; price: number; rating: number; threat: "low" | "medium" | "high" };

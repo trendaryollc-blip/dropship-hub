@@ -39,11 +39,12 @@ export interface ProfitSummary {
   totalRevenue: number;
   totalProfit: number;
   totalCosts: number;
-  profitMargin: number;
+  profitMargin: number | null;
   totalOrders: number;
-  avgOrderProfit: number;
-  avgOrderValue: number;
+  avgOrderProfit: number | null;
+  avgOrderValue: number | null;
   refundRate: number;
+  avgMargin: number;
   topProducts: ProductProfitability[];
   dailyBreakdown: DailyProfit[];
   costBreakdown: CostBreakdownItem[];
@@ -56,7 +57,7 @@ export interface ProductProfitability {
   totalProfit: number;
   totalOrders: number;
   profitMargin: number;
-  trend: number;
+  trend: number | null;
   status: "profitable" | "breakeven" | "losing";
 }
 

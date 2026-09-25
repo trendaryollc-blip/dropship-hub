@@ -114,13 +114,9 @@ describe("listing-generator", () => {
       expect(result.listing.storyDescription).toBeUndefined();
     });
 
-    it("includes keyword suggestions", () => {
+    it("returns no keyword suggestions until a keyword API is connected", () => {
       const result = generateListing({ product: mockProduct, platform: "amazon" });
-      expect(result.keywordSuggestions).toBeDefined();
-      expect(result.keywordSuggestions.length).toBeGreaterThan(0);
-      expect(result.keywordSuggestions[0].keyword).toBeTruthy();
-      expect(result.keywordSuggestions[0].volume).toBeTruthy();
-      expect(result.keywordSuggestions[0].competition).toBeTruthy();
+      expect(result.keywordSuggestions).toBeNull();
     });
 
     it("includes alternatives", () => {

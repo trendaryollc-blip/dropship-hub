@@ -85,13 +85,14 @@ export default function NicheHeatmapCard({ niche, index, onSelect, onCompare, on
         <div className="flex items-center gap-1">
           <Flame className="h-3.5 w-3.5" style={{ color: heatColor }} />
           <span className="font-display text-base sm:text-lg font-bold" style={{ color: heatColor }}>{niche.heat}</span>
+          <span className="text-[9px] text-muted-foreground">heat (est.)</span>
         </div>
         <div className="flex-1 h-1.5 rounded-full bg-surface overflow-hidden">
           <div className="h-full rounded-full transition-all duration-700" style={{ width: `${niche.heat}%`, backgroundColor: heatColor }} />
         </div>
         <div className="flex items-center gap-1">
           <TrendIcon className={`h-3 w-3 ${trendColor}`} />
-          <span className={`text-[10px] font-medium ${trendColor}`}>+{niche.growth}%</span>
+          <span className={`text-[10px] font-medium ${trendColor}`}>{niche.growth != null ? `${niche.growth > 0 ? "+" : ""}${niche.growth}%` : "growth n/a"}</span>
         </div>
       </div>
 
@@ -102,8 +103,8 @@ export default function NicheHeatmapCard({ niche, index, onSelect, onCompare, on
       <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mb-3">
         {[
           { label: "Products", value: niche.productCount },
-          { label: "Avg Margin", value: `${niche.avgMargin}%` },
-          { label: "Saturation", value: `${niche.saturation}%` },
+          { label: "Avg Margin", value: niche.avgMargin != null ? `${niche.avgMargin}%` : "n/a" },
+          { label: "Saturation", value: `${niche.saturation}% est.` },
         ].map((stat) => (
           <div key={stat.label} className="text-center p-1 sm:p-1.5 rounded-lg bg-surface/50">
             <p className="text-[10px] text-muted-foreground">{stat.label}</p>
@@ -114,9 +115,9 @@ export default function NicheHeatmapCard({ niche, index, onSelect, onCompare, on
 
       <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mb-3">
         {[
-          { label: "Revenue/mo", value: `$${(niche.estimatedMonthlyRevenue || 0).toLocaleString()}`, icon: Target },
-          { label: "Profit/unit", value: `$${(niche.profitPerUnit || 0).toFixed(2)}`, icon: TrendingUp },
-          { label: "Shipping", value: `${niche.avgShippingDays || 0}d`, icon: Clock },
+          { label: "Revenue/mo", value: niche.estimatedMonthlyRevenue != null ? `$${niche.estimatedMonthlyRevenue.toLocaleString()}` : "n/a", icon: Target },
+          { label: "Profit/unit", value: niche.profitPerUnit != null ? `$${niche.profitPerUnit.toFixed(2)}` : "n/a", icon: TrendingUp },
+          { label: "Shipping", value: niche.avgShippingDays != null ? `${niche.avgShippingDays}d` : "n/a", icon: Clock },
         ].map((stat) => (
           <div key={stat.label} className="text-center p-1 sm:p-1.5 rounded-lg bg-surface/50">
             <div className="flex items-center justify-center gap-0.5 mb-0.5">
@@ -130,7 +131,7 @@ export default function NicheHeatmapCard({ niche, index, onSelect, onCompare, on
 
       <div className="flex items-center justify-between mb-3">
         <span className="text-[10px] text-muted-foreground truncate">Top: {niche.topProduct}</span>
-        <span className="text-[10px] text-muted-foreground">Return: {niche.avgReturnRate || 0}%</span>
+        <span className="text-[10px] text-muted-foreground">Return: {niche.avgReturnRate != null ? `${niche.avgReturnRate}%` : "n/a"}</span>
       </div>
 
       <div className="flex items-center gap-1 pt-2 border-t border-border/50">
@@ -165,7 +166,9 @@ export default function NicheHeatmapCard({ niche, index, onSelect, onCompare, on
       </div>
 
       <div className="flex items-center justify-between mt-2">
-        <span className="text-[10px] text-muted-foreground">{niche.competition?.storeCount || 0} stores selling this</span>
+        <span className="text-[10px] text-muted-foreground">
+          {niche.competition?.storeCount != null ? `${niche.competition.storeCount} stores selling this` : "Store count not available"}
+        </span>
         <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-accent transition-colors" />
       </div>
     </div>

@@ -2,11 +2,12 @@
 
 import { useInView } from "@/hooks/useInView";
 import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
+import { PLATFORM_CATALOG } from "@/lib/platform-catalog";
 
 const stats = [
-  { end: 10, suffix: "+", label: "Platforms Connected", sublabel: "Amazon, AliExpress, eBay..." },
-  { end: 847, suffix: "+", label: "Products Analyzed Daily", sublabel: "AI-scored for profit potential" },
-  { end: 92, suffix: "%", label: "AI Accuracy Score", sublabel: "On trending product picks" },
+  { end: PLATFORM_CATALOG.length, suffix: "+", label: "Platforms Supported", sublabel: "Amazon, AliExpress, eBay..." },
+  { end: 1, suffix: "/day", label: "New Product Pick", sublabel: "Fresh pick every 24 hours" },
+  { end: 24, suffix: "/7", label: "Dashboard Access", sublabel: "Log in any time, from anywhere" },
   { end: 0, suffix: "", label: "To Get Started", sublabel: "Free forever, upgrade anytime", isFree: true },
 ];
 

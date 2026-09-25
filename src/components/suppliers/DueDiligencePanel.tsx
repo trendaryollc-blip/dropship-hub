@@ -106,7 +106,14 @@ export default function DueDiligencePanel({ supplierId, supplierName }: { suppli
         body: JSON.stringify({ supplierId, forceRefresh }),
       });
       const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Failed to generate");
+      if (!res.ok) {
+        const missingProvider = result.code === "no_provider" || /No AI provider/i.test(result.error ?? "");
+        throw new Error(
+          missingProvider
+            ? "No AI provider connected — add a key in Settings → AI"
+            : result.error || "Failed to generate"
+        );
+      }
       await mutate();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -166,6 +173,12 @@ export default function DueDiligencePanel({ supplierId, supplierName }: { suppli
           <ShieldAlert className="h-5 w-5 text-accent" />
           <span className="text-sm font-semibold text-foreground">Due Diligence Report</span>
         </div>
+        {error && (
+          <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-2">
+            <X className="h-4 w-4 text-red-400 shrink-0" />
+            <span className="text-xs text-red-400">{error}</span>
+          </div>
+        )}
         <p className="text-xs text-muted-foreground mb-4">
           Generate an AI-powered trust report for {supplierName} with red flag detection, risk assessment, and recommendations.
         </p>
@@ -190,7 +203,7 @@ export default function DueDiligencePanel({ supplierId, supplierName }: { suppli
         </div>
         <div className="flex flex-col items-center justify-center py-8 gap-3">
           <Loader2 className="h-8 w-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-muted-foreground">AI is analyzing {supplierName}...</p>
+            <p className="text-xs text-muted-foreground">Generating report for {supplierName} from provider APIs...</p>
           <p className="text-[10px] text-muted-foreground/60">Checking ratings, policies, shipping data, and more</p>
         </div>
       </div>
@@ -245,7 +258,7 @@ export default function DueDiligencePanel({ supplierId, supplierName }: { suppli
             <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border ${verdict.bg} ${verdict.border}`}>
               <VerdictIcon className={`h-4 w-4 ${verdict.color}`} />
               <span className={`text-xs font-bold ${verdict.color}`}>{verdict.label}</span>
-              <span className="text-[10px] text-muted-foreground ml-1">{report.recommendation.confidence}% confidence</span>
+              <span className="text-[10px] text-muted-foreground ml-1" title="Self-reported by the AI provider — not a calibrated probability">{report.recommendation.confidence}% model confidence</span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">{report.recommendation.summary}</p>
           </div>
@@ -285,10 +298,14 @@ export default function DueDiligencePanel({ supplierId, supplierName }: { suppli
 
         {/* History Analysis */}
         <div className="glass rounded-xl p-4 space-y-3">
-          <h4 className="text-xs font-semibold text-foreground flex items-center gap-2">
-            <Package className="h-3.5 w-3.5 text-blue-400" />
-            History Analysis
-          </h4>
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-semibold text-foreground flex items-center gap-2">
+              <Package className="h-3.5 w-3.5 text-blue-400" />
+              History Analysis
+            </h4>
+            <span className="text-[9px] px-1.5 py-0.5 rounded border border-amber-500/20 text-amber-400/80 uppercase font-bold" title="Provider estimate from catalog fields — no order/refund history feed is wired">Est.</span>
+          </div>
+          <p className="text-[10px] text-muted-foreground -mt-1">Estimated from catalog fields — no verified order/refund history feed.</p>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <span className="text-[10px] text-muted-foreground">Review Pattern</span>

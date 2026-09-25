@@ -271,41 +271,50 @@ export default function EnrichedProductCard({
             </div>
           )}
 
-          {/* Golden Score Badge - TOP LEFT, most prominent */}
+          {/* Golden Score Badge - TOP LEFT (heuristic estimate on real search signals) */}
           {product.goldenRank && (
-            <span className={`absolute top-2 left-2 px-2.5 py-1 rounded-lg text-[11px] font-bold backdrop-blur-sm shadow-lg ${
-              product.goldenRank === "S" ? "bg-yellow-500/95 text-white shadow-yellow-500/30" :
-              product.goldenRank === "A" ? "bg-emerald-500/95 text-white shadow-emerald-500/30" :
-              product.goldenRank === "B" ? "bg-blue-500/95 text-white shadow-blue-500/30" :
-              product.goldenRank === "C" ? "bg-orange-500/95 text-white shadow-orange-500/30" :
-              "bg-gray-500/95 text-white shadow-gray-500/30"
-            }`}>
-              {product.goldenRank} {product.goldenScore != null ? `(${product.goldenScore})` : ""}
+            <span
+              title="Estimated from live price, rating, and review signals — not a market measurement"
+              className={`absolute top-2 left-2 px-2.5 py-1 rounded-lg text-[11px] font-bold backdrop-blur-sm shadow-lg ${
+                product.goldenRank === "S" ? "bg-yellow-500/95 text-white shadow-yellow-500/30" :
+                product.goldenRank === "A" ? "bg-emerald-500/95 text-white shadow-emerald-500/30" :
+                product.goldenRank === "B" ? "bg-blue-500/95 text-white shadow-blue-500/30" :
+                product.goldenRank === "C" ? "bg-orange-500/95 text-white shadow-orange-500/30" :
+                "bg-gray-500/95 text-white shadow-gray-500/30"
+              }`}
+            >
+              {product.goldenRank} {product.goldenScore != null ? `(${product.goldenScore})` : ""} est.
             </span>
           )}
 
-          {/* Trend Phase Badge - below golden rank */}
+          {/* Trend Phase Badge - below golden rank (heuristic) */}
           {product.trendPhase && (
-            <span className={`absolute top-12 left-2 px-2 py-1 rounded-lg text-[10px] font-bold backdrop-blur-sm ${
-              product.trendPhase === "emerging" ? "bg-purple-500/90 text-white" :
-              product.trendPhase === "growth" ? "bg-emerald-500/90 text-white" :
-              product.trendPhase === "mature" ? "bg-blue-500/90 text-white" :
-              "bg-red-500/90 text-white"
-            }`}>
-              {product.trendPhase === "emerging" ? "New" : product.trendPhase === "growth" ? "Growing" : product.trendPhase === "mature" ? "Stable" : "Declining"}
+            <span
+              title="Estimated from platform count and review volume — not live trend data"
+              className={`absolute top-12 left-2 px-2 py-1 rounded-lg text-[10px] font-bold backdrop-blur-sm ${
+                product.trendPhase === "emerging" ? "bg-purple-500/90 text-white" :
+                product.trendPhase === "growth" ? "bg-emerald-500/90 text-white" :
+                product.trendPhase === "mature" ? "bg-blue-500/90 text-white" :
+                "bg-red-500/90 text-white"
+              }`}
+            >
+              {product.trendPhase === "emerging" ? "New" : product.trendPhase === "growth" ? "Growing" : product.trendPhase === "mature" ? "Stable" : "Declining"} est.
             </span>
           )}
 
-          {/* Profit Estimate Badge - TOP RIGHT, prominent (only when real margin data exists) */}
+          {/* Profit Estimate Badge - TOP RIGHT (platform cost-ratio estimate) */}
           {estimatedMargin != null && !product.trendPhase && !product.goldenRank && (
-            <span className="absolute top-2 right-2 px-2.5 py-1 rounded-lg bg-emerald-500/95 text-white text-[11px] font-bold backdrop-blur-sm shadow-lg shadow-emerald-500/30 flex items-center gap-1">
+            <span
+              title="Estimated margin from platform cost ratios × live price — enter real COGS in the calculator for accuracy"
+              className="absolute top-2 right-2 px-2.5 py-1 rounded-lg bg-emerald-500/95 text-white text-[11px] font-bold backdrop-blur-sm shadow-lg shadow-emerald-500/30 flex items-center gap-1"
+            >
               <BarChart3 className="h-3 w-3" /> ~{estimatedMargin}%
             </span>
           )}
 
-          {/* Saturation Score - prominent metric */}
+          {/* Saturation Score - heuristic on real signals */}
           {saturation && (
-            <span className={`absolute ${product.goldenRank ? "top-12" : "top-2"} right-2 px-2 py-1 rounded-lg text-[10px] font-bold backdrop-blur-sm ${saturation.bg} text-white`}>
+            <span title="Estimated saturation from platform/review signals" className={`absolute ${product.goldenRank ? "top-12" : "top-2"} right-2 px-2 py-1 rounded-lg text-[10px] font-bold backdrop-blur-sm ${saturation.bg} text-white`}>
               {saturation.label}
             </span>
           )}
@@ -425,7 +434,7 @@ export default function EnrichedProductCard({
               <div className="flex items-baseline gap-1.5">
                 <span className="text-lg font-bold text-accent">${product.price.toFixed(2)}</span>
                 {estimatedProfit != null && (
-                  <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-400/10 px-1.5 py-0.5 rounded">~${estimatedProfit} profit</span>
+                  <span title="Estimated from platform cost-ratio margin × price" className="text-[10px] text-emerald-400 font-semibold bg-emerald-400/10 px-1.5 py-0.5 rounded">~${estimatedProfit} profit est.</span>
                 )}
               </div>
             ) : (

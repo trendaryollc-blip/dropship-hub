@@ -1,32 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
-
-const SERP_API_KEY = process.env.SERP_API_KEY;
+import { withKeyPool } from "@/lib/api-keys/pool";
+import {
+  envelopeFromError,
+  type DataStatus,
+  type EnvelopeMeta,
+  type SetupInfo,
+} from "@/lib/api-keys/envelope";
 
 interface MarketIntel {
   searchVolume: "high" | "medium" | "low";
-  searchVolumeNumber: number;
+  interestIndex: number;
   trendDirection: "rising" | "stable" | "declining";
   trendSparkline: number[];
   seasonality: string;
   bestTimeToSell: string;
   competitionLevel: "low" | "medium" | "high" | "very-high";
   estimatedSellers: number;
-  avgSellerRating: number;
+  avgSellerRating: number | null;
   priceWarRisk: "low" | "medium" | "high";
   canCompete: string;
   riskScore: number;
   riskFactors: { label: string; level: "safe" | "caution" | "avoid" }[];
 }
 
-async function fetchGoogleTrends(query: string): Promise<{ volume: number; direction: "rising" | "stable" | "declining"; sparkline: number[] } | null> {
-  if (!SERP_API_KEY) return null;
-
-  try {
+async function fetchGoogleTrends(
+  query: string
+): Promise<{ interestIndex: number; direction: "rising" | "stable" | "declining"; sparkline: number[] } | null> {
+  return withKeyPool("serpapi", async (apiKey) => {
     const params = new URLSearchParams({
       engine: "google_trends",
       q: query,
-      api_key: SERP_API_KEY,
+      api_key: apiKey,
       data_type: "TIMESERIES",
       date: "today 3-m",
     });
@@ -34,7 +39,10 @@ async function fetchGoogleTrends(query: string): Promise<{ volume: number; direc
     const res = await fetch(`https://serpapi.com/search?${params}`, {
       signal: AbortSignal.timeout(15000),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`SerpAPI ${res.status}: ${body.slice(0, 200)}`);
+    }
 
     const data = await res.json();
     const timelineData = data.interest_over_time?.timeline_data || [];
@@ -52,27 +60,28 @@ async function fetchGoogleTrends(query: string): Promise<{ volume: number; direc
 
     const sparkline = values.slice(-14).map((v: number) => Math.round(v));
 
-    return { volume: Math.round(avg * 1000), direction, sparkline };
-  } catch {
-    return null;
-  }
+    return { interestIndex: Math.round(avg), direction, sparkline };
+  });
 }
 
-async function fetchSerpShoppingData(query: string): Promise<{ sellerCount: number; avgRating: number; priceRange: { min: number; max: number } } | null> {
-  if (!SERP_API_KEY) return null;
-
-  try {
+async function fetchSerpShoppingData(
+  query: string
+): Promise<{ sellerCount: number; avgRating: number; priceRange: { min: number; max: number } } | null> {
+  return withKeyPool("serpapi", async (apiKey) => {
     const params = new URLSearchParams({
       engine: "google_shopping",
       q: query,
-      api_key: SERP_API_KEY,
+      api_key: apiKey,
       num: "20",
     });
 
     const res = await fetch(`https://serpapi.com/search?${params}`, {
       signal: AbortSignal.timeout(15000),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`SerpAPI ${res.status}: ${body.slice(0, 200)}`);
+    }
 
     const data = await res.json();
     const results = data.shopping_results || [];
@@ -95,9 +104,51 @@ async function fetchSerpShoppingData(query: string): Promise<{ sellerCount: numb
         max: prices.length > 0 ? Math.max(...prices) : 0,
       },
     };
-  } catch {
-    return null;
+  });
+}
+
+/**
+ * Build provenance meta from the two SerpAPI legs. Worst status wins:
+ * config_missing / quota_exhausted are reported with full setup info so the
+ * UI can render DataUnavailable/QuotaExhausted instead of guessing.
+ */
+function buildMeta(
+  results: PromiseSettledResult<unknown>[],
+  source: string
+): EnvelopeMeta {
+  let status: DataStatus = "live";
+  let setup: SetupInfo | undefined;
+  let quota: EnvelopeMeta["quota"];
+  let message: string | undefined;
+  let anyFulfilled = false;
+
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      anyFulfilled = true;
+      continue;
+    }
+    const env = envelopeFromError(result.reason, source);
+    if (env.meta.status === "config_missing" || env.meta.status === "quota_exhausted") {
+      status = env.meta.status;
+      setup = env.meta.setup;
+      quota = env.meta.quota;
+      message = env.meta.message;
+    } else if (status === "live") {
+      status = "provider_error";
+      message = env.meta.message;
+    }
   }
+
+  if (!anyFulfilled && status === "live") status = "provider_error";
+
+  return {
+    status,
+    source: status === "live" ? source : undefined,
+    fetchedAt: status === "live" ? new Date().toISOString() : undefined,
+    setup,
+    quota,
+    message,
+  };
 }
 
 function deriveMarketIntel(
@@ -105,47 +156,56 @@ function deriveMarketIntel(
   price: number,
   rating: number,
   reviews: number,
-  trendData: { volume: number; direction: "rising" | "stable" | "declining"; sparkline: number[] } | null,
+  trendData: { interestIndex: number; direction: "rising" | "stable" | "declining"; sparkline: number[] } | null,
   shoppingData: { sellerCount: number; avgRating: number; priceRange: { min: number; max: number } } | null
 ): MarketIntel {
-  const sellerCount = shoppingData?.sellerCount || Math.round(100 + (reviews || 100) / 10);
-  const avgRating = shoppingData?.avgRating || rating || 4.0;
-  const priceMin = shoppingData?.priceRange.min || price * 0.7;
-  const priceMax = shoppingData?.priceRange.max || price * 1.5;
+  const sellerCount = shoppingData?.sellerCount ?? 0;
+  const avgRating = shoppingData?.avgRating || rating || null;
+  const priceMin = shoppingData?.priceRange.min || 0;
+  const priceMax = shoppingData?.priceRange.max || 0;
   const priceSpread = priceMax - priceMin;
 
-  const searchVolume = trendData?.volume || (reviews > 1000 ? 80000 : reviews > 100 ? 20000 : 5000);
+  const interestIndex = trendData?.interestIndex ?? 0;
   let volumeLevel: "high" | "medium" | "low" = "medium";
-  if (searchVolume > 50000) volumeLevel = "high";
-  else if (searchVolume < 10000) volumeLevel = "low";
+  if (!trendData) volumeLevel = "low";
+  else if (interestIndex > 50) volumeLevel = "high";
+  else if (interestIndex < 10) volumeLevel = "low";
 
   const trendDirection = trendData?.direction || "stable";
-  const trendSparkline = trendData?.sparkline || Array.from({ length: 14 }, (_, i) => Math.round(40 + Math.sin(i * 0.5) * 20));
+  const trendSparkline = trendData?.sparkline || [];
 
   let competitionLevel: "low" | "medium" | "high" | "very-high" = "medium";
-  if (sellerCount > 15) competitionLevel = "very-high";
-  else if (sellerCount > 8) competitionLevel = "high";
-  else if (sellerCount < 4) competitionLevel = "low";
+  if (shoppingData) {
+    if (sellerCount > 15) competitionLevel = "very-high";
+    else if (sellerCount > 8) competitionLevel = "high";
+    else if (sellerCount < 4) competitionLevel = "low";
+  }
 
-  const priceWarRisk: "low" | "medium" | "high" = priceSpread < price * 0.2 ? "high" : priceSpread < price * 0.4 ? "medium" : "low";
+  const priceWarRisk: "low" | "medium" | "high" =
+    shoppingData && priceSpread > 0
+      ? priceSpread < price * 0.2 ? "high" : priceSpread < price * 0.4 ? "medium" : "low"
+      : "medium";
 
-  const canCompete = priceSpread > price * 0.3
-    ? "Yes — good price spread allows competitive margins"
-    : "Challenging — tight margins across platforms";
+  const canCompete = !shoppingData
+    ? "Not run — needs live shopping results (SerpAPI)"
+    : priceSpread > price * 0.3
+      ? "Yes — good price spread allows competitive margins"
+      : "Challenging — tight margins across platforms";
 
   const riskScore = Math.min(95, Math.round(
     (competitionLevel === "very-high" ? 30 : competitionLevel === "high" ? 20 : competitionLevel === "medium" ? 10 : 5) +
     (priceWarRisk === "high" ? 25 : priceWarRisk === "medium" ? 15 : 5) +
-    (sellerCount > 10 ? 15 : 5) +
+    (shoppingData && sellerCount > 10 ? 15 : 5) +
     (trendDirection === "declining" ? 15 : 5)
   ));
 
   const riskFactors = [
-    { label: "Competition intensity", level: competitionLevel === "very-high" ? "avoid" as const : competitionLevel === "high" ? "caution" as const : "safe" as const },
-    { label: "Price war likelihood", level: priceWarRisk === "high" ? "avoid" as const : priceWarRisk === "medium" ? "caution" as const : "safe" as const },
+    ...(shoppingData ? [{ label: "Competition intensity", level: competitionLevel === "very-high" ? "avoid" as const : competitionLevel === "high" ? "caution" as const : "safe" as const }] : []),
+    ...(shoppingData ? [{ label: "Price war likelihood", level: priceWarRisk === "high" ? "avoid" as const : priceWarRisk === "medium" ? "caution" as const : "safe" as const }] : []),
     { label: "Brand/trademark risk", level: title.toLowerCase().includes("brand") || title.toLowerCase().includes("official") ? "caution" as const : "safe" as const },
-    { label: "Market saturation", level: sellerCount > 12 ? "avoid" as const : sellerCount > 6 ? "caution" as const : "safe" as const },
+    ...(shoppingData ? [{ label: "Market saturation", level: sellerCount > 12 ? "avoid" as const : sellerCount > 6 ? "caution" as const : "safe" as const }] : []),
     { label: "Trend stability", level: trendDirection === "declining" ? "caution" as const : "safe" as const },
+    ...(trendData ? [] : [{ label: "Search trend", level: "caution" as const }]),
   ];
 
   const month = new Date().getMonth();
@@ -167,7 +227,7 @@ function deriveMarketIntel(
 
   return {
     searchVolume: volumeLevel,
-    searchVolumeNumber: searchVolume,
+    interestIndex,
     trendDirection,
     trendSparkline,
     seasonality,
@@ -195,17 +255,25 @@ export const POST = withAuth(async (request: NextRequest) => {
     const ratingNum = typeof rating === "number" ? rating : 4.0;
     const reviewsNum = typeof reviews === "number" ? reviews : 100;
 
-    const [trendData, shoppingData] = await Promise.allSettled([
+    const [trendSettled, shoppingSettled] = await Promise.allSettled([
       fetchGoogleTrends(query),
       fetchSerpShoppingData(query),
     ]);
 
-    const trend = trendData.status === "fulfilled" ? trendData.value : null;
-    const shopping = shoppingData.status === "fulfilled" ? shoppingData.value : null;
+    const trend = trendSettled.status === "fulfilled" ? trendSettled.value : null;
+    const shopping = shoppingSettled.status === "fulfilled" ? shoppingSettled.value : null;
+
+    const meta = buildMeta([trendSettled, shoppingSettled], "serpapi");
 
     const marketIntel = deriveMarketIntel(title, priceNum, ratingNum, reviewsNum, trend, shopping);
 
-    return NextResponse.json(marketIntel);
+    // `meta` carries provenance (status/source/setup). Legacy top-level fields
+    // remain until the product-validation page rebuild reads `meta` and swaps
+    // heuristic fields for DataUnavailable/QuotaExhausted components.
+    return NextResponse.json(
+      { ...marketIntel, meta },
+      { headers: { "X-Data-Status": meta.status } }
+    );
   } catch {
     return NextResponse.json({ error: "Failed to analyze market" }, { status: 500 });
   }

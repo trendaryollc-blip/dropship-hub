@@ -40,17 +40,17 @@ export default function NicheListItem({ niche, index, onSelect, onCompare, compa
           </div>
           <div className="flex items-center gap-2 sm:gap-3 text-[10px] text-muted-foreground flex-wrap">
             <span>{niche.productCount} products</span>
-            <span>{niche.avgMargin}% margin</span>
-            <span className="hidden sm:inline">{niche.saturation}% saturated</span>
-            <span className="hidden md:inline text-emerald-400 font-medium">${(niche.profitPerUnit || 0).toFixed(2)}/unit</span>
-            <span className="hidden md:inline text-blue-400 font-medium">{niche.avgShippingDays || 0}d shipping</span>
+            <span>{niche.avgMargin != null ? `${niche.avgMargin}% margin` : "margin n/a"}</span>
+            <span className="hidden sm:inline">{niche.saturation}% saturated (est.)</span>
+            <span className="hidden md:inline text-emerald-400 font-medium">{niche.profitPerUnit != null ? `$${niche.profitPerUnit.toFixed(2)}/unit` : "profit n/a"}</span>
+            <span className="hidden md:inline text-blue-400 font-medium">{niche.avgShippingDays != null ? `${niche.avgShippingDays}d shipping` : "shipping n/a"}</span>
           </div>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <div className="text-center hidden sm:block">
             <div className="flex items-center gap-1">
               <DollarSign className="h-3 w-3 text-emerald-400" />
-              <span className="font-display text-sm font-bold text-emerald-400">${(niche.estimatedMonthlyRevenue || 0).toLocaleString()}</span>
+              <span className="font-display text-sm font-bold text-emerald-400">{niche.estimatedMonthlyRevenue != null ? `$${niche.estimatedMonthlyRevenue.toLocaleString()}` : "—"}</span>
             </div>
             <span className="text-[9px] text-muted-foreground">revenue/mo</span>
           </div>
@@ -59,12 +59,12 @@ export default function NicheListItem({ niche, index, onSelect, onCompare, compa
               <Flame className="h-3.5 w-3.5" style={{ color: heatColor }} />
               <span className="font-display text-sm font-bold" style={{ color: heatColor }}>{niche.heat}</span>
             </div>
-            <span className="text-[9px] text-muted-foreground">heat</span>
+            <span className="text-[9px] text-muted-foreground">heat (est.)</span>
           </div>
           <div className="text-center hidden sm:block">
             <div className={`flex items-center gap-0.5 ${trendColor}`}>
               <TrendIcon className="h-3 w-3" />
-              <span className="text-[10px] font-bold">+{niche.growth}%</span>
+              <span className="text-[10px] font-bold">{niche.growth != null ? `${niche.growth > 0 ? "+" : ""}${niche.growth}%` : "—"}</span>
             </div>
             <span className="text-[9px] text-muted-foreground">growth</span>
           </div>

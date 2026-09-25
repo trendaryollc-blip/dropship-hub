@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import LiveMarketIntel from "./LiveMarketIntel";
 
 vi.mock("@/components/auth/AuthProvider", () => ({
@@ -19,6 +19,7 @@ vi.mock("lucide-react", () => ({
   Globe: () => <div data-testid="icon" />,
   BarChart3: () => <div data-testid="icon" />,
   ShoppingCart: () => <div data-testid="icon" />,
+  KeyRound: () => <div data-testid="icon" />,
 }));
 
 vi.mock("next/link", () => ({
@@ -31,10 +32,19 @@ describe("LiveMarketIntel", () => {
     expect(screen.getByText("Market Intel")).toBeInTheDocument();
   });
 
-  it("renders default trending products", () => {
+  it("shows honest empty state instead of fabricated trending products", () => {
     render(<LiveMarketIntel />);
-    expect(screen.getByText("Pet GPS Tracker")).toBeInTheDocument();
-    expect(screen.getByText("Posture Corrector")).toBeInTheDocument();
+    expect(screen.getByText("No market signals yet")).toBeInTheDocument();
+    expect(
+      screen.getByText("Market intel needs a live shopping/trend source (not connected)")
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Pet GPS Tracker")).not.toBeInTheDocument();
+  });
+
+  it("does not render fabricated footer stats", () => {
+    render(<LiveMarketIntel />);
+    expect(screen.queryByText("847")).not.toBeInTheDocument();
+    expect(screen.queryByText("+12%")).not.toBeInTheDocument();
   });
 
   it("renders trending tab", () => {
@@ -45,5 +55,11 @@ describe("LiveMarketIntel", () => {
   it("renders alerts tab", () => {
     render(<LiveMarketIntel />);
     expect(screen.getByText("Alerts")).toBeInTheDocument();
+  });
+
+  it("shows empty state on alerts tab when API returns nothing", () => {
+    render(<LiveMarketIntel />);
+    fireEvent.click(screen.getByText("Alerts"));
+    expect(screen.getByText("No market signals yet")).toBeInTheDocument();
   });
 });

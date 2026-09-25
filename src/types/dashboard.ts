@@ -113,9 +113,9 @@ export interface NicheCard {
   grade: "A+" | "A" | "B+" | "B" | "C+" | "C";
   productCount: number;
   avgMargin: number;
-  growth: number;
+  ratingScore: number;
   aiInsight: string;
-  demandSparkline: number[] | null;
+  demandSparkline?: number[] | null;
   topProduct: string;
 }
 
@@ -155,7 +155,7 @@ export interface HeatmapCategory {
   trend: "up" | "down" | "stable";
   weeklyData: number[];
   topProduct: string;
-  topProductMargin: number;
+  topProductMargin?: number | null;
   aiInsight: string;
   velocity: number;
 }
@@ -175,8 +175,8 @@ export interface TrendingProduct {
   demandLevel: "low" | "medium" | "high";
   competitionLevel: "low" | "medium" | "high";
   supplierReliability: number;
-  monthlyVolume: number;
-  shippingDays: string;
+  monthlyVolume?: number | null;
+  shippingDays: string | null;
   sourceUrl: string;
   competitors: { name: string; price: number }[];
   listingSuggestion: { title: string; description: string };

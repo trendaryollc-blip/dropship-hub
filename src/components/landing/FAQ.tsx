@@ -6,16 +6,16 @@ import { ChevronDown } from "lucide-react";
 
 const faqs = [
   {
-    q: "How does the AI Daily Pick work?",
-    a: "Every 24 hours, our AI analyzes thousands of products across 10+ platforms, scoring them on profit margin, demand trends, competition level, and supplier reliability. It then selects the single best opportunity and provides a full breakdown including why it's trending, competitor pricing, and an AI-generated listing suggestion.",
+    q: "How does the Daily Pick work?",
+    a: "When your dashboard loads, the app scores the products returned by your latest supplier search with a fixed formula — rating, review count, price headroom, and margin — then highlights the top opportunity with its price, margin, and a suggested listing price. The pick is rule-based and refreshes whenever your search data refreshes.",
   },
   {
     q: "What is the Niche Radar?",
-    a: "Niche Radar provides AI-scored analysis of entire market niches. Each niche card shows a radar chart with dimensions like market size, competition, growth rate, and margin potential. Scores range from 0-100, helping you identify untapped opportunities before they become saturated.",
+    a: "Niche Radar provides heuristic niche scores from catalog size and pricing. Each niche card compares niches on dimensions like market size, competition, growth rate, and margin potential. Scores range from 0-100, helping you spot niches with room to enter before they become saturated.",
   },
   {
     q: "How accurate are the trending product scores?",
-    a: "Our AI confidence scores combine multiple signals: search volume trends, sales velocity, supplier reliability, margin stability, and competition density. Products scoring 85+ have historically shown strong performance. The score is updated in real-time as market conditions change.",
+    a: "Our rule-based confidence scores are computed from the listing data we can see: margin headroom, rating and review counts, how many platforms list the product, and the price spread between sellers. 85+ is our target threshold for promising products. Scores refresh whenever supplier data is refreshed — they are estimates from listing data, not sales measurements.",
   },
   {
     q: "What are Daily Missions?",
@@ -23,7 +23,7 @@ const faqs = [
   },
   {
     q: "How does the Marketplace Heatmap work?",
-    a: "The heatmap visualizes marketplace activity across categories using color-coded tiles. Red tiles indicate overheating markets (high competition), green tiles show emerging trends, and blue tiles represent stable, profitable niches. Temperature scores update based on real-time sales data.",
+    a: "The heatmap visualizes marketplace activity across categories using color-coded tiles. Red tiles indicate overcrowded categories, green tiles show rising categories, and blue tiles represent quieter niches. Temperature scores are based on listing density from supplier search, cached.",
   },
   {
     q: "Can I connect my Shopify or WooCommerce store?",
@@ -31,7 +31,7 @@ const faqs = [
   },
   {
     q: "Is DropShip Hub really free?",
-    a: "Yes. The core features — AI daily picks, niche radar, trending products, marketplace heatmap, calculators, and daily missions — are all free. You can use the full dashboard without entering a credit card.",
+    a: "Yes. The core features — daily product picks, niche radar, trending products, calculators, and daily missions — are all free. You can use the full dashboard without entering a credit card.",
   },
 ];
 

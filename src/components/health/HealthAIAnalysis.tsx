@@ -84,7 +84,7 @@ function generateInsights(score: number, totalDone: number, totalItems: number, 
     insights.push({
       type: "tip",
       title: "Pace Check",
-      description: `${Math.round(completionRate)}% complete. At this rate, you'll need to complete ${Math.ceil((totalItems - totalDone) / 2)} items per session to reach 50%.`,
+      description: `${Math.round(completionRate)}% complete — ${Math.max(0, Math.ceil(totalItems * 0.5) - totalDone)} items remaining to reach 50%.`,
     });
   }
 
@@ -129,7 +129,7 @@ export default function HealthAIAnalysis({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-violet-400" />
-          <span className="text-sm font-semibold text-foreground">AI Health Analysis</span>
+          <span className="text-sm font-semibold text-foreground">Health Analysis</span>
         </div>
         {onAskAI && (
           <button
@@ -175,7 +175,7 @@ export default function HealthAIAnalysis({
           className="w-full mt-4 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-violet-500 to-purple-500 text-white text-xs font-medium hover:opacity-90 transition-all"
         >
           <Sparkles className="h-3.5 w-3.5" />
-          Get AI Health Roadmap
+          Get Health Roadmap
         </button>
       )}
     </div>

@@ -24,6 +24,7 @@ vi.mock("lucide-react", () => ({
   ShoppingCart: () => <div data-testid="icon" />,
   Target: () => <div data-testid="icon" />,
   Zap: () => <div data-testid="icon" />,
+  KeyRound: () => <div data-testid="icon" />,
 }));
 
 vi.mock("next/link", () => ({
@@ -36,21 +37,23 @@ describe("SmartSuggestions", () => {
     expect(screen.getByText("Smart Alerts")).toBeInTheDocument();
   });
 
-  it("renders default suggestions", () => {
+  it("shows empty state instead of fabricated suggestions", () => {
     render(<SmartSuggestions />);
-    expect(screen.getByText("Pet GPS Trackers +340%")).toBeInTheDocument();
-    expect(screen.getByText("Earbuds source price dropped")).toBeInTheDocument();
+    expect(screen.getByText("No suggestions yet")).toBeInTheDocument();
+    expect(screen.queryByText("Pet GPS Trackers +340%")).not.toBeInTheDocument();
+    expect(screen.queryByText("Earbuds source price dropped")).not.toBeInTheDocument();
+    expect(screen.queryByText("AI Confidence: 89/100.")).not.toBeInTheDocument();
   });
 
   it("renders suggestion count", () => {
     render(<SmartSuggestions />);
-    expect(screen.getByText("5")).toBeInTheDocument();
+    expect(screen.getByText("0")).toBeInTheDocument();
   });
 
   it("expands/collapses on click", () => {
     render(<SmartSuggestions />);
     const header = screen.getByText("Smart Alerts").closest("button");
     fireEvent.click(header!);
-    expect(screen.queryByText("Pet GPS Trackers +340%")).not.toBeInTheDocument();
+    expect(screen.queryByText("No suggestions yet")).not.toBeInTheDocument();
   });
 });

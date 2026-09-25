@@ -70,6 +70,9 @@ describe("ReviewsPage", () => {
   it("renders header, stats and import form", () => {
     render(<ReviewsPage />);
     expect(screen.getByText("Review Importer")).toBeTruthy();
+    expect(screen.getByText("Import reviews from a connected supplier source.")).toBeTruthy();
+    expect(screen.getByTestId("coming-soon")).toBeTruthy();
+    expect(screen.getByText(/which is not connected yet/)).toBeTruthy();
     expect(screen.getByText("Total Reviews")).toBeTruthy();
     expect(screen.getByText("4.5★")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Import Reviews" })).toBeTruthy();
@@ -108,22 +111,29 @@ describe("ReviewsPage", () => {
     });
   });
 
-  it("shows import failure as error toast", async () => {
-    mockAuthJson.mockRejectedValue(new Error("Unauthorized"));
+  it("shows the server's import error message as error toast", async () => {
+    mockAuthJson.mockRejectedValue(
+      new Error("Review import needs a supplier review source (AliExpress/CJ API), which is not connected yet.")
+    );
     render(<ReviewsPage />);
     fireEvent.change(screen.getByLabelText("Product Name *"), { target: { value: "Earbuds" } });
     fireEvent.click(screen.getByRole("button", { name: "Import Reviews" }));
     await waitFor(() => {
-      expect(mockToast.error).toHaveBeenCalledWith("Unauthorized");
+      expect(mockToast.error).toHaveBeenCalledWith(
+        "Review import needs a supplier review source (AliExpress/CJ API), which is not connected yet."
+      );
     });
+    expect(mockToast.success).not.toHaveBeenCalled();
+    expect(mockMutate).not.toHaveBeenCalled();
   });
 
-  it("renders reviews with author, verified badge and sync status", () => {
+  it("renders reviews without verified badge or helpful counts", () => {
     render(<ReviewsPage />);
     expect(screen.getByText("by John D.")).toBeTruthy();
-    expect(screen.getByText("Verified")).toBeTruthy();
+    expect(screen.queryByText("Verified")).toBeNull();
+    expect(screen.queryByText(/found helpful/)).toBeNull();
     expect(screen.getByText("pending")).toBeTruthy();
-    expect(screen.getByText("AI Reply")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Suggested reply" })).toBeTruthy();
   });
 
   it("shows review error state with retry", () => {
@@ -160,13 +170,13 @@ describe("ReviewsPage", () => {
     expect(mockToast.success).not.toHaveBeenCalledWith("Review deleted");
   });
 
-  it("generates an AI reply and displays it", async () => {
+  it("generates a suggested reply from the template and displays it", async () => {
     mockAuthJson.mockResolvedValue({ response: "Thanks for the review!" });
     render(<ReviewsPage />);
-    fireEvent.click(screen.getByText("AI Reply"));
+    fireEvent.click(screen.getByRole("button", { name: "Suggested reply" }));
     await waitFor(() => {
       expect(mockAuthJson).toHaveBeenCalledWith("/api/reviews", expect.objectContaining({ action: "respond", reviewId: "r1" }));
-      expect(screen.getByText("Suggested reply")).toBeTruthy();
+      expect(screen.getByText("Reply template")).toBeTruthy();
       expect(screen.getByText("Thanks for the review!")).toBeTruthy();
     });
   });
@@ -177,6 +187,18 @@ describe("ReviewsPage", () => {
     expect(screen.getByText("Earbuds")).toBeTruthy();
     expect(screen.getByText("completed")).toBeTruthy();
     expect(screen.getByText("8/8 imported")).toBeTruthy();
+  });
+
+  it("hides import history when there are no import jobs", () => {
+    mockUseAPI.mockImplementation((url: string) => ({
+      data: url.includes("type=jobs") ? { jobs: [] } : defaultUseAPIMock(url).data,
+      mutate: mockMutate,
+      isLoading: false,
+      error: undefined,
+    }));
+    render(<ReviewsPage />);
+    expect(screen.queryByText("Import History")).toBeNull();
+    expect(screen.getByText("by John D.")).toBeTruthy();
   });
 
   it("shows empty state when no reviews", () => {

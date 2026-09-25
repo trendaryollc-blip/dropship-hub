@@ -55,7 +55,7 @@ export const generateListingTool = createTool({
         validation,
         generationTime: result.generationTime,
       },
-      summary: `Generated ${input.platform} listing (score: ${result.listing.optimizationScore}/100). Title: "${result.listing.title}". ${result.listing.bulletPoints.length} bullet points, ${result.listing.seoTags.length} SEO tags. ${validation.valid ? "Valid ✓" : `Issues: ${validation.errors.join("; ")}`}`,
+      summary: `Generated ${input.platform} listing (rule-based checklist score: ${result.listing.optimizationScore}/100). Title: "${result.listing.title}". ${result.listing.bulletPoints.length} bullet points, ${result.listing.seoTags.length} SEO tags. ${validation.valid ? "Valid ✓" : `Issues: ${validation.errors.join("; ")}`}`,
     };
   },
 });

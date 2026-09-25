@@ -41,7 +41,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
           customerName: (data.customerName as string) || "",
           reason: "manual_escalation",
           reasonDetail: (data.lastMessage as string) || "",
-          confidence: 0,
+          confidence: null,
           customerMessage: (data.lastMessage as string) || "",
           status: "pending",
           createdAt: (data.createdAt as string) || new Date().toISOString(),
@@ -60,13 +60,53 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     const totalHandled = conversations.length;
     const aiHandledCount = conversations.filter((c) => c.aiHandled).length;
 
+    const msgSnap = await db
+      .collection("users")
+      .doc(uid)
+      .collection("csMessages")
+      .orderBy("createdAt", "asc")
+      .limit(200)
+      .get();
+    const messages = msgSnap.docs.map((d) => d.data() as DocumentData);
+
+    const storedConfidences = messages
+      .map((m) => m.confidence)
+      .filter((c): c is number => typeof c === "number" && Number.isFinite(c));
+    const avgConfidence =
+      storedConfidences.length > 0
+        ? +(storedConfidences.reduce((sum, c) => sum + c, 0) / storedConfidences.length).toFixed(1)
+        : null;
+
+    const replyDeltas: number[] = [];
+    const pendingCustomerAt: Record<string, number> = {};
+    for (const m of messages) {
+      const at = Date.parse(String(m.createdAt ?? ""));
+      if (!Number.isFinite(at)) continue;
+      const convId = String(m.conversationId ?? "");
+      if (m.role === "customer") {
+        pendingCustomerAt[convId] = at;
+      } else if (m.role === "ai" && convId && pendingCustomerAt[convId] !== undefined) {
+        const delta = at - pendingCustomerAt[convId];
+        if (delta >= 0) replyDeltas.push(delta);
+        delete pendingCustomerAt[convId];
+      }
+    }
+    const avgReplyMs =
+      replyDeltas.length > 0 ? replyDeltas.reduce((sum, d) => sum + d, 0) / replyDeltas.length : null;
+    const avgResponseTime =
+      avgReplyMs === null
+        ? null
+        : avgReplyMs < 60000
+          ? `${Math.max(1, Math.round(avgReplyMs / 1000))}s`
+          : `${Math.round(avgReplyMs / 60000)}m`;
+
     const stats = {
       activeConversations,
       escalatedQueue,
       resolvedToday,
-      avgConfidence: 0,
+      avgConfidence,
       resolutionRate: totalHandled > 0 ? +((resolvedToday / totalHandled) * 100).toFixed(1) : 0,
-      avgResponseTime: "< 30s",
+      avgResponseTime,
       totalHandled,
       aiHandledPercent: totalHandled > 0 ? +((aiHandledCount / totalHandled) * 100).toFixed(0) : 0,
     };
@@ -97,35 +137,35 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
       });
     }
 
-    // Simple AI response logic (keyword matching)
+    // Rule-based response logic (keyword matching)
     const lower = (message || "").toLowerCase();
     let response = "Thank you for reaching out! I'm here to help. Could you tell me more about what you need?";
-    let confidence = 85;
+    let matchedRule = "General reply";
     let shouldEscalate = false;
 
     if (lower.includes("where") || lower.includes("track")) {
       response = "I'd be happy to help you track your order! Could you please provide your order number?";
-      confidence = 95;
+      matchedRule = "Order tracking";
     } else if (lower.includes("refund")) {
       response = "I understand you'd like a refund. Our policy allows returns within 30 days. Could you share your order number?";
-      confidence = 92;
+      matchedRule = "Refund policy";
     } else if (lower.includes("broken") || lower.includes("defective")) {
       response = "I'm sorry about the issue. We offer a full replacement or refund. Which would you prefer?";
-      confidence = 78;
+      matchedRule = "Defect or damage";
       shouldEscalate = true;
     } else if (lower.includes("frustrat") || lower.includes("angry")) {
       response = "I sincerely apologize for the inconvenience. I'm connecting you with a human agent for personalized help.";
-      confidence = 60;
+      matchedRule = "Frustration detected";
       shouldEscalate = true;
     }
 
-    // Save AI response
+    // Save rule-based response
     if (conversationId) {
       await db.collection("users").doc(uid).collection("csMessages").add({
         conversationId,
         role: "ai",
         content: response,
-        confidence,
+        matchedRule,
         escalated: shouldEscalate,
         createdAt: new Date().toISOString(),
       });
@@ -143,12 +183,14 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
         conversationId: conversationId || "new",
         role: "ai",
         content: response,
-        confidence,
+        matchedRule,
+        confidence: null,
         timestamp: new Date().toISOString(),
         escalated: shouldEscalate,
       },
       response,
-      confidence,
+      matchedRule,
+      confidence: null,
       shouldEscalate,
     });
   } catch (error) {

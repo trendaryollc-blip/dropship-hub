@@ -62,15 +62,15 @@ describe("IntelligenceHub", () => {
   it("renders IntelligenceHub with all sections", () => {
     renderHub();
     expect(screen.getByText("AI Market Intelligence")).toBeInTheDocument();
-    expect(screen.getByText("Live Intelligence Feed")).toBeInTheDocument();
+    expect(screen.getByText("Intelligence Feed")).toBeInTheDocument();
     expect(screen.getByText("Market Pulse")).toBeInTheDocument();
-    expect(screen.getByText("Live Market Signals")).toBeInTheDocument();
+    expect(screen.getByText("Market Signals")).toBeInTheDocument();
   });
 
   it("renders AIMonitoringPanel with briefing data", () => {
     renderHub();
     expect(screen.getByText("AI Market Intelligence")).toBeInTheDocument();
-    expect(screen.getByText("Live Scanning")).toBeInTheDocument();
+    expect(screen.getByText("Scan Status")).toBeInTheDocument();
     expect(screen.getByText(/Last scan: just now/)).toBeInTheDocument();
     expect(screen.getByText("Latest Insight")).toBeInTheDocument();
   });
@@ -82,9 +82,9 @@ describe("IntelligenceHub", () => {
     expect(screen.getByText("98%")).toBeInTheDocument();
   });
 
-  it("renders Live Intelligence Feed", () => {
+  it("renders Intelligence Feed", () => {
     renderHub();
-    expect(screen.getByText("Live Intelligence Feed")).toBeInTheDocument();
+    expect(screen.getByText("Intelligence Feed")).toBeInTheDocument();
     expect(screen.getAllByText("Price drop detected").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Product X price dropped 15% on AliExpress.").length).toBeGreaterThanOrEqual(1);
   });
@@ -150,7 +150,7 @@ describe("IntelligenceHub", () => {
       <AIMonitoringPanelWrapper briefing={briefing} alerts={[makeAlert()]} />
     );
     expect(screen.getByText("AI Market Intelligence")).toBeInTheDocument();
-    expect(screen.getByText("Live Scanning")).toBeInTheDocument();
+    expect(screen.getByText("Scan Status")).toBeInTheDocument();
   });
 
   it("shows No alerts yet when alerts array is empty", () => {
@@ -240,7 +240,7 @@ describe("IntelligenceHub", () => {
 
   it("renders scan stats values", () => {
     renderHub();
-    expect(screen.getByText("550")).toBeInTheDocument();
+    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("5").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("2").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("3").length).toBeGreaterThanOrEqual(1);

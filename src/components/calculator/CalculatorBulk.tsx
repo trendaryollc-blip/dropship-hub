@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Package, Plus, X, Download, Sparkles, Loader2 } from "lucide-react";
+import DataSourceBadge from "@/components/ui/DataSourceBadge";
 
 interface BulkProduct {
   id: string;
@@ -97,11 +98,17 @@ export default function CalculatorBulk({ defaultFee, onAskAI }: CalculatorBulkPr
 
   return (
     <div className="glass rounded-2xl p-4">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
           <Package className="h-4 w-4 text-accent" />
           <span className="text-sm font-semibold text-foreground">Bulk Calculator</span>
         </div>
+        <DataSourceBadge source="user" />
+      </div>
+      <p className="text-[10px] text-muted-foreground mb-4">
+        Starts with one example row — edit or replace it with your own products. Totals below sum only the rows you enter.
+      </p>
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <button
             onClick={handleExport}

@@ -133,7 +133,7 @@ describe("calculateSaturation", () => {
   it("returns 0 index for zero sellers", () => {
     const result = calculateSaturation({ ...baseInput, totalSellers: 0 });
     expect(result.index).toBe(0);
-    expect(result.level).toBe("unsaturated");
+    expect(result.level).toBe("unknown");
     expect(result.priceWarRisk).toBe("low");
   });
 

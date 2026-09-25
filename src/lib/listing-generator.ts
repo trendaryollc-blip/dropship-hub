@@ -241,12 +241,6 @@ export function generateListing(request: ListingGenerationRequest): ListingGener
     generatedAt: new Date().toISOString(),
   };
 
-  const keywordSuggestions = keywords.slice(0, 10).map((kw) => ({
-    keyword: kw,
-    volume: Math.floor(Math.random() * 10000) + 1000 + " monthly",
-    competition: Math.random() > 0.6 ? "high" : Math.random() > 0.3 ? "medium" : "low",
-  }));
-
   const alternatives = [
     {
       title: truncate(`${product.title} - Premium Quality ${keywords[0] || ""}`, config.maxLengths.title),
@@ -258,7 +252,7 @@ export function generateListing(request: ListingGenerationRequest): ListingGener
   return {
     listing,
     alternatives,
-    keywordSuggestions,
+    keywordSuggestions: null,
     generationTime: Date.now() - startTime,
     provider: "listing-engine",
   };

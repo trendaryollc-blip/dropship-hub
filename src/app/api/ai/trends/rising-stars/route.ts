@@ -29,6 +29,10 @@ export const GET = withAuth(async (_request: NextRequest, _uid: string) => {
       }
     }
 
+    if (validSignals.length === 0) {
+      return NextResponse.json({ risingStars: [] });
+    }
+
     const risingStars = detectRisingStars(validSignals);
 
     return NextResponse.json({ risingStars });

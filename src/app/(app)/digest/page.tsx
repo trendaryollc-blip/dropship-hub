@@ -477,7 +477,7 @@ export default function DigestPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 print:hidden">
           <div>
             <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-1">Daily Intelligence Digest</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">AI-generated daily summary of your business performance, alerts, and actionable recommendations.</p>
+            <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">Daily summary of your business performance, alerts, and recommended actions.</p>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <button
@@ -617,11 +617,11 @@ export default function DigestPage() {
               </div>
             )}
 
-            {/* AI Summary */}
+            {/* Summary */}
             <div className="glass rounded-2xl p-4 sm:p-5">
               <div className="flex items-center gap-2 mb-3">
                 <Brain className="h-4 w-4 text-accent" />
-                <h3 className="font-display text-sm sm:text-base font-semibold text-foreground">AI Summary</h3>
+                <h3 className="font-display text-sm sm:text-base font-semibold text-foreground">{digest.summarySource === "ai" ? "AI Summary" : "Generated Summary"}</h3>
               </div>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">{digest.summary}</p>
             </div>
@@ -684,7 +684,7 @@ export default function DigestPage() {
             <EmptyState
               iconName="analytics"
               title="No digest generated yet"
-              description="Generate your first AI-powered daily intelligence digest with metrics, alerts, and recommendations."
+              description="Generate your first daily intelligence digest with metrics, alerts, and recommendations."
               action={{ label: "Generate First Digest", onClick: handleGenerate }}
             />
           </div>

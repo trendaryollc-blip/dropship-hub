@@ -26,7 +26,7 @@ export default function ListingOptimization({ data, platform }: { data: ListingS
           <div className="icon-container-purple"><Lightbulb className="h-4 w-4 text-purple-400" /></div>
           <div>
             <h3 className="font-display text-sm font-semibold text-foreground">Listing Optimization</h3>
-            <p className="text-[10px] text-muted-foreground">AI-powered suggestions for your store</p>
+            <p className="text-[10px] text-muted-foreground">Template suggestions built from your product details</p>
           </div>
         </div>
         <SectionEmpty icon={Lightbulb} title="Listing suggestions unavailable" description="Could not generate listing optimization for this product" iconColor="text-muted-foreground/20" />
@@ -44,7 +44,7 @@ export default function ListingOptimization({ data, platform }: { data: ListingS
         </div>
         <div>
           <h3 className="font-display text-sm font-semibold text-foreground">Listing Optimization</h3>
-          <p className="text-[10px] text-muted-foreground">AI-powered suggestions for your store</p>
+          <p className="text-[10px] text-muted-foreground">Template suggestions built from your product details</p>
         </div>
       </div>
 
@@ -92,7 +92,9 @@ export default function ListingOptimization({ data, platform }: { data: ListingS
             <DollarSign className="h-4 w-4 text-emerald-400" />
           </div>
           <div>
-            <span className="text-[10px] text-muted-foreground block mb-0.5">Suggested price range</span>
+            <span className="text-[10px] text-muted-foreground block mb-0.5">
+              Suggested price range{data.fallback ? " (estimated from your price)" : ""}
+            </span>
             <span className="listing-price-range">{data.suggestedPriceRange}</span>
           </div>
         </div>

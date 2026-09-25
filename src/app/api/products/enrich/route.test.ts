@@ -55,11 +55,16 @@ describe("POST /api/products/enrich", () => {
     expect(data.priceSpread).toBeGreaterThanOrEqual(0);
   });
 
-  it("uses mock data when fewer than 3 unique platforms return results", async () => {
+  it("returns only real platform results without mock padding", async () => {
     const res = await POST(makeReq({ title: "Rare Gadget", price: 20 }), null as any);
     const data = await res.json();
-    expect(data.hasMockData).toBe(true);
-    expect(data.platforms.length).toBeGreaterThan(1);
+    expect(data.hasMockData).toBeUndefined();
+    expect(data.coverage).toBeDefined();
+    expect(data.coverage.queried).toBe(5);
+    expect(Array.isArray(data.platforms)).toBe(true);
+    const mockRows = data.platforms.filter((p: { isMock?: boolean }) => p.isMock);
+    expect(mockRows).toHaveLength(0);
+    expect(data.platforms.length).toBeLessThanOrEqual(data.coverage.uniquePlatforms);
   });
 
   it("calls supplier service and returns supplier matches", async () => {

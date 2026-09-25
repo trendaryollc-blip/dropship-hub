@@ -182,14 +182,14 @@ describe("StorePage", () => {
 
   it("renders GlobalStoreChat", () => {
     renderWithData();
-    const chatButton = screen.getByTitle("AI Store Assistant");
+    const chatButton = screen.getByTitle("Store Assistant");
     expect(chatButton).toBeInTheDocument();
   });
 
   it("opens GlobalStoreChat on chat button click", () => {
     renderWithData({ connections: [makeConnection()] });
-    fireEvent.click(screen.getByTitle("AI Store Assistant"));
-    expect(screen.getByText("Store AI")).toBeInTheDocument();
+    fireEvent.click(screen.getByTitle("Store Assistant"));
+    expect(screen.getByText("Store Assistant")).toBeInTheDocument();
     expect(screen.getByText("Ask anything about your stores")).toBeInTheDocument();
   });
 

@@ -16,6 +16,7 @@ interface PredictionDetailModalProps {
   prediction: TrendPrediction;
   signals?: TrendSignal[];
   geoData?: { region: string; value: number }[];
+  history?: { date: string; value: number }[];
   isOpen: boolean;
   onClose: () => void;
   onAddToWatchlist?: (keyword: string, category: string) => void;
@@ -28,6 +29,7 @@ export default function PredictionDetailModal({
   prediction,
   signals = [],
   geoData = [],
+  history = [],
   isOpen,
   onClose,
   onAddToWatchlist,
@@ -40,32 +42,6 @@ export default function PredictionDetailModal({
     growth: s.growthRate,
     engagement: s.velocity,
   })), [signals]);
-
-  const actualData = useMemo(() => {
-    if (signals.length === 0) return [];
-    return Array.from({ length: 30 }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - 29 + i);
-      const seed = prediction.productIdea.charCodeAt(0) + i;
-      return {
-        date: d.toISOString().split("T")[0],
-        value: 30 + (seed % 40) + Math.round(Math.sin(i / 5) * 15),
-      };
-    });
-  }, [signals, prediction.productIdea]);
-
-  const predictedData = useMemo(() => {
-    const base = actualData.length > 0 ? actualData[actualData.length - 1].value : 50;
-    return Array.from({ length: 90 }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() + i + 1);
-      return {
-        date: d.toISOString().split("T")[0],
-        value: Math.round(base + Math.sin(i / 10) * 20 - (i > 60 ? i - 60 : 0)),
-        predicted: true,
-      };
-    });
-  }, [actualData]);
 
   const DirIcon = DIRECTION_ICONS[prediction.direction] || Minus;
   const dirColor = DIRECTION_COLORS[prediction.direction] || "text-gray-400";
@@ -109,7 +85,7 @@ export default function PredictionDetailModal({
                   <span>·</span>
                   <span className={`font-semibold ${dirColor}`}>{prediction.direction}</span>
                   <span>·</span>
-                  <span>{prediction.timeToPeak} to peak</span>
+                  <span>{prediction.timeToPeak ? `${prediction.timeToPeak} to peak` : "Peak timing not available"}</span>
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -174,7 +150,7 @@ export default function PredictionDetailModal({
                   </div>
                   <div className="p-3 rounded-xl bg-surface">
                     <p className="text-[10px] text-muted-foreground">Time to Peak</p>
-                    <p className="text-sm font-bold text-foreground">{prediction.timeToPeak}</p>
+                    <p className="text-sm font-bold text-foreground">{prediction.timeToPeak || "—"}</p>
                   </div>
                   <div className="p-3 rounded-xl bg-surface">
                     <p className="text-[10px] text-muted-foreground">Est. Margin</p>
@@ -191,10 +167,11 @@ export default function PredictionDetailModal({
 
                 {/* Lifecycle Curve */}
                 <TrendLifecycleCurve
-                  actualData={actualData}
-                  predictedData={predictedData}
+                  actualData={history}
+                  emptyNote="No history source connected — connect Google Trends to see actual interest over time"
+                  forecastNote="Forecast unavailable — no historical series"
                   currentStage={prediction.direction === "rising" ? "rising" : prediction.direction === "peaking" ? "peak" : prediction.direction === "declining" ? "declining" : "emerging"}
-                  predictedPeakDate={prediction.predictedPeak}
+                  predictedPeakDate={prediction.predictedPeak ?? undefined}
                   height={220}
                 />
 
@@ -234,7 +211,7 @@ export default function PredictionDetailModal({
 
             {activeSection === "reasoning" && (
               <div className="rounded-xl bg-surface border border-border p-4">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">AI Reasoning</p>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Scoring rationale</p>
                 <p className="text-sm text-foreground leading-relaxed">{prediction.reasoning}</p>
                 <div className="mt-4 pt-3 border-t border-border">
                   <div className="grid grid-cols-2 gap-3 text-xs">
@@ -244,7 +221,7 @@ export default function PredictionDetailModal({
                     </div>
                     <div>
                       <span className="text-muted-foreground">Predicted Peak: </span>
-                      <span className="font-semibold text-foreground">{prediction.predictedPeak}</span>
+                      <span className="font-semibold text-foreground">{prediction.predictedPeak || "—"}</span>
                     </div>
                   </div>
                 </div>

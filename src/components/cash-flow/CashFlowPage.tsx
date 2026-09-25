@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useAPI } from "@/hooks/useAPI";
 import { useToast } from "@/components/ui/Toast";
+import DataSourceBadge from "@/components/ui/DataSourceBadge";
 import { authJson } from "@/lib/auth-headers";
 import type { CashFlowSnapshot, CashFlowForecast, CashFlowAlert, CashFlowEntry } from "@/types/cash-flow";
 
@@ -261,10 +262,10 @@ export default function CashFlowPage() {
       {snapshot && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: "Current Balance", value: fmtUSD(snapshot.currentBalance), icon: Wallet, color: "text-accent", sub: `${snapshot.runwayDays} days runway` },
-            { label: "Pending Inflows", value: fmtUSD(snapshot.pendingInflows), icon: ArrowUpRight, color: "text-emerald-400", sub: "Expected from sales" },
-            { label: "Pending Outflows", value: fmtUSD(snapshot.pendingOutflows), icon: ArrowDownRight, color: "text-red-400", sub: "Supplier + fees" },
-            { label: "Burn Rate", value: `$${snapshot.burnRate.toFixed(0)}/day`, icon: Zap, color: snapshot.burnRate > 100 ? "text-amber-400" : "text-emerald-400", sub: "Daily net outflow" },
+            { label: "Current Balance", value: fmtUSD(snapshot.currentBalance), icon: Wallet, color: "text-accent", sub: snapshot.runwayDays == null ? "N/A — no net outflow" : `${snapshot.runwayDays} days runway` },
+            { label: "Pending Inflows (Estimated)", value: fmtUSD(snapshot.pendingInflows), icon: ArrowUpRight, color: "text-emerald-400", sub: "Expected from sales" },
+            { label: "Pending Outflows (Estimated)", value: fmtUSD(snapshot.pendingOutflows), icon: ArrowDownRight, color: "text-red-400", sub: "Supplier + fees" },
+            { label: "Burn Rate (Estimated)", value: `$${snapshot.burnRate.toFixed(0)}/day`, icon: Zap, color: snapshot.burnRate > 100 ? "text-amber-400" : "text-emerald-400", sub: "Daily net outflow" },
           ].map((kpi) => (
             <div key={kpi.label} className="glass rounded-2xl p-4">
               <div className="flex items-center justify-between mb-2">
@@ -318,9 +319,12 @@ export default function CashFlowPage() {
       {/* Cash Conversion Cycle */}
       {snapshot && (
         <div className="glass rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-display text-sm font-semibold text-foreground">Cash Conversion Cycle</h3>
-            <span className="text-xs text-muted-foreground">{snapshot.cashConversionCycle} days</span>
+          <div className="flex items-center justify-between mb-3 gap-2">
+            <div className="flex items-center gap-2">
+              <h3 className="font-display text-sm font-semibold text-foreground">Cash Conversion Cycle</h3>
+              <DataSourceBadge source="estimated" />
+            </div>
+            <span className="text-xs text-muted-foreground">Typical {snapshot.cashConversionCycle}-day benchmark (Estimated)</span>
           </div>
           <div className="grid grid-cols-1 sm:flex sm:items-center sm:gap-2 text-xs">
             <div className="flex-1 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
@@ -330,17 +334,17 @@ export default function CashFlowPage() {
             <div className="hidden sm:flex text-muted-foreground items-center justify-center">→</div>
             <div className="flex-1 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center">
               <p className="font-semibold text-amber-400">Pay supplier</p>
-              <p className="text-muted-foreground mt-0.5">Day {Math.round(snapshot.cashConversionCycle * 0.3)}</p>
+              <p className="text-muted-foreground mt-0.5">Day {Math.round(snapshot.cashConversionCycle * 0.3)} (typical, estimated)</p>
             </div>
             <div className="hidden sm:flex text-muted-foreground items-center justify-center">→</div>
             <div className="flex-1 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-center">
               <p className="font-semibold text-blue-400">Customer receives</p>
-              <p className="text-muted-foreground mt-0.5">Day {Math.round(snapshot.cashConversionCycle * 0.7)}</p>
+              <p className="text-muted-foreground mt-0.5">Day {Math.round(snapshot.cashConversionCycle * 0.7)} (typical, estimated)</p>
             </div>
             <div className="hidden sm:flex text-muted-foreground items-center justify-center">→</div>
             <div className="flex-1 p-3 rounded-xl bg-accent/10 border border-accent/20 text-center">
               <p className="font-semibold text-accent">Platform payout</p>
-              <p className="text-muted-foreground mt-0.5">Day {snapshot.cashConversionCycle}</p>
+              <p className="text-muted-foreground mt-0.5">Day {snapshot.cashConversionCycle} (benchmark)</p>
             </div>
           </div>
         </div>
@@ -424,7 +428,7 @@ export default function CashFlowPage() {
       <DataState isLoading={fcLoading} error={fcError} label="your forecast" onRetry={() => mutateForecast()} />
       {forecast.length > 0 && (
         <div className="glass rounded-2xl p-5">
-          <h3 className="font-display text-sm font-semibold text-foreground mb-4">30-Day Cash Flow Forecast</h3>
+          <h3 className="font-display text-sm font-semibold text-foreground mb-4">30-Day Cash Flow Forecast (Estimated)</h3>
           <div className="flex items-end gap-1 h-48">
             {forecast.slice(0, 30).map((day, i) => {
               const inflowHeight = maxBalance > 0 ? (day.inflows / maxBalance) * 100 : 0;
@@ -455,7 +459,7 @@ export default function CashFlowPage() {
       {/* Running Balance Line */}
       {forecast.length > 0 && (
         <div className="glass rounded-2xl p-5">
-          <h3 className="font-display text-sm font-semibold text-foreground mb-4">Running Balance Projection</h3>
+          <h3 className="font-display text-sm font-semibold text-foreground mb-4">Running Balance Projection (Estimated)</h3>
           <div className="relative h-40">
             <svg viewBox="0 0 300 100" className="w-full h-full" preserveAspectRatio="none">
               {/* Zero line */}

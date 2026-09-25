@@ -45,4 +45,10 @@ describe("KpiCard", () => {
     render(<KpiCard label="Orders" value={42} icon={<DollarSign />} delay={0} />);
     expect(screen.getByText("42")).toBeInTheDocument();
   });
+
+  it("renders em dash and hint instead of a fake 0 when empty", () => {
+    render(<KpiCard label="Revenue" value={0} icon={<DollarSign />} delay={0} empty emptyHint="No sales yet" />);
+    expect(screen.getByText("—")).toBeInTheDocument();
+    expect(screen.getByText("No sales yet")).toBeInTheDocument();
+  });
 });

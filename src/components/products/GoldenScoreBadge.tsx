@@ -16,11 +16,11 @@ const RANK_COLORS: Record<string, { bg: string; text: string; border: string }> 
 };
 
 const RANK_DESCRIPTIONS: Record<string, string> = {
-  S: "Exceptional product - high profit, low competition",
-  A: "Strong product - good margins, manageable competition",
-  B: "Average product - moderate potential",
-  C: "Below average - high competition or low margins",
-  D: "Poor product - avoid",
+  S: "Estimated S — heuristic on live price/rating/review signals, not a market measurement",
+  A: "Estimated A — heuristic on live price/rating/review signals",
+  B: "Estimated B — heuristic on live price/rating/review signals",
+  C: "Estimated C — heuristic on live price/rating/review signals",
+  D: "Estimated D — heuristic on live price/rating/review signals",
 };
 
 function getRank(score: number): "S" | "A" | "B" | "C" | "D" {
@@ -57,7 +57,7 @@ export default function GoldenScoreBadge({
       </div>
       {showTooltip && (
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 border border-white/10 rounded-xl text-xs text-gray-300 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 shadow-xl">
-          <div className="font-bold text-white mb-0.5">Golden Score: {score}</div>
+          <div className="font-bold text-white mb-0.5">Estimated Golden Score: {score}</div>
           <div>{description}</div>
           <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
         </div>

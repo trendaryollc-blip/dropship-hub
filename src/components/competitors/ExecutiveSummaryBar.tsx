@@ -64,7 +64,7 @@ export default function ExecutiveSummaryBar({ summary }: { summary: ExecutiveSum
               <Target className="h-4 w-4 text-accent" />
             </div>
             <h3 className="font-display text-base font-semibold text-foreground">Executive Summary</h3>
-            <span className="text-[10px] text-accent bg-accent/10 px-2 py-0.5 rounded-full font-medium border border-accent/20">AI</span>
+            <span className="text-[10px] text-accent bg-accent/10 px-2 py-0.5 rounded-full font-medium border border-accent/20" title="Heuristic scores computed from live listing counts, prices, and trends — not an AI model output.">Estimated</span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">

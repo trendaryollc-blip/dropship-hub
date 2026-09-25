@@ -49,12 +49,12 @@ describe("SupplierAISuggestions", () => {
     mockSuggestions = [];
     mockFetchResolved = true;
     render(<SupplierAISuggestions />);
-    expect(screen.getByText("AI is analyzing your supplier needs...")).toBeInTheDocument();
+    expect(screen.getByText("Matching suppliers to your portfolio...")).toBeInTheDocument();
   });
 
   it("shows the AI recommended heading", () => {
     render(<SupplierAISuggestions />);
-    expect(screen.getByText("AI Recommended Suppliers")).toBeInTheDocument();
+    expect(screen.getByText("Supplier Suggestions")).toBeInTheDocument();
   });
 
   it("renders the Get AI-recommended button after loading completes", async () => {
@@ -62,7 +62,7 @@ describe("SupplierAISuggestions", () => {
     mockFetchResolved = true;
     render(<SupplierAISuggestions />);
     await waitFor(() => {
-      expect(screen.getByText(/Get AI-recommended suppliers for your products/)).toBeInTheDocument();
+      expect(screen.getByText(/Find supplier suggestions for your products/)).toBeInTheDocument();
     });
   });
 
@@ -139,7 +139,7 @@ describe("SupplierAISuggestions", () => {
     mockFetchResolved = true;
     render(<SupplierAISuggestions />);
     await waitFor(() => {
-      expect(screen.getByText(/Based on your product portfolio/)).toBeInTheDocument();
+      expect(screen.getByText(/Matched from your product portfolio/)).toBeInTheDocument();
     });
   });
 
@@ -148,7 +148,7 @@ describe("SupplierAISuggestions", () => {
     mockFetchResolved = true;
     render(<SupplierAISuggestions />);
     await waitFor(() => {
-      expect(screen.getByText(/AI matches suppliers to your portfolio/)).toBeInTheDocument();
+      expect(screen.getByText(/Rules-based matches from your portfolio/)).toBeInTheDocument();
     });
   });
 });

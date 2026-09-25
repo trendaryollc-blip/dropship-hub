@@ -69,7 +69,7 @@ export default function RateComparisonTable({ rates, cheapest, fastest, onSelect
                 { key: "carrier" as SortKey, label: "Carrier", width: "w-[280px]" },
                 { key: "cost" as SortKey, label: "Cost", width: "w-[120px]" },
                 { key: "days" as SortKey, label: "Delivery", width: "w-[140px]" },
-                { key: "reliability" as SortKey, label: "Reliability", width: "w-[110px]" },
+                { key: "reliability" as SortKey, label: "Reference reliability (static)", width: "w-[160px]" },
                 { key: "features" as const, label: "Features", width: "w-[200px]" },
                 { key: "badge" as const, label: "", width: "w-[80px]" },
               ].map((col) => (
@@ -124,7 +124,7 @@ export default function RateComparisonTable({ rates, cheapest, fastest, onSelect
                   <td className="px-4 py-3">
                     <p className="text-xs font-semibold text-foreground">{rate.estimatedDays.min}-{rate.estimatedDays.max} days</p>
                     <p className="text-[9px] text-muted-foreground">
-                      {rate.estimatedDays.min === rate.estimatedDays.max ? "Guaranteed" : `~${Math.round((rate.estimatedDays.min + rate.estimatedDays.max) / 2)} days avg`}
+                      {rate.estimatedDays.min === rate.estimatedDays.max ? "Fixed-day estimate" : `~${Math.round((rate.estimatedDays.min + rate.estimatedDays.max) / 2)} days avg`}
                     </p>
                   </td>
                   <td className="px-4 py-3">
@@ -158,7 +158,7 @@ export default function RateComparisonTable({ rates, cheapest, fastest, onSelect
                       )}
                       {rate.guaranteedDelivery && (
                         <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] text-purple-400 bg-purple-400/5">
-                          <CheckCircle2 className="h-2 w-2" /> Guarantee
+                          <CheckCircle2 className="h-2 w-2" /> Carrier guarantee (reference)
                         </span>
                       )}
                       {rate.customsHandled && (

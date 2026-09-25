@@ -3,6 +3,9 @@ import {
   Package,
   ShoppingCart,
   Store,
+  Search,
+  BarChart3,
+  Globe,
 } from "lucide-react";
 
 export interface AIProvider {
@@ -23,9 +26,9 @@ export interface AIProvider {
 export const allProviders: AIProvider[] = [
   {
     id: "groq", name: "Groq", description: "Ultra-fast inference, free tier",
-    envKey: "GROQ_API_KEY", configured: false, active: true,
+    envKey: "GROQ_API_KEYS", configured: false, active: true,
     features: ["Quick analysis", "Price optimization"], freeTier: "14,400 req/day", priority: 1,
-    website: "https://groq.com", usedFor: "Real-time price optimization", href: "/ai",
+    website: "https://groq.com", usedFor: "Price optimization features", href: "/ai",
   },
   {
     id: "gemini", name: "Google Gemini", description: "Google's flagship AI, generous free tier",
@@ -35,7 +38,7 @@ export const allProviders: AIProvider[] = [
   },
   {
     id: "openai", name: "OpenAI", description: "GPT-4o-mini - powerful and affordable",
-    envKey: "OPENAI_API_KEY", configured: false, active: true,
+    envKey: "OPENAI_API_KEYS", configured: false, active: true,
     features: ["Advanced reasoning", "Code generation"], freeTier: "Pay per use", priority: 3,
     website: "https://platform.openai.com", usedFor: "Advanced reasoning & analysis", href: "/ai",
   },
@@ -104,24 +107,45 @@ export interface PlatformConnector {
 
 export const platformConnectors: PlatformConnector[] = [
   {
+    id: "serpapi", name: "SerpAPI", description: "Google Shopping and web search results for product discovery",
+    envKey: "SERPAPI_KEYS", configured: false, icon: Search,
+    apiEndpoint: "/api/platforms/google-shopping",
+    features: ["Google Shopping", "Product search", "Price comparison"],
+    href: "/products", hrefLabel: "Search Products",
+  },
+  {
     id: "aliexpress", name: "AliExpress", description: "Direct product search via Rainforest API or Scraper",
-    envKey: "RAINFOREST_API_KEY", configured: false, icon: Store,
+    envKey: "RAINFOREST_API_KEYS", configured: false, icon: Store,
     apiEndpoint: "/api/platforms/aliexpress",
     features: ["Product search", "Price comparison", "Supplier info"],
     href: "/products", hrefLabel: "Search Products",
   },
   {
     id: "cj", name: "CJ Dropshipping", description: "Official CJ Dropshipping API integration",
-    envKey: "CJ_API_KEY", configured: false, icon: Package,
+    envKey: "CJ_API_KEYS", configured: false, icon: Package,
     apiEndpoint: "/api/platforms/cj",
     features: ["Product catalog", "Order management", "Category browsing"],
     href: "/suppliers", hrefLabel: "Find Suppliers",
   },
   {
     id: "rainforest", name: "Rainforest API (Amazon)", description: "Amazon product data via Rainforest API",
-    envKey: "RAINFOREST_API_KEY", configured: false, icon: ShoppingCart,
+    envKey: "RAINFOREST_API_KEYS", configured: false, icon: ShoppingCart,
     apiEndpoint: "/api/platforms/rainforest",
     features: ["Amazon search", "Product details", "Price tracking"],
     href: "/products", hrefLabel: "Search Amazon",
+  },
+  {
+    id: "keepa", name: "Keepa", description: "Amazon price history and history tracking",
+    envKey: "KEEPA_API_KEYS", configured: false, icon: BarChart3,
+    apiEndpoint: "/api/platforms/keepa",
+    features: ["Price history", "Sales rank", "Deal tracking"],
+    href: "/products", hrefLabel: "Track Prices",
+  },
+  {
+    id: "scraperapi", name: "ScraperAPI", description: "Fallback scraping layer when primary APIs are rate-limited",
+    envKey: "SCRAPER_API_KEYS", configured: false, icon: Globe,
+    apiEndpoint: "/api/platforms/*",
+    features: ["Scraping fallback", "JS rendering", "Proxy rotation"],
+    href: "/products", hrefLabel: "Search Products",
   },
 ];

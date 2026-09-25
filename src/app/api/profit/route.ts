@@ -13,17 +13,24 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     const db = await getAdminDB();
     const snap = await db.collection("users").doc(uid).collection("profitEntries").orderBy("createdAt", "desc").limit(200).get();
 
-    let orders = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Array<Record<string, unknown>>;
+    const snapshot = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Array<Record<string, unknown>>;
+
+    let pool = snapshot;
 
     if (platform && platform !== "all") {
-      orders = orders.filter((o) => o.platform === platform);
+      pool = pool.filter((o) => o.platform === platform);
     }
 
     const days = timeframe === "7d" ? 7 : timeframe === "90d" ? 90 : timeframe === "all" ? 365 : 30;
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - days);
     const cutoffStr = cutoff.toISOString().split("T")[0];
-    orders = orders.filter((o) => typeof o.date === "string" && o.date >= cutoffStr);
+    const priorCutoff = new Date(cutoff);
+    priorCutoff.setDate(priorCutoff.getDate() - days);
+    const priorCutoffStr = priorCutoff.toISOString().split("T")[0];
+
+    const orders = pool.filter((o) => typeof o.date === "string" && o.date >= cutoffStr);
+    const priorOrders = pool.filter((o) => typeof o.date === "string" && o.date >= priorCutoffStr && o.date < cutoffStr);
 
     let totalRevenue = 0, totalProfit = 0, totalCosts = 0, totalCOGS = 0, totalShipping = 0;
     let totalPlatformFees = 0, totalPaymentProcessing = 0, totalRefunds = 0, totalAdSpend = 0, totalOther = 0;
@@ -53,6 +60,9 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
 
     const refundRate = orders.length > 0 ? +((orders.filter((o) => o.status === "refunded").length / orders.length) * 100).toFixed(1) : 0;
     const avgMargin = totalRevenue > 0 ? +((totalProfit / totalRevenue) * 100).toFixed(1) : 0;
+    const profitMargin = totalRevenue > 0 ? +((totalProfit / totalRevenue) * 100).toFixed(1) : null;
+    const avgOrderValue = orders.length > 0 ? +(totalRevenue / orders.length).toFixed(2) : null;
+    const avgOrderProfit = orders.length > 0 ? +(totalProfit / orders.length).toFixed(2) : null;
 
     // Daily breakdown
     const dailyMap = new Map<string, { date: string; revenue: number; profit: number; orders: number; costs: number }>();
@@ -69,17 +79,26 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     const dailyBreakdown = Array.from(dailyMap.values()).sort((a, b) => a.date.localeCompare(b.date));
 
     // Top products
-    const productMap = new Map<string, { productTitle: string; productImage: string; totalRevenue: number; totalProfit: number; totalOrders: number; profitMargin: number; trend: number; status: string }>();
+    const productMap = new Map<string, { productTitle: string; productImage: string; totalRevenue: number; totalProfit: number; totalOrders: number; profitMargin: number; trend: number | null; status: string }>();
     for (const o of orders) {
       const title = typeof o.productTitle === "string" ? o.productTitle : "Unknown";
-      const existing = productMap.get(title) || { productTitle: title, productImage: typeof o.productImage === "string" ? o.productImage : "", totalRevenue: 0, totalProfit: 0, totalOrders: 0, profitMargin: 0, trend: 0, status: "profitable" };
+      const existing = productMap.get(title) || { productTitle: title, productImage: typeof o.productImage === "string" ? o.productImage : "", totalRevenue: 0, totalProfit: 0, totalOrders: 0, profitMargin: 0, trend: null, status: "profitable" };
       existing.totalRevenue += typeof o.revenue === "number" ? o.revenue : 0;
       existing.totalProfit += typeof o.netProfit === "number" ? o.netProfit : 0;
       existing.totalOrders += 1;
       productMap.set(title, existing);
     }
+    const priorRevenueByProduct = new Map<string, number>();
+    for (const o of priorOrders) {
+      const title = typeof o.productTitle === "string" ? o.productTitle : "Unknown";
+      priorRevenueByProduct.set(title, (priorRevenueByProduct.get(title) || 0) + (typeof o.revenue === "number" ? o.revenue : 0));
+    }
     const topProducts = Array.from(productMap.values())
-      .map((p) => ({ ...p, profitMargin: p.totalRevenue > 0 ? +((p.totalProfit / p.totalRevenue) * 100).toFixed(1) : 0, status: p.totalProfit > 0 ? "profitable" : p.totalProfit > -10 ? "breakeven" : "losing" }))
+      .map((p) => {
+        const priorRevenue = priorRevenueByProduct.get(p.productTitle) || 0;
+        const trend = priorRevenue > 0 ? +(((p.totalRevenue - priorRevenue) / priorRevenue) * 100).toFixed(1) : null;
+        return { ...p, trend, profitMargin: p.totalRevenue > 0 ? +((p.totalProfit / p.totalRevenue) * 100).toFixed(1) : 0, status: p.totalProfit > 0 ? "profitable" : p.totalProfit > -10 ? "breakeven" : "losing" };
+      })
       .sort((a, b) => b.totalProfit - a.totalProfit);
 
     // Cost breakdown
@@ -115,6 +134,9 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
         totalProfit: +totalProfit.toFixed(2),
         totalCosts: +totalCosts.toFixed(2),
         avgMargin,
+        profitMargin,
+        avgOrderValue,
+        avgOrderProfit,
         refundRate,
         totalOrders: orders.length,
         topProducts: topProducts.slice(0, 5),

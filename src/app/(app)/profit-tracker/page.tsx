@@ -40,23 +40,29 @@ function MiniSparkline({ points, color }: { points: number[]; color: string }) {
 }
 
 function KPICard({ label, value, prefix, suffix, change, up, icon: Icon, color, sparkline, delay }: {
-  label: string; value: number; prefix?: string; suffix?: string; change: string; up: boolean;
+  label: string; value: number | null; prefix?: string; suffix?: string; change: string | null; up: boolean;
   icon: typeof DollarSign; color: string; sparkline: number[]; delay: number;
 }) {
   const { ref, isInView } = useInView({ threshold: 0.3 });
-  const count = useAnimatedCounter(value, 1500, isInView);
+  const count = useAnimatedCounter(value ?? 0, 1500, isInView);
   return (
     <div ref={ref} className={`glass rounded-xl p-3 sm:p-4 transition-all duration-500 hover:border-accent/20 hover:bg-surface-hover group ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transitionDelay: `${delay}ms` }}>
       <div className="flex items-center justify-between mb-2 sm:mb-3">
         <div className={`flex h-7 w-7 sm:h-9 sm:w-9 items-center justify-center rounded-lg ${color}/10 group-hover:scale-110 transition-transform`}>
           <Icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${color}`} />
         </div>
-        <span className={`flex items-center gap-0.5 text-[10px] sm:text-[11px] font-semibold ${up ? "text-emerald-400" : "text-red-400"}`}>
-          {up ? <TrendingUp className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> : <TrendingDown className="h-2.5 w-2.5 sm:h-3 sm:w-3" />}
-          {change}
-        </span>
+        {change !== null ? (
+          <span className={`flex items-center gap-0.5 text-[10px] sm:text-[11px] font-semibold ${up ? "text-emerald-400" : "text-red-400"}`}>
+            {up ? <TrendingUp className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> : <TrendingDown className="h-2.5 w-2.5 sm:h-3 sm:w-3" />}
+            {change}
+          </span>
+        ) : (
+          <span className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground">—</span>
+        )}
       </div>
-      <p className="font-display text-lg sm:text-2xl font-bold text-foreground">{prefix || ""}{count.toLocaleString()}{suffix || ""}</p>
+      <p className="font-display text-lg sm:text-2xl font-bold text-foreground">
+        {value === null ? "—" : `${prefix || ""}${count.toLocaleString()}${suffix || ""}`}
+      </p>
       <div className="flex items-center justify-between mt-1.5 sm:mt-2">
         <p className="text-[10px] sm:text-[11px] text-muted-foreground truncate pr-2">{label}</p>
         <MiniSparkline points={sparkline} color={color === "text-emerald-400" ? "#22c55e" : color === "text-purple-400" ? "#a855f7" : color === "text-amber-400" ? "#f59e0b" : "#3b82f6"} />
@@ -210,7 +216,9 @@ function ProductRow({ product, rank, delay }: { product: ProductProfitability; r
         <p className="text-xs sm:text-sm font-medium text-foreground truncate">{product.productTitle}</p>
         <div className="flex items-center gap-2">
           <span className="text-[9px] sm:text-[10px] text-muted-foreground">{product.totalOrders} orders</span>
-          <span className={`text-[9px] sm:text-[10px] font-semibold ${product.trend >= 0 ? "text-emerald-400" : "text-red-400"}`}>{product.trend >= 0 ? "+" : ""}{product.trend}%</span>
+          <span className={`text-[9px] sm:text-[10px] font-semibold ${product.trend === null ? "text-muted-foreground" : product.trend >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+            {product.trend === null ? "—" : `${product.trend >= 0 ? "+" : ""}${product.trend}%`}
+          </span>
         </div>
       </div>
       <span className={`px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold ${statusColors[product.status]}`}>{product.status}</span>
@@ -251,7 +259,7 @@ export default function ProfitTrackerPage() {
   const uid = user?.uid || "";
   const profitUrl = uid ? `/api/profit?timeframe=${timeframe}&platform=${platform}&uid=${uid}` : null;
   const { data: profitData, isLoading, mutate: refetchProfit } = useAPI<{
-    summary?: { totalRevenue: number; totalProfit: number; profitMargin: number; totalOrders: number; avgOrderProfit: number; avgOrderValue: number; refundRate: number; totalCosts: number; avgMargin: number };
+    summary?: { totalRevenue: number; totalProfit: number; profitMargin: number | null; totalOrders: number; avgOrderProfit: number | null; avgOrderValue: number | null; refundRate: number; totalCosts: number; avgMargin: number };
     topProducts?: ProductProfitability[];
     dailyBreakdown?: DailyProfit[];
     costBreakdown?: CostBreakdownItem[];
@@ -286,12 +294,12 @@ export default function ProfitTrackerPage() {
   };
 
   // Calculate real trends from daily data
-  const calcTrend = (data: number[]): { change: string; up: boolean } => {
-    if (data.length < 2) return { change: "0%", up: true };
+  const calcTrend = (data: number[]): { change: string | null; up: boolean } => {
+    if (data.length < 2) return { change: null, up: true };
     const half = Math.floor(data.length / 2);
     const firstHalf = data.slice(0, half).reduce((a, b) => a + b, 0) / half;
     const secondHalf = data.slice(half).reduce((a, b) => a + b, 0) / (data.length - half);
-    if (firstHalf === 0) return { change: "+0%", up: true };
+    if (firstHalf === 0) return { change: null, up: true };
     const pct = ((secondHalf - firstHalf) / firstHalf) * 100;
     return { change: `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`, up: pct >= 0 };
   };
@@ -397,11 +405,11 @@ export default function ProfitTrackerPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
             <div className="glass rounded-xl p-3 sm:p-4 text-center">
               <p className="text-[10px] sm:text-[11px] text-muted-foreground mb-1">Avg Order Value</p>
-              <p className="font-display text-lg sm:text-xl font-bold text-foreground">${(summary.avgOrderValue ?? 0).toFixed(2)}</p>
+              <p className="font-display text-lg sm:text-xl font-bold text-foreground">{summary.avgOrderValue === null ? "—" : `$${summary.avgOrderValue.toFixed(2)}`}</p>
             </div>
             <div className="glass rounded-xl p-3 sm:p-4 text-center">
               <p className="text-[10px] sm:text-[11px] text-muted-foreground mb-1">Avg Order Profit</p>
-              <p className="font-display text-lg sm:text-xl font-bold text-emerald-400">${(summary.avgOrderProfit ?? 0).toFixed(2)}</p>
+              <p className="font-display text-lg sm:text-xl font-bold text-emerald-400">{summary.avgOrderProfit === null ? "—" : `$${summary.avgOrderProfit.toFixed(2)}`}</p>
             </div>
             <div className="glass rounded-xl p-3 sm:p-4 text-center">
               <p className="text-[10px] sm:text-[11px] text-muted-foreground mb-1">Refund Rate</p>

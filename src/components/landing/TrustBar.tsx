@@ -27,7 +27,7 @@ export default function TrustBar() {
             Integrated With
           </p>
           <p className="text-muted-foreground text-sm">
-            Real-time data from the platforms you already use
+            Data from the platforms you already use
           </p>
         </div>
 

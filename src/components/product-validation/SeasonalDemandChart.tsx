@@ -59,7 +59,7 @@ export default function SeasonalDemandChart({ data }: { data: SeasonalDemandResu
       {/* Forecast Chart */}
       {data.forecast.length > 0 && (
         <div className="mb-5 relative">
-          <p className="text-[11px] text-muted-foreground mb-3 font-semibold uppercase tracking-wider">6-Month Forecast</p>
+          <p className="text-[11px] text-muted-foreground mb-3 font-semibold uppercase tracking-wider">6-Month Projection (heuristic)</p>
           <div className="p-4 rounded-xl bg-surface/20 border border-border/30">
             <div className="flex items-end gap-2 h-28">
               {data.forecast.map((f, i) => (

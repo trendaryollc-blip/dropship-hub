@@ -32,12 +32,12 @@ describe("AIDailyPick", () => {
 
   it("renders AI Pick of the Day heading", () => {
     render(<AIDailyPick pick={makePick()} />);
-    expect(screen.getByText("AI Pick of the Day")).toBeInTheDocument();
+    expect(screen.getByText("Top Pick of the Day")).toBeInTheDocument();
   });
 
   it("renders AI Pick badge on image", () => {
     render(<AIDailyPick pick={makePick()} />);
-    expect(screen.getByText("AI Pick")).toBeInTheDocument();
+    expect(screen.getByText("TOP PICK")).toBeInTheDocument();
   });
 
   it("renders description", () => {
@@ -103,7 +103,7 @@ describe("AIDailyPick", () => {
 
   it("renders Why AI picked this section", () => {
     render(<AIDailyPick pick={makePick()} />);
-    expect(screen.getByText("Why AI picked this")).toBeInTheDocument();
+    expect(screen.getByText("Why we scored this")).toBeInTheDocument();
   });
 
   it("renders Start Selling button", () => {

@@ -327,9 +327,10 @@ describe("Dashboard Page", () => {
       expect(screen.getByText("Profit Tracker")).toBeInTheDocument();
     });
 
-    it("renders Live indicator", () => {
+    it("renders data-source badge instead of Live", () => {
       render(<DashboardHome />);
-      expect(screen.getAllByText("Live").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText("Your data")).toBeInTheDocument();
+      expect(screen.queryByText("Live")).not.toBeInTheDocument();
     });
 
     it("renders Full Report link to /revenue", () => {
@@ -348,13 +349,12 @@ describe("Dashboard Page", () => {
   describe("AI Intelligence Hub", () => {
     it("renders AI Intelligence section divider", () => {
       render(<DashboardHome />);
-      expect(screen.getByText("AI Intelligence")).toBeInTheDocument();
+      expect(screen.getByText("Insights")).toBeInTheDocument();
     });
 
     it("renders AI Pick of the Day", () => {
       render(<DashboardHome />);
-      expect(screen.getByText("AI Pick of the Day")).toBeInTheDocument();
-      expect(screen.getByText("Wireless Earbuds Pro")).toBeInTheDocument();
+      expect(screen.getByText("Top Pick (scored)")).toBeInTheDocument();
     });
 
     it("renders daily pick risk level", () => {
@@ -365,13 +365,13 @@ describe("Dashboard Page", () => {
     it("renders daily pick price metrics", () => {
       render(<DashboardHome />);
       expect(screen.getByText("Source Price")).toBeInTheDocument();
-      expect(screen.getByText("Sell Price")).toBeInTheDocument();
-      expect(screen.getAllByText("Margin").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText("Est. sell price")).toBeInTheDocument();
+      expect(screen.getAllByText(/Est\. margin|Margin/i).length).toBeGreaterThanOrEqual(1);
     });
 
     it("renders Why AI Picked This", () => {
       render(<DashboardHome />);
-      expect(screen.getByText("Why AI Picked This")).toBeInTheDocument();
+      expect(screen.getByText("Why we scored this")).toBeInTheDocument();
       expect(screen.getByText("High demand trend")).toBeInTheDocument();
     });
 
@@ -384,7 +384,7 @@ describe("Dashboard Page", () => {
 
     it("renders Market Saturation", () => {
       render(<DashboardHome />);
-      expect(screen.getByText("Market Saturation")).toBeInTheDocument();
+      expect(screen.getByText("Est. saturation")).toBeInTheDocument();
       expect(screen.getByText("35%")).toBeInTheDocument();
     });
 
@@ -396,7 +396,7 @@ describe("Dashboard Page", () => {
 
     it("renders AI Briefing card", () => {
       render(<DashboardHome />);
-      expect(screen.getByText("AI Briefing")).toBeInTheDocument();
+      expect(screen.getByText("Market Briefing")).toBeInTheDocument();
       expect(screen.getByText("Bullish")).toBeInTheDocument();
     });
 

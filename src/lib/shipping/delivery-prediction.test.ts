@@ -33,7 +33,7 @@ describe("Delivery Prediction", () => {
       expect(result.predictedDays.max).toBeLessThan(10);
     });
 
-    it("returns higher confidence for popular routes", () => {
+    it("keeps confidence within rules-based bounds", () => {
       const result = predictDelivery(baseRequest);
       expect(result.confidence).toBeGreaterThan(0.3);
       expect(result.confidence).toBeLessThanOrEqual(0.98);
@@ -65,10 +65,27 @@ describe("Delivery Prediction", () => {
       expect(result.shipByDate).toBe("2026-03-15");
     });
 
-    it("includes historical accuracy", () => {
+    it("reports reference-table basis for known lanes", () => {
       const result = predictDelivery(baseRequest);
-      expect(result.historicalAccuracy).toBeGreaterThan(0);
-      expect(result.historicalAccuracy).toBeLessThanOrEqual(1);
+      expect(result.estimateBasis).toBe("reference-table");
+    });
+
+    it("falls back to general-default basis when no lane data exists", () => {
+      const result = predictDelivery({
+        ...baseRequest,
+        serviceLevel: "priority",
+      });
+      expect(result.estimateBasis).toBe("general-default");
+    });
+
+    it("does not inflate confidence beyond the rules-based baseline", () => {
+      const result = predictDelivery(baseRequest);
+      expect(result.confidence).toBeLessThanOrEqual(0.7);
+    });
+
+    it("does not report a historical accuracy metric", () => {
+      const result = predictDelivery(baseRequest);
+      expect(result).not.toHaveProperty("historicalAccuracy");
     });
 
     it("calculates delay risks", () => {

@@ -1,6 +1,18 @@
 # DropShip Hub
 
-AI-powered dropshipping operations hub — product discovery and validation across platforms (AliExpress, eBay, Amazon, CJ Dropshipping), AI listing generation, order fulfillment and routing, supplier management, competitor analysis, price-war automation, profit tracking, multi-store push (Shopify / WooCommerce / Trendaryo), and a daily AI business-intelligence digest.
+Dropshipping operations hub — product discovery and validation across platforms (AliExpress, eBay, Amazon, CJ Dropshipping), listing generation, order fulfillment and routing, supplier management, competitor analysis, price-war automation, profit tracking, multi-store push (Shopify / WooCommerce / Trendaryo), and a daily business-intelligence digest.
+
+Scoring and recommendations are **rule-based** (deterministic formulas over real data). LLM features (chat assistant, due-diligence reports, listing text) run only when you connect an AI provider key — without one they show an honest "no provider connected" message, never fake output.
+
+> **Honesty policy:** a number is only rendered if it comes from a **live API**, **your Firestore**, or **user input**. Heuristics over real inputs are labeled _Estimated_. Rule engines are labeled _rule-based_, never "AI". When a data source is missing, the UI shows an explicit setup instruction instead of mock data. See [DATA_SOURCES.md](DATA_SOURCES.md) for the full feature → source map.
+
+## Current status
+
+- **Works out of the box:** auth, all 10 calculators, dashboard from your own store data, profit/revenue/cash-flow tracking, price-war and order-routing rules, missions, compliance checks, listing templates, reports, settings, and the full admin area.
+- **Work fully once API keys are added:** product search & trending, market intel (Google Trends interest index), trend analysis, niche catalog, competitor enrichment, CJ fulfillment, AI provider features. Without keys these pages show honest empty/setup states.
+- **Needs a new integration:** carrier return labels (returns a clear `501` — needs EasyPost/ShipStation) and review import (`501` — needs a review source).
+
+Full per-feature status: **[FEATURE-CATALOG.md](FEATURE-CATALOG.md)**.
 
 ## Tech Stack
 
@@ -8,9 +20,9 @@ AI-powered dropshipping operations hub — product discovery and validation acro
 - **Styling:** Tailwind CSS 4, custom theme system
 - **Database:** Firebase — client SDK in the browser, Admin SDK on the server
 - **State/data:** SWR for API data, shared zod schemas for validation
-- **AI:** Multi-provider (OpenAI, Anthropic, Google Gemini, Groq, DeepSeek, Mistral, …) with admin-managed keys
+- **AI (optional):** Multi-provider (OpenAI, Anthropic, Google Gemini, Groq, DeepSeek, Mistral, …) with admin-managed keys
 - **Infrastructure:** Vercel, Upstash Redis (rate limiting), Inngest (background jobs), Stripe (billing), Resend + SendGrid (email failover)
-- **Testing:** Vitest (~2,500 unit/component tests), Playwright (e2e), ESLint 9
+- **Testing:** Vitest (635 files / 6,169 tests), Playwright (15 e2e specs), ESLint 9, custom honesty guard
 
 ## Getting Started
 
@@ -18,7 +30,8 @@ AI-powered dropshipping operations hub — product discovery and validation acro
 
 - Node.js 20+
 - A Firebase project (Auth + Firestore enabled)
-- At least one AI provider API key
+- At least one data API key for live product data (e.g. `SERPAPI_KEYS`) — optional; the app degrades honestly without it
+- Optionally, one AI provider key for LLM features
 
 ### 2. Install & configure
 
@@ -29,15 +42,18 @@ cp .env.example .env.local
 
 Fill in `.env.local`. Required values:
 
-| Variable                                    | Purpose                                                                        |
-| ------------------------------------------- | ------------------------------------------------------------------------------ |
-| `NEXT_PUBLIC_FIREBASE_*`                    | Firebase web config (client)                                                   |
-| `FIREBASE_SERVICE_ACCOUNT`                  | Firebase Admin SDK service-account JSON (server)                               |
-| `JWT_SECRET`                                | Token signing                                                                  |
-| `OWNER_UID` / `OWNER_EMAIL`                 | Bootstrap the admin/owner account                                              |
-| One AI provider key (e.g. `OPENAI_API_KEY`) | AI features                                                                    |
-| `UPSTASH_REDIS_REST_URL/TOKEN`              | Durable per-user rate limiting (recommended in production)                     |
-| `CRON_SECRET`                               | Server-to-server auth for scheduled jobs (e.g. the daily digest GitHub Action) |
+| Variable                                   | Purpose                                                                        |
+| ------------------------------------------ | ------------------------------------------------------------------------------ |
+| `NEXT_PUBLIC_FIREBASE_*`                   | Firebase web config (client)                                                   |
+| `FIREBASE_SERVICE_ACCOUNT`                 | Firebase Admin SDK service-account JSON (server)                               |
+| `JWT_SECRET`                               | Token signing                                                                  |
+| `OWNER_UID` / `OWNER_EMAIL`                | Bootstrap the admin/owner account                                              |
+| `SERPAPI_KEYS`                             | Live product search / Google Trends (comma-separated key pool)                 |
+| One AI provider key (e.g. `GROQ_API_KEYS`) | Optional LLM features                                                          |
+| `UPSTASH_REDIS_REST_URL/TOKEN`             | Durable per-user rate limiting (recommended in production)                     |
+| `CRON_SECRET`                              | Server-to-server auth for scheduled jobs (e.g. the daily digest GitHub Action) |
+
+Full key list and signup links: [DATA_SOURCES.md](DATA_SOURCES.md).
 
 ### 3. Run
 
@@ -53,17 +69,29 @@ firebase deploy --only firestore:rules,firestore:indexes
 
 ## Scripts
 
-| Command                       | Description                                         |
-| ----------------------------- | --------------------------------------------------- |
-| `npm run dev`                 | Start the dev server                                |
-| `npm run build` / `npm start` | Production build / serve                            |
-| `npm run typecheck`           | `tsc --noEmit` (strict)                             |
-| `npm run lint`                | ESLint                                              |
-| `npm test`                    | Full Vitest suite (runs in CI)                      |
-| `npm run test:quick`          | Fast subset: `src/lib`, `src/types`, `src/hooks`    |
-| `npm run test:failed`         | Re-run only tests that failed on the previous run   |
-| `npm run test:coverage`       | Vitest with V8 coverage                             |
-| `npm run test:e2e`            | Playwright e2e suite (starts the dev server itself) |
+| Command                       | Description                                                |
+| ----------------------------- | ---------------------------------------------------------- |
+| `npm run dev`                 | Start the dev server                                       |
+| `npm run build` / `npm start` | Production build / serve                                   |
+| `npm run typecheck`           | `tsc --noEmit` (strict)                                    |
+| `npm run lint`                | ESLint                                                     |
+| `npm run honesty`             | Fabrication guard (fails on mock/random data in app pages) |
+| `npm test`                    | Full Vitest suite (runs in CI)                             |
+| `npm run test:quick`          | Fast subset: `src/lib`, `src/types`, `src/hooks`           |
+| `npm run test:failed`         | Re-run only tests that failed on the previous run          |
+| `npm run test:coverage`       | Vitest with V8 coverage                                    |
+| `npm run test:e2e`            | Playwright e2e suite (starts the dev server itself)        |
+
+### Verification gate
+
+Every change must pass all four before merge:
+
+```bash
+npm run typecheck
+npm run lint        # 0 errors required
+npm run honesty
+npm run test
+```
 
 ## Project Structure
 
@@ -72,10 +100,10 @@ src/
 ├── app/
 │   ├── (marketing)/      # Public landing pages
 │   ├── (auth)/           # sign-in / sign-up / forgot-password
-│   ├── (app)/            # Authenticated dashboard + 30+ feature pages
+│   ├── (app)/            # Authenticated dashboard + 50+ feature pages
 │   ├── (admin)/admin/    # Owner-only admin area
 │   └── api/              # 44 API route groups (231 route handlers)
-├── components/           # Feature + shared UI components
+├── components/           # Feature + shared UI components (src/components/ui = honesty primitives)
 ├── contexts/             # React contexts (AI mode, search tracking)
 ├── hooks/                # Reusable hooks (useAPI, useFirestore, …)
 ├── lib/                  # Core business logic
@@ -84,10 +112,13 @@ src/
 │   ├── validation.ts     # Shared zod schemas
 │   ├── api-errors.ts     # PublicError / safeErrorMessage (no internal leaks)
 │   ├── firebase-admin.ts # Admin SDK singleton
+│   ├── api-keys/         # Multi-key pools with rotation + quota cooldown
 │   ├── ai/               # Provider engine, modes, safety, workflows
 │   ├── data/             # Per-feature Firestore data access + schemas
 │   └── …
 └── __tests__/            # Integration / security / performance suites
+scripts/
+└── honesty-guard.mjs      # CI fabrication guard (npm run honesty)
 ```
 
 ## Security Model
@@ -99,7 +130,7 @@ src/
 
 ## CI
 
-GitHub Actions (`.github/workflows/ci.yml`) runs lint, typecheck, `npm audit`, the full unit suite, a production build, and the Playwright e2e suite on every push/PR to `main`. A separate scheduled workflow triggers the daily digest against the production deployment using `CRON_SECRET`.
+GitHub Actions (`.github/workflows/ci.yml`) runs lint, typecheck, `npm audit`, the full unit suite, a production build, and the Playwright e2e suite on every push/PR to `main`. A separate scheduled workflow (`.github/workflows/daily-digest.yml`) triggers the daily digest against the production deployment using `CRON_SECRET`.
 
 ## Deployment (Vercel)
 
@@ -110,3 +141,11 @@ GitHub Actions (`.github/workflows/ci.yml`) runs lint, typecheck, `npm audit`, t
 ## Chrome Extension
 
 `chrome-extension/` contains a companion extension that saves products from any page into the logged-in user's account via `POST /api/chrome-extension/save`.
+
+## Documentation
+
+| Document                                         | Contents                                                                                        |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| [FEATURE-CATALOG.md](FEATURE-CATALOG.md)         | Every feature in the app with functional status, testing system, completed work, and next steps |
+| [DATA_SOURCES.md](DATA_SOURCES.md)               | Feature → data source map, key pools, honesty UI components                                     |
+| [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md) | Original build plan                                                                             |

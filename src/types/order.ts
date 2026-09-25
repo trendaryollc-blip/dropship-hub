@@ -8,14 +8,14 @@ export interface RoutingDecision {
   productImage: string;
   quantity: number;
   totalPrice: number;
-  selectedSupplier: SupplierOption;
+  selectedSupplier: SupplierOption | string | null;
   alternativeSuppliers: SupplierOption[];
   reasoning: string;
   status: "routed" | "pending" | "fallback" | "failed";
   routedAt: string;
   estimatedDelivery: string;
-  shippingCost: number;
-  totalCost: number;
+  shippingCost: number | null;
+  totalCost: number | null;
 }
 
 export interface SupplierOption {
@@ -46,12 +46,12 @@ export interface RoutingPreferences {
 
 export interface RoutingAnalytics {
   totalRouted: number;
-  avgShippingDays: number;
-  avgCost: number;
+  avgShippingDays: number | null;
+  avgCost: number | null;
   supplierDistribution: { name: string; count: number; color: string }[];
   optimizationBreakdown: { type: string; count: number }[];
-  costSavings: number;
-  timeSavings: number;
+  costSavings: number | null;
+  timeSavings: number | null;
   /** Orders per day for the selected window (real data from the API). */
   dailyCounts?: { date: string; count: number }[];
 }
@@ -63,9 +63,9 @@ export interface RoutingHistory {
   customerLocation: string;
   customerName?: string;
   selectedSupplier: string;
-  shippingDays: number;
-  shippingCost: number;
-  totalCost: number;
+  shippingDays: number | null;
+  shippingCost: number | null;
+  totalCost: number | null;
   reason: string;
   status: "routed" | "pending" | "fallback" | "failed";
   routedAt: string;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
-import { getPriceRules, updatePriceRule, addPriceAdjustmentLog, addPriceSnapshot } from "@/lib/data/price-war";
+import { getPriceRules, updatePriceRule, addPriceAdjustmentLog, addPriceSnapshot, getPriceWarSettings } from "@/lib/data/price-war";
 import { evaluatePriceRule, shouldCheckRule } from "@/lib/price-war-engine";
 import { fetchAllCompetitorPrices } from "@/lib/competitor-price-fetcher";
 import type { PriceRule } from "@/types/price-war";
@@ -10,7 +10,10 @@ import { safeErrorMessage } from "@/lib/api-errors";
 export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const body = await request.json();
-    const { ruleId, dryRun = false } = body as { ruleId?: string; dryRun?: boolean };
+    const { ruleId, dryRun: requestedDryRun, apply } = body as { ruleId?: string; dryRun?: boolean; apply?: boolean };
+
+    const settings = await getPriceWarSettings(uid);
+    const dryRun = apply === true ? false : requestedDryRun === true ? true : !settings.autoApply;
 
     const rules = await getPriceRules(uid, "active");
     const typedRules = rules as unknown as PriceRule[];

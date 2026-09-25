@@ -333,8 +333,8 @@ describe("EnrichedProductCard", () => {
         index={0}
       />
     );
-    expect(screen.getByText("A (87)")).toBeInTheDocument();
-    expect(screen.getByText("Growing")).toBeInTheDocument();
+    expect(screen.getByText(/A \(87\) est\./)).toBeInTheDocument();
+    expect(screen.getByText(/Growing/)).toBeInTheDocument();
     expect(screen.getByText("Low Sat")).toBeInTheDocument();
     expect(screen.getByText("+2")).toBeInTheDocument();
   });

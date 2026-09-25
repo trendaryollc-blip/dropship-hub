@@ -91,7 +91,7 @@ export default function ForecastChart({ forecast, onGenerate, loading = false }:
           <div className="text-left">
             <p className="text-sm font-semibold text-foreground">Revenue Forecast</p>
             <p className="text-[10px] text-muted-foreground">
-              {forecast ? `${forecast.summary.confidenceLevel} confidence prediction` : "AI-powered prediction"}
+              {forecast ? `${forecast.summary.confidenceLevel} confidence (Estimated)` : "No forecast yet — generate one from your revenue data"}
             </p>
           </div>
         </div>

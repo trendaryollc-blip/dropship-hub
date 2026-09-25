@@ -17,7 +17,7 @@ export default function MultiStoreAIBar({ onAction, loading, storeCount, totalOr
     {
       id: "optimize-cross-store",
       label: "Optimize Cross-Store",
-      description: "AI-sync pricing & listings",
+      description: "Review pricing & listings across stores",
       icon: Sparkles,
       gradient: "from-violet-500/20 to-violet-600/10",
       border: "border-violet-400/20 hover:border-violet-400/40",
@@ -37,7 +37,7 @@ export default function MultiStoreAIBar({ onAction, loading, storeCount, totalOr
     {
       id: "bulk-fulfill",
       label: "Bulk Fulfill Orders",
-      description: "AI-route orders to suppliers",
+      description: "Route selected orders to suppliers",
       icon: Zap,
       gradient: "from-emerald-500/20 to-emerald-600/10",
       border: "border-emerald-400/20 hover:border-emerald-400/40",
@@ -60,8 +60,8 @@ export default function MultiStoreAIBar({ onAction, loading, storeCount, totalOr
     <div className="glass rounded-2xl p-4">
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="h-4 w-4 text-accent" />
-        <h3 className="text-xs font-semibold text-foreground">Multi-Store AI Actions</h3>
-        <span className="text-[10px] text-muted-foreground">• {storeCount} store{storeCount !== 1 ? "s" : ""} · ${totalRevenue.toLocaleString()} revenue</span>
+        <h3 className="text-xs font-semibold text-foreground">Multi-Store Actions</h3>
+        <span className="text-[10px] text-muted-foreground">• {storeCount} store{storeCount !== 1 ? "s" : ""} · ${totalRevenue.toLocaleString()} revenue (30d, from your data)</span>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         {actions.map((action) => (

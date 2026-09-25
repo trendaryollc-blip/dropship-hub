@@ -65,11 +65,12 @@ export default function ProductAuthenticityCard({ data }: { data: ProductAuthent
           <div className="p-3 rounded-xl bg-surface/40 border border-border/30">
             <div className="flex items-center gap-2 mb-1.5">
               <Eye className="h-4 w-4 text-accent" />
-              <p className="text-[10px] text-muted-foreground font-medium">Image Analysis</p>
+              <p className="text-[10px] text-muted-foreground font-medium">Image Provided</p>
             </div>
-            <p className={`text-sm font-bold ${data.imageAnalysis.isOriginal ? "text-emerald-400" : "text-red-400"}`}>
-              {data.imageAnalysis.isOriginal ? "Original" : "Possibly Copied"} ({data.imageAnalysis.matchScore}% match)
+            <p className={`text-sm font-bold ${data.imageAnalysis.isOriginal ? "text-emerald-400" : "text-amber-400"}`}>
+              {data.imageAnalysis.isOriginal ? "Image URL supplied" : "No image"}
             </p>
+            <p className="text-[9px] text-muted-foreground mt-1">Reverse image search not connected</p>
           </div>
         </div>
       </div>
@@ -79,9 +80,15 @@ export default function ProductAuthenticityCard({ data }: { data: ProductAuthent
         <div className={`rounded-xl p-4 border ${data.priceAnalysis.isReasonable ? "bg-emerald-400/5 border-emerald-400/15" : "bg-amber-400/5 border-amber-400/15"}`}>
           <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Price Check</p>
           <span className={`text-sm font-bold ${data.priceAnalysis.isReasonable ? "text-emerald-400" : "text-amber-400"}`}>
-            {data.priceAnalysis.isReasonable ? "Reasonable" : data.priceAnalysis.flag ?? "Deviation"}
+            {data.priceAnalysis.marketAvg > 0
+              ? data.priceAnalysis.isReasonable ? "Reasonable" : data.priceAnalysis.flag ?? "Deviation"
+              : data.priceAnalysis.flag ?? "Unavailable"}
           </span>
-          <p className="text-[9px] text-muted-foreground mt-1">Avg: ${data.priceAnalysis.marketAvg.toFixed(2)}</p>
+          <p className="text-[9px] text-muted-foreground mt-1">
+            {data.priceAnalysis.marketAvg > 0
+              ? `Est. avg: $${data.priceAnalysis.marketAvg.toFixed(2)} (price × 1.1)`
+              : "No market average source"}
+          </p>
         </div>
         <div className={`rounded-xl p-4 border ${data.materialCheck.verified ? "bg-emerald-400/5 border-emerald-400/15" : "bg-amber-400/5 border-amber-400/15"}`}>
           <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">Material Check</p>

@@ -22,24 +22,30 @@ export default function AdminAnalyticsPage() {
   const { user } = useAuth();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!user) return;
     const fetchAnalytics = async () => {
+      setLoading(true);
+      setError(false);
       try {
         const token = await user.getIdToken();
         const result = await safeFetch<AnalyticsData>("/api/admin/analytics", {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (result) setData(result);
+        else setError(true);
       } catch (err) {
         console.warn("[AdminAnalytics] Failed to fetch:", err);
+        setError(true);
       } finally {
         setLoading(false);
       }
     };
     fetchAnalytics();
-  }, [user]);
+  }, [user, reloadKey]);
 
   if (loading) {
     return (
@@ -47,6 +53,40 @@ export default function AdminAnalyticsPage() {
         <div className="text-center">
           <div className="h-8 w-8 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">Loading analytics...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="space-y-8 max-w-6xl">
+        <div>
+          <h1 className="text-3xl font-display font-bold text-foreground mb-2">
+            Analytics
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Platform usage and activity across the workspace.
+          </p>
+        </div>
+        <div className="glass rounded-2xl p-6 border border-amber-400/20">
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-xl bg-amber-400/10 border border-amber-400/20">
+              <Activity className="h-8 w-8 text-amber-400" />
+            </div>
+            <div>
+              <h2 className="font-display text-lg font-semibold text-foreground">Analytics unavailable</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Couldn&apos;t load analytics data — no numbers are shown until real data arrives.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setReloadKey((k) => k + 1)}
+            className="mt-4 px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-muted-foreground hover:text-foreground hover:border-white/10 transition-all"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );

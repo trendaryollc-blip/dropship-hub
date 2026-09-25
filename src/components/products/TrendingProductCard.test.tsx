@@ -59,7 +59,7 @@ describe("TrendingProductCard", () => {
 
   it("displays margin percentage", () => {
     render(<TrendingProductCard product={mockProduct} index={0} rank={1} />);
-    expect(screen.getByText("margin 54%")).toBeInTheDocument();
+    expect(screen.getByText("margin 54% est.")).toBeInTheDocument();
   });
 
   it("displays platform", () => {
@@ -91,10 +91,11 @@ describe("TrendingProductCard", () => {
     expect(screen.getByText("$34.99")).toBeInTheDocument();
   });
 
-  it("shows AI Score when expanded", () => {
+  it("shows Estimated score when expanded", () => {
     render(<TrendingProductCard product={mockProduct} index={0} rank={1} />);
     fireEvent.click(screen.getByText("Wireless Mouse"));
-    expect(screen.getByText("AI Score: 85/100")).toBeInTheDocument();
+    expect(screen.getByText("Estimated score: 85/100")).toBeInTheDocument();
+    expect(screen.queryByText(/AI Score/)).not.toBeInTheDocument();
   });
 
   it("shows Search This Product link when expanded", () => {

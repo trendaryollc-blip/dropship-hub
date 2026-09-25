@@ -24,7 +24,7 @@ function MessageBubble({ message }: { message: SupplierMessageItem }) {
         <p className="text-[11px] text-foreground">{message.body}</p>
         <div className="flex items-center justify-end gap-1 mt-1">
           <span className="text-[8px] text-muted-foreground">{new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-          {isOutgoing && <span className={`text-[8px] ${message.status === "read" ? "text-emerald-400" : "text-muted-foreground"}`}>✓✓</span>}
+          {isOutgoing && message.status !== "logged" && <span className={`text-[8px] ${message.status === "read" || message.status === "delivered" ? "text-emerald-400" : "text-muted-foreground"}`}>✓✓</span>}
         </div>
       </div>
     </div>

@@ -110,7 +110,7 @@ export default function GreetingCard({ username }: { username: string }) {
           </div>
           <div className="hidden sm:flex items-center gap-1 text-[10px] text-muted-foreground bg-surface/50 px-3 py-1.5 rounded-full border border-border/50">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Live
+            Online
           </div>
         </div>
 

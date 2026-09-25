@@ -64,4 +64,20 @@ describe("StorePerformanceCard", () => {
     expect(negativeTrend).toBeDefined();
     expect(negativeTrend!.className).toContain("text-red-400");
   });
+
+  it("shows ComingSoon instead of a fake 0% conversion rate", () => {
+    const zeroConv = {
+      ...mockPerf,
+      metrics: { ...mockPerf.metrics, conversionRate: 0 },
+    };
+    render(<StorePerformanceCard perf={zeroConv} delay={0} />);
+    expect(screen.queryByText("0%")).not.toBeInTheDocument();
+    expect(screen.getByTestId("coming-soon")).toBeInTheDocument();
+    expect(screen.getByText("not tracked")).toBeInTheDocument();
+  });
+
+  it("shows a DataSourceBadge labeled Your data", () => {
+    render(<StorePerformanceCard perf={mockPerf} delay={0} />);
+    expect(screen.getByTestId("data-source-badge")).toHaveAttribute("data-source", "firestore");
+  });
 });

@@ -38,7 +38,7 @@ function defaultUseAPIMock(url: string) {
       data: {
         stats: {
           totalViews: 1234, uniqueVisitors: 800, avgDuration: 45, upsellClickRate: 7,
-          upsellConversionRate: 2, totalUpsellRevenue: 0, supportTicketReduction: 432,
+          upsellConversionRate: 2,
           topCountries: [], deviceBreakdown: [], recentViews: [],
         },
       },
@@ -83,6 +83,7 @@ describe("TrackingPageManager", () => {
     expect(screen.getByText("Modern")).toBeTruthy();
     expect(screen.getByText("Bold")).toBeTruthy();
     expect(screen.getByText("Saved Tracking Pages")).toBeTruthy();
+    expect(screen.queryByText("Tickets Saved")).toBeNull();
     expect(screen.getByText("My Store")).toBeTruthy();
   });
 
@@ -227,7 +228,7 @@ describe("TrackingPageManager", () => {
           data: {
             stats: {
               totalViews: 0, uniqueVisitors: 0, avgDuration: 0, upsellClickRate: 0,
-              upsellConversionRate: 0, totalUpsellRevenue: 0, supportTicketReduction: 0,
+              upsellConversionRate: 0,
               topCountries: [], deviceBreakdown: [], recentViews: [],
             },
           },

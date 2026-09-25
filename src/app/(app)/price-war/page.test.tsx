@@ -97,7 +97,7 @@ describe("PriceWarPage", () => {
     expect(mockAuthJson).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Execute" }));
     await waitFor(() => {
-      expect(mockAuthJson).toHaveBeenCalledWith("/api/ai/price-war/execute", { dryRun: false });
+      expect(mockAuthJson).toHaveBeenCalledWith("/api/ai/price-war/execute", { apply: true });
     });
     expect(mockToast.success).toHaveBeenCalledWith("Price check executed and adjustments applied");
   });

@@ -77,7 +77,6 @@ const PLATFORM_WEBSITES: Record<string, string> = {
   flipkart: "https://seller.flipkart.com/api-docs",
   meesho: "https://supplier.meesho.com",
   jiomart: "https://seller.jiomart.com",
-  glucose: "https://www.glucose.com",
   snapdeal: "https://seller.snapdeal.com",
   tradebyte: "https://www.tradebyte.com",
   inhub: "https://www.inhub.de",

@@ -60,7 +60,8 @@ beforeEach(() => {
 describe("TrendsPage", () => {
   it("renders header, all six tabs and dashboard trending items", () => {
     render(<TrendsPage />);
-    expect(screen.getByText("AI Trend Predictor")).toBeTruthy();
+    expect(screen.getByText("Trend Predictor")).toBeTruthy();
+    expect(screen.getByText("RULE-BASED")).toBeTruthy();
     for (const tab of ["Dashboard", "Analyze", "Compare", "Bulk", "Predictions", "Watchlist"]) {
       expect(screen.getByText(tab)).toBeTruthy();
     }

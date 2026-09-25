@@ -1,4 +1,5 @@
-import type { TrendSignal, TrendPrediction, RisingStar, TrendDirection, PredictionConfidence, TrendPlatform } from "@/types/trend-predictor";
+import type { TrendSignal, TrendPrediction, RisingStar, TrendDirection, PredictionConfidence } from "@/types/trend-predictor";
+import { PublicError } from "@/lib/api-errors";
 
 export interface TrendScore {
   velocity: number;
@@ -35,6 +36,11 @@ export function predictTrend(
   _historicalData?: { date: string; volume: number }[]
 ): TrendPrediction {
   const primarySignal = signals[0];
+  if (!primarySignal) {
+    throw new PublicError(
+      "No live trend data for this keyword — connect a trends source (Google Trends API)"
+    );
+  }
   const trendScore = calculateTrendScore(primarySignal);
 
   let direction: TrendDirection;
@@ -59,14 +65,15 @@ export function predictTrend(
     confidence = "low";
   }
 
-  const daysToPeak = direction === "rising"
+  const canForecastPeak = direction === "rising" || direction === "peaking";
+  const daysToPeak = !canForecastPeak
+    ? null
+    : direction === "rising"
     ? Math.round(30 + (100 - trendScore.overallScore) * 0.5)
-    : direction === "peaking"
-    ? Math.round(7 + (100 - trendScore.saturation) * 0.3)
-    : Math.round(60 + Math.random() * 30);
+    : Math.round(7 + (100 - trendScore.saturation) * 0.3);
 
   const peakDate = new Date();
-  peakDate.setDate(peakDate.getDate() + daysToPeak);
+  if (daysToPeak != null) peakDate.setDate(peakDate.getDate() + daysToPeak);
 
   const saturationRisk = Math.round(
     trendScore.saturation * 0.6 +
@@ -89,8 +96,8 @@ export function predictTrend(
     trendScore: trendScore.overallScore,
     confidence,
     direction,
-    predictedPeak: peakDate.toISOString().split("T")[0],
-    timeToPeak: `${daysToPeak} days`,
+    predictedPeak: daysToPeak == null ? null : peakDate.toISOString().split("T")[0],
+    timeToPeak: daysToPeak == null ? null : `${daysToPeak} days`,
     saturationRisk,
     competitionLevel,
     reasoning: generateReasoning(direction, trendScore, signals.length, saturationRisk),
@@ -176,7 +183,7 @@ export function detectRisingStars(signals: TrendSignal[]): RisingStar[] {
         opportunityScore,
         currentVolume: signal.volume,
         platforms: [signal.platform],
-        firstSeen: new Date(Date.now() - Math.random() * 14 * 24 * 60 * 60 * 1000).toISOString(),
+        firstSeen: signal.fetchedAt,
         lastUpdated: new Date().toISOString(),
         status,
         reasoning: generateRisingStarReasoning(score, status),
@@ -217,22 +224,4 @@ export function determineTrendDirection(growthRate: number, acceleration: number
   if (growthRate > 0 && acceleration < 0) return "peaking";
   if (growthRate < -10) return "declining";
   return "stable";
-}
-
-export function generateMockSignals(keyword: string, category: string): TrendSignal[] {
-  const platforms: TrendPlatform[] = ["tiktok", "instagram", "google_trends", "amazon_movers"];
-  return platforms.map((platform, i) => ({
-    id: `sig-${Date.now()}-${i}`,
-    platform,
-    keyword,
-    category,
-    volume: Math.floor(Math.random() * 50000) + 5000,
-    previousVolume: Math.floor(Math.random() * 30000) + 2000,
-    growthRate: Math.round((Math.random() * 200 - 50) * 10) / 10,
-    direction: ["rising", "stable", "peaking", "declining"][Math.floor(Math.random() * 4)] as TrendDirection,
-    velocity: Math.round(Math.random() * 100 * 10) / 10,
-    acceleration: Math.round((Math.random() * 50 - 25) * 10) / 10,
-    saturationLevel: Math.round(Math.random() * 100),
-    fetchedAt: new Date().toISOString(),
-  }));
 }

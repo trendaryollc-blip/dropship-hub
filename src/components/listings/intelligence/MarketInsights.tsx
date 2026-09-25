@@ -31,7 +31,7 @@ export default function MarketInsightsPanel({ insights }: MarketInsightsProps) {
         </div>
         <div>
           <p className="text-xs font-semibold text-foreground">Market Insights</p>
-          <p className="text-[10px] text-muted-foreground">Real-time market analysis</p>
+          <p className="text-[10px] text-muted-foreground">Computed from listings in this set</p>
         </div>
       </div>
 
@@ -92,7 +92,7 @@ export default function MarketInsightsPanel({ insights }: MarketInsightsProps) {
 
       {insights.insights.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-[10px] text-muted-foreground font-medium">AI Insights</p>
+          <p className="text-[10px] text-muted-foreground font-medium">Insights (heuristic)</p>
           {insights.insights.map((insight, i) => (
             <div key={i} className="text-[10px] text-muted-foreground bg-surface rounded-lg px-2.5 py-2">
               {insight}

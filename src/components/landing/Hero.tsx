@@ -109,7 +109,7 @@ export default function Hero() {
             </h1>
 
             <p className="animate-slide-up-delay-1 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-              One dashboard with AI daily picks, live market monitoring, niche radar, trending product scores, and gamified missions. Built for dropshippers who move fast.
+              One dashboard with daily product picks, market monitoring, niche radar, trending product scores, and gamified missions. Built for dropshippers who move fast.
             </p>
 
             <div className="animate-slide-up-delay-2 flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
@@ -151,7 +151,7 @@ export default function Hero() {
             <div className="relative p-4 md:p-6 bg-background/50 min-h-[360px] md:min-h-[460px]">
               <div className="glass rounded-xl p-3 flex items-center gap-2 mb-4 border border-accent/20">
                 <Sparkles className="h-4 w-4 text-accent shrink-0" />
-                <span className="text-xs font-medium text-foreground whitespace-nowrap">AI is monitoring</span>
+                <span className="text-xs font-medium text-foreground whitespace-nowrap">Data from your platforms</span>
                 <span className="relative flex h-2 w-2 shrink-0">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
@@ -171,6 +171,7 @@ export default function Hero() {
                   <div className="flex items-center gap-2 mb-3">
                     <Flame className="h-4 w-4 text-amber-400" />
                     <span className="text-xs font-semibold text-foreground">Trending Products</span>
+                    <span className="px-2 py-0.5 rounded-md bg-surface border border-border text-[10px] font-medium text-muted-foreground">Example</span>
                     <span className="px-2 py-0.5 rounded-md bg-amber-400/10 text-[10px] font-medium text-amber-400">3 hot</span>
                     <Link href="/products" className="ml-auto text-[10px] text-accent font-medium hover:underline flex items-center gap-1">View all <ArrowUpRight className="h-3 w-3" /></Link>
                   </div>
@@ -205,6 +206,7 @@ export default function Hero() {
                   <div className="flex items-center gap-2 mb-3">
                     <Target className="h-4 w-4 text-accent" />
                     <span className="text-xs font-semibold text-foreground">Niche Radar</span>
+                    <span className="px-2 py-0.5 rounded-md bg-surface border border-border text-[10px] font-medium text-muted-foreground">Example</span>
                   </div>
                   <div className="space-y-2">
                     {nicheCards.map(function(n, i) {
@@ -236,7 +238,7 @@ export default function Hero() {
               <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-accent/10 mb-3">
                 <Sparkles className="h-5 w-5 text-accent" />
               </div>
-              <p className="font-display text-sm font-semibold text-foreground mb-1 group-hover:text-accent transition-colors">AI Daily Pick</p>
+              <p className="font-display text-sm font-semibold text-foreground mb-1 group-hover:text-accent transition-colors">Daily Pick</p>
               <p className="text-xs text-muted-foreground">New pick every 24h</p>
               <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-2" />
             </Link>
@@ -244,8 +246,8 @@ export default function Hero() {
               <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-400/10 mb-3">
                 <Flame className="h-5 w-5 text-emerald-400" />
               </div>
-              <p className="font-display text-sm font-semibold text-foreground mb-1 group-hover:text-accent transition-colors">Live Monitoring</p>
-              <p className="text-xs text-muted-foreground">Real-time market data</p>
+              <p className="font-display text-sm font-semibold text-foreground mb-1 group-hover:text-accent transition-colors">Product Research</p>
+              <p className="text-xs text-muted-foreground">Market data & trends</p>
               <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-2" />
             </Link>
             <Link href="/calculator" className="group glass rounded-2xl p-4 md:p-5 hover:border-accent/20 transition-all hover:bg-surface-hover hover:scale-[1.02] cursor-pointer block">
@@ -253,7 +255,7 @@ export default function Hero() {
                 <Target className="h-5 w-5 text-amber-400" />
               </div>
               <p className="font-display text-sm font-semibold text-foreground mb-1 group-hover:text-accent transition-colors">Smart Calculator</p>
-              <p className="text-xs text-muted-foreground">AI-powered margins</p>
+              <p className="text-xs text-muted-foreground">Margin & break-even math</p>
               <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-2" />
             </Link>
             <Link href="/products/niches" className="group glass rounded-2xl p-4 md:p-5 hover:border-accent/20 transition-all hover:bg-surface-hover hover:scale-[1.02] cursor-pointer block">

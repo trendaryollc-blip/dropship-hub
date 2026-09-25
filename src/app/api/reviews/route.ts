@@ -1,39 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
-import { simulateImport, generateReviewResponse } from "@/lib/review-importer";
-import { addReviews, getReviews, deleteReview, addImportJob, getImportJobs, getReviewStats } from "@/lib/data/reviews";
+import { generateReviewReplyTemplate } from "@/lib/review-importer";
+import { getReviews, deleteReview, getImportJobs, getReviewStats } from "@/lib/data/reviews";
 import type { ReviewSource, ReviewFilter } from "@/types/reviews";
 import { safeErrorMessage } from "@/lib/api-errors";
 
-export const POST = withAuth(async (req: NextRequest, uid: string) => {
+export const POST = withAuth(async (req: NextRequest, _uid: string) => {
   try {
     const body = await req.json();
     const { action } = body;
 
     if (action === "import") {
-      const { productTitle, productUrl, source, maxReviews } = body;
+      const { productTitle, source } = body;
       if (!productTitle || !source) {
         return NextResponse.json({ error: "productTitle and source required" }, { status: 400 });
       }
 
-      const { job, reviews } = simulateImport({ productTitle, productUrl: productUrl || "", source, maxReviews });
-
-      const jobId = await addImportJob(uid, { ...job, startedAt: job.startedAt, completedAt: job.completedAt } as any);
-
-      if (reviews.length > 0) {
-        await addReviews(uid, reviews.map((r) => ({
-          ...r,
-          syncedTo: [],
-        } as any)));
-      }
-
-      return NextResponse.json({ success: true, job: { ...job, id: jobId }, imported: reviews.length });
+      return NextResponse.json(
+        {
+          error:
+            "Review import needs a supplier review source (AliExpress/CJ API), which is not connected yet. Connect a supplier review source, then import again — the product name and URL you entered are kept.",
+        },
+        { status: 501 }
+      );
     }
 
     if (action === "respond") {
-      const { reviewId, review } = body;
-      const response = generateReviewResponse(review);
-      return NextResponse.json({ success: true, response });
+      const { review } = body;
+      const response = generateReviewReplyTemplate(review);
+      return NextResponse.json({ success: true, response, template: true });
     }
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });

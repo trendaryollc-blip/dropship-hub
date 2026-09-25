@@ -35,7 +35,7 @@ export interface CashFlowSnapshot {
   pendingInflows: number;
   pendingOutflows: number;
   netPending: number;
-  runwayDays: number; // days until cash runs out at current burn rate
+  runwayDays: number | null; // days until cash runs out at current burn rate; null when there is no net outflow
   burnRate: number; // daily net outflow
   monthlyInflows: number;
   monthlyOutflows: number;

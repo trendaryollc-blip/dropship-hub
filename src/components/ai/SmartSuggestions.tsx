@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAPI } from "@/hooks/useAPI";
+import DataUnavailable from "@/components/ui/DataUnavailable";
 
 interface Suggestion {
   id: string;
@@ -32,69 +33,6 @@ const iconMap: Record<string, React.ReactNode> = {
   alert: <Zap className="h-4 w-4" />,
 };
 
-const defaultSuggestions: Suggestion[] = [
-  {
-    id: "1",
-    type: "trending",
-    title: "Pet GPS Trackers +340%",
-    description: "Low competition, high demand — perfect timing.",
-    action: "View Products",
-    href: "/products",
-    color: "text-emerald-400",
-    bgColor: "bg-emerald-400/5",
-    borderColor: "border-emerald-400/20",
-    timestamp: "2m ago",
-  },
-  {
-    id: "2",
-    type: "price_drop",
-    title: "Earbuds source price dropped",
-    description: "$8.50 → $6.20. Margin up to 68%.",
-    action: "Calculate",
-    href: "/calculator",
-    color: "text-blue-400",
-    bgColor: "bg-blue-400/5",
-    borderColor: "border-blue-400/20",
-    timestamp: "15m ago",
-  },
-  {
-    id: "3",
-    type: "competitor",
-    title: "3 competitors in your niche",
-    description: "LED Strip Lights saturating.",
-    action: "Analyze",
-    href: "/competitors",
-    color: "text-amber-400",
-    bgColor: "bg-amber-400/5",
-    borderColor: "border-amber-400/20",
-    timestamp: "1h ago",
-  },
-  {
-    id: "4",
-    type: "opportunity",
-    title: "Posture Corrector: 72% margin",
-    description: "AI Confidence: 89/100.",
-    action: "Explore",
-    href: "/products",
-    color: "text-purple-400",
-    bgColor: "bg-purple-400/5",
-    borderColor: "border-purple-400/20",
-    timestamp: "3h ago",
-  },
-  {
-    id: "5",
-    type: "store",
-    title: "Connect your store",
-    description: "Push products directly to Shopify.",
-    action: "Connect",
-    href: "/store",
-    color: "text-cyan-400",
-    bgColor: "bg-cyan-400/5",
-    borderColor: "border-cyan-400/20",
-    timestamp: "Today",
-  },
-];
-
 export default function SmartSuggestions() {
   const { user } = useAuth();
   const [expanded, setExpanded] = useState(true);
@@ -104,7 +42,7 @@ export default function SmartSuggestions() {
     uid ? `/api/ai/suggestions?uid=${uid}` : null,
     { refreshInterval: 300000 }
   );
-  const suggestions = data?.suggestions?.length ? data.suggestions : defaultSuggestions;
+  const suggestions = data?.suggestions ?? [];
 
   return (
     <div className="bg-white/[0.02] rounded-2xl border border-white/[0.06] overflow-hidden">
@@ -135,6 +73,12 @@ export default function SmartSuggestions() {
       {/* Suggestions List */}
       {expanded && (
         <div className="px-3 pb-3 space-y-2">
+          {suggestions.length === 0 && (
+            <DataUnavailable
+              title="No suggestions yet"
+              reason="Suggestions are generated from your store and profit data — connect a store or track profit to get alerts."
+            />
+          )}
           {suggestions.map((s) => {
             const icon = iconMap[s.type] || <Sparkles className="h-4 w-4" />;
             return (

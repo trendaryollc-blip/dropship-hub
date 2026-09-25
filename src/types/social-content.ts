@@ -30,9 +30,7 @@ export interface SocialContent {
 export interface AudioSuggestion {
   name: string;
   artist: string;
-  trending: boolean;
   platform: SocialPlatform;
-  usageCount: number;
   url?: string;
 }
 

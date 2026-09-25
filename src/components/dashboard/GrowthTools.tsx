@@ -12,7 +12,7 @@ export function GrowthTools() {
   const tools = [
     { icon: Award, label: "Daily Missions", desc: "Challenges, XP, badges", href: "/missions", color: "from-amber-500/10 to-amber-600/5 border-amber-500/15", iconColor: "text-amber-400" },
     { icon: Calculator, label: "Calculator", desc: "Margins, pricing strategies", href: "/calculator", color: "from-green-500/10 to-green-600/5 border-green-500/15", iconColor: "text-green-400" },
-    { icon: TrendingUp, label: "Trend Predictor", desc: "AI trend analysis", href: "/trends", color: "from-cyan-500/10 to-cyan-600/5 border-cyan-500/15", iconColor: "text-cyan-400" },
+    { icon: TrendingUp, label: "Trend Predictor", desc: "Rule-based trend scoring", href: "/trends", color: "from-cyan-500/10 to-cyan-600/5 border-cyan-500/15", iconColor: "text-cyan-400" },
     { icon: Headphones, label: "Customer Service", desc: "Support tickets, automation", href: "/customer-service", color: "from-violet-500/10 to-violet-600/5 border-violet-500/15", iconColor: "text-violet-400" },
     { icon: BarChart3, label: "Ad ROI", desc: "Ad performance, spend", href: "/ad-roi", color: "from-pink-500/10 to-pink-600/5 border-pink-500/15", iconColor: "text-pink-400" },
     { icon: FileText, label: "Daily Digest", desc: "Business summary", href: "/digest", color: "from-teal-500/10 to-teal-600/5 border-teal-500/15", iconColor: "text-teal-400" },

@@ -9,6 +9,7 @@ const positionConfig = {
   competitive: { color: "text-amber-400", bg: "bg-amber-400/10", gradient: "from-amber-400 to-amber-500" },
   weak: { color: "text-orange-400", bg: "bg-orange-400/10", gradient: "from-orange-400 to-orange-500" },
   struggling: { color: "text-red-400", bg: "bg-red-400/10", gradient: "from-red-400 to-red-500" },
+  unknown: { color: "text-muted-foreground", bg: "bg-muted", gradient: "from-muted-foreground to-muted-foreground" },
 };
 
 export default function CompetitionAnalysisCard({ data }: { data: CompetitionAnalysisResult }) {

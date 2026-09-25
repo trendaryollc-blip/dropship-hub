@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2, AlertTriangle, Shield, Clock, TrendingUp, RefreshCw } from "lucide-react";
+import EmptyState from "@/components/ui/EmptyState";
 import type { SLADashboardData } from "@/types/fulfillment";
 
 interface Props {
@@ -21,7 +22,10 @@ function StatCard({ label, value, icon: Icon, color }: { label: string; value: s
   );
 }
 
-function OnTimeRateDisplay({ rate }: { rate: number }) {
+function OnTimeRateDisplay({ rate }: { rate: number | null }) {
+  if (rate === null) {
+    return <span className="text-2xl font-bold text-muted-foreground">—</span>;
+  }
   const color = rate >= 90 ? "text-emerald-400" : rate >= 70 ? "text-amber-400" : "text-red-400";
   return <span className={`text-2xl font-bold ${color}`}>{rate}%</span>;
 }
@@ -79,16 +83,33 @@ export default function SLADashboard({ data, loading, onRefresh }: Props) {
     );
   }
 
+  const header = (
+    <div className="flex items-center justify-between">
+      <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+        <Shield className="h-4 w-4 text-accent" /> SLA Dashboard
+      </h2>
+      <button onClick={onRefresh} className="p-1.5 rounded-lg hover:bg-surface transition-colors">
+        <RefreshCw className="h-4 w-4 text-muted-foreground" />
+      </button>
+    </div>
+  );
+
+  if (data.summary.totalOrders === 0) {
+    return (
+      <div className="space-y-4">
+        {header}
+        <EmptyState
+          iconName="orders"
+          title="No orders to measure yet"
+          description="On-time rate and fulfillment timing appear once your fulfillment orders start moving."
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-          <Shield className="h-4 w-4 text-accent" /> SLA Dashboard
-        </h2>
-        <button onClick={onRefresh} className="p-1.5 rounded-lg hover:bg-surface transition-colors">
-          <RefreshCw className="h-4 w-4 text-muted-foreground" />
-        </button>
-      </div>
+      {header}
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <StatCard label="Total Orders" value={data.summary.totalOrders} icon={Clock} color="text-blue-400" />
@@ -99,7 +120,12 @@ export default function SLADashboard({ data, loading, onRefresh }: Props) {
           </div>
           <OnTimeRateDisplay rate={data.summary.onTimeRate} />
         </div>
-        <StatCard label="Avg Fulfillment" value={`${data.summary.avgFulfillmentHours}h`} icon={Clock} color="text-purple-400" />
+        <StatCard
+          label="Avg Fulfillment"
+          value={data.summary.avgFulfillmentHours === null ? "—" : `${data.summary.avgFulfillmentHours}h`}
+          icon={Clock}
+          color="text-purple-400"
+        />
         <StatCard label="At Risk" value={data.summary.atRiskOrders} icon={AlertTriangle} color="text-amber-400" />
         <StatCard label="Overdue" value={data.summary.overdueOrders} icon={AlertTriangle} color="text-red-400" />
       </div>
@@ -130,7 +156,7 @@ export default function SLADashboard({ data, loading, onRefresh }: Props) {
                     {alert.message}
                   </p>
                   <p className="text-[10px] text-muted-foreground mt-0.5">
-                    {alert.hoursElapsed}h elapsed — {alert.customerName}
+                    {alert.hoursElapsed}h elapsed{alert.customerName ? ` — ${alert.customerName}` : ""}
                   </p>
                 </div>
                 <span
@@ -165,18 +191,20 @@ export default function SLADashboard({ data, loading, onRefresh }: Props) {
                 <tr key={row.status} className="border-b border-white/5">
                   <td className="py-2 text-foreground capitalize">{row.status.replace(/_/g, " ")}</td>
                   <td className="py-2 text-right text-foreground">{row.count}</td>
-                  <td className="py-2 text-right text-foreground">{row.avgHours}h</td>
+                  <td className="py-2 text-right text-foreground">{row.avgHours === null ? "—" : `${row.avgHours}h`}</td>
                   <td className="py-2 text-right">
                     <span
                       className={`${
-                        row.onTimeRate >= 90
+                        row.onTimeRate === null
+                          ? "text-muted-foreground"
+                          : row.onTimeRate >= 90
                           ? "text-emerald-400"
                           : row.onTimeRate >= 70
                           ? "text-amber-400"
                           : "text-red-400"
                       }`}
                     >
-                      {row.onTimeRate}%
+                      {row.onTimeRate === null ? "—" : `${row.onTimeRate}%`}
                     </span>
                   </td>
                 </tr>

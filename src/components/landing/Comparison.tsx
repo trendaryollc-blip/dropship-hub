@@ -5,12 +5,12 @@ import { useInView } from "@/hooks/useInView";
 import { Check, X, Minus, GripVertical } from "lucide-react";
 
 const rows = [
-  { name: "AI daily product pick", hub: "check", manual: "x" },
-  { name: "Live market monitoring", hub: "check", manual: "x" },
-  { name: "Niche radar with AI scoring", hub: "check", manual: "x" },
+  { name: "Daily product pick", hub: "check", manual: "x" },
+  { name: "Market data monitoring", hub: "check", manual: "x" },
+  { name: "Niche radar with scoring", hub: "check", manual: "x" },
   { name: "Trending product confidence scores", hub: "check", manual: "x" },
   { name: "Marketplace heatmap visualization", hub: "check", manual: "x" },
-  { name: "Revenue forecast with AI predictions", hub: "check", manual: "x" },
+  { name: "Revenue projection from your inputs", hub: "check", manual: "x" },
   { name: "Gamified daily missions & XP", hub: "check", manual: "x" },
   { name: "Supplier reliability scoring", hub: "check", manual: "x" },
   { name: "5-in-1 profit calculator", hub: "check", manual: "partial" },
@@ -106,9 +106,9 @@ export default function Comparison() {
                 <p className="font-display text-lg font-bold text-foreground mb-1">Manual Research</p>
                 <p className="text-sm text-muted-foreground text-right">Spreadsheets, browser tabs, guesswork</p>
                 <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  <span>4+ hours/day</span>
+                  <span>Hours of manual work</span>
                   <span className="w-1 h-1 rounded-full bg-border" />
-                  <span>$200+/mo in tools</span>
+                  <span>Separate paid tools</span>
                 </div>
               </div>
             </div>
@@ -131,9 +131,9 @@ export default function Comparison() {
                   </div>
                 </div>
                 <p className="font-display text-lg font-bold text-foreground mb-1">DropShip Hub</p>
-                <p className="text-sm text-muted-foreground text-left">One dashboard, real-time data</p>
+                <p className="text-sm text-muted-foreground text-left">One dashboard, data from your platforms</p>
                 <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-emerald-400 font-medium">
-                  <span>15 min/day</span>
+                  <span>Minutes a day</span>
                   <span className="w-1 h-1 rounded-full bg-border" />
                   <span>Free to start</span>
                 </div>

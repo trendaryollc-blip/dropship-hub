@@ -28,10 +28,11 @@ vi.mock("@/components/ui/Toast", () => ({
 }));
 
 vi.mock("@/components/multi-store/KpiCard", () => ({
-  default: ({ label, value }: { label: string; value: any }) => (
+  default: ({ label, value, empty, emptyHint }: { label: string; value: any; empty?: boolean; emptyHint?: string }) => (
     <div data-testid="kpi-card">
       <span data-testid="kpi-label">{label}</span>
-      <span data-testid="kpi-value">{String(value)}</span>
+      <span data-testid="kpi-value">{empty ? "—" : String(value)}</span>
+      {empty && <span data-testid="kpi-empty-hint">{emptyHint || "No data yet"}</span>}
     </div>
   ),
 }));
@@ -355,5 +356,21 @@ describe("MultiStorePage", () => {
   it("shows manage connections link when stores exist", () => {
     render(<MultiStorePage />);
     expect(screen.getByText("Manage Connections")).toBeDefined();
+  });
+
+  it("shows empty KPI hints instead of $0 when there is no performance data", () => {
+    setupUseAPIMock({
+      "/api/multi-store/performance?uid=test-uid&period=30d": { performances: [] },
+    });
+    render(<MultiStorePage />);
+    expect(screen.getByText("No orders yet")).toBeDefined();
+    expect(screen.getByText("No sales yet")).toBeDefined();
+    expect(screen.getByText("No profit yet")).toBeDefined();
+    const kpiCards = screen.getAllByTestId("kpi-card");
+    const revenueCard = kpiCards.find((card) =>
+      card.querySelector("[data-testid='kpi-label']")?.textContent === "Total Revenue"
+    );
+    expect(revenueCard?.textContent).toContain("—");
+    expect(screen.getByTestId("data-source-badge")).toHaveAttribute("data-source", "firestore");
   });
 });

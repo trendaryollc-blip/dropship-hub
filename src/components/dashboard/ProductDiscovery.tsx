@@ -89,13 +89,15 @@ export function ProductDiscovery({ trending, onAddCompare, onSaveProduct, isProd
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
                   <div className="absolute top-2.5 left-2.5 px-2 py-1 rounded-lg bg-black/50 backdrop-blur-sm text-[9px] font-bold text-white uppercase">{product.platform}</div>
-                  <div className="absolute top-2.5 right-2.5 flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/20 backdrop-blur-sm">
+                  <div className="absolute top-2.5 right-2.5 flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/20 backdrop-blur-sm" title="Price vs category average (not historical growth)">
                     <TrendingUp className="h-3 w-3 text-emerald-400" />
-                    <span className="text-[10px] font-bold text-emerald-400">+{product.trend}%</span>
+                    <span className="text-[10px] font-bold text-emerald-400">{product.trend >= 0 ? "+" : ""}{product.trend}%</span>
                   </div>
-                  <div className="absolute bottom-2.5 left-2.5 right-2.5">
-                    <MiniSparkline data={product.sparkline} color="#22c55e" width={140} height={20} />
-                  </div>
+                  {product.sparkline && product.sparkline.length > 1 && (
+                    <div className="absolute bottom-2.5 left-2.5 right-2.5" title="Relative price points across products in this set — not a time series">
+                      <MiniSparkline data={product.sparkline} color="#22c55e" width={140} height={20} />
+                    </div>
+                  )}
                   <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAddCompare({ name: product.name, price: product.price, margin: product.margin, image: product.image }); }}
                     aria-label={`Add ${product.name} to compare`}
                     className="absolute bottom-2.5 right-2.5 p-1.5 rounded-lg bg-black/40 text-white/70 hover:text-white hover:bg-black/60 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50">
@@ -121,10 +123,9 @@ export function ProductDiscovery({ trending, onAddCompare, onSaveProduct, isProd
                       <p className="text-sm font-bold text-emerald-400">{product.margin}%</p>
                     </div>
                     <div className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06]">
-                      <p className="text-[8px] text-gray-500 uppercase">Score</p>
+                      <p className="text-[8px] text-gray-500 uppercase" title="Heuristic from rating & reviews — not observed demand">Est. score</p>
                       <div className="flex items-center gap-1">
-                        <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
-                        <span className="text-sm font-bold text-white">{product.confidence}</span>
+                        <span className="text-sm font-bold text-white">{product.confidence}/100</span>
                       </div>
                     </div>
                   </div>
@@ -135,7 +136,12 @@ export function ProductDiscovery({ trending, onAddCompare, onSaveProduct, isProd
                     <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${product.competitionLevel === "low" ? "bg-emerald-500/15 text-emerald-400" : product.competitionLevel === "medium" ? "bg-amber-500/15 text-amber-400" : "bg-red-500/15 text-red-400"}`}>
                       est. {product.competitionLevel} competition
                     </span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-white/[0.06] text-gray-400">{product.shippingDays} days</span>
+                    <span
+                      className="text-[9px] px-1.5 py-0.5 rounded-full bg-white/[0.06] text-gray-400"
+                      title="Per-product shipping estimates need CJ shipping API — not wired yet"
+                    >
+                      ship n/a
+                    </span>
                   </div>
                   {product.competitors && product.competitors.length > 0 && (
                     <div className="text-[9px] text-gray-600 mb-3">

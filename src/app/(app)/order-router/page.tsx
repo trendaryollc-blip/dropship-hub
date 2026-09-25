@@ -35,7 +35,9 @@ function exportToCSV(data: RoutingHistory[]) {
   const headers = ["Order ID", "Product", "Location", "Supplier", "Days", "Cost", "Status", "Date"];
   const rows = data.map((h) => [
     h.orderId, h.productTitle, h.customerLocation, h.selectedSupplier,
-    String(h.shippingDays), `$${h.shippingCost.toFixed(2)}`, h.status || "routed",
+    h.shippingDays != null ? String(h.shippingDays) : "",
+    h.totalCost != null ? `$${h.totalCost.toFixed(2)}` : h.shippingCost != null ? `$${h.shippingCost.toFixed(2)}` : "",
+    h.status || "routed",
     formatDate(h.routedAt),
   ]);
   const csv = [headers, ...rows].map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -70,10 +72,10 @@ function MiniSparkline({ points, color }: { points: number[]; color: string }) {
 }
 
 function KPICard({ label, value, prefix, suffix, icon: Icon, color, sparkline, delay }: {
-  label: string; value: number; prefix?: string; suffix?: string; icon: typeof Route; color: string; sparkline?: number[]; delay: number;
+  label: string; value: number | null; prefix?: string; suffix?: string; icon: typeof Route; color: string; sparkline?: number[]; delay: number;
 }) {
   const { ref, isInView } = useInView({ threshold: 0.3 });
-  const count = useAnimatedCounter(value, 1500, isInView);
+  const count = useAnimatedCounter(value ?? 0, 1500, isInView);
   const colorMap: Record<string, string> = {
     "text-emerald-400": "#22c55e",
     "text-blue-400": "#3b82f6",
@@ -88,10 +90,20 @@ function KPICard({ label, value, prefix, suffix, icon: Icon, color, sparkline, d
         </div>
         {sparkline && sparkline.length > 0 && <MiniSparkline points={sparkline} color={colorMap[color] || "#3b82f6"} />}
       </div>
-      <p className="font-display text-lg sm:text-2xl font-bold text-foreground">{prefix || ""}{count.toLocaleString()}{suffix || ""}</p>
+      <p className="font-display text-lg sm:text-2xl font-bold text-foreground">{value == null ? "—" : `${prefix || ""}${count.toLocaleString()}${suffix || ""}`}</p>
       <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-1">{label}</p>
     </div>
   );
+}
+
+function supplierLabel(selected: RoutingDecision["selectedSupplier"]): string {
+  if (selected && typeof selected === "object") return selected.supplierName;
+  if (typeof selected === "string" && selected) return selected;
+  return "Pending routing";
+}
+
+function formatMoney(value: number | null | undefined): string {
+  return value != null ? `$${value.toFixed(2)}` : "—";
 }
 
 function DecisionCard({ decision, delay, onClick, onReRoute, onDelete }: {
@@ -104,18 +116,12 @@ function DecisionCard({ decision, delay, onClick, onReRoute, onDelete }: {
     fallback: "text-blue-400 bg-blue-400/10",
     failed: "text-red-400 bg-red-400/10",
   };
-  const supplierName = typeof decision.selectedSupplier === "object"
-    ? decision.selectedSupplier.supplierName
-    : String(decision.selectedSupplier);
-  const shippingDays = typeof decision.selectedSupplier === "object"
-    ? decision.selectedSupplier.shippingDays
-    : (decision as unknown as { shippingDays?: number }).shippingDays || 0;
-  const qualityScore = typeof decision.selectedSupplier === "object"
-    ? decision.selectedSupplier.qualityScore
-    : 0;
-  const stockLevel = typeof decision.selectedSupplier === "object"
-    ? decision.selectedSupplier.stockLevel
-    : 0;
+  const supplier = decision.selectedSupplier && typeof decision.selectedSupplier === "object" ? decision.selectedSupplier : null;
+  const supplierName = supplierLabel(decision.selectedSupplier);
+  const legacyDays = (decision as unknown as { shippingDays?: number | null }).shippingDays;
+  const shippingDays = supplier ? supplier.shippingDays : typeof legacyDays === "number" ? legacyDays : null;
+  const qualityScore = supplier ? supplier.qualityScore : null;
+  const stockLevel = supplier ? supplier.stockLevel : null;
 
   return (
     <div ref={ref} className={cn("glass rounded-xl p-3 sm:p-4 transition-all duration-500 hover:border-accent/20 hover:bg-surface-hover cursor-pointer group", isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4")} style={{ transitionDelay: `${delay}ms` }} onClick={onClick}>
@@ -156,22 +162,22 @@ function DecisionCard({ decision, delay, onClick, onReRoute, onDelete }: {
         <div className="flex-1 p-2 rounded-lg bg-surface text-center">
           <Clock className="h-3 w-3 text-muted-foreground mx-auto mb-0.5" />
           <p className="text-[8px] sm:text-[9px] text-muted-foreground">Delivery</p>
-          <p className="text-[9px] sm:text-[10px] font-semibold text-foreground">{shippingDays}d</p>
+          <p className="text-[9px] sm:text-[10px] font-semibold text-foreground">{shippingDays != null ? `${shippingDays}d` : "—"}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-3 gap-1.5 mb-3">
         <div className="p-1.5 rounded-lg bg-surface text-center">
           <p className="text-[8px] text-muted-foreground">Quality</p>
-          <p className="text-[9px] sm:text-[10px] font-bold text-foreground">{qualityScore}/100</p>
+          <p className="text-[9px] sm:text-[10px] font-bold text-foreground">{qualityScore != null ? `${qualityScore}/100` : "—"}</p>
         </div>
         <div className="p-1.5 rounded-lg bg-surface text-center">
           <p className="text-[8px] text-muted-foreground">Stock</p>
-          <p className="text-[9px] sm:text-[10px] font-bold text-foreground">{stockLevel}</p>
+          <p className="text-[9px] sm:text-[10px] font-bold text-foreground">{stockLevel != null ? stockLevel : "—"}</p>
         </div>
         <div className="p-1.5 rounded-lg bg-surface text-center">
           <p className="text-[8px] text-muted-foreground">Cost</p>
-          <p className="text-[9px] sm:text-[10px] font-bold text-emerald-400">${decision.totalCost.toFixed(2)}</p>
+          <p className="text-[9px] sm:text-[10px] font-bold text-emerald-400">{decision.totalCost != null ? `$${decision.totalCost.toFixed(2)}` : "—"}</p>
         </div>
       </div>
 
@@ -222,15 +228,15 @@ function OrderDetailModal({ decision, onClose }: { decision: RoutingDecision | n
             </div>
             <div className="p-2 rounded-lg bg-surface text-center">
               <p className="text-[9px] text-muted-foreground">Total Cost</p>
-              <p className="text-xs font-bold text-emerald-400">${decision.totalCost.toFixed(2)}</p>
+              <p className="text-xs font-bold text-emerald-400">{decision.totalCost != null ? `$${decision.totalCost.toFixed(2)}` : "—"}</p>
             </div>
             <div className="p-2 rounded-lg bg-surface text-center">
               <p className="text-[9px] text-muted-foreground">Shipping</p>
-              <p className="text-xs font-bold text-foreground">{supplier?.shippingDays || 0}d</p>
+              <p className="text-xs font-bold text-foreground">{supplier?.shippingDays != null ? `${supplier.shippingDays}d` : "—"}</p>
             </div>
             <div className="p-2 rounded-lg bg-surface text-center">
               <p className="text-[9px] text-muted-foreground">Quality</p>
-              <p className="text-xs font-bold text-foreground">{supplier?.qualityScore || 0}/100</p>
+              <p className="text-xs font-bold text-foreground">{supplier?.qualityScore != null ? `${supplier.qualityScore}/100` : "—"}</p>
             </div>
           </div>
 
@@ -245,14 +251,14 @@ function OrderDetailModal({ decision, onClose }: { decision: RoutingDecision | n
             <div className="flex-1 p-3 rounded-lg bg-accent/10 border border-accent/20 text-center">
               <Truck className="h-4 w-4 text-accent mx-auto mb-1" />
               <p className="text-[9px] text-muted-foreground">Supplier</p>
-              <p className="text-[10px] font-semibold text-accent">{supplier?.supplierName || String(decision.selectedSupplier)}</p>
+              <p className="text-[10px] font-semibold text-accent">{supplierLabel(decision.selectedSupplier)}</p>
               <p className="text-[10px] text-muted-foreground">{supplier?.location || ""}</p>
             </div>
             <ArrowRight className="h-4 w-4 text-accent shrink-0" />
             <div className="flex-1 p-3 rounded-lg bg-surface text-center">
               <Clock className="h-4 w-4 text-muted-foreground mx-auto mb-1" />
               <p className="text-[9px] text-muted-foreground">Est. Delivery</p>
-              <p className="text-[10px] font-semibold text-foreground">{decision.estimatedDelivery || `${supplier?.shippingDays || 0} days`}</p>
+              <p className="text-[10px] font-semibold text-foreground">{decision.estimatedDelivery || (supplier?.shippingDays != null ? `${supplier.shippingDays} days` : "—")}</p>
             </div>
           </div>
 
@@ -483,11 +489,11 @@ function AnalyticsPanel({ analytics, dateRange, onDateRangeChange }: { analytics
       <div className="grid grid-cols-2 gap-3 mt-4">
         <div className="p-2 rounded-lg bg-surface text-center">
           <p className="text-[9px] text-muted-foreground">Cost Savings</p>
-          <p className="text-xs sm:text-sm font-bold text-emerald-400">${analytics.costSavings.toFixed(2)}</p>
+          <p className="text-xs sm:text-sm font-bold text-muted-foreground">{analytics.costSavings != null ? `$${analytics.costSavings.toFixed(2)}` : "Not tracked"}</p>
         </div>
         <div className="p-2 rounded-lg bg-surface text-center">
           <p className="text-[9px] text-muted-foreground">Avg Time Saved</p>
-          <p className="text-xs sm:text-sm font-bold text-blue-400">{analytics.timeSavings}d</p>
+          <p className="text-xs sm:text-sm font-bold text-muted-foreground">{analytics.timeSavings != null ? `${analytics.timeSavings}d` : "Not tracked"}</p>
         </div>
       </div>
 
@@ -536,8 +542,8 @@ function HistoryTable({ history, onSearch, search, onExport, onDelete, error, on
       if (sortField === "orderId") { aVal = a.orderId; bVal = b.orderId; }
       else if (sortField === "productTitle") { aVal = a.productTitle; bVal = b.productTitle; }
       else if (sortField === "selectedSupplier") { aVal = a.selectedSupplier; bVal = b.selectedSupplier; }
-      else if (sortField === "shippingDays") { aVal = a.shippingDays; bVal = b.shippingDays; }
-      else if (sortField === "totalCost") { aVal = a.totalCost || a.shippingCost; bVal = b.totalCost || b.shippingCost; }
+      else if (sortField === "shippingDays") { aVal = a.shippingDays ?? 0; bVal = b.shippingDays ?? 0; }
+      else if (sortField === "totalCost") { aVal = a.totalCost ?? a.shippingCost ?? 0; bVal = b.totalCost ?? b.shippingCost ?? 0; }
       else if (sortField === "status") { aVal = a.status || ""; bVal = b.status || ""; }
       else { aVal = a.routedAt || ""; bVal = b.routedAt || ""; }
       if (typeof aVal === "string") return sortDir === "asc" ? aVal.localeCompare(bVal as string) : (bVal as string).localeCompare(aVal);
@@ -586,8 +592,8 @@ function HistoryTable({ history, onSearch, search, onExport, onDelete, error, on
               <td className="py-2 text-[10px] sm:text-[11px] text-foreground max-w-[150px] truncate">{h.productTitle}</td>
               <td className="py-2 text-[10px] sm:text-[11px] text-muted-foreground">{h.customerLocation}</td>
               <td className="py-2 text-[10px] sm:text-[11px] text-accent">{h.selectedSupplier}</td>
-              <td className="py-2 text-[10px] sm:text-[11px] text-center text-foreground">{h.shippingDays}d</td>
-              <td className="py-2 text-[10px] sm:text-[11px] text-center text-emerald-400">${(h.totalCost || h.shippingCost).toFixed(2)}</td>
+              <td className="py-2 text-[10px] sm:text-[11px] text-center text-foreground">{h.shippingDays != null ? `${h.shippingDays}d` : "—"}</td>
+              <td className="py-2 text-[10px] sm:text-[11px] text-center text-emerald-400">{formatMoney(h.totalCost ?? h.shippingCost)}</td>
               <td className="py-2 text-center">
                 <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-semibold", h.status === "routed" ? "text-emerald-400 bg-emerald-400/10" : h.status === "pending" ? "text-amber-400 bg-amber-400/10" : h.status === "failed" ? "text-red-400 bg-red-400/10" : "text-blue-400 bg-blue-400/10")}>
                   {h.status || "routed"}
@@ -752,7 +758,7 @@ export default function OrderRouterPage() {
 
   const routeMutation = useMutation<{ success: boolean; message: string }>("/api/orders", {
     onSuccess: () => {
-      toast.success("Order routed successfully");
+      toast.success("Order queued for routing");
       revalidate("/api/orders?type=decisions");
       revalidate("/api/orders?type=analytics");
       revalidate("/api/orders?type=history");
@@ -825,7 +831,7 @@ export default function OrderRouterPage() {
           <div className="flex items-center gap-3 mb-1">
             <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground">Order Router</h1>
           </div>
-          <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">Smart multi-channel order routing. AI selects the optimal supplier based on location, stock, speed, and cost.</p>
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">Multi-channel order routing. New orders are queued, then suppliers are ranked by your routing preferences across location, stock, speed, and cost.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {pendingCount > 0 && (

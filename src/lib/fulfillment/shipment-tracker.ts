@@ -164,6 +164,21 @@ async function updateShopifyTracking(
   _estimatedDelivery: string | null,
   uid?: string
 ): Promise<void> {
+  const carrierTrackingUrls: Record<string, (trackingNumber: string) => string> = {
+    "cainiao": (t) => `https://track.cainiao.com/?mailNoList=${t}`,
+    "yanwen": (t) => `https://track.yanwen.com/?tracking=${t}`,
+    "4px": (t) => `https://www.4px.com/track/#nums=${t}`,
+    "sunyou": (t) => `https://www.sunyou.com/track?tracking=${t}`,
+    "jitsu": (t) => `https://www.jitsu.com/track/${t}`,
+    "dhl": (t) => `https://www.dhl.com/en/express/tracking.html?AWB=${t}`,
+    "fedex": (t) => `https://www.fedex.com/fedextrack/?trknbr=${t}`,
+    "usps": (t) => `https://tools.usps.com/go/TrackConfirmAction?tLabels=${t}`,
+    "ups": (t) => `https://www.ups.com/track?tracknum=${t}`,
+    "china post": (t) => `https://track-chinapost.com/?tracking=${t}`,
+    "epacket": (t) => `https://track-chinapost.com/?tracking=${t}`,
+  };
+  const trackingUrl = carrierTrackingUrls[carrier.toLowerCase()]?.(trackingNumber) ?? null;
+
   const storeSettings = uid ? await getStoreSettings(uid, storeId) : null;
   if (!storeSettings?.accessToken || !storeSettings?.storeDomain) {
     throw new Error("Shopify store not configured");
@@ -179,7 +194,7 @@ async function updateShopifyTracking(
       fulfillment: {
         tracking_number: trackingNumber,
         tracking_company: carrier,
-        tracking_url: `https://trackingshipment.com/${carrier}/${trackingNumber}`,
+        ...(trackingUrl ? { tracking_url: trackingUrl } : {}),
         notify_customer: true,
       },
     }),

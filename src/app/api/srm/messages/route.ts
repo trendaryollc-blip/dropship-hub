@@ -31,7 +31,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
 
     // Attempt to send via CJ API if supplier is CJ
     let cjMessageId: string | undefined;
-    let status: "sent" | "failed" = "sent";
+    let status: "sent" | "failed" | "logged" = "logged";
 
     if (supplierId === "cj-dropshipping") {
       try {
@@ -45,6 +45,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
         const data = await resp.json();
         if (data.result && data.data?.messageId) {
           cjMessageId = data.data.messageId;
+          status = "sent";
         } else {
           status = "failed";
         }

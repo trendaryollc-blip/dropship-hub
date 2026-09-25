@@ -19,6 +19,8 @@ interface TrendLifecycleCurveProps {
   showGrid?: boolean;
   showTooltip?: boolean;
   className?: string;
+  emptyNote?: string;
+  forecastNote?: string;
 }
 
 const STAGE_COLORS: Record<string, string> = {
@@ -38,6 +40,8 @@ export default function TrendLifecycleCurve({
   showGrid = true,
   showTooltip = true,
   className = "",
+  emptyNote = "No trend data available",
+  forecastNote,
 }: TrendLifecycleCurveProps) {
   const colors = useMemo(() => getChartColors(), []);
 
@@ -56,12 +60,14 @@ export default function TrendLifecycleCurve({
 
   const stageColor = STAGE_COLORS[currentStage] || colors.accent;
 
+  const showForecastNote = Boolean(forecastNote) && predictedData.length === 0;
+
   const gradientId = useMemo(() => `lifecycle-${Math.random().toString(36).slice(2, 9)}`, []);
 
   if (chartData.length === 0) {
     return (
       <div className={`flex items-center justify-center rounded-xl bg-surface border border-border ${className}`} style={{ height }}>
-        <p className="text-xs text-muted-foreground">No trend data available</p>
+        <p className="text-xs text-muted-foreground px-4 text-center">{emptyNote}</p>
       </div>
     );
   }
@@ -145,6 +151,9 @@ export default function TrendLifecycleCurve({
           )}
         </AreaChart>
       </ResponsiveContainer>
+      {showForecastNote && (
+        <p className="text-[10px] text-muted-foreground text-center mt-1">{forecastNote}</p>
+      )}
     </div>
   );
 }

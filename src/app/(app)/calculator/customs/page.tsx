@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { calculateCustoms, lookupHSCode } from "@/lib/shipping/customs-calculator";
 import CalculatorLayout from "@/components/calculator/CalculatorLayout";
+import DataSourceBadge from "@/components/ui/DataSourceBadge";
 import { AlertTriangle, Info, CheckCircle, XCircle } from "lucide-react";
 
 const COUNTRIES: Record<string, string> = {
@@ -110,7 +111,7 @@ export default function CustomsCalculatorPage() {
                 </div>
                 {hsLookupResult && (
                   <p className="text-[10px] text-emerald-400 mt-1">
-                    HS Code found: {hsLookupResult.hsCode} ({hsLookupResult.description}) — {Math.round(hsLookupResult.confidence * 100)}% confidence
+                    HS Code found: {hsLookupResult.hsCode} ({hsLookupResult.description}) — Keyword match
                   </p>
                 )}
               </div>
@@ -152,7 +153,13 @@ export default function CustomsCalculatorPage() {
 
         <div className="lg:col-span-2 space-y-4">
           <div className={cardClass}>
-            <h3 className="font-display text-lg font-semibold text-foreground mb-4">Customs Summary</h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-display text-lg font-semibold text-foreground">Customs Summary</h3>
+              <DataSourceBadge source="estimated" />
+            </div>
+            <p className="text-[10px] text-muted-foreground mb-4">
+              Duty, VAT, and effective tax rate come from static country tables — verify current official rates before relying on them.
+            </p>
             <div className="p-4 rounded-xl bg-accent/5 border border-accent/20 text-center mb-6">
               <p className="text-xs text-accent uppercase tracking-wider mb-1">Total Landed Cost</p>
               <p className="font-display text-4xl font-bold text-accent">${customsResult.summary.totalLandedCost.toFixed(2)}</p>
@@ -234,7 +241,13 @@ export default function CustomsCalculatorPage() {
           )}
 
           <div className={cardClass}>
-            <h3 className="font-display text-lg font-semibold text-foreground mb-4">Item Details</h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-display text-lg font-semibold text-foreground">Item Details</h3>
+              <DataSourceBadge source="estimated" />
+            </div>
+            <p className="text-[10px] text-muted-foreground mb-4">
+              Per-item Duty and VAT use static country rates — verify current official rates.
+            </p>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>

@@ -6,15 +6,16 @@ import { useRouter } from "next/navigation";
 import {
   Brain, Key, LayoutDashboard, Search, DollarSign,
   Package, BarChart3,
-  Store, Bell, User, Download,
+  Store, Bell, User, Download, Globe,
 } from "lucide-react";
 import { safeFetch, FetchError } from "@/lib/safe-fetch";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { allProviders } from "@/components/settings/constants";
+import { allProviders, platformConnectors } from "@/components/settings/constants";
 import type { AIProvider } from "@/components/settings/constants";
 import ProvidersTab from "@/components/settings/ProvidersTab";
+import PlatformsTab, { type PlatformKeyStatus } from "@/components/settings/PlatformsTab";
 import StoresTab from "@/components/settings/StoresTab";
 import NotificationsTab from "@/components/settings/NotificationsTab";
 import AccountTab from "@/components/settings/AccountTab";
@@ -33,7 +34,8 @@ export default function AISettingsPage() {
   const router = useRouter();
   const [providers, setProviders] = useState<AIProvider[]>(allProviders);
   const [showKeys, setShowKeys] = useState<Record<SlotKey, boolean>>({});
-  const [activeTab, setActiveTab] = useState<"providers" | "stores" | "notifications" | "account" | "data">("providers");
+  const [activeTab, setActiveTab] = useState<"providers" | "platforms" | "stores" | "notifications" | "account" | "data">("providers");
+  const [platformStatuses, setPlatformStatuses] = useState<Record<string, PlatformKeyStatus>>({});
 
   const [apiKeys, setApiKeys] = useState<Record<string, string[]>>({});
 
@@ -78,7 +80,8 @@ export default function AISettingsPage() {
         safeFetch<{ connections?: Array<{ id: string; name: string; platform: string; status: string; url: string }> }>("/api/store/connections", { headers: authHeaders }),
         safeFetch<{ preferences?: typeof notifPrefs }>("/api/settings/notifications", { headers: authHeaders }),
         safeFetch<{ keys?: Record<string, { keys: Array<{ masked: string; index: number }>; configured: boolean }> }>("/api/settings/api-keys", { headers: authHeaders }),
-      ]).then(([aiData, storeData, notifData, keyData]) => {
+        safeFetch<{ providers?: Record<string, { configured: boolean; keyCount: number }> }>("/api/settings/platform-keys", { headers: authHeaders }),
+      ]).then(([aiData, storeData, notifData, keyData, platformKeyData]) => {
         if (aiData?.providers) {
           setProviders((prev) => prev.map((p) => ({ ...p, configured: aiData.providers![p.id]?.configured ?? false })));
         }
@@ -99,6 +102,13 @@ export default function AISettingsPage() {
             ...p,
             configured: keyData.keys![p.id]?.configured ?? p.configured,
           })));
+        }
+        if (platformKeyData?.providers) {
+          const next: Record<string, PlatformKeyStatus> = {};
+          for (const [id, info] of Object.entries(platformKeyData.providers)) {
+            next[id] = { configured: info.configured, keyCount: info.keyCount };
+          }
+          setPlatformStatuses(next);
         }
       }).catch((e) => { console.warn("[SettingsPage] data fetch error:", e); });
     });
@@ -310,8 +320,6 @@ export default function AISettingsPage() {
     } catch { toast.error("Failed to delete account"); }
   };
 
-  const _configuredCount = providers.filter((p) => p.configured).length;
-
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div>
@@ -341,6 +349,7 @@ export default function AISettingsPage() {
       <div className="flex gap-2 border-b border-border pb-2 overflow-x-auto">
         {[
           { id: "providers" as const, label: "API Providers", icon: Key },
+          { id: "platforms" as const, label: "Platforms", icon: Globe },
           { id: "stores" as const, label: "Stores", icon: Store },
           { id: "notifications" as const, label: "Notifications", icon: Bell },
           { id: "account" as const, label: "Account", icon: User },
@@ -364,6 +373,10 @@ export default function AISettingsPage() {
             onDeleteApiKey={handleDeleteApiKey} onShowKeys={(id) => setShowKeys((p) => ({ ...p, [id]: !p[id] }))}
             onApiKeyChange={handleApiKeyChange}
           />
+        )}
+
+        {activeTab === "platforms" && (
+          <PlatformsTab platformConnectors={platformConnectors} statuses={platformStatuses} />
         )}
 
       {activeTab === "stores" && <StoresTab stores={stores} />}

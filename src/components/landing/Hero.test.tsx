@@ -27,7 +27,7 @@ describe("Hero", () => {
 
   it("renders subheading", () => {
     render(<Hero />);
-    expect(screen.getByText(/One dashboard with AI daily picks/)).toBeInTheDocument();
+    expect(screen.getByText(/One dashboard with daily product picks/)).toBeInTheDocument();
   });
 
   it("renders CTA button", () => {
@@ -66,8 +66,8 @@ describe("Hero", () => {
 
   it("renders feature cards", () => {
     render(<Hero />);
-    expect(screen.getByText("AI Daily Pick")).toBeInTheDocument();
-    expect(screen.getByText("Live Monitoring")).toBeInTheDocument();
+    expect(screen.getByText("Daily Pick")).toBeInTheDocument();
+    expect(screen.getByText("Product Research")).toBeInTheDocument();
     expect(screen.getByText("Smart Calculator")).toBeInTheDocument();
     expect(screen.getAllByText("Niche Radar").length).toBeGreaterThanOrEqual(1);
   });
@@ -79,6 +79,11 @@ describe("Hero", () => {
 
   it("renders AI monitoring badge", () => {
     render(<Hero />);
-    expect(screen.getByText("AI is monitoring")).toBeInTheDocument();
+    expect(screen.getByText("Data from your platforms")).toBeInTheDocument();
+  });
+
+  it("labels mock dashboard cards as examples", () => {
+    render(<Hero />);
+    expect(screen.getAllByText("Example").length).toBe(2);
   });
 });

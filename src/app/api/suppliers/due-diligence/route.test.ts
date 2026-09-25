@@ -175,6 +175,22 @@ describe("/api/suppliers/due-diligence", () => {
     expect(response.status).toBe(500);
   });
 
+  it("POST returns 503 when no AI provider key is configured", async () => {
+    mockGenerateDueDiligenceReport.mockRejectedValue(new Error("All AI providers failed. Last error: openai: No API key"));
+
+    const { POST } = await import("./route");
+    const request = new Request("http://localhost/api/suppliers/due-diligence", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierId: "cj-dropshipping" }),
+    });
+    const response = await POST(request as any);
+    const data = await response.json();
+    expect(response.status).toBe(503);
+    expect(data.code).toBe("no_provider");
+    expect(data.error).toContain("No AI provider connected");
+  });
+
   it("POST returns 400 on invalid input", async () => {
     const { POST } = await import("./route");
     const request = new Request("http://localhost/api/suppliers/due-diligence", {

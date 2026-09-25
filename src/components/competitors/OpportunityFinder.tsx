@@ -81,7 +81,7 @@ export default function OpportunityFinder({ opportunities }: { opportunities: Op
   return (
     <div ref={ref} className={`transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
       <h3 className="font-display text-base font-semibold text-foreground mb-4 flex items-center gap-2">
-        <span className="text-lg">🎯</span> AI Opportunity Finder
+        <span className="text-lg">🎯</span> Opportunity Finder
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {opportunities.map((opp, i) => {
@@ -101,9 +101,11 @@ export default function OpportunityFinder({ opportunities }: { opportunities: Op
                     <Icon className="h-3.5 w-3.5" />
                     {opp.type === "opportunity" ? "OPPORTUNITY" : opp.type === "gap" ? "PRICING GAP" : "AVOID"}
                   </div>
-                  {opp.potentialMargin && (
-                    <span className="text-xl sm:text-2xl font-bold text-foreground">{opp.potentialMargin}%</span>
-                  )}
+                  {opp.potentialMargin ? (
+                    <span className="text-xl sm:text-2xl font-bold text-foreground" title="Price gap vs market average (USD)">
+                      ${opp.potentialMargin.toFixed(2)}
+                    </span>
+                  ) : null}
                 </div>
                 <h4 className="font-display text-lg font-bold text-foreground mb-2">{opp.title}</h4>
                 <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{opp.description}</p>

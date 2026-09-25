@@ -3,11 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  TrendingUp, Flame, Zap, ArrowUpRight, RefreshCw,
-  Globe, BarChart3, ShoppingCart,
+  TrendingUp, Flame, Zap, ArrowUpRight, RefreshCw, Globe,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAPI } from "@/hooks/useAPI";
+import DataUnavailable from "@/components/ui/DataUnavailable";
 
 interface TrendingProduct {
   id: string;
@@ -26,21 +26,6 @@ interface MarketAlert {
   color: string;
 }
 
-const defaultTrending: TrendingProduct[] = [
-  { id: "1", name: "Pet GPS Tracker", trend: 340, price: 29.99, margin: 65, platform: "Amazon" },
-  { id: "2", name: "Posture Corrector", trend: 180, price: 24.99, margin: 72, platform: "Shopify" },
-  { id: "3", name: "LED Strip Lights", trend: 95, price: 19.99, margin: 58, platform: "AliExpress" },
-  { id: "4", name: "Portable Espresso", trend: 120, price: 49.99, margin: 45, platform: "Amazon" },
-  { id: "5", name: "Smart Water Bottle", trend: 85, price: 34.99, margin: 52, platform: "TikTok" },
-];
-
-const defaultAlerts: MarketAlert[] = [
-  { id: "1", type: "trending", text: "Pet supplies demand surging", value: "+23%", color: "text-emerald-400 bg-emerald-400/10" },
-  { id: "2", type: "price", text: "AliExpress shipping costs down", value: "-12%", color: "text-blue-400 bg-blue-400/10" },
-  { id: "3", type: "competition", text: "LED niche saturation rising", value: "High", color: "text-amber-400 bg-amber-400/10" },
-  { id: "4", type: "opportunity", text: "Summer products peaking NOW", value: "Hot", color: "text-purple-400 bg-purple-400/10" },
-];
-
 export default function LiveMarketIntel() {
   const { user } = useAuth();
   const uid = user?.uid || "";
@@ -48,8 +33,8 @@ export default function LiveMarketIntel() {
     uid ? `/api/ai/market-intel?uid=${uid}` : null,
     { refreshInterval: 600000 }
   );
-  const trending = data?.trending?.length ? data.trending : defaultTrending;
-  const alerts = data?.alerts?.length ? data.alerts : defaultAlerts;
+  const trending = data?.trending ?? [];
+  const alerts = data?.alerts ?? [];
   const [activeTab, setActiveTab] = useState<"trending" | "alerts">("trending");
 
   return (
@@ -99,6 +84,12 @@ export default function LiveMarketIntel() {
       {/* Content */}
       <div className="p-3 max-h-[380px] overflow-y-auto">
         {activeTab === "trending" && (
+          trending.length === 0 ? (
+            <DataUnavailable
+              title="No market signals yet"
+              reason="Market intel needs a live shopping/trend source (not connected)"
+            />
+          ) : (
           <div className="space-y-1.5">
             {trending.map((product, i) => (
               <Link
@@ -136,9 +127,16 @@ export default function LiveMarketIntel() {
               View all trending <ArrowUpRight className="h-3 w-3" />
             </Link>
           </div>
+          )
         )}
 
         {activeTab === "alerts" && (
+          alerts.length === 0 ? (
+            <DataUnavailable
+              title="No market signals yet"
+              reason="Market intel needs a live shopping/trend source (not connected)"
+            />
+          ) : (
           <div className="space-y-1.5">
             {alerts.map((alert) => (
               <div
@@ -152,25 +150,8 @@ export default function LiveMarketIntel() {
               </div>
             ))}
           </div>
+          )
         )}
-      </div>
-
-      {/* Stats Footer */}
-      <div className="grid grid-cols-2 border-t border-white/[0.04]">
-        <div className="p-3 text-center border-r border-white/[0.04]">
-          <div className="flex items-center justify-center gap-1 mb-1">
-            <ShoppingCart className="h-3 w-3 text-muted-foreground" />
-          </div>
-          <p className="text-base font-bold text-foreground">847</p>
-          <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Products</p>
-        </div>
-        <div className="p-3 text-center">
-          <div className="flex items-center justify-center gap-1 mb-1">
-            <BarChart3 className="h-3 w-3 text-emerald-400" />
-          </div>
-          <p className="text-base font-bold text-emerald-400">+12%</p>
-          <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Growth</p>
-        </div>
       </div>
     </div>
   );

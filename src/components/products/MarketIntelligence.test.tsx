@@ -11,7 +11,7 @@ const mockData: MarketIntel = {
   trendDirection: "rising",
   trendSparkline: [20, 30, 25, 40, 35, 50],
   searchVolume: "high",
-  searchVolumeNumber: 45000,
+  interestIndex: 45,
   seasonality: "Peak demand in Q4",
   bestTimeToSell: "October - December",
   competitionLevel: "medium",
@@ -38,10 +38,18 @@ describe("MarketIntelligence", () => {
     expect(screen.getByText("rising")).toBeInTheDocument();
   });
 
-  it("shows search volume", () => {
+  it("shows search interest as a 0-100 index, not a fabricated search volume", () => {
     render(<MarketIntelligence data={mockData} />);
-    expect(screen.getByText("high")).toBeInTheDocument();
-    expect(screen.getByText("45,000 searches/mo")).toBeInTheDocument();
+    expect(screen.getByText("Search Interest")).toBeInTheDocument();
+    expect(screen.getByText("45/100")).toBeInTheDocument();
+    expect(screen.getByText(/Est\. interest index \(0-100, Google Trends-style\)/)).toBeInTheDocument();
+    expect(screen.queryByText(/searches\/mo/)).not.toBeInTheDocument();
+  });
+
+  it("labels heuristic signals as estimates", () => {
+    render(<MarketIntelligence data={mockData} />);
+    expect(screen.getByText(/Est\. sellers/)).toBeInTheDocument();
+    expect(screen.getByText(/Heuristic from live price\/rating signals/)).toBeInTheDocument();
   });
 
   it("displays seasonality", () => {

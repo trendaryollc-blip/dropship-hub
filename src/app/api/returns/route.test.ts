@@ -102,8 +102,7 @@ describe("/api/returns", () => {
     expect(response.status).toBe(400);
   });
 
-  it("POST generateLabel creates a label", async () => {
-    mockGet.mockResolvedValue({ exists: true, data: () => ({ supplierName: "Supplier" }) });
+  it("POST generateLabel returns 501 until a carrier integration exists", async () => {
     const { POST } = await import("./route");
     const request = new Request("http://localhost/api/returns", {
       method: "POST",
@@ -112,7 +111,22 @@ describe("/api/returns", () => {
     });
     (request as any).nextUrl = new URL("http://localhost/api/returns");
     const response = await POST(request as any);
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(501);
+    const body = await response.json();
+    expect(body.error).toMatch(/carrier integration/);
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it("POST generateLabel returns 400 without returnId", async () => {
+    const { POST } = await import("./route");
+    const request = new Request("http://localhost/api/returns", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "generateLabel" }),
+    });
+    (request as any).nextUrl = new URL("http://localhost/api/returns");
+    const response = await POST(request as any);
+    expect(response.status).toBe(400);
   });
 
   it("POST detect action finds return candidates", async () => {

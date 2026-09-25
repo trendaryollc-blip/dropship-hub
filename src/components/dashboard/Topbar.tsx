@@ -245,11 +245,17 @@ export default function Topbar({ onMenuToggle }: TopbarProps) {
               ) : searchQuery.trim().length === 0 ? (
                 <div className="px-3 py-4 text-center">
                   <Search className="h-6 w-6 text-muted-foreground/30 mx-auto mb-1" />
-                  <p className="text-[11px] text-muted-foreground">Start typing to search</p>
+                  <p className="text-[11px] text-muted-foreground">Start typing to search your history</p>
+                  <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+                    Full-text product search opens after you press Enter
+                  </p>
                 </div>
               ) : (
                 <div className="px-3 py-4 text-center">
-                  <p className="text-[11px] text-muted-foreground">No matches found</p>
+                  <p className="text-[11px] text-muted-foreground">No matching history entries</p>
+                  <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+                    Press Enter to run a full search for “{searchQuery.trim()}”
+                  </p>
                 </div>
               )}
             </div>

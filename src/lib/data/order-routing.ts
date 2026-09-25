@@ -8,10 +8,10 @@ export interface RoutingDecisionDoc {
   orderId: string;
   customerLocation: string;
   productTitle: string;
-  selectedSupplier: string;
-  shippingDays: number;
-  shippingCost: number;
-  totalCost: number;
+  selectedSupplier: string | null;
+  shippingDays: number | null;
+  shippingCost: number | null;
+  totalCost: number | null;
   reasoning: string;
   status: string;
   routedAt: string;

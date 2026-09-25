@@ -86,14 +86,24 @@ export function SupplierNetwork({ suppliers }: { suppliers: SupplierStatus[] }) 
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-[9px] text-gray-500">{s.location}</span>
                       <span className="text-[9px] text-gray-600">&middot;</span>
-                      <span className={`text-[9px] ${responseColors[s.responseLevel] || "text-gray-500"}`}>{s.responseTime}</span>
+                      <span
+                        className={`text-[9px] ${s.responseTime === "—" ? "text-gray-600" : responseColors[s.responseLevel] || "text-gray-500"}`}
+                        title={s.responseTime === "—" ? "Response time needs a supplier messaging/SLA feed — not wired yet" : undefined}
+                      >
+                        {s.responseTime === "—" ? "response n/a" : s.responseTime}
+                      </span>
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="flex items-center gap-1 text-[10px] text-amber-400">
-                      <Star className="h-2.5 w-2.5 fill-current" />{s.rating}
+                    <div className="flex items-center gap-1 text-[10px] text-amber-400" title="Average product rating from live CJ listings">
+                      <Star className="h-2.5 w-2.5 fill-current" />{s.rating > 0 ? s.rating.toFixed(1) : "—"}
                     </div>
-                    <span className="text-[9px] text-gray-600">{s.completionRate}% complete</span>
+                    <span
+                      className="text-[9px] text-gray-600"
+                      title="Order completion rate requires CJ Partner fulfillment API — not wired yet"
+                    >
+                      {s.completionRate > 0 ? `${s.completionRate}% complete` : "completion n/a"}
+                    </span>
                   </div>
                 </Link>
               );

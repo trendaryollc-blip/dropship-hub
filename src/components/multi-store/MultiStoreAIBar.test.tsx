@@ -55,6 +55,15 @@ describe("MultiStoreAIBar", () => {
       <MultiStoreAIBar onAction={vi.fn()} loading={null} storeCount={3} totalOrders={100} totalRevenue={5000} />
     );
     expect(screen.getByText(/3 stores/)).toBeInTheDocument();
-    expect(screen.getByText(/\$5,000 revenue/)).toBeInTheDocument();
+    expect(screen.getByText(/\$5,000 revenue \(30d, from your data\)/)).toBeInTheDocument();
+  });
+
+  it("does not claim AI-only action titles", () => {
+    render(
+      <MultiStoreAIBar onAction={vi.fn()} loading={null} storeCount={2} totalOrders={50} totalRevenue={2000} />
+    );
+    expect(screen.getByText("Multi-Store Actions")).toBeInTheDocument();
+    expect(screen.queryByText("Multi-Store AI Actions")).not.toBeInTheDocument();
+    expect(screen.queryByText(/AI-sync|AI-route/)).not.toBeInTheDocument();
   });
 });

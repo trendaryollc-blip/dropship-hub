@@ -34,6 +34,7 @@ export interface TopCampaign {
 export interface DigestData {
   date: string;
   summary: string;
+  summarySource?: "ai" | "generated";
   metrics: DigestMetrics;
   previousMetrics?: DigestMetrics;
   alerts: DigestAlert[];

@@ -1,6 +1,6 @@
 "use client";
 
-import { Sparkles, Zap, GitBranch, RefreshCw, BarChart3 } from "lucide-react";
+import { Zap, GitBranch, RefreshCw, BarChart3, LayoutGrid } from "lucide-react";
 
 interface FulfillmentAIBarProps {
   onAction: (action: string) => void;
@@ -15,7 +15,7 @@ export default function FulfillmentAIBar({ onAction, loading, orderCount }: Fulf
     {
       id: "auto-fulfill-all",
       label: "Auto-Fulfill All",
-      description: "AI-routed bulk fulfillment",
+      description: "Rule-based bulk fulfillment",
       icon: Zap,
       gradient: "from-emerald-500/20 to-emerald-600/10",
       border: "border-emerald-400/20 hover:border-emerald-400/40",
@@ -57,8 +57,8 @@ export default function FulfillmentAIBar({ onAction, loading, orderCount }: Fulf
   return (
     <div className="glass rounded-2xl p-4">
       <div className="flex items-center gap-2 mb-3">
-        <Sparkles className="h-4 w-4 text-accent" />
-        <h3 className="text-xs font-semibold text-foreground">AI-Powered Actions</h3>
+        <LayoutGrid className="h-4 w-4 text-accent" />
+        <h3 className="text-xs font-semibold text-foreground">Bulk Actions</h3>
         <span className="text-[10px] text-muted-foreground">• {orderCount} order{orderCount !== 1 ? "s" : ""} active</span>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">

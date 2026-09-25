@@ -56,7 +56,9 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({
       success: true,
       inquiryId: inquiryRef.id,
-      message: "Your inquiry has been sent successfully",
+      // Inquiry is only logged to Firestore — no outbound email/portal yet.
+      message: "Inquiry saved to your records (not yet sent to the supplier — outbound delivery not wired)",
+      delivery: "logged",
     });
   } catch (error) {
     console.error("Failed to submit supplier inquiry:", error);

@@ -72,6 +72,7 @@ describe("NicheHeatmapCard", () => {
   it("renders heat score", () => {
     render(<NicheHeatmapCard niche={mockNiche} index={0} onSelect={vi.fn()} />);
     expect(screen.getByText("85")).toBeDefined();
+    expect(screen.getByText("heat (est.)")).toBeDefined();
   });
 
   it("renders grade", () => {
@@ -85,5 +86,27 @@ describe("NicheHeatmapCard", () => {
     const card = container.firstChild as HTMLElement;
     fireEvent.click(card);
     expect(onSelect).toHaveBeenCalledWith("n1");
+  });
+
+  it("shows honest n/a labels when metrics are null", () => {
+    render(
+      <NicheHeatmapCard
+        niche={{
+          ...mockNiche,
+          avgMargin: null,
+          growth: null,
+          estimatedMonthlyRevenue: null,
+          profitPerUnit: null,
+          avgShippingDays: null,
+          avgReturnRate: null,
+        }}
+        index={0}
+        onSelect={vi.fn()}
+      />
+    );
+    expect(screen.getByText("growth n/a")).toBeDefined();
+    expect(screen.getAllByText("n/a").length).toBeGreaterThan(0);
+    expect(screen.queryByText("+null%")).toBeNull();
+    expect(screen.queryByText("$0")).toBeNull();
   });
 });

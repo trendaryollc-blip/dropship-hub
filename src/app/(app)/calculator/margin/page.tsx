@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { saveCalcHistory, getCalcHistory, type CalcHistoryEntry } from "@/lib/data";
@@ -20,13 +20,20 @@ export default function MarginCalculatorPage() {
 
   const result: MarginCalc = calculateMargin(marginCost, desiredMargin);
 
-  const fetchHistory = async () => {
-    if (!user) return;
+  const fetchHistory = useCallback(async () => {
+    if (!user) {
+      setHistory([]);
+      return;
+    }
     try {
       const entries = await getCalcHistory(user.uid, "margin");
       setHistory(entries.slice(0, 5));
     } catch (e) { console.warn("[MarginCalc] Error:", e instanceof Error ? e.message : e); }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
 
   const handleSave = async () => {
     if (!user) return;

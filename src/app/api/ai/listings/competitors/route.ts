@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import type { CompetitorIntelligence, CompetitorListing, MarketInsights } from "@/types/listing-intelligence";
 import { safeErrorMessage } from "@/lib/api-errors";
+import { getPrimaryKey } from "@/lib/api-keys/pool";
 
 function calculateMarketInsights(competitors: CompetitorListing[]): MarketInsights {
   const prices = competitors.map((c) => c.price).filter((p) => p > 0);
@@ -107,75 +108,63 @@ function extractKeywords(text: string): string[] {
 }
 
 async function searchCompetitors(keyword: string, platform: string): Promise<CompetitorListing[]> {
-  const apiKey = process.env.SERPAPI_KEY || process.env.SERPAPI_API_KEY;
-  if (!apiKey) return generateMockCompetitors(keyword, platform);
+  const apiKey = getPrimaryKey("serpapi");
+  if (!apiKey) {
+    throw Object.assign(new Error("SERPAPI_KEYS is not configured"), { status: 503 });
+  }
 
-  try {
-    if (platform === "amazon") {
-      const params = new URLSearchParams({
-        engine: "amazon_search",
-        k: keyword,
-        api_key: apiKey,
-        amazon_domain: "amazon.com",
-        num: "10",
-      });
-      const res = await fetch(`https://serpapi.com/search?${params}`, { signal: AbortSignal.timeout(15000) });
-      if (!res.ok) return generateMockCompetitors(keyword, platform);
-      const data = await res.json();
-      return (data.search_results || []).slice(0, 10).map((item: Record<string, unknown>, i: number) => ({
-        rank: i + 1,
-        title: String(item.title || ""),
-        price: typeof item.price === "object" && item.price !== null ? Number((item.price as Record<string, unknown>).raw || 0) : Number(item.price || 0),
-        image: String(item.image || ""),
-        rating: Number(item.rating || 0),
-        reviewCount: Number(item.reviews || item.total_ratings || 0),
-        platform: "amazon",
-        url: String(item.link || ""),
-        bulletPoints: [],
-        keywords: extractKeywords(String(item.title || "")),
-        salesEstimate: Number(item.reviews || 0) > 100 ? Math.floor(Number(item.reviews || 0) * 0.02) : undefined,
-      }));
-    }
-
+  if (platform === "amazon") {
     const params = new URLSearchParams({
-      engine: "google_shopping",
-      q: keyword,
+      engine: "amazon_search",
+      k: keyword,
       api_key: apiKey,
+      amazon_domain: "amazon.com",
       num: "10",
     });
     const res = await fetch(`https://serpapi.com/search?${params}`, { signal: AbortSignal.timeout(15000) });
-    if (!res.ok) return generateMockCompetitors(keyword, platform);
+    if (!res.ok) {
+      throw Object.assign(new Error(`SerpAPI amazon_search failed (${res.status})`), { status: 502 });
+    }
     const data = await res.json();
-    return (data.shopping_results || []).slice(0, 10).map((item: Record<string, unknown>, i: number) => ({
+    return (data.search_results || []).slice(0, 10).map((item: Record<string, unknown>, i: number) => ({
       rank: i + 1,
       title: String(item.title || ""),
-      price: Number(item.extracted_price || item.price || 0),
-      image: String(item.thumbnail || ""),
+      price: typeof item.price === "object" && item.price !== null ? Number((item.price as Record<string, unknown>).raw || 0) : Number(item.price || 0),
+      image: String(item.image || ""),
       rating: Number(item.rating || 0),
-      reviewCount: Number(item.reviews || 0),
-      platform: String(item.source || "google_shopping"),
-      url: String(item.link || item.product_link || ""),
+      reviewCount: Number(item.reviews || item.total_ratings || 0),
+      platform: "amazon",
+      url: String(item.link || ""),
       bulletPoints: [],
       keywords: extractKeywords(String(item.title || "")),
-      salesEstimate: undefined,
+      salesEstimate: Number(item.reviews || 0) > 100 ? Math.floor(Number(item.reviews || 0) * 0.02) : undefined,
     }));
-  } catch {
-    return generateMockCompetitors(keyword, platform);
   }
-}
 
-function generateMockCompetitors(keyword: string, platform: string): CompetitorListing[] {
-  const words = keyword.split(" ");
-  const brand = words[0]?.charAt(0).toUpperCase() + (words[0]?.slice(1) || "");
-  const productType = words.slice(1).join(" ") || "Product";
-
-  return [
-    { rank: 1, title: `Premium ${brand} ${productType} - Best Seller`, price: 29.99, image: "", rating: 4.7, reviewCount: 12847, platform, url: "", bulletPoints: ["High quality material", "Fast shipping", "30-day guarantee"], keywords: extractKeywords(`premium ${brand} ${productType}`) },
-    { rank: 2, title: `${brand} ${productType} Pro Version`, price: 24.99, image: "", rating: 4.5, reviewCount: 8234, platform, url: "", bulletPoints: ["Professional grade", "Lightweight design", "Easy to use"], keywords: extractKeywords(`${brand} ${productType} pro`) },
-    { rank: 3, title: `Budget ${productType} - Great Value`, price: 15.99, image: "", rating: 4.3, reviewCount: 5621, platform, url: "", bulletPoints: ["Affordable price", "Good quality", "Free returns"], keywords: extractKeywords(`budget ${productType} value`) },
-    { rank: 4, title: `${brand} Deluxe ${productType}`, price: 39.99, image: "", rating: 4.8, reviewCount: 3412, platform, url: "", bulletPoints: ["Deluxe edition", "Premium packaging", "Extended warranty"], keywords: extractKeywords(`${brand} deluxe ${productType}`) },
-    { rank: 5, title: `Compact ${productType} - Portable`, price: 19.99, image: "", rating: 4.4, reviewCount: 2156, platform, url: "", bulletPoints: ["Compact size", "Portable design", "Travel-friendly"], keywords: extractKeywords(`compact ${productType} portable`) },
-  ];
+  const params = new URLSearchParams({
+    engine: "google_shopping",
+    q: keyword,
+    api_key: apiKey,
+    num: "10",
+  });
+  const res = await fetch(`https://serpapi.com/search?${params}`, { signal: AbortSignal.timeout(15000) });
+  if (!res.ok) {
+    throw Object.assign(new Error(`SerpAPI google_shopping failed (${res.status})`), { status: 502 });
+  }
+  const data = await res.json();
+  return (data.shopping_results || []).slice(0, 10).map((item: Record<string, unknown>, i: number) => ({
+    rank: i + 1,
+    title: String(item.title || ""),
+    price: Number(item.extracted_price || item.price || 0),
+    image: String(item.thumbnail || ""),
+    rating: Number(item.rating || 0),
+    reviewCount: Number(item.reviews || 0),
+    platform: String(item.source || "google_shopping"),
+    url: String(item.link || item.product_link || ""),
+    bulletPoints: [],
+    keywords: extractKeywords(String(item.title || "")),
+    salesEstimate: undefined,
+  }));
 }
 
 export const POST = withAuth(async (request: NextRequest) => {
@@ -203,9 +192,20 @@ export const POST = withAuth(async (request: NextRequest) => {
     return NextResponse.json({ intelligence });
   } catch (error) {
     console.error("[listings/competitors] Error:", error instanceof Error ? error.message : error);
+    const status =
+      typeof error === "object" && error !== null && "status" in error && typeof (error as { status?: unknown }).status === "number"
+        ? (error as { status: number }).status
+        : 500;
     return NextResponse.json(
-      { error: "Failed to fetch competitor data", details: safeErrorMessage(error, "Unknown error") },
-      { status: 500 }
+      {
+        error: "Failed to fetch competitor data",
+        details: safeErrorMessage(error, "Unknown error"),
+        setup:
+          status === 503
+            ? "Set SERPAPI_KEYS in .env.local (comma-separated) or Settings → API Keys"
+            : undefined,
+      },
+      { status }
     );
   }
 }, LIMITS.PRODUCT_ENRICH);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { saveCalcHistory, getCalcHistory, type CalcHistoryEntry } from "@/lib/data";
@@ -14,6 +14,7 @@ import CalculatorAIAnalysis from "@/components/calculator/CalculatorAIAnalysis";
 import CalculatorComparison from "@/components/calculator/CalculatorComparison";
 import CalculatorBulk from "@/components/calculator/CalculatorBulk";
 import CalculatorTemplates from "@/components/calculator/CalculatorTemplates";
+import DataSourceBadge from "@/components/ui/DataSourceBadge";
 
 function ProfitGauge({ margin }: { margin: number }) {
   const normalizedMargin = Math.min(100, Math.max(-50, margin));
@@ -50,7 +51,11 @@ function RevenueProjection({ profitPerUnit }: { profitPerUnit: number }) {
 
   return (
     <div className="mt-4">
-      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-2">Revenue Projection</p>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Projected Profit</p>
+        <DataSourceBadge source="user" />
+      </div>
+      <p className="text-[10px] text-muted-foreground mb-2">Projection from your inputs at fixed quantities — not measured sales.</p>
       <div className="space-y-1.5">
         {quantities.map((qty) => {
           const profit = qty * profitPerUnit;
@@ -92,13 +97,20 @@ export default function ProfitCalculatorPage() {
 
   const profitResult: ProfitCalc = calculateProfit(productCost, sellingPrice, shippingCost, platformFee, adSpend, units);
 
-  const fetchHistory = async () => {
-    if (!user) return;
+  const fetchHistory = useCallback(async () => {
+    if (!user) {
+      setHistory([]);
+      return;
+    }
     try {
       const entries = await getCalcHistory(user.uid, "profit");
       setHistory(entries.slice(0, 5));
     } catch (e) { console.warn("[ProfitCalc] Error:", e instanceof Error ? e.message : e); }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
 
   const handleSave = async () => {
     if (!user) return;
@@ -146,7 +158,7 @@ export default function ProfitCalculatorPage() {
   return (
     <CalculatorLayout
       title="Profit Calculator"
-      description="Quick profit calculation with cost breakdown and revenue projections"
+      description="Profit math from the values you enter — example defaults until you edit them"
       actions={
         user ? (
           <button
@@ -210,7 +222,11 @@ export default function ProfitCalculatorPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1 space-y-4">
             <div className={cardClass}>
-              <h3 className="font-display text-lg font-semibold text-foreground mb-6">Input Values</h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-display text-lg font-semibold text-foreground">Input Values</h3>
+                <DataSourceBadge source="user" />
+              </div>
+              <p className="text-[10px] text-muted-foreground mb-4">Example values are pre-filled. Replace them with your product&apos;s actual numbers.</p>
               <div className="space-y-4">
                 <div>
                   <label className={labelClass}>Product Cost ($)</label>
@@ -245,7 +261,10 @@ export default function ProfitCalculatorPage() {
 
           <div className="lg:col-span-1 space-y-4">
             <div className={cardClass}>
-              <h3 className="font-display text-lg font-semibold text-foreground mb-4">Results</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-display text-lg font-semibold text-foreground">Results</h3>
+                <DataSourceBadge source="user" />
+              </div>
               <ProfitGauge margin={profitResult.profitMargin} />
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="p-4 rounded-xl bg-emerald-400/5 border border-emerald-400/20 text-center">
@@ -263,8 +282,11 @@ export default function ProfitCalculatorPage() {
                   <p className="font-display text-2xl font-bold text-foreground">{profitResult.roi.toFixed(1)}%</p>
                 </div>
                 <div className="p-4 rounded-xl bg-surface border border-border text-center">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Break-Even</p>
-                  <p className="font-display text-2xl font-bold text-foreground">{profitResult.breakEvenUnits} units</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Per-Unit Break-Even</p>
+                  <p className="font-display text-2xl font-bold text-foreground">
+                    {profitResult.breakEvenUnits > 0 ? "1 unit" : "Unreachable"}
+                  </p>
+                  <p className="text-[9px] text-muted-foreground mt-1">No fixed costs in this model</p>
                 </div>
               </div>
               <RevenueProjection profitPerUnit={profitResult.netProfit} />

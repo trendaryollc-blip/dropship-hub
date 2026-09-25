@@ -64,6 +64,12 @@ describe("AICollections", () => {
     expect(screen.getByText("Viral")).toBeInTheDocument();
   });
 
+  it("does not claim live rankings", () => {
+    render(<AICollections />);
+    expect(screen.getByText("Suggested search presets (not live rankings)")).toBeInTheDocument();
+    expect(screen.queryByText("Curated collections")).not.toBeInTheDocument();
+  });
+
   it("renders section heading", () => {
     render(<AICollections />);
     expect(screen.getByText("Quick Start")).toBeInTheDocument();

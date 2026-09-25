@@ -105,6 +105,12 @@ export default function AdROICalculatorPage() {
                 <p className={`font-display text-xl font-bold ${result.monthlyProfit >= 0 ? "text-foreground" : "text-red-400"}`}>${result.monthlyProfit.toLocaleString()}</p>
               </div>
             </div>
+
+            <div className="p-3 rounded-xl bg-surface/30 border border-border/50">
+              <p className="text-[10px] text-muted-foreground">
+                Projections from your inputs — Estimated. Daily and monthly figures assume your CTR, conversion rate, and budget hold steady.
+              </p>
+            </div>
           </div>
 
           <div className={cardClass}>
@@ -134,6 +140,11 @@ export default function AdROICalculatorPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+            <div className="mt-4 p-3 rounded-xl bg-surface/30 border border-border/50">
+              <p className="text-[10px] text-muted-foreground">
+                Scenario Revenue, ROAS, and Profit are projections from your inputs — Estimated, not live campaign results.
+              </p>
             </div>
           </div>
         </div>

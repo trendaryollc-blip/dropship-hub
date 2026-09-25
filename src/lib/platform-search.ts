@@ -1,5 +1,6 @@
 import { getAllPlatforms, incrementKeyUsage, markKeyError, markKeyHealthy, resetBillingPeriodIfNeeded, setPlatformCooldown, type PlatformFirestoreConfig } from "./platform-config";
 import { getCJAccessToken } from "./cj-auth";
+import { withKeyPool, type ProviderId } from "@/lib/api-keys/pool";
 import { logger } from "@/lib/logger";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -121,6 +122,25 @@ async function searchGoogleShoppingWithKey(apiKey: string, query: string): Promi
 
 // ── CJ Dropshipping ─────────────────────────────────────────────────────────
 
+// CJ product pages live at /product/<slug>-p-<pid>.html. A bare
+// /product-p-<pid> (no slug, no .html) is not a route and 302s to
+// cjdropshipping.com/404, so the slug segment is required. CJ resolves the
+// product by pid — the slug is only cosmetic/SEO — so slugifying the title
+// is safe even when it doesn't match CJ's own slug exactly.
+export function buildCJProductUrl(pid: string, title = ""): string {
+  const cleanPid = (pid || "").trim().replace(/[^A-Za-z0-9._-]/g, "");
+  if (!cleanPid) return "https://www.cjdropshipping.com/";
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80);
+  return `https://www.cjdropshipping.com/product/${slug}-p-${cleanPid}.html`;
+}
+
 async function searchCJProductsWithKey(apiKey: string, query: string): Promise<{ search_results: SearchResult[] }> {
   const accessToken = await getCJAccessToken(apiKey);
 
@@ -155,12 +175,13 @@ async function searchCJProductsWithKey(apiKey: string, query: string): Promise<{
       : [];
     const allImages = [primaryImage, ...imageSet].filter((u) => u && u !== "null" && u !== "");
     const price = typeof p.sellPrice === "number" ? p.sellPrice : typeof p.sellPrice === "string" ? parseFloat(p.sellPrice) : typeof p.productPrice === "number" ? p.productPrice : typeof p.productPrice === "string" ? parseFloat(p.productPrice) : null;
+    const title = String(p.productNameEn || p.productName || "");
     return {
-      title: String(p.productNameEn || p.productName || ""),
+      title,
       price: isNaN(price as number) ? null : price,
       image: primaryImage || null,
       images: allImages.length > 0 ? allImages : undefined,
-      link: `https://cjdropshipping.com/product-p-${p.pid || ""}`,
+      link: buildCJProductUrl(String(p.pid || ""), title),
       source: "cj",
       brand: typeof p.brand === "string" && p.brand ? String(p.brand) : undefined,
     };
@@ -213,8 +234,8 @@ async function searchKeepaProductsWithKey(apiKey: string, query: string): Promis
 
 // ── Google Shopping (via Serper.dev) ─────────────────────────────────────────
 
-async function searchGoogleShoppingViaSerper(apiKey: string, query: string): Promise<{ search_results: SearchResult[] }> {
-  const res = await fetch("https://google.serper.dev/search", {
+async function serperRequest(apiKey: string, path: string, query: string): Promise<Record<string, unknown>> {
+  const res = await fetch(`https://google.serper.dev${path}`, {
     method: "POST",
     headers: {
       "X-API-KEY": apiKey,
@@ -232,34 +253,64 @@ async function searchGoogleShoppingViaSerper(apiKey: string, query: string): Pro
     const body = await res.text().catch(() => "");
     throw new Error(`Serper.dev ${res.status}: ${body.slice(0, 200)}`);
   }
+  return res.json();
+}
 
-  const data = await res.json();
-  const rawItems = data.shopping || data.organic || [];
+function parseSerperPrice(raw: unknown): number | null {
+  if (typeof raw === "number") return raw;
+  if (typeof raw === "string" && raw) {
+    const parsed = parseFloat(raw.replace(/[^0-9.]/g, ""));
+    if (!isNaN(parsed)) return parsed;
+  }
+  return null;
+}
 
-  const items = rawItems.map((item: Record<string, unknown>) => {
-    const img = String(item.thumbnail || item.image || item.product_image || "");
-    const priceRaw = item.price || item.extracted_price;
-    let price: number | null = null;
-    if (typeof priceRaw === "number") {
-      price = priceRaw;
-    } else if (typeof priceRaw === "string" && priceRaw) {
-      const parsed = parseFloat(priceRaw.replace(/[^0-9.]/g, ""));
-      if (!isNaN(parsed)) price = parsed;
+function parseSerperCount(raw: unknown): number | undefined {
+  if (typeof raw === "number") return raw;
+  if (typeof raw === "string" && raw) {
+    const match = raw.replace(/,/g, "").match(/^([\d.]+)\s*([kKmM])?/);
+    if (match) {
+      const value = parseFloat(match[1]);
+      if (!isNaN(value)) {
+        const suffix = match[2]?.toLowerCase();
+        return suffix ? value * (suffix === "k" ? 1000 : 1000000) : value;
+      }
     }
+  }
+  return undefined;
+}
 
-    return {
-      title: String(item.title || ""),
-      price,
-      image: img && img !== "undefined" && img !== "null" ? img : null,
-      link: String(item.link || ""),
-      source: "google_shopping",
-      brand: typeof item.source === "string" ? item.source : undefined,
-      rating: typeof item.rating === "number" ? item.rating : undefined,
-      reviews: typeof item.reviews === "number" ? item.reviews : undefined,
-    };
-  });
+function mapSerperShoppingItem(item: Record<string, unknown>): SearchResult {
+  const img = String(item.imageUrl || item.thumbnail || item.image || item.product_image || "");
+  return {
+    title: String(item.title || ""),
+    price: parseSerperPrice(item.price ?? item.extracted_price),
+    image: img && img !== "undefined" && img !== "null" ? img : null,
+    link: String(item.link || ""),
+    source: "google_shopping",
+    brand: typeof item.source === "string" ? item.source : undefined,
+    rating: typeof item.rating === "number" ? item.rating : undefined,
+    reviews: parseSerperCount(item.ratingCount ?? item.reviews),
+  };
+}
 
-  return { search_results: items };
+function serperShoppingItems(data: Record<string, unknown>): Record<string, unknown>[] {
+  return Array.isArray(data.shopping) ? (data.shopping as Record<string, unknown>[]) : [];
+}
+
+async function searchGoogleShoppingViaSerper(apiKey: string, query: string): Promise<{ search_results: SearchResult[] }> {
+  // Serper's general /search endpoint returns organic web links for most
+  // queries (no price, no image), which is useless as product data. The
+  // dedicated /shopping engine returns real listings with imageUrl + price.
+  let items = serperShoppingItems(await serperRequest(apiKey, "/shopping", query));
+
+  if (items.length === 0) {
+    // Fallback: some responses still carry a `shopping` block on /search.
+    // Organic results are deliberately never used — they are not products.
+    items = serperShoppingItems(await serperRequest(apiKey, "/search", query));
+  }
+
+  return { search_results: items.map(mapSerperShoppingItem) };
 }
 
 // ── Walmart (via RapidAPI) ──────────────────────────────────────────────────
@@ -880,9 +931,10 @@ export async function searchAllPlatformsFromFirestore(
 
 // ── Legacy Env-Based Search (kept as fallback) ──────────────────────────────
 
-// NOTE: We read process.env directly in each search function instead of caching
-// at module level, because Vercel serverless functions may have env vars available
-// after module load. Caching "" at module load time causes silent failures.
+// NOTE: Keys are resolved at call time via withKeyPool (never cached at module
+// level), because Vercel serverless functions may have env vars available after
+// module load. The pool rotates comma-separated *_KEYS env vars on quota/auth
+// failures so multiple free-tier keys fail over cleanly.
 
 export interface PlatformSearchConfig {
   id: string;
@@ -891,19 +943,23 @@ export interface PlatformSearchConfig {
   searchFn: (query: string) => Promise<{ search_results: SearchResult[] }>;
 }
 
+function pooledSearch(provider: ProviderId, fn: (key: string, q: string) => Promise<{ search_results: SearchResult[] }>) {
+  return (q: string) => withKeyPool(provider, (key) => fn(key, q));
+}
+
 export const platforms: PlatformSearchConfig[] = [
-  { id: "amazon", name: "Amazon", envKey: "RAINFOREST_API_KEY", searchFn: (q) => searchAmazonWithKey(process.env.RAINFOREST_API_KEY || "", q) },
-  { id: "google_shopping", name: "Google Shopping", envKey: "SERP_API_KEY", searchFn: (q) => searchGoogleShoppingWithKey(process.env.SERP_API_KEY || "", q) },
-  { id: "cj", name: "CJ Dropshipping", envKey: "CJ_API_KEY", searchFn: (q) => searchCJProductsWithKey(process.env.CJ_API_KEY || "", q) },
-  { id: "keepa", name: "Keepa", envKey: "KEEPA_API_KEY", searchFn: (q) => searchKeepaProductsWithKey(process.env.KEEPA_API_KEY || "", q) },
-  { id: "aliexpress", name: "AliExpress", envKey: "SCRAPER_API_KEY", searchFn: (q) => searchAliExpressWithKey(process.env.SCRAPER_API_KEY || "", q) },
-  { id: "walmart", name: "Walmart", envKey: "SCRAPER_API_KEY", searchFn: (q) => searchViaScraperWithKey(process.env.SCRAPER_API_KEY || "", "walmart", q) },
-  { id: "etsy", name: "Etsy", envKey: "SCRAPER_API_KEY", searchFn: (q) => searchViaScraperWithKey(process.env.SCRAPER_API_KEY || "", "etsy", q) },
-  { id: "temu", name: "Temu", envKey: "SCRAPER_API_KEY", searchFn: (q) => searchViaScraperWithKey(process.env.SCRAPER_API_KEY || "", "temu", q) },
-  { id: "shein", name: "Shein", envKey: "SCRAPER_API_KEY", searchFn: (q) => searchViaScraperWithKey(process.env.SCRAPER_API_KEY || "", "shein", q) },
-  { id: "banggood", name: "Banggood", envKey: "SCRAPER_API_KEY", searchFn: (q) => searchViaScraperWithKey(process.env.SCRAPER_API_KEY || "", "banggood", q) },
-  { id: "dhgate", name: "DHgate", envKey: "SCRAPER_API_KEY", searchFn: (q) => searchViaScraperWithKey(process.env.SCRAPER_API_KEY || "", "dhgate", q) },
-  { id: "alibaba", name: "Alibaba", envKey: "SCRAPER_API_KEY", searchFn: (q) => searchViaScraperWithKey(process.env.SCRAPER_API_KEY || "", "alibaba", q) },
+  { id: "amazon", name: "Amazon", envKey: "RAINFOREST_API_KEYS", searchFn: pooledSearch("rainforest", searchAmazonWithKey) },
+  { id: "google_shopping", name: "Google Shopping", envKey: "SERPAPI_KEYS", searchFn: pooledSearch("serpapi", searchGoogleShoppingWithKey) },
+  { id: "cj", name: "CJ Dropshipping", envKey: "CJ_API_KEYS", searchFn: pooledSearch("cj", searchCJProductsWithKey) },
+  { id: "keepa", name: "Keepa", envKey: "KEEPA_API_KEYS", searchFn: pooledSearch("keepa", searchKeepaProductsWithKey) },
+  { id: "aliexpress", name: "AliExpress", envKey: "SCRAPER_API_KEYS", searchFn: pooledSearch("scraperapi", (key, q) => searchAliExpressWithKey(key, q)) },
+  { id: "walmart", name: "Walmart", envKey: "SCRAPER_API_KEYS", searchFn: pooledSearch("scraperapi", (key, q) => searchViaScraperWithKey(key, "walmart", q)) },
+  { id: "etsy", name: "Etsy", envKey: "SCRAPER_API_KEYS", searchFn: pooledSearch("scraperapi", (key, q) => searchViaScraperWithKey(key, "etsy", q)) },
+  { id: "temu", name: "Temu", envKey: "SCRAPER_API_KEYS", searchFn: pooledSearch("scraperapi", (key, q) => searchViaScraperWithKey(key, "temu", q)) },
+  { id: "shein", name: "Shein", envKey: "SCRAPER_API_KEYS", searchFn: pooledSearch("scraperapi", (key, q) => searchViaScraperWithKey(key, "shein", q)) },
+  { id: "banggood", name: "Banggood", envKey: "SCRAPER_API_KEYS", searchFn: pooledSearch("scraperapi", (key, q) => searchViaScraperWithKey(key, "banggood", q)) },
+  { id: "dhgate", name: "DHgate", envKey: "SCRAPER_API_KEYS", searchFn: pooledSearch("scraperapi", (key, q) => searchViaScraperWithKey(key, "dhgate", q)) },
+  { id: "alibaba", name: "Alibaba", envKey: "SCRAPER_API_KEYS", searchFn: pooledSearch("scraperapi", (key, q) => searchViaScraperWithKey(key, "alibaba", q)) },
 ];
 
 export async function searchAllPlatforms(
@@ -957,25 +1013,25 @@ export async function searchAllPlatforms(
 // ── Backward-Compatible Exports (for other API routes) ──────────────────────
 
 export async function searchAmazon(query: string): Promise<{ search_results: SearchResult[] }> {
-  return searchAmazonWithKey(process.env.RAINFOREST_API_KEY || "", query);
+  return withKeyPool("rainforest", (key) => searchAmazonWithKey(key, query));
 }
 
 export async function searchGoogleShopping(query: string): Promise<{ search_results: SearchResult[] }> {
-  return searchGoogleShoppingWithKey(process.env.SERP_API_KEY || "", query);
+  return withKeyPool("serpapi", (key) => searchGoogleShoppingWithKey(key, query));
 }
 
 export async function searchCJProducts(query: string): Promise<{ search_results: SearchResult[] }> {
-  return searchCJProductsWithKey(process.env.CJ_API_KEY || "", query);
+  return withKeyPool("cj", (key) => searchCJProductsWithKey(key, query));
 }
 
 export async function searchKeepaProducts(query: string): Promise<{ search_results: SearchResult[] }> {
-  return searchKeepaProductsWithKey(process.env.KEEPA_API_KEY || "", query);
+  return withKeyPool("keepa", (key) => searchKeepaProductsWithKey(key, query));
 }
 
 export async function searchAliExpress(query: string): Promise<{ search_results: SearchResult[] }> {
-  return searchAliExpressWithKey(process.env.SCRAPER_API_KEY || "", query);
+  return withKeyPool("scraperapi", (key) => searchAliExpressWithKey(key, query));
 }
 
 export async function searchViaScraper(platformId: string, query: string): Promise<{ search_results: SearchResult[] }> {
-  return searchViaScraperWithKey(process.env.SCRAPER_API_KEY || "", platformId, query);
+  return withKeyPool("scraperapi", (key) => searchViaScraperWithKey(key, platformId, query));
 }

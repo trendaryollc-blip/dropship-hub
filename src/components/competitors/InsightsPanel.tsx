@@ -21,7 +21,7 @@ export default function InsightsPanel({ insights }: { insights: string[] }) {
           <Lightbulb className="h-4 w-4 text-amber-400" />
         </div>
         <h3 className="font-display text-base font-semibold text-foreground">Market Insights</h3>
-        <span className="text-[10px] text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full font-medium border border-amber-400/20">AI Generated</span>
+        <span className="text-[10px] text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full font-medium border border-amber-400/20">Rules-based</span>
       </div>
       <div className="space-y-2.5">
         {insights.map((insight, i) => (

@@ -1,9 +1,9 @@
 export interface PlatformPrice {
   platform: string;
   price: number;
-  rating: number;
-  reviews: number;
-  inStock: boolean;
+  rating: number | null;
+  reviews: number | null;
+  inStock: boolean | null;
   url: string;
   sparkline: number[];
 }
@@ -21,14 +21,14 @@ export interface ReviewData {
 
 export interface MarketIntel {
   searchVolume: "high" | "medium" | "low";
-  searchVolumeNumber: number;
+  interestIndex: number;
   trendDirection: "rising" | "stable" | "declining";
   trendSparkline: number[];
   seasonality: string;
   bestTimeToSell: string;
   competitionLevel: "low" | "medium" | "high" | "very-high";
   estimatedSellers: number;
-  avgSellerRating: number;
+  avgSellerRating: number | null;
   priceWarRisk: "low" | "medium" | "high";
   canCompete: string;
   riskScore: number;
@@ -40,6 +40,7 @@ export interface ListingSuggestion {
   description: string;
   tags: string[];
   suggestedPriceRange: string;
+  fallback: boolean;
   platformTips: { platform: string; tip: string }[];
 }
 
@@ -49,7 +50,7 @@ export interface SupplierMatch {
   trustBadge: "gold" | "silver" | "bronze";
   location: string;
   flag: string;
-  price: number;
+  price: number | null;
   shippingToUS: string;
   shippingToEU: string;
   reliabilityScore: number;

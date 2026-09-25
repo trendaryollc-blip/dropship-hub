@@ -83,7 +83,7 @@ export default function TrendingProductCard({ product, index, rank }: {
 
           <div className="text-right shrink-0">
             <p className="text-sm font-bold text-emerald-400">${product.profit.toFixed(2)}</p>
-            <p className="text-[10px] text-muted-foreground">margin {product.margin}%</p>
+            <p className="text-[10px] text-muted-foreground">margin {product.margin}% est.</p>
           </div>
 
           <div className="text-right shrink-0">
@@ -111,18 +111,18 @@ export default function TrendingProductCard({ product, index, rank }: {
               </div>
               <div className="p-3 rounded-xl bg-surface/50 border border-border/50">
                 <p className="text-[10px] text-muted-foreground mb-0.5">Profit</p>
-                <p className="text-sm font-bold text-emerald-400">${product.profit.toFixed(2)}</p>
+                <p className="text-sm font-bold text-emerald-400">${product.profit.toFixed(2)} est.</p>
               </div>
               <div className="p-3 rounded-xl bg-surface/50 border border-border/50">
                 <p className="text-[10px] text-muted-foreground mb-0.5">Margin</p>
-                <p className="text-sm font-bold text-emerald-400">{product.margin}%</p>
+                <p className="text-sm font-bold text-emerald-400">{product.margin}% est.</p>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5">
                 <Flame className="h-3.5 w-3.5 text-accent-warm" />
-                <span className="text-[10px] text-muted-foreground">AI Score: {product.confidence}/100</span>
+                <span className="text-[10px] text-muted-foreground">Estimated score: {product.confidence}/100</span>
               </div>
               <div className="flex-1 h-1.5 rounded-full bg-surface overflow-hidden">
                 <div className="h-full rounded-full bg-gradient-to-r from-accent to-emerald-400 transition-all duration-700" style={{ width: `${product.confidence}%` }} />

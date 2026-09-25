@@ -4,6 +4,7 @@ import { useState } from "react";
 import { calculateAmazonFBA } from "@/lib/calculations";
 import type { AmazonFBACalcResult } from "@/types/calculator";
 import CalculatorLayout from "@/components/calculator/CalculatorLayout";
+import DataSourceBadge from "@/components/ui/DataSourceBadge";
 
 const CATEGORIES = ["Electronics", "Clothing", "Home & Garden", "Beauty", "Toys", "Jewelry", "Shoes", "Default"];
 
@@ -93,7 +94,13 @@ export default function AmazonFBACalculatorPage() {
 
         <div className="lg:col-span-2 space-y-4">
           <div className={cardClass}>
-            <h3 className="font-display text-lg font-semibold text-foreground mb-4">Amazon Fee Breakdown</h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-display text-lg font-semibold text-foreground">Amazon Fee Breakdown</h3>
+              <DataSourceBadge source="estimated" />
+            </div>
+            <p className="text-[10px] text-muted-foreground mb-4">
+              Bundled fee schedule — verify against Amazon&apos;s current rates. Fee dollars are estimated from a static reference table, not a live Amazon quote.
+            </p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="p-4 rounded-xl bg-surface border border-border text-center">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">FBA Fee</p>

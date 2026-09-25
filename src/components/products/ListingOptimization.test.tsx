@@ -12,6 +12,7 @@ const mockData: ListingSuggestion = {
   description: "Experience crystal-clear audio with our premium wireless headphones.",
   tags: ["wireless", "bluetooth", "headphones", "audio"],
   suggestedPriceRange: "$29.99 - $49.99",
+  fallback: false,
   platformTips: [
     { platform: "Amazon", tip: "Use high-quality images and A+ content" },
     { platform: "Shopify", tip: "Create urgency with limited-time offers" },
@@ -43,6 +44,19 @@ describe("ListingOptimization", () => {
   it("displays price range", () => {
     render(<ListingOptimization data={mockData} />);
     expect(screen.getByText("$29.99 - $49.99")).toBeInTheDocument();
+    expect(screen.getByText(/Suggested price range$/)).toBeInTheDocument();
+    expect(screen.queryByText(/estimated from your price/)).not.toBeInTheDocument();
+  });
+
+  it("marks the price range as estimated when the API fell back to the user's price", () => {
+    render(<ListingOptimization data={{ ...mockData, fallback: true }} />);
+    expect(screen.getByText(/Suggested price range \(estimated from your price\)/)).toBeInTheDocument();
+  });
+
+  it("describes suggestions as templates rather than AI output", () => {
+    render(<ListingOptimization data={mockData} />);
+    expect(screen.getAllByText("Template suggestions built from your product details").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/AI-powered/)).not.toBeInTheDocument();
   });
 
   it("shows platform tip", () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Clock, AlertTriangle, Cloud, FileText, Package, Sun, CheckCircle2 } from "lucide-react";
+import { Clock, AlertTriangle, Cloud, FileText, Package, Sun } from "lucide-react";
 import type { DeliveryPredictionResult } from "@/types/shipping";
 
 const riskColors: Record<string, { color: string; bg: string }> = {
@@ -34,9 +34,10 @@ const item = {
 };
 
 export default function DeliveryTimeline({ prediction }: DeliveryTimelineProps) {
-  const confidencePercent = Math.round(prediction.confidence * 100);
-  const confidenceColor = confidencePercent >= 80 ? "text-emerald-400" : confidencePercent >= 60 ? "text-amber-400" : "text-red-400";
-  const confidenceBg = confidencePercent >= 80 ? "bg-emerald-400" : confidencePercent >= 60 ? "bg-amber-400" : "bg-red-400";
+  const estimateLabel =
+    prediction.estimateBasis === "reference-table"
+      ? "Reference-table estimate"
+      : "General estimate (no lane data)";
 
   return (
     <motion.div
@@ -51,16 +52,8 @@ export default function DeliveryTimeline({ prediction }: DeliveryTimelineProps) 
           Delivery Prediction
         </h4>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-muted-foreground">Confidence</span>
-          <div className="w-16 h-1.5 rounded-full bg-surface overflow-hidden">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${confidencePercent}%` }}
-              transition={{ duration: 1, delay: 0.3, ease: "easeOut" }}
-              className={`h-full rounded-full ${confidenceBg}`}
-            />
-          </div>
-          <span className={`text-xs font-semibold ${confidenceColor}`}>{confidencePercent}%</span>
+          <span className="text-[10px] text-muted-foreground">Estimate certainty</span>
+          <span className="text-[10px] font-semibold text-amber-400">{estimateLabel}</span>
         </div>
       </div>
 
@@ -185,25 +178,6 @@ export default function DeliveryTimeline({ prediction }: DeliveryTimelineProps) 
           })}
         </motion.div>
       )}
-
-      {/* Historical Accuracy */}
-      <div className="mt-3 pt-3 border-t border-white/5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <CheckCircle2 className="h-3 w-3 text-muted-foreground" />
-            <span className="text-[10px] text-muted-foreground">Historical accuracy</span>
-          </div>
-          <span className="text-[10px] font-semibold text-foreground">{Math.round(prediction.historicalAccuracy * 100)}%</span>
-        </div>
-        <div className="mt-1 h-1 rounded-full bg-surface overflow-hidden">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${Math.round(prediction.historicalAccuracy * 100)}%` }}
-            transition={{ duration: 1, delay: 0.5 }}
-            className="h-full rounded-full bg-accent"
-          />
-        </div>
-      </div>
     </motion.div>
   );
 }

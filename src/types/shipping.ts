@@ -100,7 +100,7 @@ export interface DeliveryPredictionResult {
   riskFactors: DeliveryRiskFactor[];
   shipByDate: string;
   estimatedArrival: { earliest: string; latest: string; average: string };
-  historicalAccuracy: number;
+  estimateBasis: "reference-table" | "general-default";
   weatherDelayRisk: number;
   customsDelayRisk: number;
   holidayDelayRisk: number;
@@ -121,7 +121,6 @@ export interface ZoneDeliveryData {
   averageDays: number;
   minDays: number;
   maxDays: number;
-  sampleSize: number;
   lastUpdated: string;
 }
 

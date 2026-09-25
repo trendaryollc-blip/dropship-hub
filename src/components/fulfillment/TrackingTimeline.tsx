@@ -66,9 +66,8 @@ export default function TrackingTimeline({ order }: { order: FulfillmentOrder })
         {order.platformOrders
           .filter((po) => po.trackingNumber)
           .map((po, i) => {
-            const trackingUrl = po.carrier
-              ? `https://trackingshipment.com/${po.carrier}/${po.trackingNumber}`
-              : `https://trackingshipment.com/${po.trackingNumber}`;
+            const trackingUrl =
+              po.trackingUrl && /^https?:\/\//i.test(po.trackingUrl) ? po.trackingUrl : null;
 
             const currentStep = getStepIndex(po.status);
             const mapLink = buildMapLink();
@@ -104,15 +103,17 @@ export default function TrackingTimeline({ order }: { order: FulfillmentOrder })
                       <Copy className="h-3 w-3 text-muted-foreground" />
                     )}
                   </button>
-                  <a
-                    href={trackingUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-1 rounded hover:bg-surface transition-colors flex-shrink-0"
-                    title="Track shipment"
-                  >
-                    <ExternalLink className="h-3 w-3 text-accent" />
-                  </a>
+                  {trackingUrl && (
+                    <a
+                      href={trackingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1 rounded hover:bg-surface transition-colors flex-shrink-0"
+                      title="Track shipment"
+                    >
+                      <ExternalLink className="h-3 w-3 text-accent" />
+                    </a>
+                  )}
                 </div>
 
                 {/* Carrier info & estimated delivery */}

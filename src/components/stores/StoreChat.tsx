@@ -128,9 +128,9 @@ export default function StoreChat({ mode, connections, pushedProducts = [], orde
 
   const handleClearChat = useCallback(() => { setMessages([]); }, []);
 
-  const chatTitle = isMultiStore ? "Multi-Store AI" : "Store AI";
+  const chatTitle = isMultiStore ? "Multi-Store Assistant" : "Store Assistant";
   const chatSubtitle = isMultiStore
-    ? `${connections.length} store${connections.length !== 1 ? "s" : ""} · $${totalRevenue.toLocaleString()} revenue`
+    ? `${connections.length} store${connections.length !== 1 ? "s" : ""} · ${orderCount} orders · $${totalRevenue.toLocaleString()} (30d)`
     : `${connections.length} store${connections.length !== 1 ? "s" : ""} connected`;
   const placeholder = isMultiStore ? "Ask about your multi-store setup..." : "Ask about your stores...";
   const emptyMessage = isMultiStore ? "Ask anything about your multi-store setup" : "Ask anything about your stores";
@@ -178,7 +178,7 @@ export default function StoreChat({ mode, connections, pushedProducts = [], orde
 
   return (
     <>
-      <button onClick={() => setOpen(!open)} className={`fixed bottom-6 right-6 z-30 p-4 rounded-2xl shadow-2xl transition-all ${open ? "bg-neutral-800 border border-neutral-700 text-neutral-300" : "bg-accent text-white hover:bg-accent-hover glow-accent"}`} title="AI Store Assistant">
+      <button onClick={() => setOpen(!open)} className={`fixed bottom-6 right-6 z-30 p-4 rounded-2xl shadow-2xl transition-all ${open ? "bg-neutral-800 border border-neutral-700 text-neutral-300" : "bg-accent text-white hover:bg-accent-hover glow-accent"}`} title="Store Assistant">
         {open ? <X className="h-5 w-5" /> : <MessageSquare className="h-5 w-5" />}
       </button>
       {open && (

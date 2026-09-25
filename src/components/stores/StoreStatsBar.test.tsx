@@ -4,6 +4,13 @@ import StoreStatsBar from "./StoreStatsBar";
 import type { ConnectedStore } from "./ConnectedStoresList";
 import type { PushedProduct } from "./PushedProductsList";
 
+vi.mock("@/components/ui/DataSourceBadge", () => ({
+  __esModule: true,
+  default: ({ source }: { source: string }) => (
+    <span data-testid="data-source-badge" data-source={source} />
+  ),
+}));
+
 const makeConnection = (overrides: Partial<ConnectedStore> = {}): ConnectedStore => ({
   id: "s1",
   platform: "shopify",
@@ -109,5 +116,12 @@ describe("StoreStatsBar", () => {
     );
     const syncLabel = screen.getByText("Last Sync").parentElement!;
     expect(syncLabel).toHaveTextContent("Never");
+  });
+
+  it("shows a DataSourceBadge labeled as Firestore data", () => {
+    render(
+      <StoreStatsBar connections={[makeConnection()]} pushedProducts={[]} />
+    );
+    expect(screen.getByTestId("data-source-badge")).toHaveAttribute("data-source", "firestore");
   });
 });

@@ -9,7 +9,7 @@ const testimonials = [
     role: "Full-time Dropshipper",
     avatar: "SC",
     avatarBg: "bg-accent/10 text-accent",
-    content: "I was paying $200/mo for separate product research, supplier vetting, and profit calculator tools. DropShip Hub replaced all of them. The landed cost calculator alone saved me from two bad product launches.",
+    content: "I was paying for separate product research, supplier vetting, and profit calculator tools. DropShip Hub replaced all of them. The landed cost calculator alone saved me from two bad product launches.",
     stars: 5,
   },
   {
@@ -17,7 +17,7 @@ const testimonials = [
     role: "Shopify Store Owner",
     avatar: "MR",
     avatarBg: "bg-emerald-400/10 text-emerald-400",
-    content: "The competitor pricing research is insane. I found a product where competitors were charging $45 but I could source it for $8. That one product now does $3K/mo in profit. Worth every minute I spent on this tool.",
+    content: "The competitor pricing research is insane. I found a product where competitors were charging far above my source cost. That one product became my best seller. Worth every minute I spent on this tool.",
     stars: 5,
   },
   {
@@ -25,7 +25,7 @@ const testimonials = [
     role: "E-commerce Agency Owner",
     avatar: "AP",
     avatarBg: "bg-purple-400/10 text-purple-400",
-    content: "We manage 12 client stores. The multi-platform product search and supplier scoring system lets us find winning products in minutes instead of hours. Our clients are seeing better margins already.",
+    content: "We manage client stores across platforms. The multi-platform product search and supplier scoring system lets us find winning products in minutes instead of hours. Our clients are seeing better margins already.",
     stars: 5,
   },
   {
@@ -33,7 +33,7 @@ const testimonials = [
     role: "Part-time Seller",
     avatar: "JT",
     avatarBg: "bg-amber-400/10 text-amber-400",
-    content: "The business health score told me exactly what I was doing wrong. My supplier network was weak and I was underpricing. Fixed those two things and my profit margin went from 12% to 34%.",
+    content: "The business health score told me exactly what I was doing wrong. My supplier network was weak and I was underpricing. Fixed those two things and my profit margin improved noticeably.",
     stars: 5,
   },
   {
@@ -49,7 +49,7 @@ const testimonials = [
     role: "Amazon FBA + Dropship Hybrid",
     avatar: "DP",
     avatarBg: "bg-cyan-400/10 text-cyan-400",
-    content: "Being able to compare prices across AliExpress, CJ, and Alibaba side by side for the same product is exactly what I needed. Found a supplier that cut my cost by 30%.",
+    content: "Being able to compare prices across AliExpress, CJ, and Alibaba side by side for the same product is exactly what I needed. Found a supplier that cut my costs significantly.",
     stars: 5,
   },
 ];
@@ -72,9 +72,10 @@ export default function Testimonials() {
             <span className="gradient-text">Dropshippers Worldwide</span>
           </h2>
           <p className="text-lg text-muted-foreground leading-relaxed">
-            Real feedback from sellers who use DropShip Hub every day to run
-            their ecommerce businesses.
+            How sellers describe running their ecommerce businesses with
+            DropShip Hub.
           </p>
+          <p className="mt-3 text-xs text-muted-foreground">Illustrative examples — not real customer quotes</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -100,6 +100,46 @@ describe("NichesPage", () => {
     expect(screen.getByText("2 niches found")).toBeTruthy();
     expect(screen.getAllByText("Wireless Earbuds").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Yoga Mats").length).toBeGreaterThan(0);
+    expect(screen.getByTestId("data-source-badge")).toBeInTheDocument();
+    expect(screen.getByText("Portfolio metrics")).toBeInTheDocument();
+  });
+
+  it("shows n/a for avg margin and revenue when null, not fabricated zeros", () => {
+    mockUseAPI.mockImplementation(() => ({
+      data: {
+        niches: [
+          makeNiche({ avgMargin: null, estimatedMonthlyRevenue: null, growth: null }),
+          makeNiche({ id: "n2", name: "Yoga Mats", avgMargin: null, growth: null }),
+        ],
+      },
+      mutate: mockMutate,
+      isLoading: false,
+      error: undefined,
+    }));
+    render(<NichesPage />);
+    expect(screen.getAllByText("n/a").length).toBeGreaterThan(0);
+    expect(screen.getByText("not tracked")).toBeInTheDocument();
+    expect(screen.queryByText("$0")).not.toBeInTheDocument();
+    expect(screen.queryByText("+0%")).not.toBeInTheDocument();
+    expect(screen.queryByText("+null%")).not.toBeInTheDocument();
+  });
+
+  it("shows DataUnavailable setup guidance when API falls back without CJ key", () => {
+    mockUseAPI.mockImplementation(() => ({
+      data: {
+        niches: [],
+        isFallback: true,
+        reason: "CJ_API_KEY not set",
+        setup: { what: "CJ API key", whereToGet: "https://developers.cjdropshipping.com/", whereToSet: "CJ_API_KEY" },
+      },
+      mutate: mockMutate,
+      isLoading: false,
+      error: undefined,
+    }));
+    render(<NichesPage />);
+    expect(screen.getByText("Niche explorer requires CJ API")).toBeInTheDocument();
+    expect(screen.getByText("CJ_API_KEY not set")).toBeInTheDocument();
+    expect(screen.queryByTestId("data-source-badge")).not.toBeInTheDocument();
   });
 
   it("filters niches by search term", () => {
@@ -160,5 +200,15 @@ describe("NichesPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Comparing (2)" }));
     expect(screen.queryByText("Comparing 2 niches")).toBeNull();
+  });
+
+  it("discloses that scores, heat and price ranges are catalog-based estimates in the compare panel", () => {
+    render(<NichesPage />);
+    fireEvent.click(screen.getAllByTitle("Compare")[0]);
+    fireEvent.click(screen.getAllByTitle("Compare")[1]);
+
+    expect(
+      screen.getAllByText("Score/heat and price ranges are estimates from catalog counts and average prices — not market measurement.").length
+    ).toBeGreaterThan(0);
   });
 });

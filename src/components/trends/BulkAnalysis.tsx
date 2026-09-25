@@ -190,8 +190,8 @@ export default function BulkAnalysis({ onAnalyzeBatch, className = "" }: BulkAna
                     r.direction === "peaking" ? "text-amber-400" :
                     r.direction === "declining" ? "text-red-400" : "text-blue-400"
                   }`}>{r.direction}</td>
-                  <td className="text-right py-1.5 text-foreground">{r.timeToPeak}</td>
-                  <td className="text-right py-1.5 font-semibold text-emerald-400">{r.estimatedMargin}%</td>
+                  <td className="text-right py-1.5 text-foreground">{r.timeToPeak || "—"}</td>
+                  <td className="text-right py-1.5 font-semibold text-emerald-400">Est. {r.estimatedMargin}%</td>
                   <td className={`text-right py-1.5 font-semibold ${
                     r.competitionLevel === "low" ? "text-emerald-400" :
                     r.competitionLevel === "medium" ? "text-amber-400" : "text-red-400"

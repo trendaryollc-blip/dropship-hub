@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import type { ScrapedProductData } from "@/types/listing-intelligence";
 import { PublicError, safeErrorMessage } from "@/lib/api-errors";
+import { getPrimaryKey } from "@/lib/api-keys/pool";
 
 function detectPlatform(url: string): string {
   const lower = url.toLowerCase();
@@ -22,7 +23,7 @@ async function scrapeAliExpress(url: string): Promise<ScrapedProductData> {
   const productIdMatch = url.match(/\/item\/(\d+)\.html/) || url.match(/\/item\/(\d+)/);
   const productId = productIdMatch?.[1] || "";
 
-  const apiKey = process.env.SERPAPI_KEY || process.env.SERPAPI_API_KEY;
+  const apiKey = getPrimaryKey("serpapi") || undefined;
   if (!apiKey || !productId) {
     return {
       title: "",
@@ -141,7 +142,7 @@ async function scrapeAmazon(url: string): Promise<ScrapedProductData> {
 }
 
 async function scrapeGeneric(url: string): Promise<ScrapedProductData> {
-  const apiKey = process.env.SERPAPI_KEY || process.env.SERPAPI_API_KEY;
+  const apiKey = getPrimaryKey("serpapi") || undefined;
   if (!apiKey) {
     return {
       title: "",

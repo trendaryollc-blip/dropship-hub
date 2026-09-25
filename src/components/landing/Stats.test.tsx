@@ -5,6 +5,6 @@ import Stats from "./Stats";
 describe("Stats", () => {
   it("renders stats section", () => {
     render(<Stats />);
-    expect(screen.getByText(/Platforms Connected/i)).toBeInTheDocument();
+    expect(screen.getByText(/Platforms Supported/i)).toBeInTheDocument();
   });
 });

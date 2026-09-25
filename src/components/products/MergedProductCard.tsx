@@ -105,10 +105,10 @@ export default function MergedProductCard({
           </span>
         )}
 
-        {/* Margin Badge */}
+        {/* Margin Badge (estimated from platform cost ratios) */}
         {product.estimatedMargin != null && product.estimatedMargin > 0 && (
-          <span className="absolute top-2 left-2 mt-8 px-2 py-1 rounded-lg bg-emerald-500/90 text-white text-[10px] font-bold backdrop-blur-sm flex items-center gap-1">
-            <BarChart3 className="h-2.5 w-2.5" /> ~{product.estimatedMargin}%
+          <span title="Estimated margin from platform cost ratios × live price" className="absolute top-2 left-2 mt-8 px-2 py-1 rounded-lg bg-emerald-500/90 text-white text-[10px] font-bold backdrop-blur-sm flex items-center gap-1">
+            <BarChart3 className="h-2.5 w-2.5" /> ~{product.estimatedMargin}% est.
           </span>
         )}
 

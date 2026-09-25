@@ -137,7 +137,9 @@ export default function ActionItems({ items }: { items: ActionItem[] }) {
                     <span className="text-[10px] text-accent font-medium flex items-center gap-1">
                       <Zap className="h-3 w-3" /> {item.impact}
                     </span>
-                    <span className="text-[10px] text-emerald-400 font-medium">{item.estimatedGain}</span>
+                    {item.estimatedGain && (
+                      <span className="text-[10px] text-emerald-400 font-medium">{item.estimatedGain}</span>
+                    )}
                     {item.relatedCompetitor && (
                       <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                         <Clock className="h-3 w-3" /> vs {item.relatedCompetitor}

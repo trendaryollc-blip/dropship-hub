@@ -104,6 +104,13 @@ describe("NicheDetail", () => {
     expect(screen.getAllByText(/75/).length).toBeGreaterThanOrEqual(1);
   });
 
+  it("labels sub-scores and price range as catalog-based estimates", () => {
+    render(<NicheDetail niche={mockNiche} />);
+    expect(screen.getByText("Price Range (est.)")).toBeDefined();
+    expect(screen.getByText(/Sub-scores \(demand, profit, competition, trend, seasonality\) are heuristics from catalog product counts/)).toBeDefined();
+    expect(screen.getByText(/Price range is estimated from the niche's average catalog price/)).toBeDefined();
+  });
+
   it("renders suppliers", () => {
     render(<NicheDetail niche={mockNiche} />);
     expect(screen.getByText("Top Suppliers for This Niche")).toBeDefined();
@@ -116,5 +123,38 @@ describe("NicheDetail", () => {
     expect(screen.getByText("Related Niches")).toBeDefined();
     expect(screen.getByText("Bluetooth Speakers")).toBeDefined();
     expect(screen.getByText("Phone Accessories")).toBeDefined();
+  });
+
+  it("shows honest unavailable copy when metrics and history are null", () => {
+    render(
+      <NicheDetail
+        niche={{
+          ...mockNiche,
+          growth: null,
+          avgMargin: null,
+          estimatedMonthlyRevenue: null,
+          profitPerUnit: null,
+          avgShippingDays: null,
+          avgReturnRate: null,
+          topProductPrice: null,
+          topProductMargin: null,
+          weeklyData: [],
+          geographicDemand: [],
+          seasonalTrend: [],
+          topSuppliers: [],
+          relatedNiches: [],
+          competition: null,
+          seasonality: null,
+        }}
+      />
+    );
+    expect(screen.getByText("Growth not tracked")).toBeDefined();
+    expect(screen.getByText(/Trend history not available/)).toBeDefined();
+    expect(screen.getByText(/Geographic demand not available/)).toBeDefined();
+    expect(screen.getByText(/Seasonal demand not available/)).toBeDefined();
+    expect(screen.getByText(/No supplier scores yet/)).toBeDefined();
+    expect(screen.getByText("Related niches not available yet.")).toBeDefined();
+    expect(screen.queryByText("+null%")).toBeNull();
+    expect(screen.queryByText(/\$null/)).toBeNull();
   });
 });

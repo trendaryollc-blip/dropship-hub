@@ -94,6 +94,7 @@ interface DigestAlert {
 interface DigestResponse {
   date: string;
   summary: string;
+  summarySource: "ai" | "generated";
   metrics: DigestMetrics;
   previousMetrics: DigestMetrics;
   alerts: DigestAlert[];
@@ -259,7 +260,7 @@ function generateRecommendations(metrics: DigestMetrics, alerts: DigestAlert[]):
   return recommendations;
 }
 
-async function generateAISummary(metrics: DigestMetrics, alerts: DigestAlert[], recommendations: string[]): Promise<string> {
+async function generateAISummary(metrics: DigestMetrics, alerts: DigestAlert[], recommendations: string[]): Promise<{ summary: string; summarySource: "ai" | "generated" }> {
   const alertSummary = alerts.length > 0 ? alerts.map((a) => `${a.title}: ${a.description}`).join("\n") : "No alerts.";
   const recommendationSummary = recommendations.map((r) => `- ${r}`).join("\n");
 
@@ -306,7 +307,8 @@ Provide a 2-3 sentence executive summary highlighting the most important insight
           });
           if (res.ok) {
             const data = await res.json();
-            return data.choices?.[0]?.message?.content || generateFallbackSummary(metrics);
+            const content = data.choices?.[0]?.message?.content;
+            if (content) return { summary: content, summarySource: "ai" };
           }
         } else if (provider.name === "Gemini") {
           const model = await _resolveGeminiModel(apiKey);
@@ -320,7 +322,8 @@ Provide a 2-3 sentence executive summary highlighting the most important insight
           });
           if (res.ok) {
             const data = await res.json();
-            return data.candidates?.[0]?.content?.parts?.[0]?.text || generateFallbackSummary(metrics);
+            const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (content) return { summary: content, summarySource: "ai" };
           }
         } else if (provider.name === "OpenAI") {
           const model = await _resolveModel("openai", "https://api.openai.com/v1/models", { Authorization: `Bearer ${apiKey}` }, "gpt-4o-mini");
@@ -336,7 +339,8 @@ Provide a 2-3 sentence executive summary highlighting the most important insight
           });
           if (res.ok) {
             const data = await res.json();
-            return data.choices?.[0]?.message?.content || generateFallbackSummary(metrics);
+            const content = data.choices?.[0]?.message?.content;
+            if (content) return { summary: content, summarySource: "ai" };
           }
         }
       } catch {
@@ -344,9 +348,9 @@ Provide a 2-3 sentence executive summary highlighting the most important insight
       }
     }
 
-    return generateFallbackSummary(metrics);
+    return { summary: generateFallbackSummary(metrics), summarySource: "generated" };
   } catch {
-    return generateFallbackSummary(metrics);
+    return { summary: generateFallbackSummary(metrics), summarySource: "generated" };
   }
 }
 
@@ -404,12 +408,13 @@ export const POST = withAuthOrCron(async (request: NextRequest, uid: string) => 
     const { current: metrics, prev: previousMetrics, topProducts, topCampaigns } = await fetchRealMetrics(db, uid, digestDate);
     const alerts = generateAlertsFromMetrics(metrics);
     const recommendations = generateRecommendations(metrics, alerts);
-    const summary = await generateAISummary(metrics, alerts, recommendations);
+    const { summary, summarySource } = await generateAISummary(metrics, alerts, recommendations);
     const weeklyTrend = await computeWeeklyTrend(db, uid);
 
     const digest: DigestResponse = {
       date: digestDate,
       summary,
+      summarySource,
       metrics,
       previousMetrics,
       alerts,

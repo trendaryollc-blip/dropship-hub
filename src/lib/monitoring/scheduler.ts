@@ -16,10 +16,13 @@ async function fetchPriceFromSource(sourceUrl: string, source: string): Promise<
   if (source === "cj") {
     const { getCJAccessToken } = await import("@/lib/cj-auth");
     const token = await getCJAccessToken();
-    const pidMatch = sourceUrl.match(/product-p-(\d+)/);
+    // Handles both /product/<slug>-p-<pid>.html and legacy product-p-<pid>.
+    const pidMatch = sourceUrl.match(/.+-p-([^/?#]+?)(?:\.html)?(?:[?#].*)?$/);
     if (!pidMatch) return { price: null, inStock: true };
+    const pid = pidMatch[1].replace(/\.html$/, "");
+    if (!pid) return { price: null, inStock: true };
 
-    const res = await fetch(`https://developers.cjdropshipping.com/api2.0/v1/product/query?pid=${pidMatch[1]}`, {
+    const res = await fetch(`https://developers.cjdropshipping.com/api2.0/v1/product/query?pid=${encodeURIComponent(pid)}`, {
       headers: { "CJ-Access-Token": token, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(15000),
     });

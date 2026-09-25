@@ -3,59 +3,59 @@ import { CARRIER_MAP } from "@/types/shipping";
 import { getCountryData, SHIPPING_ZONES } from "./country-data";
 
 // ── Historical Delivery Data by Zone + Carrier ────────────────────────────────
-// Simulated historical averages based on real-world shipping patterns
+// Static reference estimates of average delivery days by zone and carrier
 
 const ZONE_DELIVERY_DATA: ZoneDeliveryData[] = [
   // CJ Dropshipping - China to various zones
-  { originZone: "asia_east", destinationZone: "north_america", carrierId: "cj", serviceLevel: "economy", averageDays: 18, minDays: 12, maxDays: 28, sampleSize: 15000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "north_america", carrierId: "cj", serviceLevel: "standard", averageDays: 14, minDays: 8, maxDays: 20, sampleSize: 12000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "north_america", carrierId: "cj", serviceLevel: "express", averageDays: 9, minDays: 6, maxDays: 14, sampleSize: 8000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "europe_west", carrierId: "cj", serviceLevel: "economy", averageDays: 20, minDays: 14, maxDays: 30, sampleSize: 10000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "europe_west", carrierId: "cj", serviceLevel: "standard", averageDays: 15, minDays: 10, maxDays: 22, sampleSize: 8000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "europe_west", carrierId: "cj", serviceLevel: "express", averageDays: 10, minDays: 7, maxDays: 15, sampleSize: 5000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "oceania", carrierId: "cj", serviceLevel: "standard", averageDays: 12, minDays: 8, maxDays: 18, sampleSize: 3000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "south_america", carrierId: "cj", serviceLevel: "standard", averageDays: 22, minDays: 15, maxDays: 35, sampleSize: 2000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "asia_southeast", carrierId: "cj", serviceLevel: "standard", averageDays: 8, minDays: 5, maxDays: 12, sampleSize: 4000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "middle_east", carrierId: "cj", serviceLevel: "standard", averageDays: 12, minDays: 8, maxDays: 18, sampleSize: 2500, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "north_america", carrierId: "cj", serviceLevel: "economy", averageDays: 18, minDays: 12, maxDays: 28, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "north_america", carrierId: "cj", serviceLevel: "standard", averageDays: 14, minDays: 8, maxDays: 20, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "north_america", carrierId: "cj", serviceLevel: "express", averageDays: 9, minDays: 6, maxDays: 14, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "europe_west", carrierId: "cj", serviceLevel: "economy", averageDays: 20, minDays: 14, maxDays: 30, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "europe_west", carrierId: "cj", serviceLevel: "standard", averageDays: 15, minDays: 10, maxDays: 22, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "europe_west", carrierId: "cj", serviceLevel: "express", averageDays: 10, minDays: 7, maxDays: 15, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "oceania", carrierId: "cj", serviceLevel: "standard", averageDays: 12, minDays: 8, maxDays: 18, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "south_america", carrierId: "cj", serviceLevel: "standard", averageDays: 22, minDays: 15, maxDays: 35, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "asia_southeast", carrierId: "cj", serviceLevel: "standard", averageDays: 8, minDays: 5, maxDays: 12, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "middle_east", carrierId: "cj", serviceLevel: "standard", averageDays: 12, minDays: 8, maxDays: 18, lastUpdated: "2026-01-15" },
 
   // AliExpress Standard - China to various zones
-  { originZone: "asia_east", destinationZone: "north_america", carrierId: "aliexpress_standard", serviceLevel: "economy", averageDays: 25, minDays: 15, maxDays: 40, sampleSize: 20000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "north_america", carrierId: "aliexpress_standard", serviceLevel: "standard", averageDays: 18, minDays: 12, maxDays: 28, sampleSize: 15000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "north_america", carrierId: "aliexpress_standard", serviceLevel: "express", averageDays: 12, minDays: 8, maxDays: 18, sampleSize: 8000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "europe_west", carrierId: "aliexpress_standard", serviceLevel: "economy", averageDays: 28, minDays: 18, maxDays: 42, sampleSize: 12000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "europe_west", carrierId: "aliexpress_standard", serviceLevel: "standard", averageDays: 20, minDays: 14, maxDays: 30, sampleSize: 10000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "oceania", carrierId: "aliexpress_standard", serviceLevel: "standard", averageDays: 15, minDays: 10, maxDays: 22, sampleSize: 5000, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "north_america", carrierId: "aliexpress_standard", serviceLevel: "economy", averageDays: 25, minDays: 15, maxDays: 40, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "north_america", carrierId: "aliexpress_standard", serviceLevel: "standard", averageDays: 18, minDays: 12, maxDays: 28, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "north_america", carrierId: "aliexpress_standard", serviceLevel: "express", averageDays: 12, minDays: 8, maxDays: 18, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "europe_west", carrierId: "aliexpress_standard", serviceLevel: "economy", averageDays: 28, minDays: 18, maxDays: 42, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "europe_west", carrierId: "aliexpress_standard", serviceLevel: "standard", averageDays: 20, minDays: 14, maxDays: 30, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "oceania", carrierId: "aliexpress_standard", serviceLevel: "standard", averageDays: 15, minDays: 10, maxDays: 22, lastUpdated: "2026-01-15" },
 
   // ePacket - China to various zones
-  { originZone: "asia_east", destinationZone: "north_america", carrierId: "epacket", serviceLevel: "economy", averageDays: 15, minDays: 10, maxDays: 22, sampleSize: 18000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "north_america", carrierId: "epacket", serviceLevel: "standard", averageDays: 11, minDays: 7, maxDays: 16, sampleSize: 14000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "north_america", carrierId: "epacket", serviceLevel: "express", averageDays: 8, minDays: 5, maxDays: 12, sampleSize: 6000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "europe_west", carrierId: "epacket", serviceLevel: "economy", averageDays: 18, minDays: 12, maxDays: 25, sampleSize: 8000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "europe_west", carrierId: "epacket", serviceLevel: "standard", averageDays: 13, minDays: 9, maxDays: 18, sampleSize: 6000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "oceania", carrierId: "epacket", serviceLevel: "standard", averageDays: 10, minDays: 7, maxDays: 14, sampleSize: 4000, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "north_america", carrierId: "epacket", serviceLevel: "economy", averageDays: 15, minDays: 10, maxDays: 22, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "north_america", carrierId: "epacket", serviceLevel: "standard", averageDays: 11, minDays: 7, maxDays: 16, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "north_america", carrierId: "epacket", serviceLevel: "express", averageDays: 8, minDays: 5, maxDays: 12, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "europe_west", carrierId: "epacket", serviceLevel: "economy", averageDays: 18, minDays: 12, maxDays: 25, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "europe_west", carrierId: "epacket", serviceLevel: "standard", averageDays: 13, minDays: 9, maxDays: 18, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "oceania", carrierId: "epacket", serviceLevel: "standard", averageDays: 10, minDays: 7, maxDays: 14, lastUpdated: "2026-01-15" },
 
   // DHL Express - Global
-  { originZone: "asia_east", destinationZone: "north_america", carrierId: "dhl", serviceLevel: "economy", averageDays: 7, minDays: 5, maxDays: 10, sampleSize: 5000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "north_america", carrierId: "dhl", serviceLevel: "standard", averageDays: 5, minDays: 3, maxDays: 7, sampleSize: 8000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "north_america", carrierId: "dhl", serviceLevel: "express", averageDays: 3, minDays: 2, maxDays: 5, sampleSize: 6000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "north_america", carrierId: "dhl", serviceLevel: "priority", averageDays: 2, minDays: 1, maxDays: 3, sampleSize: 3000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "europe_west", carrierId: "dhl", serviceLevel: "standard", averageDays: 4, minDays: 3, maxDays: 6, sampleSize: 7000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "europe_west", carrierId: "dhl", serviceLevel: "express", averageDays: 3, minDays: 2, maxDays: 4, sampleSize: 5000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "oceania", carrierId: "dhl", serviceLevel: "standard", averageDays: 5, minDays: 3, maxDays: 7, sampleSize: 3000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "south_america", carrierId: "dhl", serviceLevel: "standard", averageDays: 7, minDays: 5, maxDays: 10, sampleSize: 2000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "middle_east", carrierId: "dhl", serviceLevel: "standard", averageDays: 4, minDays: 3, maxDays: 6, sampleSize: 3000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "africa", carrierId: "dhl", serviceLevel: "standard", averageDays: 6, minDays: 4, maxDays: 9, sampleSize: 1500, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "north_america", carrierId: "dhl", serviceLevel: "economy", averageDays: 7, minDays: 5, maxDays: 10, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "north_america", carrierId: "dhl", serviceLevel: "standard", averageDays: 5, minDays: 3, maxDays: 7, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "north_america", carrierId: "dhl", serviceLevel: "express", averageDays: 3, minDays: 2, maxDays: 5, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "north_america", carrierId: "dhl", serviceLevel: "priority", averageDays: 2, minDays: 1, maxDays: 3, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "europe_west", carrierId: "dhl", serviceLevel: "standard", averageDays: 4, minDays: 3, maxDays: 6, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "europe_west", carrierId: "dhl", serviceLevel: "express", averageDays: 3, minDays: 2, maxDays: 4, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "oceania", carrierId: "dhl", serviceLevel: "standard", averageDays: 5, minDays: 3, maxDays: 7, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "south_america", carrierId: "dhl", serviceLevel: "standard", averageDays: 7, minDays: 5, maxDays: 10, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "middle_east", carrierId: "dhl", serviceLevel: "standard", averageDays: 4, minDays: 3, maxDays: 6, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "africa", carrierId: "dhl", serviceLevel: "standard", averageDays: 6, minDays: 4, maxDays: 9, lastUpdated: "2026-01-15" },
 
   // FedEx - Global
-  { originZone: "asia_east", destinationZone: "north_america", carrierId: "fedex", serviceLevel: "economy", averageDays: 7, minDays: 5, maxDays: 10, sampleSize: 4000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "north_america", carrierId: "fedex", serviceLevel: "standard", averageDays: 5, minDays: 3, maxDays: 7, sampleSize: 6000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "north_america", carrierId: "fedex", serviceLevel: "express", averageDays: 3, minDays: 2, maxDays: 4, sampleSize: 5000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "north_america", carrierId: "fedex", serviceLevel: "priority", averageDays: 2, minDays: 1, maxDays: 3, sampleSize: 2500, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "europe_west", carrierId: "fedex", serviceLevel: "standard", averageDays: 4, minDays: 3, maxDays: 6, sampleSize: 5000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "europe_west", carrierId: "fedex", serviceLevel: "express", averageDays: 3, minDays: 2, maxDays: 4, sampleSize: 4000, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "oceania", carrierId: "fedex", serviceLevel: "standard", averageDays: 5, minDays: 3, maxDays: 7, sampleSize: 2500, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "south_america", carrierId: "fedex", serviceLevel: "standard", averageDays: 7, minDays: 5, maxDays: 10, sampleSize: 1500, lastUpdated: "2026-01-15" },
-  { originZone: "asia_east", destinationZone: "middle_east", carrierId: "fedex", serviceLevel: "standard", averageDays: 4, minDays: 3, maxDays: 6, sampleSize: 2000, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "north_america", carrierId: "fedex", serviceLevel: "economy", averageDays: 7, minDays: 5, maxDays: 10, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "north_america", carrierId: "fedex", serviceLevel: "standard", averageDays: 5, minDays: 3, maxDays: 7, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "north_america", carrierId: "fedex", serviceLevel: "express", averageDays: 3, minDays: 2, maxDays: 4, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "north_america", carrierId: "fedex", serviceLevel: "priority", averageDays: 2, minDays: 1, maxDays: 3, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "europe_west", carrierId: "fedex", serviceLevel: "standard", averageDays: 4, minDays: 3, maxDays: 6, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "europe_west", carrierId: "fedex", serviceLevel: "express", averageDays: 3, minDays: 2, maxDays: 4, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "oceania", carrierId: "fedex", serviceLevel: "standard", averageDays: 5, minDays: 3, maxDays: 7, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "south_america", carrierId: "fedex", serviceLevel: "standard", averageDays: 7, minDays: 5, maxDays: 10, lastUpdated: "2026-01-15" },
+  { originZone: "asia_east", destinationZone: "middle_east", carrierId: "fedex", serviceLevel: "standard", averageDays: 4, minDays: 3, maxDays: 6, lastUpdated: "2026-01-15" },
 ];
 
 // ── Holiday Delay Data ────────────────────────────────────────────────────────
@@ -201,16 +201,8 @@ function assessCustomsRisk(originCountry: string, destinationCountry: string): D
   return null;
 }
 
-function calculateConfidence(
-  data: ZoneDeliveryData | null,
-  riskFactors: DeliveryRiskFactor[]
-): number {
+function calculateConfidence(riskFactors: DeliveryRiskFactor[]): number {
   let confidence = 0.7;
-
-  if (data) {
-    const sampleBonus = Math.min(data.sampleSize / 10000, 0.15);
-    confidence += sampleBonus;
-  }
 
   for (const risk of riskFactors) {
     const penalty = risk.severity === "high" ? 0.15 : risk.severity === "medium" ? 0.08 : 0.03;
@@ -279,7 +271,7 @@ export function predictDelivery(request: DeliveryPredictionRequest): DeliveryPre
     average: predictedDays.average + Math.round(totalDelay * 0.7),
   };
 
-  const confidence = calculateConfidence(data, riskFactors);
+  const confidence = calculateConfidence(riskFactors);
 
   const arrivalBase = new Date(shipDate);
   arrivalBase.setDate(arrivalBase.getDate() + predictedDays.average);
@@ -305,7 +297,7 @@ export function predictDelivery(request: DeliveryPredictionRequest): DeliveryPre
       latest: latest.toISOString().split("T")[0],
       average: arrivalBase.toISOString().split("T")[0],
     },
-    historicalAccuracy: data ? Math.min(0.95, 0.75 + (data.sampleSize / 50000) * 0.2) : 0.7,
+    estimateBasis: data ? "reference-table" : "general-default",
     weatherDelayRisk: riskFactors.filter((r) => r.type === "weather").reduce((sum, r) => sum + r.estimatedDelayDays, 0),
     customsDelayRisk: riskFactors.filter((r) => r.type === "customs").reduce((sum, r) => sum + r.estimatedDelayDays, 0),
     holidayDelayRisk: riskFactors.filter((r) => r.type === "holiday").reduce((sum, r) => sum + r.estimatedDelayDays, 0),

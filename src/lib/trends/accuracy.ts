@@ -8,7 +8,7 @@ export interface PredictionAccuracy {
   predictionId: string;
   keyword: string;
   predictedDirection: string;
-  predictedPeak: string;
+  predictedPeak: string | null;
   predictedScore: number;
   predictedMargin: number;
   actualDirection?: string;

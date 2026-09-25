@@ -5,10 +5,10 @@ export interface NicheProduct {
   sellPrice: number;
   costPrice: number;
   margin: number;
-  orders: number;
-  rating: number;
-  shippingDays: number;
-  returnRate: number;
+  orders: number | null;
+  rating: number | null;
+  shippingDays: number | null;
+  returnRate: number | null;
 }
 
 export interface NicheSupplier {
@@ -22,9 +22,9 @@ export interface NicheSupplier {
 }
 
 export interface NicheCompetition {
-  avgStoreRating: number;
-  storeCount: number;
-  priceRange: { min: number; max: number; avg: number };
+  avgStoreRating: number | null;
+  storeCount: number | null;
+  priceRange: { min: number; max: number; avg: number } | null;
   topPlatforms: string[];
   saturationLevel: "low" | "medium" | "high" | "very-high";
 }
@@ -49,10 +49,10 @@ export interface NicheData {
   category: string;
   heat: number;
   productCount: number;
-  avgMargin: number;
-  growth: number;
-  trend: "up" | "down" | "stable";
-  trendDirection: "rising" | "stable" | "declining";
+  avgMargin: number | null;
+  growth: number | null;
+  trend: "up" | "down" | "stable" | null;
+  trendDirection: "rising" | "stable" | "declining" | null;
   weeklyData: number[];
   demandSparkline: number[];
   scores: {
@@ -65,24 +65,25 @@ export interface NicheData {
   overallScore: number;
   grade: "A+" | "A" | "B+" | "B" | "C+" | "C";
   topProduct: string;
-  topProductPrice: number;
-  topProductMargin: number;
+  topProductPrice: number | null;
+  topProductMargin: number | null;
   aiInsight: string;
   competitionLevel: "low" | "medium" | "high" | "very-high";
   saturation: number;
-  avgSellingPrice: number;
+  avgSellingPrice: number | null;
   bestPlatforms: string[];
-  seasonality: string;
+  seasonality: string | null;
   riskLevel: "low" | "medium" | "high";
   topSuppliers: NicheSupplier[];
   relatedNiches: string[];
   keywords: string[];
-  estimatedMonthlyRevenue: number;
-  profitPerUnit: number;
-  avgShippingDays: number;
-  avgReturnRate: number;
+  estimatedMonthlyRevenue: number | null;
+  profitPerUnit: number | null;
+  avgShippingDays: number | null;
+  avgReturnRate: number | null;
   topProducts: NicheProduct[];
   competition: NicheCompetition;
   geographicDemand: NicheGeographic[];
   seasonalTrend: NicheSeasonal[];
+  isFallback?: boolean;
 }

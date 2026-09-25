@@ -62,11 +62,42 @@ beforeEach(() => {
 describe("ProductListingsPage", () => {
   it("renders header, platform tabs and saved listings", () => {
     render(<ProductListingsPage />);
-    expect(screen.getByText("AI Listing Generator")).toBeTruthy();
+    expect(screen.getByText("Listing Generator")).toBeTruthy();
     expect(screen.getByText("saved")).toBeTruthy();
     fireEvent.click(screen.getByText("saved"));
     expect(screen.getByText("Wireless Earbuds Pro")).toBeTruthy();
     expect(screen.getByText("88%")).toBeTruthy();
+  });
+
+  it("labels the score as a checklist score and reports keyword demand as untracked", async () => {
+    mockAuthJson.mockResolvedValue({
+      listing: {
+        id: "gen1",
+        platform: "amazon",
+        title: "Test Product",
+        description: "A test description",
+        bulletPoints: ["Material: Cotton"],
+        seoTags: ["test"],
+        characterCounts: { title: 12, description: 19 },
+        optimizationScore: 72,
+        generatedAt: "2026-01-01T00:00:00.000Z",
+      },
+      alternatives: [],
+      keywordSuggestions: null,
+      generationTime: 5,
+      provider: "listing-engine",
+    });
+    render(<ProductListingsPage />);
+    fireEvent.change(screen.getByPlaceholderText("e.g. Wireless Bluetooth Earbuds"), { target: { value: "Test Product" } });
+    fireEvent.change(screen.getByPlaceholderText("Product description..."), { target: { value: "A test description" } });
+    fireEvent.change(screen.getByPlaceholderText("29.99"), { target: { value: "19.99" } });
+    fireEvent.change(screen.getByPlaceholderText("Electronics"), { target: { value: "Electronics" } });
+    fireEvent.click(screen.getByText("Generate Optimized Listing"));
+    await waitFor(() => expect(mockAuthJson).toHaveBeenCalled());
+    fireEvent.click(screen.getByText("Competitors"));
+    expect(screen.getByText("72% checklist score")).toBeTruthy();
+    expect(screen.getByText("Keyword demand not tracked")).toBeTruthy();
+    expect(screen.queryByText(/monthly/)).toBeNull();
   });
 
   it("shows empty saved state", () => {

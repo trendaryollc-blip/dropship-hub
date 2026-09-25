@@ -26,6 +26,14 @@ vi.doMock("@/lib/data/price-war", () => ({
   updatePriceRule: vi.fn().mockResolvedValue(undefined),
   addPriceAdjustmentLog: vi.fn().mockResolvedValue(undefined),
   addPriceSnapshot: vi.fn().mockResolvedValue(undefined),
+  getPriceWarSettings: vi.fn().mockResolvedValue({
+    enabled: true,
+    checkIntervalMinutes: 60,
+    autoApply: true,
+    maxDailyAdjustments: 50,
+    notifyOnAdjustment: true,
+    notifyOnFloorBreach: true,
+  }),
 }));
 
 vi.doMock("@/lib/price-war-engine", () => ({
@@ -79,5 +87,53 @@ describe("POST /api/ai/price-war/execute", () => {
     expect(json.results[0].ruleId).toBe("r1");
     expect(json.results[0].applied).toBe(true);
     expect(json.executedAt).toBeDefined();
+  });
+
+  it("forces a dry run when auto-apply is off and no explicit apply was requested", async () => {
+    const data = await import("@/lib/data/price-war");
+    vi.mocked(data.getPriceWarSettings).mockResolvedValue({
+      enabled: true,
+      checkIntervalMinutes: 60,
+      autoApply: false,
+      maxDailyAdjustments: 50,
+      notifyOnAdjustment: true,
+      notifyOnFloorBreach: true,
+    });
+    const { POST } = await import("./route");
+    const req = new Request("http://localhost/api/ai/price-war/execute", {
+      method: "POST",
+      body: JSON.stringify({ ruleId: "r1", dryRun: false }),
+    });
+
+    const res = await POST(req as any);
+    const json = await res.json();
+
+    expect(json.dryRun).toBe(true);
+    expect(json.adjusted).toBe(0);
+    expect(json.results[0].applied).toBe(false);
+  });
+
+  it("applies an explicitly approved run even when auto-apply is off", async () => {
+    const data = await import("@/lib/data/price-war");
+    vi.mocked(data.getPriceWarSettings).mockResolvedValue({
+      enabled: true,
+      checkIntervalMinutes: 60,
+      autoApply: false,
+      maxDailyAdjustments: 50,
+      notifyOnAdjustment: true,
+      notifyOnFloorBreach: true,
+    });
+    const { POST } = await import("./route");
+    const req = new Request("http://localhost/api/ai/price-war/execute", {
+      method: "POST",
+      body: JSON.stringify({ ruleId: "r1", apply: true }),
+    });
+
+    const res = await POST(req as any);
+    const json = await res.json();
+
+    expect(json.dryRun).toBe(false);
+    expect(json.adjusted).toBe(1);
+    expect(json.results[0].applied).toBe(true);
   });
 });

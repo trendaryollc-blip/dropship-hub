@@ -38,8 +38,9 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
         avgShippingDays: s.avgShippingDays || 0,
         complaintRate: s.complaintRate || 0,
         stockReliability: s.stockReliability || 0,
-        priceCompetitiveness: 75,
-        totalOrders: 0,
+        // No price-benchmark feed — report null, never a hardcoded 75.
+        priceCompetitiveness: typeof s.priceCompetitiveness === "number" ? s.priceCompetitiveness : null,
+        totalOrders: typeof s.totalOrders === "number" ? s.totalOrders : 0,
       }));
 
       return NextResponse.json({ comparison });
@@ -76,7 +77,8 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
       totalOrders: s.totalOrders || 0,
       responseTimeHours: s.responseTimeHours || 0,
       dailySnapshots: s.dailySnapshots || [],
-      status: s.status || "good",
+      // Unknown health must not default to green "good".
+      status: s.status || "unknown",
     }));
 
     return NextResponse.json({ suppliers });

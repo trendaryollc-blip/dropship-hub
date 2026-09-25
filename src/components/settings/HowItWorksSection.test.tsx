@@ -40,7 +40,7 @@ describe("HowItWorksSection", () => {
     expect(screen.getByText(/Get a free API key from Groq/)).toBeDefined();
     expect(screen.getByText(/Paste your key in the Groq provider card/)).toBeDefined();
     expect(screen.getByText(/Click Test to verify/)).toBeDefined();
-    expect(screen.getByText(/Search for products with AI-powered insights/)).toBeDefined();
+    expect(screen.getByText(/Search across platforms with live data/)).toBeDefined();
   });
 
   it("has link to external Groq page", () => {

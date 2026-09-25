@@ -43,7 +43,7 @@ async function getNotificationPrefs(uid: string): Promise<NotificationPreference
   return { emailOnNewOrder: true, emailOnShipment: true, emailOnDelivery: false };
 }
 
-function getTrackingUrl(orderNumber: string, trackingNumber: string, carrier: string): string {
+function getTrackingUrl(orderNumber: string, trackingNumber: string, carrier: string): string | null {
   const carrierUrls: Record<string, string> = {
     "cainiao": `https://track.cainiao.com/?mailNoList=${trackingNumber}`,
     "yanwen": `https://track.yanwen.com/?tracking=${trackingNumber}`,
@@ -59,9 +59,9 @@ function getTrackingUrl(orderNumber: string, trackingNumber: string, carrier: st
     "epacket": `https://track-chinapost.com/?tracking=${trackingNumber}`,
   };
 
+  if (!trackingNumber) return null;
   const key = carrier.toLowerCase();
-  if (carrierUrls[key]) return carrierUrls[key];
-  return `https://trackingshipment.com/${carrier}/${trackingNumber}`;
+  return carrierUrls[key] ?? null;
 }
 
 export async function sendOrderNotification(

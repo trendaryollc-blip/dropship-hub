@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
 import {
   DollarSign, TrendingUp, TrendingDown, ShoppingCart, Package,
@@ -36,7 +36,7 @@ interface ProductPerformance {
   totalProfit: number;
   totalOrders: number;
   profitMargin: number;
-  trend: number;
+  trend: number | null;
   status: "profitable" | "breakeven" | "losing";
 }
 
@@ -400,7 +400,11 @@ function ProductRow({ product, rank, delay, maxRevenue }: { product: ProductPerf
           </div>
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-[9px] sm:text-[10px] text-muted-foreground">{product.totalOrders} orders</span>
-            <span className={`text-[9px] sm:text-[10px] font-semibold ${product.trend >= 0 ? "text-emerald-400" : "text-red-400"}`}>{product.trend >= 0 ? "+" : ""}{product.trend}%</span>
+            {typeof product.trend === "number" && Number.isFinite(product.trend) ? (
+              <span className={`text-[9px] sm:text-[10px] font-semibold ${product.trend >= 0 ? "text-emerald-400" : "text-red-400"}`}>{product.trend >= 0 ? "+" : ""}{product.trend}%</span>
+            ) : (
+              <span className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground">—</span>
+            )}
           </div>
           {/* Revenue bar */}
           <div className="h-1 rounded-full bg-surface overflow-hidden mt-1.5">
@@ -492,10 +496,19 @@ export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [sortField, setSortField] = useState<SortField>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [fetchedAt, setFetchedAt] = useState<Date | null>(null);
 
   const uid = user?.uid || "";
   const profitUrl = uid ? `/api/profit?timeframe=${timeframe}&uid=${uid}` : null;
   const { data: profitData, isLoading, mutate: refetch } = useAPI<ProfitResponse>(profitUrl);
+
+  useEffect(() => {
+    if (profitData) setFetchedAt(new Date());
+  }, [profitData]);
+
+  const updatedAtLabel = fetchedAt
+    ? `Updated ${new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(fetchedAt)}`
+    : null;
 
   const summary = profitData?.summary || null;
   const dailyBreakdown = profitData?.dailyBreakdown || [];
@@ -661,8 +674,8 @@ export default function ReportsPage() {
           <div className="flex items-center gap-2 text-[10px] sm:text-[11px] text-muted-foreground">
             <Calendar className="h-3 w-3" />
             <span>Showing data for: <span className="text-foreground font-medium">{timeframeLabel}</span></span>
-            {!isLoading && (
-              <span className="ml-auto text-[10px] text-muted-foreground/60">Updated just now</span>
+            {!isLoading && updatedAtLabel && (
+              <span className="ml-auto text-[10px] text-muted-foreground/60">{updatedAtLabel}</span>
             )}
           </div>
         )}
@@ -1012,7 +1025,7 @@ export default function ReportsPage() {
             <div className="glass rounded-2xl p-4 sm:p-5">
               <div className="mb-4">
                 <h3 className="font-display text-sm sm:text-base font-semibold text-foreground">Growth Insights</h3>
-                <p className="text-[10px] sm:text-[11px] text-muted-foreground">AI-powered recommendations to boost your profitability</p>
+                <p className="text-[10px] sm:text-[11px] text-muted-foreground">Rule-based recommendations from your actual metrics</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {summary!.avgMargin >= 30 && (
@@ -1122,7 +1135,7 @@ export default function ReportsPage() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs sm:text-sm font-medium text-foreground truncate">Revenue Forecast</p>
-                  <p className="text-[9px] sm:text-[10px] text-muted-foreground">Trends & projections</p>
+                  <p className="text-[9px] sm:text-[10px] text-muted-foreground">Trends &amp; estimated projections</p>
                 </div>
               </Link>
               <Link href="/calculator" className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl bg-surface border border-border hover:border-accent/20 hover:bg-surface-hover transition-all group">

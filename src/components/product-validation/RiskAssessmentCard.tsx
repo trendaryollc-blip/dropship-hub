@@ -101,7 +101,7 @@ export default function RiskAssessmentCard({ data }: { data: RiskAssessmentResul
       {/* Compliance Issues */}
       {data.complianceIssues.length > 0 && (
         <div className="mb-5 relative">
-          <p className="text-[11px] text-muted-foreground mb-3 font-semibold uppercase tracking-wider">Compliance</p>
+          <p className="text-[11px] text-muted-foreground mb-3 font-semibold uppercase tracking-wider">Compliance (unverified)</p>
           <div className="space-y-2">
             {data.complianceIssues.map((issue, i) => {
               const cfg = statusConfig[issue.status];

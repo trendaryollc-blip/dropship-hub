@@ -210,9 +210,9 @@ export default function SupplierContactSlideOver({ isOpen, onClose, supplierId, 
             {submitted ? (
               <div className="text-center py-12">
                 <CheckCircle2 className="h-14 w-14 text-emerald-400 mx-auto mb-4" />
-                <h4 className="text-lg font-semibold text-white mb-2">Message Sent!</h4>
+                <h4 className="text-lg font-semibold text-white mb-2">Inquiry Logged</h4>
                 <p className="text-sm text-neutral-400 mb-6 max-w-xs mx-auto">
-                  Your inquiry has been sent to {supplierName}. They typically respond within their stated response time.
+                  Your inquiry for {supplierName} is saved to your records. Outbound delivery to the supplier is not wired yet — copy the message and email them using the contact details on their page.
                 </p>
                 <button
                   onClick={handleClose}

@@ -38,7 +38,7 @@ export function parseInputValue(raw: string, fallback: number, min = -Infinity, 
 export interface ShippingCalc {
   estimatedCost: number;
   deliveryDays: { min: number; max: number };
-  carriers: { name: string; cost: number; days: number; reliability: number }[];
+  carriers: { name: string; cost: number; days: number }[];
   costPerUnit: number;
 }
 
@@ -127,12 +127,14 @@ export function calculateShipping(
   const volumetricWeight = (safeLength * safeWidth * safeHeight) / 5000;
   const chargeableWeight = Math.max(safeWeight, volumetricWeight);
 
+  // Heuristic estimate from package inputs only — not a live carrier quote.
+  // Service tiers are generic labels; no reliability percentages are invented.
   const baseRate = originCountry === destinationCountry ? 3.5 : 8.0;
   const carriers = [
-    { name: "Standard Air", cost: +(chargeableWeight * baseRate).toFixed(2), days: originCountry === destinationCountry ? 3 : 12, reliability: 92 },
-    { name: "Express", cost: +(chargeableWeight * baseRate * 1.8).toFixed(2), days: originCountry === destinationCountry ? 1 : 7, reliability: 97 },
-    { name: "Economy Sea", cost: +(chargeableWeight * baseRate * 0.5).toFixed(2), days: originCountry === destinationCountry ? 5 : 30, reliability: 85 },
-    { name: "Premium Courier", cost: +(chargeableWeight * baseRate * 2.5).toFixed(2), days: originCountry === destinationCountry ? 1 : 5, reliability: 99 },
+    { name: "Standard Air", cost: +(chargeableWeight * baseRate).toFixed(2), days: originCountry === destinationCountry ? 3 : 12 },
+    { name: "Express", cost: +(chargeableWeight * baseRate * 1.8).toFixed(2), days: originCountry === destinationCountry ? 1 : 7 },
+    { name: "Economy Sea", cost: +(chargeableWeight * baseRate * 0.5).toFixed(2), days: originCountry === destinationCountry ? 5 : 30 },
+    { name: "Premium Courier", cost: +(chargeableWeight * baseRate * 2.5).toFixed(2), days: originCountry === destinationCountry ? 1 : 5 },
   ];
 
   const estimatedCost = carriers[0].cost;

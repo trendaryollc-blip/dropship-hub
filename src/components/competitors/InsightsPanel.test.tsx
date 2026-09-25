@@ -22,7 +22,7 @@ describe("InsightsPanel", () => {
   it("renders insights heading", () => {
     render(<InsightsPanel insights={mockInsights} />);
     expect(screen.getByText("Market Insights")).toBeInTheDocument();
-    expect(screen.getByText("AI Generated")).toBeInTheDocument();
+    expect(screen.getByText("Rules-based")).toBeInTheDocument();
   });
 
   it("renders all insight items with numbers", () => {

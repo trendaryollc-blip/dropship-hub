@@ -129,7 +129,9 @@ export default function NicheDetail({ niche, onMission, onWatchlist, onListing }
               </div>
               <div className={`flex items-center gap-1 ${trendColor}`}>
                 {niche.trend === "up" ? <TrendingUp className="h-4 w-4" /> : niche.trend === "down" ? <TrendingDown className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
-                <span className="text-sm font-bold">+{niche.growth}% growth</span>
+                <span className="text-sm font-bold">
+                  {niche.growth != null ? `${niche.growth > 0 ? "+" : ""}${niche.growth}% growth` : "Growth not tracked"}
+                </span>
               </div>
             </div>
           </div>
@@ -170,12 +172,12 @@ export default function NicheDetail({ niche, onMission, onWatchlist, onListing }
             <div className="grid grid-cols-2 gap-3">
               {[
                 { icon: ShoppingCart, label: "Products", value: (niche.productCount || 0).toLocaleString(), color: "text-blue-400" },
-                { icon: TrendingUp, label: "Avg Margin", value: `${niche.avgMargin || 0}%`, color: "text-emerald-400" },
-                { icon: Users, label: "Saturation", value: `${niche.saturation || 0}%`, color: (niche.saturation || 0) > 60 ? "text-red-400" : "text-emerald-400" },
-                { icon: DollarSign, label: "Profit/Unit", value: `$${(niche.profitPerUnit || 0).toFixed(2)}`, color: "text-accent" },
-                { icon: Clock, label: "Avg Shipping", value: `${niche.avgShippingDays || 0} days`, color: "text-blue-400" },
-                { icon: RotateCcw, label: "Return Rate", value: `${niche.avgReturnRate || 0}%`, color: (niche.avgReturnRate || 0) > 5 ? "text-red-400" : "text-emerald-400" },
-                { icon: Target, label: "Monthly Rev", value: `$${(niche.estimatedMonthlyRevenue || 0).toLocaleString()}`, color: "text-accent" },
+                { icon: TrendingUp, label: "Avg Margin", value: niche.avgMargin != null ? `${niche.avgMargin}%` : "n/a", color: "text-emerald-400" },
+                { icon: Users, label: "Saturation", value: `${niche.saturation || 0}% est.`, color: (niche.saturation || 0) > 60 ? "text-red-400" : "text-emerald-400" },
+                { icon: DollarSign, label: "Profit/Unit", value: niche.profitPerUnit != null ? `$${niche.profitPerUnit.toFixed(2)}` : "n/a", color: "text-accent" },
+                { icon: Clock, label: "Avg Shipping", value: niche.avgShippingDays != null ? `${niche.avgShippingDays} days` : "n/a", color: "text-blue-400" },
+                { icon: RotateCcw, label: "Return Rate", value: niche.avgReturnRate != null ? `${niche.avgReturnRate}%` : "n/a", color: (niche.avgReturnRate || 0) > 5 ? "text-red-400" : "text-emerald-400" },
+                { icon: Target, label: "Monthly Rev", value: niche.estimatedMonthlyRevenue != null ? `$${niche.estimatedMonthlyRevenue.toLocaleString()}` : "n/a", color: "text-accent" },
                 { icon: Globe, label: "Platforms", value: (niche.bestPlatforms || []).join(", "), color: "text-accent" },
               ].map((stat) => (
                 <div key={stat.label} className="p-3 rounded-xl bg-surface/50 border border-border/50">
@@ -187,6 +189,7 @@ export default function NicheDetail({ niche, onMission, onWatchlist, onListing }
             </div>
           </div>
         </div>
+        <p className="mt-4 text-[10px] text-muted-foreground">Sub-scores (demand, profit, competition, trend, seasonality) are heuristics from catalog product counts and average prices — not market measurement.</p>
       </div>
 
       {/* Trend History Chart */}
@@ -195,7 +198,11 @@ export default function NicheDetail({ niche, onMission, onWatchlist, onListing }
           <TrendingUp className="h-4 w-4 text-accent" />
           <h3 className="font-display text-sm font-semibold text-foreground">12-Month Trend History</h3>
         </div>
-        <TrendChart data={niche.weeklyData || []} color={heatColor} />
+        {(niche.weeklyData || []).length >= 2 ? (
+          <TrendChart data={niche.weeklyData || []} color={heatColor} />
+        ) : (
+          <p className="text-xs text-muted-foreground">Trend history not available — needs a historical demand API not connected yet.</p>
+        )}
       </div>
 
       {/* Top Products Breakdown */}
@@ -237,16 +244,24 @@ export default function NicheDetail({ niche, onMission, onWatchlist, onListing }
                   <td className="py-2.5 text-[11px] font-bold text-right">
                     <span className={product.margin >= 40 ? "text-emerald-400" : product.margin >= 25 ? "text-amber-400" : "text-red-400"}>{product.margin}%</span>
                   </td>
-                  <td className="py-2.5 text-[11px] text-muted-foreground text-right">{product.orders}</td>
+                  <td className="py-2.5 text-[11px] text-muted-foreground text-right">{product.orders ?? "—"}</td>
                   <td className="py-2.5 text-[11px] text-right">
-                    <div className="flex items-center justify-end gap-0.5">
-                      <Star className="h-2.5 w-2.5 text-amber-400 fill-amber-400" />
-                      <span className="text-foreground">{product.rating}</span>
-                    </div>
+                    {product.rating != null ? (
+                      <div className="flex items-center justify-end gap-0.5">
+                        <Star className="h-2.5 w-2.5 text-amber-400 fill-amber-400" />
+                        <span className="text-foreground">{product.rating}</span>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </td>
-                  <td className="py-2.5 text-[11px] text-muted-foreground text-right">{product.shippingDays}d</td>
+                  <td className="py-2.5 text-[11px] text-muted-foreground text-right">{product.shippingDays != null ? `${product.shippingDays}d` : "—"}</td>
                   <td className="py-2.5 text-[11px] text-right">
-                    <span className={product.returnRate > 5 ? "text-red-400" : "text-emerald-400"}>{product.returnRate}%</span>
+                    {product.returnRate != null ? (
+                      <span className={product.returnRate > 5 ? "text-red-400" : "text-emerald-400"}>{product.returnRate}%</span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -267,15 +282,15 @@ export default function NicheDetail({ niche, onMission, onWatchlist, onListing }
             <div className="flex items-center gap-4">
               <div>
                 <p className="text-[10px] text-muted-foreground">Source Price</p>
-                <p className="text-lg font-bold text-accent">${(niche.topProductPrice || 0).toFixed(2)}</p>
+                <p className="text-lg font-bold text-accent">{niche.topProductPrice != null ? `$${niche.topProductPrice.toFixed(2)}` : "n/a"}</p>
               </div>
               <div>
                 <p className="text-[10px] text-muted-foreground">Margin</p>
-                <p className="text-lg font-bold text-emerald-400">{niche.topProductMargin || 0}%</p>
+                <p className="text-lg font-bold text-emerald-400">{niche.topProductMargin != null ? `${niche.topProductMargin}%` : "n/a"}</p>
               </div>
               <div>
                 <p className="text-[10px] text-muted-foreground">Profit/Unit</p>
-                <p className="text-lg font-bold text-emerald-400">${(niche.profitPerUnit || 0).toFixed(2)}</p>
+                <p className="text-lg font-bold text-emerald-400">{niche.profitPerUnit != null ? `$${niche.profitPerUnit.toFixed(2)}` : "n/a"}</p>
               </div>
             </div>
           </div>
@@ -285,7 +300,7 @@ export default function NicheDetail({ niche, onMission, onWatchlist, onListing }
             <Target className="h-4 w-4 text-purple-400" />
             <h3 className="font-display text-sm font-semibold text-foreground">Seasonality</h3>
           </div>
-          <p className="text-xs text-foreground/80 mb-3">{niche.seasonality}</p>
+          <p className="text-xs text-foreground/80 mb-3">{niche.seasonality || "Seasonality notes not available yet."}</p>
           <div className="flex flex-wrap gap-1.5">
             {(niche.keywords || []).map((kw) => (
               <span key={kw} className="text-[10px] px-2 py-1 rounded-lg bg-surface/50 border border-border/50 text-muted-foreground">{kw}</span>
@@ -303,24 +318,29 @@ export default function NicheDetail({ niche, onMission, onWatchlist, onListing }
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="p-3 rounded-xl bg-surface/50 border border-border/50">
             <p className="text-[10px] text-muted-foreground mb-1">Stores Selling</p>
-            <p className="text-lg font-bold text-foreground">{niche.competition?.storeCount || 0}</p>
+            <p className="text-lg font-bold text-foreground">{niche.competition?.storeCount != null ? niche.competition.storeCount : "—"}</p>
           </div>
           <div className="p-3 rounded-xl bg-surface/50 border border-border/50">
             <p className="text-[10px] text-muted-foreground mb-1">Avg Store Rating</p>
             <div className="flex items-center gap-1">
               <Star className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />
-              <p className="text-lg font-bold text-foreground">{niche.competition?.avgStoreRating || 0}</p>
+              <p className="text-lg font-bold text-foreground">{niche.competition?.avgStoreRating != null ? niche.competition.avgStoreRating : "—"}</p>
             </div>
           </div>
           <div className="p-3 rounded-xl bg-surface/50 border border-border/50">
-            <p className="text-[10px] text-muted-foreground mb-1">Price Range</p>
-            <p className="text-sm font-bold text-foreground">${niche.competition?.priceRange?.min || 0} - ${niche.competition?.priceRange?.max || 0}</p>
+            <p className="text-[10px] text-muted-foreground mb-1">Price Range (est.)</p>
+            <p className="text-sm font-bold text-foreground">
+              {niche.competition?.priceRange
+                ? `$${niche.competition.priceRange.min} - $${niche.competition.priceRange.max}`
+                : "—"}
+            </p>
           </div>
           <div className="p-3 rounded-xl bg-surface/50 border border-border/50">
             <p className="text-[10px] text-muted-foreground mb-1">Saturation</p>
             <p className={`text-lg font-bold ${(niche.competition?.saturationLevel || "low") === "low" ? "text-emerald-400" : (niche.competition?.saturationLevel || "low") === "medium" ? "text-amber-400" : "text-red-400"}`}>{niche.competition?.saturationLevel || "low"}</p>
           </div>
         </div>
+        <p className="mt-2 text-[10px] text-muted-foreground">Price range is estimated from the niche&apos;s average catalog price. Store count and ratings need marketplace APIs not connected yet — shown as — when unavailable.</p>
         <div className="mt-4 p-3 rounded-xl bg-surface/30 border border-border/30">
           <div className="flex items-center gap-2 mb-2">
             <Globe className="h-3.5 w-3.5 text-muted-foreground" />
@@ -340,18 +360,22 @@ export default function NicheDetail({ niche, onMission, onWatchlist, onListing }
           <MapPin className="h-4 w-4 text-blue-400" />
           <h3 className="font-display text-sm font-semibold text-foreground">Geographic Demand</h3>
         </div>
-        <div className="space-y-3">
-          {(niche.geographicDemand || []).map((geo) => (
-            <div key={geo.country} className="flex items-center gap-3">
-              <span className="text-xs text-foreground font-medium w-28 shrink-0">{geo.country}</span>
-              <div className="flex-1 h-2 rounded-full bg-surface overflow-hidden">
-                <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-accent transition-all duration-700" style={{ width: `${(geo.demand / maxDemand) * 100}%` }} />
+        {(niche.geographicDemand || []).length === 0 ? (
+          <p className="text-xs text-muted-foreground">Geographic demand not available — needs a regional demand API not connected yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {(niche.geographicDemand || []).map((geo) => (
+              <div key={geo.country} className="flex items-center gap-3">
+                <span className="text-xs text-foreground font-medium w-28 shrink-0">{geo.country}</span>
+                <div className="flex-1 h-2 rounded-full bg-surface overflow-hidden">
+                  <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-accent transition-all duration-700" style={{ width: `${(geo.demand / maxDemand) * 100}%` }} />
+                </div>
+                <span className="text-[10px] text-muted-foreground w-8 text-right">{geo.demand}%</span>
+                <span className="text-[10px] text-emerald-400 font-medium w-16 text-right">AOV ${geo.avgOrderValue}</span>
               </div>
-              <span className="text-[10px] text-muted-foreground w-8 text-right">{geo.demand}%</span>
-              <span className="text-[10px] text-emerald-400 font-medium w-16 text-right">AOV ${geo.avgOrderValue}</span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Seasonal Calendar */}
@@ -360,6 +384,9 @@ export default function NicheDetail({ niche, onMission, onWatchlist, onListing }
           <Calendar className="h-4 w-4 text-purple-400" />
           <h3 className="font-display text-sm font-semibold text-foreground">Seasonal Demand Calendar</h3>
         </div>
+        {(niche.seasonalTrend || []).length === 0 ? (
+          <p className="text-xs text-muted-foreground">Seasonal demand not available — needs historical sales data not connected yet.</p>
+        ) : (
         <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-2">
           {(niche.seasonalTrend || []).map((season) => {
             const maxSeasonalDemand = Math.max(...(niche.seasonalTrend || []).map((s) => s.demand), 1);
@@ -376,6 +403,7 @@ export default function NicheDetail({ niche, onMission, onWatchlist, onListing }
             );
           })}
         </div>
+        )}
       </div>
 
       {/* Suppliers */}
@@ -384,6 +412,9 @@ export default function NicheDetail({ niche, onMission, onWatchlist, onListing }
           <Shield className="h-4 w-4 text-emerald-400" />
           <h3 className="font-display text-sm font-semibold text-foreground">Top Suppliers for This Niche</h3>
         </div>
+        {(niche.topSuppliers || []).length === 0 ? (
+          <p className="text-xs text-muted-foreground mb-3">No supplier scores yet — connect supplier APIs or browse the supplier directory below.</p>
+        ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {(niche.topSuppliers || []).map((s) => (
             <Link key={s.name} href="/suppliers" className="flex flex-col p-3 rounded-xl bg-surface/50 border border-border/50 hover:border-accent/20 transition-all">
@@ -417,6 +448,7 @@ export default function NicheDetail({ niche, onMission, onWatchlist, onListing }
             </Link>
           ))}
         </div>
+        )}
         <Link href={`/suppliers?category=${encodeURIComponent(niche.category || "")}`} className="w-full flex items-center justify-center gap-1.5 mt-4 py-2.5 rounded-xl bg-accent/10 border border-accent/20 text-accent text-xs font-semibold hover:bg-accent/20 transition-all">
           View All Suppliers <ArrowRight className="h-3 w-3" />
         </Link>
@@ -425,11 +457,15 @@ export default function NicheDetail({ niche, onMission, onWatchlist, onListing }
       {/* Related Niches */}
       <div className="glass rounded-2xl border border-border p-6">
         <h3 className="font-display text-sm font-semibold text-foreground mb-3">Related Niches</h3>
+        {(niche.relatedNiches || []).length === 0 ? (
+          <p className="text-xs text-muted-foreground">Related niches not available yet.</p>
+        ) : (
         <div className="flex flex-wrap gap-2">
           {(niche.relatedNiches || []).map((rn) => (
             <span key={rn} className="text-xs px-3 py-1.5 rounded-lg bg-surface/50 border border-border text-muted-foreground hover:text-foreground hover:border-accent/20 transition-all cursor-pointer">{rn}</span>
           ))}
         </div>
+        )}
       </div>
     </div>
   );

@@ -24,7 +24,7 @@ export interface ProductCategory {
   color: string;
   gradient: string;
   productCount: number;
-  avgMargin: number;
+  avgMargin: number | null;
   trending: boolean;
 }
 

@@ -90,7 +90,7 @@ export default function AIDailyPick({ pick }: { pick: AIDailyPickType }) {
             <div className="animate-pulse-badge flex h-7 w-7 items-center justify-center rounded-lg bg-accent/20 border border-accent/30">
               <Sparkles className="h-3.5 w-3.5 text-accent" />
             </div>
-            <h2 className="font-display text-sm font-bold text-foreground">AI Pick of the Day</h2>
+            <h2 className="font-display text-sm font-bold text-foreground">Top Pick of the Day</h2>
           </div>
           <div className="flex items-center gap-1.5">
             {pick.yesterdayPick && (
@@ -124,7 +124,7 @@ export default function AIDailyPick({ pick }: { pick: AIDailyPickType }) {
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
             <div className="absolute top-3 left-3 animate-pulse-badge px-2 py-1 rounded-full bg-accent text-white text-[9px] font-bold uppercase shadow-lg shadow-accent/30">
-              AI Pick
+              TOP PICK
             </div>
             <div className="absolute bottom-3 left-3 right-3">
               <div className="flex items-center gap-2">
@@ -204,7 +204,7 @@ export default function AIDailyPick({ pick }: { pick: AIDailyPickType }) {
           <div className="p-2.5 rounded-xl bg-surface/50 border border-border">
             <div className="flex items-center gap-1.5 mb-2">
               <Sparkles className="h-3 w-3 text-accent" />
-              <span className="text-[10px] font-semibold text-foreground">Why AI picked this</span>
+              <span className="text-[10px] font-semibold text-foreground">Why we scored this</span>
             </div>
             <div className="space-y-1.5">
               {pick.reasonPoints.slice(0, 3).map((point, i) => (

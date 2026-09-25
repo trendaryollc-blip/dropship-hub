@@ -24,14 +24,14 @@ describe("HowItWorks", () => {
 
   it("renders all three steps", () => {
     render(<HowItWorks />);
-    expect(screen.getByText("AI Discovers Winners")).toBeInTheDocument();
+    expect(screen.getByText("Find Winning Products")).toBeInTheDocument();
     expect(screen.getByText("Analyze & Compare")).toBeInTheDocument();
     expect(screen.getByText("Launch & Earn XP")).toBeInTheDocument();
   });
 
   it("renders step descriptions", () => {
     render(<HowItWorks />);
-    expect(screen.getByText(/AI scans 10\+ platforms daily/)).toBeInTheDocument();
+    expect(screen.getByText(/connected supplier platforms/)).toBeInTheDocument();
     expect(screen.getByText(/niche radar scores/)).toBeInTheDocument();
     expect(screen.getByText(/Push winning products/)).toBeInTheDocument();
   });

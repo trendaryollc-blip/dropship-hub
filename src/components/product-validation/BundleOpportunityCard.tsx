@@ -49,11 +49,12 @@ export default function BundleOpportunityCard({ data }: { data: BundleAnalysisRe
         <div className="rounded-xl bg-surface/40 p-4 border border-border/30">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="h-4 w-4 text-emerald-400" />
-            <p className="text-[10px] text-muted-foreground font-medium">Revenue Lift</p>
+            <p className="text-[10px] text-muted-foreground font-medium">Est. Revenue Lift</p>
           </div>
           <p className="text-lg font-display font-bold text-emerald-400">+{data.avgOrderValuePotential.lift}%</p>
           <p className="text-[9px] text-muted-foreground mt-1">Current: ${data.avgOrderValuePotential.current.toFixed(2)}</p>
           <p className="text-[9px] text-emerald-400 mt-0.5">Potential: ${data.avgOrderValuePotential.potential.toFixed(2)}</p>
+          <p className="text-[9px] text-muted-foreground mt-0.5">Rule-based heuristic, not measured</p>
         </div>
         <div className="rounded-xl bg-surface/40 p-4 border border-border/30">
           <div className="flex items-center gap-2 mb-2">
@@ -81,8 +82,8 @@ export default function BundleOpportunityCard({ data }: { data: BundleAnalysisRe
                     <p className="text-[12px] text-foreground font-medium truncate">{opp.name}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className={`text-[9px] px-1.5 py-0.5 rounded ${cfg.bg} ${cfg.color} font-medium capitalize`}>{opp.type}</span>
-                      <span className="text-[9px] text-emerald-400 font-medium">+{opp.expectedLift}% lift</span>
-                      <span className="text-[9px] text-muted-foreground">{opp.confidence}% confidence</span>
+                      <span className="text-[9px] text-emerald-400 font-medium">+{opp.expectedLift}% est. lift</span>
+                      <span className="text-[9px] text-muted-foreground">{Math.round(opp.confidence * 100)}% heuristic</span>
                     </div>
                   </div>
                 </div>

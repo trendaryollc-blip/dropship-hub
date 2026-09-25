@@ -30,7 +30,7 @@ interface ProviderData {
 }
 
 const PROVIDERS = [
-  { id: "groq", name: "Groq", freeTier: "14,400 req/day", usedFor: "Real-time price optimization", website: "https://console.groq.com" },
+  { id: "groq", name: "Groq", freeTier: "14,400 req/day", usedFor: "Chat assistant & listing text", website: "https://console.groq.com" },
   { id: "gemini", name: "Google Gemini", freeTier: "1,500 req/day", usedFor: "Product & market analysis", website: "https://ai.google.dev" },
   { id: "openai", name: "OpenAI", freeTier: "Pay per use", usedFor: "Advanced reasoning & analysis", website: "https://platform.openai.com" },
   { id: "deepseek", name: "DeepSeek", freeTier: "Pay per use", usedFor: "Budget-friendly analysis", website: "https://platform.deepseek.com" },

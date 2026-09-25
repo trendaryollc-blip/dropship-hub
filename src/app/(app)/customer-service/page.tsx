@@ -13,10 +13,10 @@ import type { Conversation, CSMessage, CSTemplate, Escalation, CSStats, Sentimen
 import { useToast } from "@/components/ui/Toast";
 
 function KPICard({ label, value, prefix, suffix, icon: Icon, color, delay }: {
-  label: string; value: number; prefix?: string; suffix?: string; icon: typeof Headphones; color: string; delay: number;
+  label: string; value: number | null; prefix?: string; suffix?: string; icon: typeof Headphones; color: string; delay: number;
 }) {
   const { ref, isInView } = useInView({ threshold: 0.3 });
-  const count = useAnimatedCounter(value, 1500, isInView);
+  const count = useAnimatedCounter(value ?? 0, 1500, isInView);
   return (
     <div ref={ref} className={`glass rounded-xl p-3 sm:p-4 transition-all duration-500 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transitionDelay: `${delay}ms` }}>
       <div className="flex items-center gap-2 sm:gap-3 mb-2">
@@ -24,7 +24,7 @@ function KPICard({ label, value, prefix, suffix, icon: Icon, color, delay }: {
           <Icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${color}`} />
         </div>
       </div>
-      <p className="font-display text-lg sm:text-2xl font-bold text-foreground">{prefix || ""}{count.toLocaleString()}{suffix || ""}</p>
+      <p className="font-display text-lg sm:text-2xl font-bold text-foreground">{value == null ? "—" : `${prefix || ""}${count.toLocaleString()}${suffix || ""}`}</p>
       <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-1">{label}</p>
     </div>
   );
@@ -81,8 +81,6 @@ function ChatThread({ messages, onSend }: { messages: CSMessage[]; onSend: (msg:
     setSending(false);
   };
 
-  const confidenceColor = (c: number) => c >= 90 ? "text-emerald-400 bg-emerald-400/10" : c >= 75 ? "text-amber-400 bg-amber-400/10" : "text-red-400 bg-red-400/10";
-
   return (
     <div className="flex flex-col h-[500px]">
       <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
@@ -91,10 +89,10 @@ function ChatThread({ messages, onSend }: { messages: CSMessage[]; onSend: (msg:
             <div className={`max-w-[85%] ${msg.role === "customer" ? "" : ""}`}>
               <div className={`flex items-center gap-1.5 mb-1 ${msg.role === "customer" ? "" : "justify-end"}`}>
                 {msg.role === "customer" ? <User className="h-3 w-3 text-muted-foreground" /> : <Bot className="h-3 w-3 text-accent" />}
-                <span className="text-[9px] sm:text-[10px] text-muted-foreground capitalize">{msg.role === "ai" ? "AI Agent" : msg.role}</span>
-                {msg.confidence !== undefined && (
-                  <span className={`px-1 py-0.5 rounded text-[8px] font-semibold ${confidenceColor(msg.confidence)}`}>
-                    {msg.confidence}% confidence
+                <span className="text-[9px] sm:text-[10px] text-muted-foreground capitalize">{msg.role === "ai" ? "Auto-reply (rule)" : msg.role}</span>
+                {msg.matchedRule && (
+                  <span className="px-1 py-0.5 rounded text-[8px] font-semibold text-muted-foreground bg-surface border border-border">
+                    {msg.matchedRule}
                   </span>
                 )}
                 {msg.sentiment && <SentimentBadge sentiment={msg.sentiment} />}
@@ -135,7 +133,7 @@ function EscalationPanel({ escalations }: { escalations: Escalation[] }) {
             <span className="text-xs sm:text-sm font-semibold text-foreground">{esc.customerName}</span>
             <span className={`text-[9px] sm:text-[10px] font-semibold ${statusColors[esc.status]}`}>{esc.status}</span>
           </div>
-          <p className="text-[9px] sm:text-[10px] text-muted-foreground mb-1.5">{reasonLabels[esc.reason]} &middot; {esc.confidence}% confidence{esc.urgencyScore ? ` &middot; Urgency: ${esc.urgencyScore}/10` : ""}</p>
+          <p className="text-[9px] sm:text-[10px] text-muted-foreground mb-1.5">{reasonLabels[esc.reason]}{typeof esc.confidence === "number" ? ` · ${esc.confidence}% confidence` : ""}{esc.urgencyScore ? ` · Urgency: ${esc.urgencyScore}/10` : ""}</p>
           <p className="text-[9px] sm:text-[10px] text-muted-foreground mb-1.5 italic">&ldquo;{esc.customerMessage}&rdquo;</p>
           <p className="text-[8px] sm:text-[9px] text-muted-foreground">{esc.reasonDetail}</p>
         </div>
@@ -362,7 +360,7 @@ export default function CustomerServicePage() {
           mutateEscalations((prev) => ({
             escalations: [...(prev?.escalations || []), {
               id: `esc-${Date.now()}`, conversationId: selectedConv, customerName: "Customer", reason: (data.escalationReason || "low_confidence") as Escalation["reason"],
-              reasonDetail: "Auto-escalated by AI", confidence: data.confidence || 0, customerMessage: content, status: "pending", urgencyScore: data.urgencyScore, createdAt: new Date().toISOString(),
+              reasonDetail: "Auto-escalated by rule", confidence: data.confidence ?? null, customerMessage: content, status: "pending", urgencyScore: data.urgencyScore, createdAt: new Date().toISOString(),
             }],
           }), false);
         }
@@ -423,9 +421,9 @@ export default function CustomerServicePage() {
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground">Customer Service</h1>
-            <span className="px-2 py-0.5 rounded-lg bg-accent/10 text-accent text-[10px] font-bold">AI POWERED</span>
+            <span className="px-2 py-0.5 rounded-lg bg-accent/10 text-accent text-[10px] font-bold">RULE-BASED</span>
           </div>
-          <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">AI-powered support with sentiment analysis, knowledge base, and smart escalation.</p>
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">Rule-based auto-replies (keyword), knowledge base, and escalation rules.</p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
           {escalations.filter((e) => e.status === "pending").length > 0 && (
@@ -457,7 +455,7 @@ export default function CustomerServicePage() {
                 <KPICard label="Active Conversations" value={stats.activeConversations} icon={MessageSquare} color="text-emerald-400" delay={0} />
                 <KPICard label="Escalation Queue" value={stats.escalatedQueue} icon={AlertTriangle} color="text-red-400" delay={100} />
                 <KPICard label="Resolved Today" value={stats.resolvedToday} icon={CheckCircle2} color="text-blue-400" delay={200} />
-                <KPICard label="AI Confidence" value={stats.avgConfidence} suffix="%" icon={Shield} color="text-purple-400" delay={300} />
+                <KPICard label="Avg Rule Match Score" value={stats.avgConfidence} suffix="%" icon={Shield} color="text-purple-400" delay={300} />
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -466,9 +464,9 @@ export default function CustomerServicePage() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between"><span className="text-[10px] sm:text-[11px] text-muted-foreground">Resolution Rate</span><span className="text-xs sm:text-sm font-bold text-emerald-400">{stats.resolutionRate}%</span></div>
                     <div className="flex-1 h-1.5 rounded-full bg-surface overflow-hidden"><div className="h-full rounded-full bg-emerald-400 transition-all" style={{ width: `${stats.resolutionRate}%` }} /></div>
-                    <div className="flex items-center justify-between"><span className="text-[10px] sm:text-[11px] text-muted-foreground">AI Handled</span><span className="text-xs sm:text-sm font-bold text-accent">{stats.aiHandledPercent}%</span></div>
+                    <div className="flex items-center justify-between"><span className="text-[10px] sm:text-[11px] text-muted-foreground">Auto-Handled</span><span className="text-xs sm:text-sm font-bold text-accent">{stats.aiHandledPercent}%</span></div>
                     <div className="flex-1 h-1.5 rounded-full bg-surface overflow-hidden"><div className="h-full rounded-full bg-accent transition-all" style={{ width: `${stats.aiHandledPercent}%` }} /></div>
-                    <div className="flex items-center justify-between"><span className="text-[10px] sm:text-[11px] text-muted-foreground">Avg Response</span><span className="text-xs sm:text-sm font-bold text-foreground">{stats.avgResponseTime}</span></div>
+                    <div className="flex items-center justify-between"><span className="text-[10px] sm:text-[11px] text-muted-foreground">Avg Response</span><span className="text-xs sm:text-sm font-bold text-foreground">{stats.avgResponseTime ?? "—"}</span></div>
                     <div className="flex items-center justify-between"><span className="text-[10px] sm:text-[11px] text-muted-foreground">Total Handled</span><span className="text-xs sm:text-sm font-bold text-foreground">{stats.totalHandled}</span></div>
                   </div>
                 </div>

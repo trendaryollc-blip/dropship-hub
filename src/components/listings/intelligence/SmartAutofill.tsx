@@ -140,7 +140,7 @@ export default function SmartAutofill({ title, description, price: _price, categ
           </div>
           <div>
             <p className="text-xs font-semibold text-foreground">Smart Suggestions</p>
-            <p className="text-[10px] text-muted-foreground">AI-powered autofill ideas</p>
+            <p className="text-[10px] text-muted-foreground">Suggested from your listing text</p>
           </div>
         </div>
         <button onClick={generateSuggestions} className="p-1.5 rounded-lg hover:bg-surface-hover transition-colors">
@@ -164,20 +164,11 @@ export default function SmartAutofill({ title, description, price: _price, categ
               }}
               className="w-full glass rounded-xl p-2.5 text-left hover:border-accent/20 transition-all group"
             >
-              <div className="flex items-start justify-between gap-2 mb-1">
+              <div className="mb-1">
                 <span className="text-[10px] font-semibold text-accent uppercase">{s.field.replace("spec:", "")}</span>
-                <span className={`text-[8px] px-1.5 py-0.5 rounded ${s.source === "ai" ? "bg-purple-500/10 text-purple-400" : s.source === "competitor" ? "bg-blue-500/10 text-blue-400" : "bg-emerald-500/10 text-emerald-400"}`}>
-                  {s.source}
-                </span>
               </div>
               <p className="text-[10px] text-foreground line-clamp-2">{s.value}</p>
-              <div className="flex items-center justify-between mt-1">
-                <div className="flex items-center gap-1">
-                  <div className="h-1 w-12 rounded-full bg-surface overflow-hidden">
-                    <div className="h-full bg-accent rounded-full" style={{ width: `${s.confidence * 100}%` }} />
-                  </div>
-                  <span className="text-[8px] text-muted-foreground">{Math.round(s.confidence * 100)}%</span>
-                </div>
+              <div className="flex items-center justify-end mt-1">
                 <span className="text-[9px] text-accent opacity-0 group-hover:opacity-100 transition-opacity">Click to apply</span>
               </div>
             </button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { saveCalcHistory, getCalcHistory, type CalcHistoryEntry } from "@/lib/data";
@@ -26,13 +26,20 @@ export default function LandedCostCalculatorPage() {
 
   const result: LandedCostCalc = calculateLandedCost(lcCost, lcShipping, tariff, customsDuty, insurance, lcPlatformFee, otherFees, lcQty);
 
-  const fetchHistory = async () => {
-    if (!user) return;
+  const fetchHistory = useCallback(async () => {
+    if (!user) {
+      setHistory([]);
+      return;
+    }
     try {
       const entries = await getCalcHistory(user.uid, "landed");
       setHistory(entries.slice(0, 5));
     } catch (e) { console.warn("[LandedCalc] Error:", e instanceof Error ? e.message : e); }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
 
   const handleSave = async () => {
     if (!user) return;
@@ -172,7 +179,7 @@ export default function LandedCostCalculatorPage() {
               ))}
             </div>
             <div className="mt-6 p-4 rounded-xl bg-emerald-400/5 border border-emerald-400/20">
-              <p className="text-sm font-medium text-emerald-400 mb-1">Suggested Retail: ${result.suggestedRetail}</p>
+              <p className="text-sm font-medium text-emerald-400 mb-1">Est. retail (2.5× markup heuristic): ${result.suggestedRetail}</p>
               <p className="text-xs text-muted-foreground">Profit at suggested price: ${result.profitAtSuggested} per unit</p>
             </div>
           </div>
@@ -182,7 +189,7 @@ export default function LandedCostCalculatorPage() {
               <Info className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-amber-400">Tariff Alert</p>
-                <p className="text-xs text-muted-foreground mt-1">Section 301 tariffs on Chinese goods are currently 25%. Factor this into your pricing strategy.</p>
+                <p className="text-xs text-muted-foreground mt-1">Section 301 tariffs on Chinese goods vary by product category — verify the current rate (ustr.gov) before pricing. Factor tariffs into your landed cost.</p>
               </div>
             </div>
           )}

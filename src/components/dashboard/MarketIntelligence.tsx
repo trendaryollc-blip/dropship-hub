@@ -26,7 +26,7 @@ export function MarketIntelligence({ heatmap, ticker }: { heatmap: HeatmapCatego
             <div className="flex items-center gap-2">
               <Flame className="h-4 w-4 text-orange-400" />
               <span className="text-sm font-semibold text-white">Market Heatmap</span>
-              <span className="flex items-center gap-1 text-[9px] text-emerald-400"><Activity className="h-2.5 w-2.5" />Live</span>
+              <span className="flex items-center gap-1 text-[9px] text-emerald-400" title="Category listing density from CJ search (cached ~5 min)">CJ feed</span>
             </div>
             <Link href="/products" className="text-[10px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 transition-colors">
               Full Map <ArrowUpRight className="h-3 w-3" />
@@ -64,20 +64,18 @@ export function MarketIntelligence({ heatmap, ticker }: { heatmap: HeatmapCatego
                   <div key={cat.category} className={`p-3 rounded-xl bg-gradient-to-br ${getColor(cat.heat)} border transition-all duration-300 hover:scale-[1.03]`}>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[10px] font-semibold text-white truncate">{cat.category}</span>
-                      <span className={`text-[10px] font-bold ${getTxt(cat.heat)}`}>{cat.heat}</span>
+                      <span className={`text-[10px] font-bold ${getTxt(cat.heat)}`} title="Estimate from listing counts, price spread and rating signals">Est. {cat.heat}</span>
                     </div>
                     <p className="text-[8px] text-gray-500 truncate mb-1">{cat.topProduct}</p>
                     <div className="flex items-center justify-between">
-                      <span className="text-[8px] text-emerald-400/70">{cat.avgMargin}% margin</span>
-                      <span className={`text-[8px] ${cat.trend === "up" ? "text-emerald-400" : cat.trend === "down" ? "text-red-400" : "text-gray-500"}`}>
+                      <span className="text-[8px] text-emerald-400/70" title="Assumed sell price (2.5× + $4.99) vs source price — estimated">Est. {cat.avgMargin}% margin</span>
+                      <span
+                        className={`text-[8px] ${cat.trend === "up" ? "text-emerald-400" : cat.trend === "down" ? "text-red-400" : "text-gray-500"}`}
+                        title="Derived from average product rating (not a time-series price trend)"
+                      >
                         {cat.trend === "up" ? "↑" : cat.trend === "down" ? "↓" : "→"}
                       </span>
                     </div>
-                    {cat.velocity !== 0 && (
-                      <span className={`text-[8px] font-semibold ${cat.velocity > 0 ? "text-emerald-400" : "text-red-400"}`}>
-                        {cat.velocity > 0 ? "+" : ""}{cat.velocity}%/wk
-                      </span>
-                    )}
                   </div>
                 );
               })}
@@ -91,7 +89,7 @@ export function MarketIntelligence({ heatmap, ticker }: { heatmap: HeatmapCatego
             <div className="flex items-center gap-2 mb-3">
               <Activity className="h-4 w-4 text-green-400" />
               <span className="text-xs font-semibold text-white">Market Pulse</span>
-              <span className="ml-auto flex items-center gap-1 text-[9px] text-green-400"><span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />Live</span>
+              <span className="ml-auto flex items-center gap-1 text-[9px] text-green-400" title="Price vs category average from CJ search (cached)">CJ prices</span>
             </div>
             {ticker.length === 0 ? (
               <p className="text-[10px] text-gray-600 text-center py-3">No ticker data</p>

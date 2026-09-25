@@ -178,7 +178,8 @@ describe("Shipping Tools", () => {
       expect(result.success).toBe(true);
       expect(result.data).toEqual(mockPredictionResult);
       expect(result.summary).toContain("Predicted delivery: 12 days");
-      expect(result.summary).toContain("85% confidence");
+      expect(result.summary).toContain("general default estimate");
+      expect(result.summary).not.toContain("confidence");
       expect(result.summary).toContain("2025-01-20");
       expect(result.summary).toContain("minimal");
     });

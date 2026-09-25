@@ -98,18 +98,18 @@ describe("MarketplaceHeatmap", () => {
     render(<MarketplaceHeatmap categories={[categories[0]]} />);
     const detailsButton = screen.getByText("Details");
     fireEvent.click(detailsButton);
-    expect(screen.getByText("Demand score")).toBeInTheDocument();
+    expect(screen.getByText("Listing density score")).toBeInTheDocument();
     expect(screen.getByText("85/100")).toBeInTheDocument();
     expect(screen.getByText("Explore Electronics")).toBeInTheDocument();
 
     const lessButton = screen.getByText("Less");
     fireEvent.click(lessButton);
-    expect(screen.queryByText("Demand score")).not.toBeInTheDocument();
+    expect(screen.queryByText("Listing density score")).not.toBeInTheDocument();
   });
 
   it("renders weekly bar chart", () => {
     render(<MarketplaceHeatmap categories={[categories[0]]} />);
-    const bars = screen.getAllByText("7-day trend");
+    const bars = screen.getAllByText("Top 7 prices");
     expect(bars.length).toBeGreaterThan(0);
   });
 
@@ -120,10 +120,10 @@ describe("MarketplaceHeatmap", () => {
     expect(screen.getByText("stable")).toBeInTheDocument();
   });
 
-  it("renders velocity percentages", () => {
+  it("renders listing density index", () => {
     render(<MarketplaceHeatmap categories={categories} />);
-    expect(screen.getByText("+8%/wk")).toBeInTheDocument();
-    expect(screen.getByText("-3%/wk")).toBeInTheDocument();
-    expect(screen.getByText("+12%/wk")).toBeInTheDocument();
+    expect(screen.getByText("density +8")).toBeInTheDocument();
+    expect(screen.getByText("density -3")).toBeInTheDocument();
+    expect(screen.getByText("density +12")).toBeInTheDocument();
   });
 });

@@ -30,6 +30,9 @@ import { matchProductByName } from "@/lib/search/match-product";
 import { PageErrorBoundary } from "@/components/ui/PageErrorBoundary";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
+import DataSourceBadge from "@/components/ui/DataSourceBadge";
+import DataUnavailable from "@/components/ui/DataUnavailable";
+import ComingSoon from "@/components/ui/ComingSoon";
 
 interface SearchResult {
   id: string;
@@ -117,10 +120,10 @@ interface NicheData {
   category: string;
   heat: number;
   productCount: number;
-  avgMargin: number;
-  growth: number;
-  trend: "up" | "down" | "stable";
-  avgSellingPrice: number;
+  avgMargin: number | null;
+  growth: number | null;
+  trend: "up" | "down" | "stable" | null;
+  avgSellingPrice: number | null;
 }
 
 interface CategoryData {
@@ -129,7 +132,7 @@ interface CategoryData {
   icon: string;
   image: string;
   productCount: number;
-  avgMargin: number;
+  avgMargin: number | null;
   trending: boolean;
   query: string;
 }
@@ -257,7 +260,7 @@ function EmptyState({ onAskAI }: { onAskAI?: (q: string) => void }) {
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-500/15 to-purple-500/15 text-violet-400 border border-violet-500/20 text-sm font-medium hover:border-violet-500/40 transition-all mb-4"
         >
           <Sparkles className="h-4 w-4" />
-          Ask AI to find products for me
+          Smart search (filter parser)
         </button>
       )}
       <div className="flex items-center justify-center gap-2 flex-wrap">
@@ -332,12 +335,12 @@ function TrendingSection() {
         <div className="flex items-center gap-2">
           <Flame className="h-4 w-4 text-accent-warm" />
           <div>
-            <h3 className="font-display text-sm font-semibold text-foreground">Trending Right Now</h3>
-            <p className="text-[10px] text-muted-foreground">Real products with highest profit potential</p>
+            <h3 className="font-display text-sm font-semibold text-foreground">Fresh from live search</h3>
+            <p className="text-[10px] text-muted-foreground">Latest live search results (price ascending)</p>
           </div>
           {products.length > 0 && (
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent-warm/10 text-accent-warm font-medium animate-pulse-badge">
-              {products.length} hot
+              {products.length} live
             </span>
           )}
         </div>
@@ -354,7 +357,7 @@ function TrendingSection() {
       {!loading && products.length === 0 && (
         <div className="glass rounded-2xl p-6 text-center">
           <Package className="h-8 w-8 text-muted-foreground/20 mx-auto mb-2" />
-          <p className="text-xs text-muted-foreground">No trending data available right now</p>
+          <p className="text-xs text-muted-foreground">No live search results available right now</p>
           <p className="text-[10px] text-muted-foreground/60 mt-1">Try searching for products above</p>
         </div>
       )}
@@ -416,24 +419,24 @@ function TrendingSection() {
                           <p className="text-sm font-bold text-emerald-400">
                             ${(product.price ?? 0).toFixed(2)}
                             {product.profit != null && (
-                              <span className="text-[10px] font-normal text-muted-foreground"> <span className="line-through">${(product.sellPrice ?? 0).toFixed(2)}</span> ~${product.profit.toFixed(2)} profit</span>
+                              <span title="Estimated from sell price − source price when available" className="text-[10px] font-normal text-muted-foreground"> <span className="line-through">${(product.sellPrice ?? 0).toFixed(2)}</span> ~${product.profit.toFixed(2)} profit est.</span>
                             )}
                           </p>
                         </div>
                         {product.margin != null && (
-                          <span className="text-[10px] text-muted-foreground bg-surface/80 px-1.5 py-0.5 rounded-full">{product.margin}%</span>
+                          <span title="Estimated margin — enter real COGS in the calculator for accuracy" className="text-[10px] text-muted-foreground bg-surface/80 px-1.5 py-0.5 rounded-full">{product.margin}% est.</span>
                         )}
                       </div>
 
                       <div className="h-px bg-border/50" />
 
                       {product.confidence != null && (
-                        <div className="flex items-center gap-1.5">
+                        <div title="Estimated score from live search signals — not an AI market prediction" className="flex items-center gap-1.5">
                           <Flame className="h-3 w-3 text-accent-warm shrink-0" />
                           <div className="flex-1 h-1.5 rounded-full bg-surface overflow-hidden">
                             <div className="h-full rounded-full bg-gradient-to-r from-accent to-emerald-400" style={{ width: `${product.confidence}%` }} />
                           </div>
-                          <span className="text-[9px] text-muted-foreground shrink-0">{product.confidence}</span>
+                          <span className="text-[9px] text-muted-foreground shrink-0">{product.confidence} est.</span>
                         </div>
                       )}
 
@@ -458,8 +461,14 @@ function TrendingSection() {
 
 function NichesSection() {
   const { ref, isInView } = useInView({ threshold: 0.1 });
-  const { data, isLoading: loading } = useAPI<{ niches?: NicheData[] }>("/api/niches");
+  const { data, isLoading: loading } = useAPI<{
+    niches?: NicheData[];
+    isFallback?: boolean;
+    reason?: string;
+    setup?: { what?: string; whereToGet?: string; whereToSet?: string };
+  }>("/api/niches");
   const niches = (data?.niches || []).slice(0, 8);
+  const isFallback = Boolean(data?.isFallback);
 
   return (
     <div ref={ref} className={`transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
@@ -468,12 +477,17 @@ function NichesSection() {
           <Sparkles className="h-4 w-4 text-purple-400" />
           <div>
             <h3 className="font-display text-sm font-semibold text-foreground">Popular Niches</h3>
-            <p className="text-[10px] text-muted-foreground">Real CJ categories ranked by profit potential</p>
+            <p className="text-[10px] text-muted-foreground">Live CJ categories with real product counts and prices</p>
           </div>
+          {!loading && !isFallback && niches.length > 0 && (
+            <DataSourceBadge source="live" className="ml-1" />
+          )}
         </div>
-        <Link href="/products/niches" className="text-xs text-accent hover:text-accent-hover transition-colors flex items-center gap-1">
-          View all <ArrowRight className="h-3 w-3" />
-        </Link>
+        {!isFallback && (
+          <Link href="/products/niches" className="text-xs text-accent hover:text-accent-hover transition-colors flex items-center gap-1">
+            View all <ArrowRight className="h-3 w-3" />
+          </Link>
+        )}
       </div>
 
       {loading && (
@@ -487,14 +501,26 @@ function NichesSection() {
         </div>
       )}
 
-      {!loading && niches.length === 0 && (
+      {!loading && isFallback && (
+        <DataUnavailable
+          title="Niches require CJ API"
+          reason={data?.reason || "Live niche data is unavailable until CJ Dropshipping is configured."}
+          setup={{
+            what: data?.setup?.what || "CJ Dropshipping API key",
+            whereToGet: data?.setup?.whereToGet || "https://developers.cjdropshipping.com/",
+            whereToSet: data?.setup?.whereToSet || "CJ_API_KEY",
+          }}
+        />
+      )}
+
+      {!loading && !isFallback && niches.length === 0 && (
         <div className="glass rounded-2xl p-6 text-center">
           <Sparkles className="h-8 w-8 text-muted-foreground/20 mx-auto mb-2" />
           <p className="text-xs text-muted-foreground">No niche data available</p>
         </div>
       )}
 
-      {!loading && niches.length > 0 && (
+      {!loading && !isFallback && niches.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {niches.map((niche, i) => {
             const trendColor = niche.trend === "up" ? "text-emerald-400" : niche.trend === "down" ? "text-red-400" : "text-muted-foreground";
@@ -516,15 +542,19 @@ function NichesSection() {
                         <span className="text-4xl opacity-20">{niche.icon}</span>
                       </div>
                     )}
-                    <div className={`absolute top-2 right-2 flex items-center gap-0.5 px-1.5 py-0.5 rounded-md backdrop-blur-sm ${trendBg}`}>
-                      <span className={`text-[9px] font-bold ${trendColor}`}>{niche.growth > 0 ? "+" : ""}{niche.growth}%</span>
-                    </div>
+                    {niche.growth != null && (
+                      <div className={`absolute top-2 right-2 flex items-center gap-0.5 px-1.5 py-0.5 rounded-md backdrop-blur-sm ${trendBg}`}>
+                        <span className={`text-[9px] font-bold ${trendColor}`}>{niche.growth > 0 ? "+" : ""}{niche.growth}%</span>
+                      </div>
+                    )}
                   </div>
                   <div className="p-3">
                     <h4 className="text-sm font-medium text-foreground group-hover:text-accent transition-colors mb-1 line-clamp-1">{niche.name}</h4>
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] text-muted-foreground">{niche.productCount} products</span>
-                      <span className="text-[10px] text-muted-foreground">${niche.avgSellingPrice.toFixed(0)} avg</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {niche.avgSellingPrice != null ? `$${niche.avgSellingPrice.toFixed(0)} avg` : "price n/a"}
+                      </span>
                     </div>
                   </div>
                 </Link>
@@ -549,8 +579,11 @@ function CategoriesSection() {
           <Compass className="h-4 w-4 text-cyan-400" />
           <div>
             <h3 className="font-display text-sm font-semibold text-foreground">Browse by Category</h3>
-            <p className="text-[10px] text-muted-foreground">Real categories with live product counts</p>
+            <p className="text-[10px] text-muted-foreground">Live CJ product counts per category</p>
           </div>
+          {!loading && categories.length > 0 && (
+            <DataSourceBadge source="live" className="ml-1" />
+          )}
         </div>
       </div>
 
@@ -573,6 +606,13 @@ function CategoriesSection() {
       )}
 
       {!loading && categories.length > 0 && (
+        <>
+        <ComingSoon
+          title="Category margins"
+          whatNeeded="Average margin by category needs supplier cost data per product — not available from CJ category search alone."
+          howToGet="Connect cost APIs or enter COGS in the calculator to estimate margins."
+          className="mb-3"
+        />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {categories.map((cat, i) => (
             <div key={cat.id} className={`transition-all duration-500 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transitionDelay: `${i * 60}ms` }}>
@@ -605,13 +645,14 @@ function CategoriesSection() {
                   </h3>
                   <div className="flex items-center gap-3 mt-1">
                     <span className="text-[10px] text-muted-foreground">{cat.productCount.toLocaleString()} products</span>
-                    <span className="text-[10px] text-muted-foreground">~{cat.avgMargin}% margin</span>
+                    <span className="text-[10px] text-muted-foreground">margin n/a</span>
                   </div>
                 </div>
               </Link>
             </div>
           ))}
         </div>
+        </>
       )}
     </div>
   );
@@ -1206,7 +1247,7 @@ function ProductsContent() {
     window.open(`/ai?q=${encodeURIComponent(prompt)}`, "_blank");
   }, []);
 
-  // AI Ask handler (Feature 2: LLM-powered intent parsing)
+  // AI Ask handler (Feature 2: local rule-based intent parsing)
   const handleAskAI = useCallback(async (naturalLanguageQuery: string) => {
     try {
       // Use local intent parser for instant structured extraction

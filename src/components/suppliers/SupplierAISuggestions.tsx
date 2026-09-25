@@ -61,8 +61,8 @@ export default function SupplierAISuggestions() {
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-accent" />
           <div>
-            <h3 className="font-display text-sm font-semibold text-foreground">AI Recommended Suppliers</h3>
-            <p className="text-[10px] text-muted-foreground">Based on your product portfolio and order history</p>
+            <h3 className="font-display text-sm font-semibold text-foreground">Supplier Suggestions</h3>
+            <p className="text-[10px] text-muted-foreground">Matched from your product portfolio — rules-based, not a model</p>
           </div>
         </div>
         <button
@@ -77,7 +77,7 @@ export default function SupplierAISuggestions() {
       {loading && suggestions.length === 0 && (
         <div className="glass rounded-2xl p-8 text-center">
           <Loader2 className="h-8 w-8 text-accent mx-auto mb-3 animate-spin" />
-          <p className="text-sm text-muted-foreground">AI is analyzing your supplier needs...</p>
+          <p className="text-sm text-muted-foreground">Matching suppliers to your portfolio...</p>
         </div>
       )}
 
@@ -122,10 +122,10 @@ export default function SupplierAISuggestions() {
         >
           <Sparkles className="h-8 w-8 text-accent/30 mx-auto mb-2 group-hover:text-accent/60 transition-colors" />
           <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
-            Get AI-recommended suppliers for your products
+            Find supplier suggestions for your products
           </p>
           <p className="text-[10px] text-muted-foreground/60 mt-1">
-            AI matches suppliers to your portfolio, order history, and needs
+            Rules-based matches from your portfolio and needs — a real recommendation model is coming soon
           </p>
         </button>
       )}

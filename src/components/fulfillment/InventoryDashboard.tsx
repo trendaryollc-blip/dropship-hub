@@ -1,6 +1,8 @@
 "use client";
 
-import { Loader2, Package, AlertTriangle, RefreshCw } from "lucide-react";
+import { Loader2, Package, RefreshCw } from "lucide-react";
+import EmptyState from "@/components/ui/EmptyState";
+import DataUnavailable from "@/components/ui/DataUnavailable";
 import type { InventoryDashboardData } from "@/types/fulfillment";
 
 interface Props {
@@ -21,19 +23,6 @@ function StatCard({ label, value, icon: Icon, color }: { label: string; value: s
   );
 }
 
-const SEVERITY_STYLES = {
-  out_of_stock: { icon: "●", color: "text-red-400", bg: "bg-red-500/10 border-red-500/20" },
-  critical: { icon: "▲", color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20" },
-  low: { icon: "◆", color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/20" },
-} as const;
-
-const STATUS_STYLES = {
-  healthy: "bg-emerald-500/20 text-emerald-400",
-  low: "bg-amber-500/20 text-amber-400",
-  critical: "bg-orange-500/20 text-orange-400",
-  stockout: "bg-red-500/20 text-red-400",
-} as const;
-
 export default function InventoryDashboard({ data, loading, onRefresh }: Props) {
   if (loading) {
     return (
@@ -49,51 +38,45 @@ export default function InventoryDashboard({ data, loading, onRefresh }: Props) 
     );
   }
 
+  const header = (
+    <div className="flex items-center justify-between">
+      <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+        <Package className="h-4 w-4 text-accent" /> Inventory Dashboard
+      </h2>
+      <button onClick={onRefresh} className="p-1.5 rounded-lg hover:bg-surface transition-colors">
+        <RefreshCw className="h-4 w-4 text-muted-foreground" />
+      </button>
+    </div>
+  );
+
+  if (data.summary.totalSKUs === 0) {
+    return (
+      <div className="space-y-4">
+        {header}
+        <EmptyState
+          iconName="products"
+          title="No products sold in the last 30 days"
+          description="SKU counts, units per order, and 30-day COGS appear once your fulfillment orders contain line items."
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-          <Package className="h-4 w-4 text-accent" /> Inventory Dashboard
-        </h2>
-        <button onClick={onRefresh} className="p-1.5 rounded-lg hover:bg-surface transition-colors">
-          <RefreshCw className="h-4 w-4 text-muted-foreground" />
-        </button>
-      </div>
+      {header}
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <StatCard label="Total SKUs" value={data.summary.totalSKUs} icon={Package} color="text-blue-400" />
-        <StatCard label="Low Stock" value={data.summary.lowStockCount} icon={AlertTriangle} color="text-amber-400" />
-        <StatCard label="Out of Stock" value={data.summary.outOfStockCount} icon={AlertTriangle} color="text-red-400" />
-        <StatCard label="Avg Stock Level" value={data.summary.avgStockLevel} icon={Package} color="text-purple-400" />
-        <StatCard label="Total Value" value={`$${data.summary.totalInventoryValue.toLocaleString()}`} icon={Package} color="text-emerald-400" />
+        <StatCard label="Avg units/order" value={data.summary.avgUnitsPerOrder} icon={Package} color="text-purple-400" />
+        <StatCard label="30-day COGS" value={`$${data.summary.totalCogs30d.toLocaleString()}`} icon={Package} color="text-emerald-400" />
       </div>
 
-      {data.alerts.length > 0 && (
-        <div className="glass rounded-lg p-4">
-          <h3 className="text-xs font-semibold text-foreground mb-3">
-            Stock Alerts ({data.alerts.length})
-          </h3>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {data.alerts.map((alert) => {
-              const sev = SEVERITY_STYLES[alert.severity];
-              return (
-                <div
-                  key={alert.productId}
-                  className={`flex items-start gap-2 p-2 rounded border ${sev.bg}`}
-                >
-                  <span className={`${sev.color} text-xs mt-0.5`}>{sev.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] text-foreground">{alert.productName}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {alert.supplierName} — Stock: {alert.currentStock} (reorder: {alert.reorderPoint})
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      <DataUnavailable
+        title="Stock levels not tracked"
+        reason="These numbers come from your last 30 days of fulfillment orders. Per-SKU stock counts aren't stored, so low-stock, out-of-stock, and days-of-stock can't be shown honestly yet."
+        setup={{ what: "Per-SKU stock counts from a supplier or inventory feed" }}
+      />
 
       <div className="glass rounded-lg p-4">
         <h3 className="text-xs font-semibold text-foreground mb-3">Top Products by Revenue</h3>
@@ -102,11 +85,9 @@ export default function InventoryDashboard({ data, loading, onRefresh }: Props) 
             <thead>
               <tr className="border-b border-white/10">
                 <th className="text-left py-2 text-muted-foreground font-medium">Product</th>
-                <th className="text-right py-2 text-muted-foreground font-medium">Sold</th>
+                <th className="text-right py-2 text-muted-foreground font-medium">Units sold (30d)</th>
                 <th className="text-right py-2 text-muted-foreground font-medium">Revenue</th>
-                <th className="text-right py-2 text-muted-foreground font-medium">Daily Demand</th>
-                <th className="text-right py-2 text-muted-foreground font-medium">Days of Stock</th>
-                <th className="text-right py-2 text-muted-foreground font-medium">Status</th>
+                <th className="text-right py-2 text-muted-foreground font-medium">Daily demand (30d avg)</th>
               </tr>
             </thead>
             <tbody>
@@ -116,12 +97,6 @@ export default function InventoryDashboard({ data, loading, onRefresh }: Props) 
                   <td className="py-2 text-right text-foreground">{product.totalSold}</td>
                   <td className="py-2 text-right text-foreground">${product.revenue.toLocaleString()}</td>
                   <td className="py-2 text-right text-foreground">{product.avgDailyDemand}/d</td>
-                  <td className="py-2 text-right text-foreground">{product.daysOfStock}d</td>
-                  <td className="py-2 text-right">
-                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${STATUS_STYLES[product.status]}`}>
-                      {product.status}
-                    </span>
-                  </td>
                 </tr>
               ))}
             </tbody>

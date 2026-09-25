@@ -383,22 +383,23 @@ export default function PriceWarPage() {
     setShowAdd(false);
   };
 
-  const handleExecute = async (dryRun: boolean = false) => {
-    if (!dryRun) {
+  const handleExecute = async (mode: "dry" | "apply" = "apply") => {
+    if (mode === "apply") {
       setExecuteConfirm(true);
       return;
     }
-    await runExecute(dryRun);
+    await runExecute(mode);
   };
 
-  const runExecute = async (dryRun: boolean) => {
+  const runExecute = async (mode: "dry" | "apply") => {
     setExecuteConfirm(false);
     setExecuting(true);
     try {
-      await authJson("/api/ai/price-war/execute", { dryRun });
+      const res = await authJson("/api/ai/price-war/execute", mode === "dry" ? { dryRun: true } : { apply: true }) as { dryRun?: boolean } | null | undefined;
       mutateRules();
       mutateLogs();
-      toastSuccess(dryRun ? "Dry run completed — no prices changed" : "Price check executed and adjustments applied");
+      const wasDryRun = typeof res?.dryRun === "boolean" ? res.dryRun : mode === "dry";
+      toastSuccess(wasDryRun ? "Dry run completed — no prices changed" : "Price check executed and adjustments applied");
     } catch (e) { console.error("[PriceWar] Failed to run price check:", e instanceof Error ? e.message : e); toastError(e instanceof Error ? e.message : "Failed to run price check"); }
     finally { setExecuting(false); }
   };
@@ -503,9 +504,9 @@ export default function PriceWarPage() {
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground">Price War Bot</h1>
-            <span className="px-2 py-0.5 rounded-lg bg-emerald-400/10 text-emerald-400 text-[10px] font-bold">AI POWERED</span>
+            <span className="px-2 py-0.5 rounded-lg bg-emerald-400/10 text-emerald-400 text-[10px] font-bold">RULE-BASED</span>
           </div>
-          <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">Monitor competitor prices 24/7 and auto-adjust to stay competitive while maintaining margins.</p>
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">Compare your prices against competitor listings and adjust them by rule while protecting your margin floors. Checks run on demand.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Tooltip content="Replay the guided tour" position="bottom">
@@ -527,13 +528,13 @@ export default function PriceWarPage() {
             </button>
           </Tooltip>
           <Tooltip content="Test all rules without changing any prices" position="bottom">
-            <button data-tour="dry-run" onClick={() => handleExecute(true)} disabled={executing} className="px-3 py-1.5 rounded-xl bg-surface border border-border text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-all flex items-center gap-1.5">
+            <button data-tour="dry-run" onClick={() => handleExecute("dry")} disabled={executing} className="px-3 py-1.5 rounded-xl bg-surface border border-border text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-all flex items-center gap-1.5">
               {executing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
               Dry Run
             </button>
           </Tooltip>
           <Tooltip content="Fetch real competitor prices and apply adjustments" position="bottom">
-            <button data-tour="execute-check" onClick={() => handleExecute(false)} disabled={executing} className="px-3 py-1.5 rounded-xl bg-accent text-white text-[10px] font-semibold hover:bg-accent/80 transition-all flex items-center gap-1.5">
+            <button data-tour="execute-check" onClick={() => handleExecute("apply")} disabled={executing} className="px-3 py-1.5 rounded-xl bg-accent text-white text-[10px] font-semibold hover:bg-accent/80 transition-all flex items-center gap-1.5">
               {executing ? <Loader2 className="h-3 w-3 animate-spin" /> : <DollarSign className="h-3 w-3" />}
               Execute Check
             </button>
@@ -568,7 +569,7 @@ export default function PriceWarPage() {
           </div>
           <div className="glass rounded-xl p-3">
             <div className="flex items-center justify-between mb-1">
-              <p className="text-[10px] text-muted-foreground">Avg Margin</p>
+              <p className="text-[10px] text-muted-foreground">Avg Listing Margin</p>
               <span className={`text-[10px] font-bold ${getMarginStatus(stats.avgMarginMaintained) === "excellent" ? "text-emerald-400" : getMarginStatus(stats.avgMarginMaintained) === "healthy" ? "text-blue-400" : getMarginStatus(stats.avgMarginMaintained) === "warning" ? "text-amber-400" : "text-red-400"}`}>
                 {getMarginStatus(stats.avgMarginMaintained)}
               </span>
@@ -577,7 +578,7 @@ export default function PriceWarPage() {
           </div>
           <div className="glass rounded-xl p-3">
             <div className="flex items-center justify-between mb-1">
-              <p className="text-[10px] text-muted-foreground">Total Savings</p>
+              <p className="text-[10px] text-muted-foreground">Price Reductions</p>
               <DollarSign className="h-3 w-3 text-accent" />
             </div>
             <p className="text-lg font-bold text-foreground">${stats.totalSavingsFromAdjustments?.toFixed(2) || "0.00"}</p>
@@ -667,7 +668,7 @@ export default function PriceWarPage() {
                 <div className="flex items-center justify-between p-3 rounded-xl bg-surface border border-border">
                   <div>
                     <p className="text-xs font-medium text-foreground">Auto-Apply Changes</p>
-                    <p className="text-[10px] text-muted-foreground">Automatically apply suggested price changes</p>
+                    <p className="text-[10px] text-muted-foreground">Apply suggestions when a check runs without an explicit dry run</p>
                   </div>
                   <button
                     type="button"
@@ -710,6 +711,7 @@ export default function PriceWarPage() {
                     <option value={120}>Every 2 hours</option>
                     <option value={240}>Every 4 hours</option>
                   </select>
+                  <p className="text-[10px] text-muted-foreground mt-1.5">Checks run when you click Execute Check — no scheduler is connected yet.</p>
                 </div>
                 <div className="p-3 rounded-xl bg-surface border border-border">
                   <label htmlFor="pw-max-daily" className="text-xs font-medium text-foreground mb-2 block">Max Daily Adjustments</label>
@@ -1120,7 +1122,7 @@ export default function PriceWarPage() {
         description="This fetches current competitor prices and may apply automated price adjustments to live listings. Use Dry Run first to preview changes safely."
         confirmLabel="Execute"
         danger
-        onConfirm={() => void runExecute(false)}
+        onConfirm={() => void runExecute("apply")}
         onCancel={() => setExecuteConfirm(false)}
       />
     </div>

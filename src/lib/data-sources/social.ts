@@ -1,38 +1,6 @@
 import type { SocialSignalData, DataSourceResult } from "./types";
-import { getCached, setCache, CACHE_TTL } from "./cache";
+import { getCached } from "./cache";
 import type { TrendPlatform } from "@/types/trend-predictor";
-
-function generateSocialSignal(
-  platform: TrendPlatform,
-  keyword: string,
-  seed: number
-): SocialSignalData {
-  const platformMultipliers: Record<string, { vol: number; eng: number }> = {
-    tiktok: { vol: 1.5, eng: 2.0 },
-    instagram: { vol: 1.0, eng: 1.5 },
-    twitter: { vol: 0.8, eng: 0.5 },
-    reddit: { vol: 0.6, eng: 1.2 },
-  };
-  const mult = platformMultipliers[platform] || { vol: 1, eng: 1 };
-  const baseVolume = Math.round((1000 + (seed % 10000)) * mult.vol);
-  const growthRate = Math.round((Math.random() * 200 - 50) * 10) / 10;
-
-  const topPosts = Array.from({ length: 3 }, (_, i) => ({
-    text: `${keyword} is ${growthRate > 0 ? "trending" : "popular"} on ${platform} #${i + 1}`,
-    engagement: Math.round(100 + Math.random() * 5000),
-    url: `https://${platform}.com/post/${seed}-${i}`,
-  }));
-
-  return {
-    platform,
-    keyword,
-    volume: baseVolume,
-    growthRate,
-    engagementRate: Math.round((1 + Math.random() * 10) * mult.eng * 10) / 10,
-    topPosts,
-    fetchedAt: new Date().toISOString(),
-  };
-}
 
 export async function fetchSocialSignals(
   keyword: string,
@@ -45,11 +13,33 @@ export async function fetchSocialSignals(
   }
 
   try {
-    const seed = keyword.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    const signals = platforms.map((platform) => generateSocialSignal(platform, keyword, seed));
+    const hasLive = Boolean(
+      process.env.TIKTOK_API_KEY ||
+      process.env.INSTAGRAM_GRAPH_TOKEN ||
+      process.env.REDDIT_CLIENT_ID ||
+      process.env.SOCIAL_API_KEY
+    );
+    if (!hasLive) {
+      return {
+        success: false,
+        data: null,
+        error: "No social API credentials configured (TikTok/Instagram/Reddit/SOCIAL_API_KEY).",
+        source: "tiktok",
+        fetchedAt: new Date().toISOString(),
+        cached: false,
+      };
+    }
 
-    await setCache("social", signals, CACHE_TTL.SOCIAL_SIGNALS, cacheKey);
-    return { success: true, data: signals, source: "tiktok", fetchedAt: new Date().toISOString(), cached: false };
+    void keyword;
+    void platforms;
+    return {
+      success: false,
+      data: null,
+      error: "Social live adapter not implemented yet. Connect a provider to populate engagement signals.",
+      source: "tiktok",
+      fetchedAt: new Date().toISOString(),
+      cached: false,
+    };
   } catch (error) {
     return {
       success: false,

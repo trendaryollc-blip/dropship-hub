@@ -10,7 +10,9 @@ export default function PriceComparison({ platforms, listedPrice, productTitle }
   const validPlatforms = platforms.filter((p) => p.price > 0);
   const sorted = [...validPlatforms].sort((a, b) => a.price - b.price);
   const cheapest = sorted[0];
-  const bestRated = [...validPlatforms].sort((a, b) => b.rating - a.rating)[0];
+  const bestRated = [...validPlatforms]
+    .filter((p) => typeof p.rating === "number")
+    .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))[0];
 
   if (!validPlatforms.length || !cheapest || !bestRated) {
     return (
@@ -57,7 +59,10 @@ export default function PriceComparison({ platforms, listedPrice, productTitle }
               <p className="font-display text-2xl sm:text-3xl font-bold gradient-text-blue">${sorted[0].price.toFixed(2)}</p>
               <div className="flex items-center gap-1 justify-end mt-1">
                 <Star className="h-3 w-3 text-amber-400 fill-current" />
-                <span className="text-[10px] text-muted-foreground">{sorted[0].rating} ({(sorted[0].reviews || 0).toLocaleString()})</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {typeof sorted[0].rating === "number" ? `${sorted[0].rating}` : "—"}
+                  {typeof sorted[0].reviews === "number" ? ` (${sorted[0].reviews.toLocaleString()})` : ""}
+                </span>
               </div>
             </div>
           </div>
@@ -140,8 +145,8 @@ export default function PriceComparison({ platforms, listedPrice, productTitle }
                   <td className="px-4 py-3.5 hidden sm:table-cell">
                     <div className="flex items-center gap-1.5">
                       <Star className="h-3 w-3 text-amber-400 fill-current" />
-                      <span className="text-xs text-foreground font-medium">{p.rating}</span>
-                      <span className="text-[10px] text-muted-foreground">({(p.reviews || 0).toLocaleString()})</span>
+                      <span className="text-xs text-foreground font-medium">{typeof p.rating === "number" ? p.rating : "—"}</span>
+                      <span className="text-[10px] text-muted-foreground">{typeof p.reviews === "number" ? `(${p.reviews.toLocaleString()})` : ""}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3.5 hidden md:table-cell">
@@ -153,8 +158,8 @@ export default function PriceComparison({ platforms, listedPrice, productTitle }
                   </td>
                   <td className="px-4 py-3.5 hidden lg:table-cell">
                     <div className="flex items-center gap-1.5">
-                      <div className={`w-1.5 h-1.5 rounded-full ${p.inStock ? "bg-emerald-400 shadow-[0_0_6px_rgba(34,197,94,0.4)]" : "bg-red-400"}`} />
-                      <span className="text-xs text-muted-foreground">{p.inStock ? "In Stock" : "Out of Stock"}</span>
+                      <div className={`w-1.5 h-1.5 rounded-full ${p.inStock === true ? "bg-emerald-400 shadow-[0_0_6px_rgba(34,197,94,0.4)]" : p.inStock === false ? "bg-red-400" : "bg-muted-foreground/50"}`} />
+                      <span className="text-xs text-muted-foreground">{p.inStock === true ? "In Stock" : p.inStock === false ? "Out of Stock" : "Unknown"}</span>
                     </div>
                   </td>
                   <td className="px-5 py-3.5 text-right">

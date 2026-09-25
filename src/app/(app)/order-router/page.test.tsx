@@ -203,7 +203,7 @@ describe("OrderRouterPage", () => {
         body: expect.objectContaining({ action: "route", orderId: "ORD-9001", productTitle: "USB-C Hub", customerLocation: "Austin, US" }),
       });
     });
-    expect(mockToast.success).toHaveBeenCalledWith("Order routed successfully");
+    expect(mockToast.success).toHaveBeenCalledWith("Order queued for routing");
     expect(mockRevalidate).toHaveBeenCalledWith("/api/orders?type=decisions");
     await waitFor(() => expect(screen.queryByText("Route New Order")).toBeNull());
   });
@@ -264,5 +264,38 @@ describe("OrderRouterPage", () => {
     // Stays in edit mode so the user can retry.
     expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
     expect(mockToast.success).not.toHaveBeenCalled();
+  });
+
+  it("renders queued decisions and untracked analytics without fabricated values", () => {
+    const queuedDecision: RoutingDecision = {
+      ...mockDecision,
+      id: "d2",
+      status: "pending",
+      selectedSupplier: null,
+      shippingCost: null,
+      totalCost: null,
+      reasoning: "Queued for supplier selection based on your routing preferences.",
+    };
+    const partialAnalytics: RoutingAnalytics = {
+      ...mockAnalytics,
+      avgShippingDays: null,
+      avgCost: null,
+      costSavings: null,
+      timeSavings: null,
+    };
+    mockUseAPI.mockImplementation((url: string) => {
+      const base = { mutate: mockMutate, isLoading: false, error: undefined as unknown };
+      if (url.includes("type=decisions")) return { ...base, data: { decisions: [queuedDecision], totalCount: 1, page: 1, limit: 20, totalPages: 1 } };
+      if (url.includes("type=analytics")) return { ...base, data: { analytics: partialAnalytics } };
+      return defaultUseAPIMock(url);
+    });
+
+    render(<OrderRouterPage />);
+
+    expect(screen.getAllByText("Pending routing").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("—").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Not tracked").length).toBeGreaterThan(0);
+    expect(screen.queryByText("$0.00")).toBeNull();
+    expect(screen.queryByText("$NaN")).toBeNull();
   });
 });

@@ -41,7 +41,9 @@ export default function CategoryCard({ category, index }: { category: ProductCat
         </h3>
         <div className="flex items-center gap-3 mt-1">
           <span className="text-[10px] text-muted-foreground">{category.productCount.toLocaleString()} products</span>
-          <span className="text-[10px] text-muted-foreground">~{category.avgMargin}% margin</span>
+          <span className="text-[10px] text-muted-foreground">
+            {category.avgMargin != null ? `~${category.avgMargin}% margin` : "margin n/a"}
+          </span>
         </div>
       </div>
     </a>

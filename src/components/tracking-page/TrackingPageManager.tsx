@@ -307,12 +307,11 @@ export default function TrackingPageManager() {
       {/* Stats */}
       <DataState isLoading={statsLoading} error={statsError} label="your analytics" onRetry={() => mutateStats()} />
       {!statsLoading && !statsError && stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {[
             { label: "Page Views", value: stats.totalViews.toLocaleString() },
             { label: "Upsell CTR", value: `${stats.upsellClickRate}%` },
             { label: "Upsell CVR", value: `${stats.upsellConversionRate}%` },
-            { label: "Tickets Saved", value: stats.supportTicketReduction.toLocaleString() },
           ].map((s) => (
             <div key={s.label} className="glass rounded-xl p-3">
               <span className="text-[10px] text-muted-foreground uppercase">{s.label}</span>

@@ -10,7 +10,6 @@ import {
   Check,
   MessageSquare,
   Image,
-  CheckCircle2,
   Clock,
   AlertCircle,
   RefreshCw,
@@ -18,6 +17,7 @@ import {
 } from "lucide-react";
 import { useAPI } from "@/hooks/useAPI";
 import { useToast } from "@/components/ui/Toast";
+import ComingSoon from "@/components/ui/ComingSoon";
 import { authJson, getAuthHeaders } from "@/lib/auth-headers";
 import { copyToClipboard } from "@/lib/clipboard";
 import { safeFetch } from "@/lib/safe-fetch";
@@ -209,7 +209,7 @@ export default function ReviewsPage() {
           Review Importer
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Import reviews from suppliers and sync them to your stores.
+          Import reviews from a connected supplier source.
         </p>
       </div>
 
@@ -241,6 +241,10 @@ export default function ReviewsPage() {
           <Download className="h-4 w-4 text-accent" />
           Import Reviews
         </h3>
+        <ComingSoon
+          title="Supplier source not connected"
+          whatNeeded="Review import needs a supplier review source (AliExpress/CJ API), which is not connected yet. Nothing is imported until a source is connected — the product name and URL below are kept for that."
+        />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label htmlFor="rv-title" className="block text-xs font-medium text-muted-foreground mb-1.5">Product Name *</label>
@@ -341,11 +345,6 @@ export default function ReviewsPage() {
                     <div className="flex flex-wrap items-center gap-2 mb-1.5">
                       <StarRating rating={review.rating} />
                       <span className="text-xs text-muted-foreground">by {review.author}</span>
-                      {review.verified && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 flex items-center gap-0.5">
-                          <CheckCircle2 className="h-2.5 w-2.5" /> Verified
-                        </span>
-                      )}
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface text-muted-foreground">
                         <span aria-hidden="true">{SOURCES.find(s => s.id === review.source)?.icon}</span> {review.source}
                       </span>
@@ -361,7 +360,6 @@ export default function ReviewsPage() {
                       </div>
                     )}
                     <div className="flex items-center flex-wrap gap-3 mt-1.5">
-                      <span className="text-[10px] text-muted-foreground">{review.helpful} found helpful</span>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded ${
                         review.syncStatus === "synced" ? "bg-emerald-500/10 text-emerald-400" :
                         review.syncStatus === "pending" ? "bg-amber-500/10 text-amber-400" :
@@ -371,12 +369,12 @@ export default function ReviewsPage() {
                       <button onClick={() => handleReply(review)} disabled={replyingId === review.id}
                         className="text-[10px] px-2 py-0.5 rounded-lg bg-surface border border-border text-muted-foreground hover:text-accent transition-all flex items-center gap-1 disabled:opacity-50">
                         {replyingId === review.id ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <MessageSquare className="h-2.5 w-2.5" />}
-                        AI Reply
+                        Suggested reply
                       </button>
                     </div>
                     {replies[review.id] && (
                       <div className="mt-2 p-3 rounded-xl bg-accent/5 border border-accent/10">
-                        <p className="text-[10px] text-muted-foreground mb-1">Suggested reply</p>
+                        <p className="text-[10px] text-muted-foreground mb-1">Reply template</p>
                         <p className="text-xs text-foreground leading-relaxed">{replies[review.id]}</p>
                         <button onClick={() => handleCopy(replies[review.id], `reply-${review.id}`)}
                           className="mt-2 text-[10px] px-2 py-0.5 rounded-lg bg-surface border border-border text-muted-foreground hover:text-foreground transition-all flex items-center gap-1">

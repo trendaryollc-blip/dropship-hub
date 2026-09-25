@@ -39,6 +39,12 @@ describe("CategoryCard", () => {
     expect(screen.getByText("~25.5% margin")).toBeInTheDocument();
   });
 
+  it("shows margin n/a when avgMargin is null", () => {
+    render(<CategoryCard category={{ ...mockCategory, avgMargin: null }} index={0} />);
+    expect(screen.getByText("margin n/a")).toBeInTheDocument();
+    expect(screen.queryByText(/% margin/)).not.toBeInTheDocument();
+  });
+
   it("shows Hot badge when trending", () => {
     render(<CategoryCard category={mockCategory} index={0} />);
     expect(screen.getByText("Hot")).toBeInTheDocument();

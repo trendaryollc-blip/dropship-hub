@@ -5,7 +5,7 @@ import { validateBody, TrendAnalysisInputSchema } from "@/lib/validation";
 import { analyzeKeyword, getTrendingKeywords } from "@/lib/data-sources/aggregator";
 import { addTrendPrediction } from "@/lib/data/trend-predictor";
 import type { TrendPlatform } from "@/types/trend-predictor";
-import { safeErrorMessage } from "@/lib/api-errors";
+import { safeErrorMessage, PublicError } from "@/lib/api-errors";
 
 export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -50,8 +50,12 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
       analysisTime: result.analysisTime,
       provider: result.provider,
       geoData: result.geoData,
+      interestOverTime: result.interestOverTime,
     });
   } catch (error) {
+    if (error instanceof PublicError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json(
       { error: "Failed to analyze trend", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }
@@ -77,7 +81,7 @@ export const GET = withAuth(async (request: NextRequest, _uid: string) => {
       });
     }
 
-    const trendingKeywords = await getTrendingKeywords();
+    const trendingKeywords = (await getTrendingKeywords()).filter((t) => t.volume > 0 || t.growth !== 0);
     return NextResponse.json({
       trending: trendingKeywords.map((t, i) => ({
         id: `trend-${i}`,

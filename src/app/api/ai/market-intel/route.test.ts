@@ -16,51 +16,35 @@ describe("GET /api/ai/market-intel", () => {
     vi.resetModules();
   });
 
-  it("returns trending products and alerts", async () => {
+  it("returns empty signals when no live source is connected", async () => {
     const { GET } = await import("./route");
     const req = new Request("http://localhost/api/ai/market-intel");
     const res = await GET(req as any);
     const body = await res.json();
 
-    expect(body.trending).toHaveLength(5);
-    expect(body.alerts).toHaveLength(4);
-    expect(body.isMock).toBe(true);
+    expect(body.trending).toHaveLength(0);
+    expect(body.alerts).toHaveLength(0);
+    expect(body.signals).toHaveLength(0);
+    expect(body.source).toBe("unavailable");
   });
 
-  it("trending items have required fields", async () => {
+  it("returns no fabricated trending products", async () => {
     const { GET } = await import("./route");
     const req = new Request("http://localhost/api/ai/market-intel");
     const res = await GET(req as any);
     const body = await res.json();
 
-    const first = body.trending[0];
-    expect(first.id).toBeDefined();
-    expect(first.name).toBeDefined();
-    expect(typeof first.trend).toBe("number");
-    expect(typeof first.price).toBe("number");
-    expect(typeof first.margin).toBe("number");
-    expect(first.platform).toBeDefined();
+    expect(body.trending).toEqual([]);
+    expect(body.alerts).toEqual([]);
   });
 
-  it("alerts have required fields", async () => {
+  it("includes notice about the missing live source", async () => {
     const { GET } = await import("./route");
     const req = new Request("http://localhost/api/ai/market-intel");
     const res = await GET(req as any);
     const body = await res.json();
 
-    const first = body.alerts[0];
-    expect(first.id).toBeDefined();
-    expect(first.type).toBeDefined();
-    expect(first.text).toBeDefined();
-    expect(first.value).toBeDefined();
-  });
-
-  it("includes notice about mock data", async () => {
-    const { GET } = await import("./route");
-    const req = new Request("http://localhost/api/ai/market-intel");
-    const res = await GET(req as any);
-    const body = await res.json();
-
-    expect(body.notice).toContain("mock data");
+    expect(body.notice).toContain("not connected");
+    expect(body.notice).toContain("SerpAPI");
   });
 });

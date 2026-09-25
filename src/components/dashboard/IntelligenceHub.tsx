@@ -144,7 +144,7 @@ function AIMonitoringPanel({ briefing, alerts }: { briefing: AIBriefing; alerts:
   const [expandedActions, setExpandedActions] = useState(false);
 
   const scanStats = [
-    { label: "Products Scanned", value: `${briefing.trends * 150 + 100}`, change: "across all categories", up: true, icon: Package, color: "text-blue-400" },
+    { label: "Products Scanned", value: "—", change: "No source connected", up: true, icon: Package, color: "text-blue-400" },
     { label: "Opportunities Found", value: `${briefing.opportunities}`, change: briefing.opportunities > 0 ? "active now" : "none detected", up: briefing.opportunities > 0, icon: Target, color: "text-emerald-400" },
     { label: "Risks Detected", value: `${briefing.risks}`, change: briefing.risks > 0 ? "needs attention" : "all clear", up: briefing.risks === 0, icon: AlertTriangle, color: "text-red-400" },
     { label: "Categories Tracked", value: `${briefing.trends}`, change: "active niches", up: true, icon: Globe, color: "text-purple-400" },
@@ -185,7 +185,7 @@ function AIMonitoringPanel({ briefing, alerts }: { briefing: AIBriefing; alerts:
               <h3 className="font-display text-sm sm:text-base font-bold text-foreground">AI Market Intelligence</h3>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="flex items-center gap-1 text-[10px] text-emerald-400">
-                  <Activity className="h-2.5 w-2.5" /> Live Scanning
+                  <Activity className="h-2.5 w-2.5" /> Scan Status
                 </span>
                 <span className="text-[10px] text-muted-foreground/60">•</span>
                 <span className="text-[10px] text-muted-foreground/60">Last scan: {briefing.lastScan}</span>
@@ -201,7 +201,7 @@ function AIMonitoringPanel({ briefing, alerts }: { briefing: AIBriefing; alerts:
             ) : (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-400/10 border border-emerald-400/20">
                 <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span className="text-[10px] font-semibold text-emerald-400">Live</span>
+                <span className="text-[10px] font-semibold text-emerald-400">Updated</span>
               </div>
             )}
           </div>
@@ -232,19 +232,10 @@ function AIMonitoringPanel({ briefing, alerts }: { briefing: AIBriefing; alerts:
             <div className="p-3 rounded-xl bg-surface/50 border border-border/50 flex flex-col items-center">
               <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">AI Confidence</span>
               <div className="relative w-[90px] h-[50px] flex items-end justify-center">
-                <div className="flex items-end gap-1.5 h-full">
-                  {[65, 78, 82, 91, 88, 94, 89].map((v, i) => (
-                    <div key={i} className="flex flex-col items-center gap-0.5">
-                      <div
-                        className="w-3 sm:w-4 rounded-t-sm bg-gradient-to-t from-accent/40 to-accent transition-all duration-700"
-                        style={{ height: `${(v / 100) * 40}px`, transitionDelay: `${i * 100}ms` }}
-                      />
-                    </div>
-                  ))}
-                </div>
+                <span className="text-sm text-muted-foreground">—</span>
               </div>
-              <span className="text-lg font-bold text-foreground mt-1">89%</span>
-              <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">High</span>
+              <span className="text-lg font-bold text-foreground mt-1">—</span>
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">No source connected</span>
             </div>
           </div>
 
@@ -327,10 +318,10 @@ function AIMonitoringPanel({ briefing, alerts }: { briefing: AIBriefing; alerts:
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Activity className="h-3.5 w-3.5 text-accent" />
-            <span className="text-[11px] font-semibold text-foreground">Live Market Signals</span>
+            <span className="text-[11px] font-semibold text-foreground">Market Signals</span>
           </div>
           <span className="flex items-center gap-1 text-[10px] text-emerald-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Real-time
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Latest
           </span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
@@ -431,7 +422,7 @@ function LiveIntelligenceFeed({ alerts, onRead, onReadAll }: { alerts: SmartAler
             <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           </div>
           <div>
-            <h3 className="font-display text-xs font-semibold text-foreground">Live Intelligence Feed</h3>
+            <h3 className="font-display text-xs font-semibold text-foreground">Intelligence Feed</h3>
             {unread > 0 && <p className="text-[9px] text-accent">{unread} new</p>}
           </div>
         </div>
@@ -476,7 +467,7 @@ function MarketPulseGrid({ cards }: { cards: MarketPulseCard[] }) {
         <Activity className="h-3 w-3 text-accent" />
         <h3 className="font-display text-xs font-semibold text-foreground">Market Pulse</h3>
         <span className="ml-auto flex items-center gap-1 text-[9px] text-emerald-400">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Latest
         </span>
       </div>
       <div className="grid grid-cols-2 gap-2">

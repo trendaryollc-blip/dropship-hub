@@ -3,6 +3,7 @@ import { verifyAuth, isOwner } from "@/lib/auth";
 import { createPlatform, getAllPlatforms, deletePlatform, type PlatformInput } from "@/lib/platform-config";
 import { logger } from "@/lib/logger";
 import { safeErrorMessage } from "@/lib/api-errors";
+import { getPrimaryKey } from "@/lib/api-keys/pool";
 
 const SEED_PLATFORMS: PlatformInput[] = [
   {
@@ -28,7 +29,7 @@ const SEED_PLATFORMS: PlatformInput[] = [
     slug: "google_shopping",
     method: "serpapi",
     enabled: true,
-    apiKey: process.env.SERP_API_KEY || "",
+    apiKey: getPrimaryKey("serpapi"),
     keyLabel: "Primary",
     requestsLimit: 100,
   },

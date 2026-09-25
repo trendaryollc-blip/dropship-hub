@@ -19,7 +19,7 @@ interface PerformanceData {
   stockReliability: number;
   stockTrend: number;
   dailySnapshots: SupplierMetricSnapshot[];
-  status: "excellent" | "good" | "warning" | "critical";
+  status: "excellent" | "good" | "warning" | "critical" | "unknown";
 }
 
 function TrendIcon({ trend, size = 14 }: { trend: number; size?: number }) {
@@ -132,8 +132,9 @@ function StatusBadge({ status }: { status: PerformanceData["status"] }) {
     good: { color: "text-blue-400 bg-blue-400/10 border-blue-400/20", icon: Shield, label: "Good" },
     warning: { color: "text-amber-400 bg-amber-400/10 border-amber-400/20", icon: AlertTriangle, label: "Warning" },
     critical: { color: "text-red-400 bg-red-400/10 border-red-400/20", icon: AlertTriangle, label: "Critical" },
+    unknown: { color: "text-muted-foreground bg-white/5 border-white/10", icon: Minus, label: "No data" },
   };
-  const c = config[status];
+  const c = config[status] ?? config.unknown;
   return (
     <span className={`inline-flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-full border font-bold uppercase ${c.color}`}>
       <c.icon className="h-3 w-3" />

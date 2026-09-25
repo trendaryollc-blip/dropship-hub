@@ -586,7 +586,7 @@ export default function MissionsPage() {
             <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground">Missions</h1>
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            AI-powered tasks based on your store activity. Complete them to earn XP, unlock badges, and level up.
+            Missions from your store activity. Complete them to earn XP, unlock badges, and level up.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -697,7 +697,7 @@ export default function MissionsPage() {
         <div className="glass rounded-2xl p-4 sm:p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-display text-sm sm:text-base font-semibold text-foreground">Today&apos;s AI Missions</h3>
+              <h3 className="font-display text-sm sm:text-base font-semibold text-foreground">Today&apos;s Missions</h3>
               <p className="text-[11px] text-muted-foreground">
                 {loading ? "Loading..." : `${completedCount}/${missions.length} tasks completed`}
               </p>
@@ -731,7 +731,7 @@ export default function MissionsPage() {
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent/10 border border-accent/20 text-accent text-xs font-semibold hover:bg-accent/20 transition-all disabled:opacity-50"
               >
                 <Sparkles className={`h-3.5 w-3.5 ${generating ? "animate-spin" : ""}`} />
-                Generate AI Missions
+                Generate Missions
               </button>
             </div>
           ) : (
@@ -794,7 +794,7 @@ export default function MissionsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div className="p-3 rounded-xl bg-surface/50 border border-border/50">
               <Sparkles className="h-4 w-4 text-accent mb-2" />
-              <p className="text-xs font-medium text-foreground mb-0.5">AI-Generated</p>
+              <p className="text-xs font-medium text-foreground mb-0.5">Rule-generated</p>
               <p className="text-[11px] text-muted-foreground">Missions are created based on your actual store activity, revenue data, and supplier alerts.</p>
             </div>
             <div className="p-3 rounded-xl bg-surface/50 border border-border/50">

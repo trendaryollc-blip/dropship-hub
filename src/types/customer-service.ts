@@ -20,7 +20,8 @@ export interface CSMessage {
   conversationId: string;
   role: "customer" | "ai" | "agent";
   content: string;
-  confidence?: number;
+  confidence?: number | null;
+  matchedRule?: string;
   timestamp: string;
   escalated?: boolean;
   escalationReason?: string;
@@ -44,7 +45,7 @@ export interface Escalation {
   customerName: string;
   reason: "low_confidence" | "frustration_detected" | "out_of_scope" | "high_value_order" | "manual";
   reasonDetail: string;
-  confidence: number;
+  confidence: number | null;
   customerMessage: string;
   aiResponse?: string;
   agentAssigned?: string;
@@ -58,9 +59,9 @@ export interface CSStats {
   activeConversations: number;
   escalatedQueue: number;
   resolvedToday: number;
-  avgConfidence: number;
+  avgConfidence: number | null;
   resolutionRate: number;
-  avgResponseTime: string;
+  avgResponseTime: string | null;
   totalHandled: number;
   aiHandledPercent: number;
 }

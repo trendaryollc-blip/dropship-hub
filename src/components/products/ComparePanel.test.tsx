@@ -132,7 +132,7 @@ describe("ComparePanel", () => {
     render(
       <ComparePanel selectedProducts={mockProducts} onRemove={vi.fn()} onClearAll={vi.fn()} onAICompare={onAICompare} />
     );
-    fireEvent.click(screen.getByText("AI Compare Products"));
+    fireEvent.click(screen.getByText("Compare on AI page"));
     expect(onAICompare).toHaveBeenCalledWith(mockProducts);
   });
 
@@ -143,10 +143,10 @@ describe("ComparePanel", () => {
       <ComparePanel selectedProducts={mockProducts} onRemove={vi.fn()} onClearAll={vi.fn()} onAICompare={onAICompare} />
     );
 
-    fireEvent.click(screen.getByText("AI Compare Products"));
-    expect(screen.getByText("AI is comparing...")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Compare on AI page"));
+    expect(screen.getByText("Comparing...")).toBeInTheDocument();
 
-    const button = screen.getByRole("button", { name: /AI is comparing/ });
+    const button = screen.getByRole("button", { name: /Comparing/ });
     expect(button).toBeDisabled();
 
     resolveCompare();
@@ -156,6 +156,6 @@ describe("ComparePanel", () => {
     render(
       <ComparePanel selectedProducts={[mockProducts[0]]} onRemove={vi.fn()} onClearAll={vi.fn()} onAICompare={vi.fn()} />
     );
-    expect(screen.queryByText("AI Compare Products")).not.toBeInTheDocument();
+    expect(screen.queryByText("Compare on AI page")).not.toBeInTheDocument();
   });
 });

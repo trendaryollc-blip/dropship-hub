@@ -12,7 +12,7 @@ export function StoreOperations({ storesConnected }: { storesConnected: number }
   const ops = [
     { icon: Store, label: "My Stores", desc: `${storesConnected} connected. Sync inventory, push products.`, href: "/store", color: "from-blue-500/10 to-blue-600/5 border-blue-500/15", iconColor: "text-blue-400" },
     { icon: Layers, label: "Multi-Store", desc: "Manage multiple stores, cross-sync, bulk ops.", href: "/multi-store", color: "from-purple-500/10 to-purple-600/5 border-purple-500/15", iconColor: "text-purple-400" },
-    { icon: Activity, label: "Monitoring", desc: "Real-time uptime, performance tracking.", href: "/monitoring", color: "from-emerald-500/10 to-emerald-600/5 border-emerald-500/15", iconColor: "text-emerald-400" },
+    { icon: Activity, label: "Monitoring", desc: "Uptime & performance monitoring.", href: "/monitoring", color: "from-emerald-500/10 to-emerald-600/5 border-emerald-500/15", iconColor: "text-emerald-400" },
     { icon: HeartPulse, label: "Store Health", desc: "Health scores, alerts, recommendations.", href: "/health", color: "from-rose-500/10 to-rose-600/5 border-rose-500/15", iconColor: "text-rose-400" },
   ];
   return (

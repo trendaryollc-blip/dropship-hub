@@ -76,7 +76,7 @@ function CompetitorCard({ listing, onClick }: { listing: CompetitorListing; onCl
               <span>{listing.reviewCount.toLocaleString()} reviews</span>
             )}
             {listing.salesEstimate && (
-              <span className="text-accent">~{listing.salesEstimate}/mo</span>
+              <span className="text-accent">~{listing.salesEstimate}/mo (estimated)</span>
             )}
           </div>
           {listing.keywords.length > 0 && (
@@ -181,13 +181,13 @@ export default function CompetitorPanel({ keyword, platform, onSelectListing, on
           </p>
         </div>
         <div className="glass rounded-xl p-2.5">
-          <p className="text-[10px] text-muted-foreground mb-0.5">Saturation</p>
+          <p className="text-[10px] text-muted-foreground mb-0.5">Saturation (heuristic)</p>
           <p className="text-sm font-bold text-foreground">{marketInsights.saturationScore}%</p>
         </div>
       </div>
 
       <div className="glass rounded-xl p-2.5">
-        <p className="text-[10px] text-muted-foreground mb-1.5">Opportunity Score</p>
+        <p className="text-[10px] text-muted-foreground mb-1.5">Opportunity Score (rule-based)</p>
         <OpportunityScore score={marketInsights.opportunityScore} />
         {marketInsights.recommendedPrice > 0 && (
           <p className="text-[10px] text-muted-foreground mt-1">

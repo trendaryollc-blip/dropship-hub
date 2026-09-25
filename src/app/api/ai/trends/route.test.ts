@@ -129,4 +129,57 @@ describe("GET /api/ai/trends", () => {
     expect(typeof first.growth).toBe("number");
     expect(typeof first.volume).toBe("number");
   });
+
+  it("returns an empty trending list when no source produced signals", async () => {
+    const { GET } = await import("./route");
+    const { getTrendingKeywords } = await import("@/lib/data-sources/aggregator");
+    vi.mocked(getTrendingKeywords).mockResolvedValueOnce([]);
+
+    const req = new Request("http://localhost/api/ai/trends");
+    const res = await GET(req as any);
+    const body = await res.json();
+
+    expect(body.trending).toEqual([]);
+    expect(body.risingStars).toEqual([]);
+    expect(body.alerts).toEqual([]);
+  });
+
+  it("drops zero-filled rows that came from dead sources", async () => {
+    const { GET } = await import("./route");
+    const { getTrendingKeywords } = await import("@/lib/data-sources/aggregator");
+    vi.mocked(getTrendingKeywords).mockResolvedValueOnce([
+      { keyword: "dead keyword", growth: 0, volume: 0, direction: "stable", platform: "google_trends" },
+      { keyword: "live keyword", growth: 45, volume: 5000, direction: "rising", platform: "google_trends" },
+    ]);
+
+    const req = new Request("http://localhost/api/ai/trends");
+    const res = await GET(req as any);
+    const body = await res.json();
+
+    expect(body.trending).toHaveLength(1);
+    expect(body.trending[0].keyword).toBe("live keyword");
+  });
+});
+
+describe("POST /api/ai/trends without live data", () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it("returns 400 with an honest error when no live trend data exists", async () => {
+    const { POST } = await import("./route");
+    const { analyzeKeyword } = await import("@/lib/data-sources/aggregator");
+    const { PublicError } = await import("@/lib/api-errors");
+    vi.mocked(analyzeKeyword).mockRejectedValueOnce(
+      new PublicError("No live trend data for this keyword — connect a trends source (Google Trends API)")
+    );
+
+    const req = { json: vi.fn().mockResolvedValue({ keyword: "wireless earbuds" }) } as any;
+    const res = await POST(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error).toBe("No live trend data for this keyword — connect a trends source (Google Trends API)");
+    expect(body.prediction).toBeUndefined();
+  });
 });

@@ -56,12 +56,12 @@ const mockAlerts: SmartAlert[] = [
 describe("LiveIntelligenceFeedCard", () => {
   it("renders heading", () => {
     render(<LiveIntelligenceFeedCard alerts={mockAlerts} onRead={vi.fn()} onReadAll={vi.fn()} />);
-    expect(screen.getByText("Live Intelligence Feed")).toBeInTheDocument();
+    expect(screen.getByText("Intelligence Feed")).toBeInTheDocument();
   });
 
-  it("renders live indicator", () => {
+  it("renders latest indicator", () => {
     render(<LiveIntelligenceFeedCard alerts={mockAlerts} onRead={vi.fn()} onReadAll={vi.fn()} />);
-    expect(screen.getByText("Live")).toBeInTheDocument();
+    expect(screen.getByText("Latest")).toBeInTheDocument();
   });
 
   it("renders unread count", () => {

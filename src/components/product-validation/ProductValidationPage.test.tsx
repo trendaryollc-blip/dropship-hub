@@ -68,7 +68,13 @@ describe("ProductValidationPage", () => {
 
   it("renders page description", () => {
     render(<ProductValidationPage />);
-    expect(screen.getByText(/Score products on 10\+ criteria/)).toBeInTheDocument();
+    expect(screen.getByText(/Score products with deterministic scoring/)).toBeInTheDocument();
+  });
+
+  it("does not claim AI-powered analysis", () => {
+    render(<ProductValidationPage />);
+    expect(screen.queryByText(/AI-Powered Analysis/)).not.toBeInTheDocument();
+    expect(screen.getByText("Rule-Based Analysis")).toBeInTheDocument();
   });
 
   it("renders Run Validation button", () => {

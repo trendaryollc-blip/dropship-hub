@@ -981,10 +981,6 @@ export default function AIPage() {
             <div>
               <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
                 AI Command Center
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Live
-                </span>
               </h1>
               <p className="text-[11px] text-muted-foreground">
                 Your business brain — reads every page, connects every dot
@@ -1029,7 +1025,7 @@ export default function AIPage() {
                 <BusinessHealthRing score={context.healthScore.overall} size={40} strokeWidth={3} showLabel={false} />
                 <div className="text-right">
                   <p className="text-xs font-semibold text-foreground">{context.healthScore.overall}/100</p>
-                  <p className="text-[9px] text-muted-foreground">Health</p>
+                  <p className="text-[9px] text-muted-foreground">Estimated health score</p>
                 </div>
               </div>
             )}
@@ -1180,7 +1176,10 @@ export default function AIPage() {
                 {/* Health Ring + Quick Summary */}
                 {context && (
                   <div className="flex flex-col md:flex-row items-center gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
-                    <BusinessHealthRing score={context.healthScore.overall} size={80} strokeWidth={6} />
+                    <div className="flex flex-col items-center gap-1">
+                      <BusinessHealthRing score={context.healthScore.overall} size={80} strokeWidth={6} />
+                      <p className="text-[9px] text-muted-foreground">Estimated health score</p>
+                    </div>
                     <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-3">
                       <div className="text-center">
                         <p className="text-lg font-bold text-foreground">${context.revenue.today}</p>
@@ -1594,8 +1593,8 @@ export default function AIPage() {
                   <IntegrationMonitor uid={user?.uid || ""} />
                 </CollapsibleSection>
 
-                {/* Live Insights */}
-                <CollapsibleSection title="Live Insights">
+                {/* Business Insights */}
+                <CollapsibleSection title="Business Insights">
                   <InsightPanel
                     context={context}
                     onNavigate={(href) => { router.push(href); }}
@@ -1650,8 +1649,8 @@ export default function AIPage() {
                 <IntegrationMonitor uid={user?.uid || ""} />
               </CollapsibleSection>
 
-              {/* Live Insights */}
-              <CollapsibleSection title="Live Insights">
+              {/* Business Insights */}
+              <CollapsibleSection title="Business Insights">
                 <InsightPanel
                   context={context}
                   onNavigate={(href) => { router.push(href); }}

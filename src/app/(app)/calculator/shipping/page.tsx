@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { saveCalcHistory, getCalcHistory, type CalcHistoryEntry } from "@/lib/data";
 import { CheckCircle2, Save, Clock } from "lucide-react";
 import { calculateShipping, type ShippingCalc } from "@/lib/calculations";
 import CalculatorLayout from "@/components/calculator/CalculatorLayout";
+import DataSourceBadge from "@/components/ui/DataSourceBadge";
+import ComingSoon from "@/components/ui/ComingSoon";
 
 export default function ShippingCalculatorPage() {
   const { user } = useAuth();
@@ -21,13 +23,20 @@ export default function ShippingCalculatorPage() {
 
   const result: ShippingCalc = calculateShipping(weight, length, width, height, originCountry, destCountry);
 
-  const fetchHistory = async () => {
-    if (!user) return;
+  const fetchHistory = useCallback(async () => {
+    if (!user) {
+      setHistory([]);
+      return;
+    }
     try {
       const entries = await getCalcHistory(user.uid, "shipping");
       setHistory(entries.slice(0, 5));
     } catch (e) { console.warn("[ShippingCalc] Error:", e instanceof Error ? e.message : e); }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
 
   const handleSave = async () => {
     if (!user) return;
@@ -48,7 +57,7 @@ export default function ShippingCalculatorPage() {
   return (
     <CalculatorLayout
       title="Shipping Calculator"
-      description="Compare carrier costs by package size, weight, and destination"
+      description="Heuristic cost estimate from your package dimensions — not a carrier quote"
       actions={
         user ? (
           <button onClick={handleSave} disabled={saved}
@@ -135,7 +144,18 @@ export default function ShippingCalculatorPage() {
         </div>
 
         <div className={cardClass}>
-          <h3 className="font-display text-lg font-semibold text-foreground mb-4">Shipping Options</h3>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-display text-lg font-semibold text-foreground">Shipping Options</h3>
+            <DataSourceBadge source="estimated" />
+          </div>
+          <p className="text-[10px] text-muted-foreground mb-4">
+            Rough estimate from weight and dimensions only. Service tiers are generic labels, not live carrier rates.
+          </p>
+          <ComingSoon
+            className="mb-4"
+            whatNeeded="Live carrier rate quotes with real transit times and delivery guarantees (needs carrier APIs such as EasyPost or ShipStation)"
+            howToGet="Connect a carrier account in Settings → Platforms once the integration ships"
+          />
           <div className="space-y-3">
             {result.carriers.map((c) => (
               <div key={c.name} className="p-4 rounded-xl bg-surface/50 border border-border hover:border-accent/20 transition-all">
@@ -144,11 +164,7 @@ export default function ShippingCalculatorPage() {
                   <p className="font-display text-lg font-bold text-foreground">${c.cost.toFixed(2)}</p>
                 </div>
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span>{c.days} days</span>
-                  <span>{c.reliability}% reliability</span>
-                </div>
-                <div className="mt-2 h-1.5 rounded-full bg-surface overflow-hidden">
-                  <div className="h-full rounded-full bg-accent" style={{ width: `${c.reliability}%` }} />
+                  <span>~{c.days} days (estimate)</span>
                 </div>
               </div>
             ))}

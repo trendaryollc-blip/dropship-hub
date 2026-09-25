@@ -75,7 +75,7 @@ describe("POST /api/srm/messages", () => {
     const json = await res.json();
     expect(json.success).toBe(true);
     expect(json.id).toBe("msg-new-1");
-    expect(json.status).toBe("sent");
+    expect(json.status).toBe("logged");
   });
 
   it("returns 400 for missing fields", async () => {

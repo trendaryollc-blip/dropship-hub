@@ -19,6 +19,8 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
       status: string;
       createdAt: string;
       updatedAt: string;
+      orderNumber?: string;
+      customerName?: string;
       assignedSupplier?: string;
       totalRevenue?: number;
       totalCost?: number;
@@ -37,7 +39,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     let atRiskCount = 0;
     let overdueCount = 0;
 
-    const statusCounts: Record<string, { count: number; totalHours: number; onTime: number }> = {};
+    const statusCounts: Record<string, { count: number; completed: number; totalHours: number; onTime: number }> = {};
     const alerts: SLADashboardData["alerts"] = [];
 
     for (const order of orders) {
@@ -45,13 +47,14 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
       const hoursElapsed = (now - created) / HOURS_MS;
 
       const status = order.status || "pending";
-      if (!statusCounts[status]) statusCounts[status] = { count: 0, totalHours: 0, onTime: 0 };
+      if (!statusCounts[status]) statusCounts[status] = { count: 0, completed: 0, totalHours: 0, onTime: 0 };
       statusCounts[status].count++;
 
       const isCompleted = status === "delivered" || status === "shipped";
       if (isCompleted) {
         totalFulfillmentHours += hoursElapsed;
         completedCount++;
+        statusCounts[status].completed++;
         if (hoursElapsed <= 72) {
           onTimeCount++;
           statusCounts[status].onTime++;
@@ -64,8 +67,8 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
           overdueCount++;
           alerts.push({
             orderId: order.id,
-            orderNumber: order.id.slice(0, 8),
-            customerName: "Customer",
+            orderNumber: order.orderNumber || order.id,
+            customerName: order.customerName,
             hoursElapsed: Math.round(hoursElapsed),
             expectedBy: new Date(created + OVERDUE_THRESHOLD * HOURS_MS).toISOString(),
             severity: "critical",
@@ -75,8 +78,8 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
           atRiskCount++;
           alerts.push({
             orderId: order.id,
-            orderNumber: order.id.slice(0, 8),
-            customerName: "Customer",
+            orderNumber: order.orderNumber || order.id,
+            customerName: order.customerName,
             hoursElapsed: Math.round(hoursElapsed),
             expectedBy: new Date(created + OVERDUE_THRESHOLD * HOURS_MS).toISOString(),
             severity: "warning",
@@ -89,8 +92,8 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     const breakdown: SLADashboardData["breakdown"] = Object.entries(statusCounts).map(([status, data]) => ({
       status,
       count: data.count,
-      avgHours: data.count > 0 ? Math.round(data.totalHours / data.count) : 0,
-      onTimeRate: data.count > 0 ? Math.round((data.onTime / data.count) * 100) : 100,
+      avgHours: data.completed > 0 ? Math.round(data.totalHours / data.completed) : null,
+      onTimeRate: data.completed > 0 ? Math.round((data.onTime / data.completed) * 100) : null,
     }));
 
     const sevenDaysAgo = new Date(now - 7 * 24 * HOURS_MS);
@@ -120,8 +123,8 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
     }
 
     const totalOrders = orders.length;
-    const onTimeRate = completedCount > 0 ? Math.round((onTimeCount / completedCount) * 100) : 100;
-    const avgFulfillmentHours = completedCount > 0 ? Math.round(totalFulfillmentHours / completedCount) : 0;
+    const onTimeRate = completedCount > 0 ? Math.round((onTimeCount / completedCount) * 100) : null;
+    const avgFulfillmentHours = completedCount > 0 ? Math.round(totalFulfillmentHours / completedCount) : null;
 
     const data: SLADashboardData = {
       summary: { totalOrders, onTimeRate, avgFulfillmentHours, atRiskOrders: atRiskCount, overdueOrders: overdueCount },

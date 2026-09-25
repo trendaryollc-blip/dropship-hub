@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAPI } from "@/hooks/useAPI";
 import {
-  Store, Package, RefreshCw, Send, BarChart3, Globe, Zap,
-  ShoppingCart, DollarSign, TrendingUp, ArrowRight, Settings,
+  Store, Package, RefreshCw, Send, BarChart3, Zap,
+  ShoppingCart, DollarSign, TrendingUp, Settings,
 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import type { UnifiedOrder, StorePerformance, BulkPushJob, StoreInventoryItem } from "@/types/multi-store";
@@ -26,6 +26,8 @@ import InventorySyncPanel from "@/components/multi-store/InventorySyncPanel";
 import OrderFilters, { type OrderFilterState } from "@/components/multi-store/OrderFilters";
 import StoreAIBar from "@/components/stores/StoreAIBar";
 import StoreChat from "@/components/stores/StoreChat";
+import DataSourceBadge from "@/components/ui/DataSourceBadge";
+import EmptyState from "@/components/ui/EmptyState";
 import { safeFetch } from "@/lib/safe-fetch";
 import { getAuthHeaders } from "@/lib/auth-headers";
 
@@ -170,7 +172,7 @@ export default function MultiStorePage() {
           }
         }
         if (ok > 0) {
-          success(`${ok} store${ok !== 1 ? "s" : ""} (30d): ${orders} orders, $${revenue.toFixed(2)} revenue`);
+          success(`${ok} store${ok !== 1 ? "s" : ""} (30d, via store tools): ${orders} orders, $${revenue.toFixed(2)} revenue`);
         } else {
           toastError("Couldn't fetch store performance. Please try again.");
         }
@@ -249,18 +251,13 @@ export default function MultiStorePage() {
           </div>
         </div>
 
-        <div className="glass rounded-2xl p-12 text-center">
-          <Store className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-          <h3 className="font-display text-xl font-semibold text-foreground mb-2">No stores connected yet</h3>
-          <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-            Connect your first store to start managing orders, inventory, and performance from one dashboard.
-          </p>
-          <Link
-            href="/store"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent-hover transition-all"
-          >
-            <Settings className="h-4 w-4" /> Connect Your First Store <ArrowRight className="h-4 w-4" />
-          </Link>
+        <div className="glass rounded-2xl">
+          <EmptyState
+            iconName="orders"
+            title="No stores connected yet"
+            description="Connect your first store to start managing orders, inventory, and performance from one dashboard."
+            action={{ label: "Connect Your First Store", href: "/store" }}
+          />
         </div>
       </div>
       </PageErrorBoundary>
@@ -293,12 +290,16 @@ export default function MultiStorePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiCard label="Total Orders" value={totalOrders} icon={<ShoppingCart className="h-4 w-4 text-accent" />} delay={0} />
-        <KpiCard label="Total Revenue" value={`$${totalRevenue.toLocaleString()}`} icon={<DollarSign className="h-4 w-4 text-emerald-400" />} delay={100} />
-        <KpiCard label="Total Profit" value={`$${totalProfit.toLocaleString()}`} icon={<TrendingUp className="h-4 w-4 text-blue-400" />} delay={200} />
-        <KpiCard label="Active Stores" value={stores.filter((s) => s.status === "connected").length} icon={<Globe className="h-4 w-4 text-purple-400" />} delay={300} />
-      </div>
+        <div className="flex items-center gap-1.5">
+          <DataSourceBadge source="firestore" />
+          <span className="text-[10px] text-muted-foreground/70">Computed from your performance data</span>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <KpiCard label="Total Orders" value={totalOrders} icon={<ShoppingCart className="h-4 w-4 text-accent" />} delay={0} empty={performances.length === 0} emptyHint="No orders yet" />
+          <KpiCard label="Total Revenue" value={`$${totalRevenue.toLocaleString()}`} icon={<DollarSign className="h-4 w-4 text-emerald-400" />} delay={50} empty={performances.length === 0} emptyHint="No sales yet" />
+          <KpiCard label="Total Profit" value={`$${totalProfit.toLocaleString()}`} icon={<TrendingUp className="h-4 w-4 text-emerald-400" />} delay={100} empty={performances.length === 0} emptyHint="No profit yet" />
+          <KpiCard label="Active Stores" value={stores.filter((s) => s.status === "connected").length} icon={<Store className="h-4 w-4 text-violet-400" />} delay={150} />
+        </div>
 
       <StoreAIBar onAction={handleAIBarAction} loading={aiLoading} storeCount={stores.length} />
 
@@ -330,14 +331,16 @@ export default function MultiStorePage() {
           />
 
           {paginatedOrders.length === 0 ? (
-            <div className="glass rounded-2xl p-12 text-center">
-              <Package className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm font-medium text-foreground mb-1">No orders found</p>
-              <p className="text-xs text-muted-foreground">
-                {filteredOrders.length === 0
-                  ? "Orders from all connected stores will appear here."
-                  : "No orders match your filters. Try adjusting them."}
-              </p>
+            <div className="glass rounded-2xl">
+              <EmptyState
+                iconName="orders"
+                title="No orders found"
+                description={
+                  filteredOrders.length === 0
+                    ? "Orders from all connected stores will appear here."
+                    : "No orders match your filters. Try adjusting them."
+                }
+              />
             </div>
           ) : (
             <div className="space-y-2">
@@ -377,10 +380,12 @@ export default function MultiStorePage() {
             ))}
           </div>
           {performances.length === 0 ? (
-            <div className="glass rounded-2xl p-12 text-center">
-              <BarChart3 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm font-medium text-foreground mb-1">No performance data</p>
-              <p className="text-xs text-muted-foreground">Store performance metrics will appear here once orders are tracked.</p>
+            <div className="glass rounded-2xl">
+              <EmptyState
+                iconName="analytics"
+                title="No performance data"
+                description="Store performance metrics will appear here once orders are tracked."
+              />
             </div>
           ) : (
             <>

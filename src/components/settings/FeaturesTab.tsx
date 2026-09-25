@@ -30,7 +30,7 @@ export default function FeaturesTab({ aiFeatures }: FeaturesTabProps) {
         <div className="flex items-start gap-3">
           <Zap className="h-5 w-5 text-accent shrink-0 mt-0.5" />
           <div>
-            <h3 className="text-sm font-semibold text-foreground mb-1">AI-Powered Features</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-1">Features</h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Each feature below uses AI providers from the API Providers tab. Configure at least one provider to unlock these features. Click any feature to go to the page where it&apos;s used.
             </p>
@@ -64,7 +64,7 @@ export default function FeaturesTab({ aiFeatures }: FeaturesTabProps) {
               <Brain className="h-4 w-4 text-purple-400" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-foreground">Want AI-powered insights?</p>
+              <p className="text-sm font-semibold text-foreground">Open the assistant</p>
               <p className="text-xs text-muted-foreground">Chat with the AI Assistant for personalized recommendations.</p>
             </div>
           </div>

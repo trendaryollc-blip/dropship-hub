@@ -64,22 +64,22 @@ describe("FeaturesTab", () => {
     expect(analyticsLink?.getAttribute("href")).toBe("/analytics");
   });
 
-  it("shows AI assistant CTA", () => {
+  it("shows assistant CTA", () => {
     render(<FeaturesTab aiFeatures={mockFeatures} />);
-    expect(screen.getByText("Want AI-powered insights?")).toBeDefined();
+    expect(screen.getByText("Open the assistant")).toBeDefined();
     expect(screen.getByText("Chat with the AI Assistant for personalized recommendations.")).toBeDefined();
     const tryAiLink = screen.getByText("Try AI").closest("a");
     expect(tryAiLink?.getAttribute("href")).toBe("/ai");
   });
 
-  it("renders the AI-Powered Features header", () => {
+  it("renders the Features header", () => {
     render(<FeaturesTab aiFeatures={mockFeatures} />);
-    expect(screen.getByText("AI-Powered Features")).toBeDefined();
+    expect(screen.getByText("Features")).toBeDefined();
   });
 
   it("renders empty features list", () => {
     render(<FeaturesTab aiFeatures={[]} />);
-    expect(screen.getByText("AI-Powered Features")).toBeDefined();
-    expect(screen.getByText("Want AI-powered insights?")).toBeDefined();
+    expect(screen.getByText("Features")).toBeDefined();
+    expect(screen.getByText("Open the assistant")).toBeDefined();
   });
 });

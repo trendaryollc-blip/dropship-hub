@@ -9,6 +9,7 @@ const levelConfig = {
   moderate: { color: "text-amber-400", bg: "bg-amber-400/10", label: "Moderate", desc: "Competitive space", gradient: "from-amber-400 to-amber-500" },
   saturated: { color: "text-orange-400", bg: "bg-orange-400/10", label: "Saturated", desc: "Crowded market", gradient: "from-orange-400 to-orange-500" },
   "hyper-saturated": { color: "text-red-400", bg: "bg-red-400/10", label: "Hyper-Saturated", desc: "Extremely crowded", gradient: "from-red-400 to-red-500" },
+  unknown: { color: "text-muted-foreground", bg: "bg-muted", label: "Not run", desc: "Seller count not provided — cannot assess saturation", gradient: "from-muted-foreground to-muted-foreground" },
 };
 
 const riskIcons = { low: ShieldCheck, medium: ShieldAlert, high: ShieldX };

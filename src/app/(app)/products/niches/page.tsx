@@ -15,6 +15,9 @@ import NicheHeatmapCard from "@/components/niches/NicheHeatmapCard";
 import NicheListItem from "@/components/niches/NicheListItem";
 import NicheDetail from "@/components/niches/NicheDetail";
 import ViewToggle from "@/components/ui/ViewToggle";
+import DataSourceBadge from "@/components/ui/DataSourceBadge";
+import DataUnavailable from "@/components/ui/DataUnavailable";
+import ComingSoon from "@/components/ui/ComingSoon";
 
 const sortOptions = [
   { value: "heat", label: "Hottest", icon: Flame },
@@ -32,9 +35,15 @@ const trendDirections = ["all", "rising", "stable", "declining"] as const;
 
 export default function NichesPage() {
   const { ref: heroRef, isInView: heroVisible } = useInView({ threshold: 0.1 });
-  const { data: nicheData, error: nicheError, isLoading, mutate: refetchNiches } = useAPI<{ niches?: NicheData[]; error?: string }>("/api/niches");
+  const { data: nicheData, error: nicheError, isLoading, mutate: refetchNiches } = useAPI<{
+    niches?: NicheData[];
+    isFallback?: boolean;
+    reason?: string;
+    setup?: { what?: string; whereToGet?: string; whereToSet?: string };
+  }>("/api/niches");
   const niches = useMemo(() => nicheData?.niches || [], [nicheData]);
-  const error = nicheError?.message || nicheData?.error || null;
+  const isFallback = Boolean(nicheData?.isFallback);
+  const error = nicheError?.message || null;
   const loading = isLoading;
 
   const [query, setQuery] = useState("");
@@ -65,7 +74,8 @@ export default function NichesPage() {
       const nameMatch = (n.name || "").toLowerCase().includes(q);
       const keywordMatch = (n.keywords || []).some((k) => (k || "").toLowerCase().includes(q));
       if (q && !nameMatch && !keywordMatch) return false;
-      if (n.avgMargin < minMargin || n.avgMargin > maxMargin) return false;
+      if (n.avgMargin != null && (n.avgMargin < minMargin || n.avgMargin > maxMargin)) return false;
+      if (minMargin > 0 && n.avgMargin == null) return false;
       if (n.heat < minHeat) return false;
       if (competitionFilter !== "all" && n.competitionLevel !== competitionFilter) return false;
       if (riskFilter !== "all" && n.riskLevel !== riskFilter) return false;
@@ -87,17 +97,15 @@ export default function NichesPage() {
   const selectedNiche = selectedNicheId ? niches.find((n) => n.id === selectedNicheId) : null;
 
   const avgMargin = useMemo(() => {
-    if (!niches.length) return 0;
-    return Math.round(niches.reduce((sum, n) => sum + (n.avgMargin || 0), 0) / niches.length);
-  }, [niches]);
-
-  const totalRevenue = useMemo(() => {
-    return niches.reduce((sum, n) => sum + (n.estimatedMonthlyRevenue || 0), 0);
+    const withMargin = niches.filter((n) => n.avgMargin != null);
+    if (!withMargin.length) return null;
+    return Math.round(withMargin.reduce((sum, n) => sum + (n.avgMargin || 0), 0) / withMargin.length);
   }, [niches]);
 
   const topTrending = useMemo(() => {
-    if (!niches.length) return null;
-    return [...niches].sort((a, b) => (b.growth || 0) - (a.growth || 0))[0];
+    const withGrowth = niches.filter((n) => n.growth != null);
+    if (!withGrowth.length) return null;
+    return [...withGrowth].sort((a, b) => (b.growth || 0) - (a.growth || 0))[0];
   }, [niches]);
 
   const toggleCompare = useCallback((id: string) => {
@@ -173,13 +181,37 @@ export default function NichesPage() {
         <p className="text-muted-foreground text-sm">Discover trending niches from real CJ Dropshipping data, analyze competition, and find winning products.</p>
       </div>
 
+      <div className="flex items-center gap-2 mb-3">
+        {!loading && !error && !isFallback && niches.length > 0 && (
+          <DataSourceBadge source="live" />
+        )}
+      </div>
+      {!loading && isFallback && (
+        <DataUnavailable
+          title="Niche explorer requires CJ API"
+          reason={nicheData?.reason || "Live niche data is unavailable until CJ Dropshipping is configured."}
+          setup={{
+            what: nicheData?.setup?.what || "CJ Dropshipping API key",
+            whereToGet: nicheData?.setup?.whereToGet || "https://developers.cjdropshipping.com/",
+            whereToSet: nicheData?.setup?.whereToSet || "CJ_API_KEY",
+          }}
+        />
+      )}
+      {!loading && !isFallback && !error && niches.length > 0 && (
+      <>
+      <ComingSoon
+        title="Portfolio metrics"
+        whatNeeded="Portfolio-wide Avg Margin and Total Revenue/mo need COGS and sales history per product — not available from category search alone."
+        howToGet="Enter costs in the Calculator or import orders to populate these."
+        className="mb-1"
+      />
       {/* Hero Stats Bar */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: "Total Niches", value: niches.length, icon: Target, color: "text-accent" },
-          { label: "Avg Margin", value: `${avgMargin}%`, icon: TrendingUp, color: "text-emerald-400" },
-          { label: "Total Revenue/mo", value: `$${totalRevenue.toLocaleString()}`, icon: DollarSign, color: "text-accent" },
-          { label: "Top Trending", value: topTrending?.name || "—", icon: Flame, color: "text-amber-400" },
+          { label: "Total Niches", value: String(niches.length), icon: Target, color: "text-accent" },
+          { label: "Avg Margin", value: avgMargin != null ? `${avgMargin}%` : "n/a", icon: TrendingUp, color: "text-emerald-400" },
+          { label: "Total Revenue/mo", value: "n/a", icon: DollarSign, color: "text-accent" },
+          { label: "Top Trending", value: topTrending?.name || "not tracked", icon: Flame, color: "text-amber-400" },
         ].map((stat) => (
           <div key={stat.label} className="glass rounded-2xl p-4 border border-border">
             <div className="flex items-center gap-2 mb-1">
@@ -190,6 +222,8 @@ export default function NichesPage() {
           </div>
         ))}
       </div>
+      </>
+      )}
 
       {/* Controls */}
       <div className="glass rounded-2xl p-4">
@@ -331,12 +365,13 @@ export default function NichesPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-1 text-[10px]">
                       <div><span className="text-muted-foreground">Heat:</span> <span className="font-bold text-foreground">{n.heat}</span></div>
-                      <div><span className="text-muted-foreground">Margin:</span> <span className="font-bold text-foreground">{n.avgMargin}%</span></div>
-                      <div><span className="text-muted-foreground">Score:</span> <span className="font-bold text-foreground">{n.overallScore}</span></div>
-                      <div><span className="text-muted-foreground">Growth:</span> <span className="font-bold text-foreground">+{n.growth}%</span></div>
-                      <div><span className="text-muted-foreground">Revenue:</span> <span className="font-bold text-foreground">${(n.estimatedMonthlyRevenue || 0).toLocaleString()}</span></div>
-                      <div><span className="text-muted-foreground">Risk:</span> <span className="font-bold text-foreground">{n.riskLevel}</span></div>
+                      <div><span className="text-muted-foreground">Margin:</span> <span className="font-bold text-foreground">{n.avgMargin != null ? `${n.avgMargin}%` : "n/a"}</span></div>
+                      <div><span className="text-muted-foreground">Score:</span> <span className="font-bold text-foreground">{n.overallScore ?? "n/a"}</span></div>
+                      <div><span className="text-muted-foreground">Growth:</span> <span className="font-bold text-foreground">{n.growth != null ? `${n.growth > 0 ? "+" : ""}${n.growth}%` : "not tracked"}</span></div>
+                      <div><span className="text-muted-foreground">Revenue:</span> <span className="font-bold text-foreground">{n.estimatedMonthlyRevenue != null ? `$${n.estimatedMonthlyRevenue.toLocaleString()}` : "n/a"}</span></div>
+                      <div><span className="text-muted-foreground">Risk:</span> <span className="font-bold text-foreground">{n.riskLevel ?? "n/a"}</span></div>
                     </div>
+                    <p className="mt-2 text-[9px] text-muted-foreground">Score/heat and price ranges are estimates from catalog counts and average prices — not market measurement.</p>
                   </div>
                 ))}
               </div>
@@ -344,8 +379,10 @@ export default function NichesPage() {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-[10px]">
                   {[
                     { label: "Best Heat", value: compareNiches.reduce((best, n) => (n.heat || 0) > (best.heat || 0) ? n : best, compareNiches[0])?.name },
-                    { label: "Best Margin", value: compareNiches.reduce((best, n) => (n.avgMargin || 0) > (best.avgMargin || 0) ? n : best, compareNiches[0])?.name },
-                    { label: "Best Revenue", value: compareNiches.reduce((best, n) => (n.estimatedMonthlyRevenue || 0) > (best.estimatedMonthlyRevenue || 0) ? n : best, compareNiches[0])?.name },
+                    { label: "Best Margin", value: compareNiches.some((n) => n.avgMargin != null)
+                        ? compareNiches.reduce((best, n) => (n.avgMargin || 0) > (best.avgMargin || 0) ? n : best, compareNiches.filter((n) => n.avgMargin != null)[0])?.name
+                        : "n/a" },
+                    { label: "Best Revenue", value: "n/a" },
                   ].map((winner) => (
                     <div key={winner.label} className="flex items-center gap-1">
                       <span className="text-muted-foreground">{winner.label}:</span>

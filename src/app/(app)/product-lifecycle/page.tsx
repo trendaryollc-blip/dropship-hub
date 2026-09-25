@@ -17,6 +17,7 @@ import { authJson } from "@/lib/auth-headers";
 import { toDate, formatDate } from "@/lib/dates";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import EmptyState from "@/components/ui/EmptyState";
+import SectionEmpty from "@/components/products/SectionEmpty";
 
 const stageInfo: Record<LifecycleStage, LifecycleStageInfo> = {
   discovery: { stage: "discovery", label: "Discovery", color: "text-blue-400", bgColor: "bg-blue-400/10 border-blue-400/20", description: "Initial research and data collection", typicalDuration: "1-2 weeks" },
@@ -39,6 +40,30 @@ type ViewMode = "grid" | "list" | "kanban";
 
 function parseDate(dateStr: string | undefined): number {
   return toDate(dateStr)?.getTime() ?? 0;
+}
+
+function formatMetric(value: number | null): string {
+  return value != null ? value.toLocaleString() : "—";
+}
+
+function competitionTone(count: number | null): string {
+  if (count == null) return "text-muted-foreground";
+  return count > 40 ? "text-red-400" : count > 20 ? "text-amber-400" : "text-emerald-400";
+}
+
+function trendLabel(trend: "rising" | "stable" | "declining" | null): string {
+  return trend ?? "Not tracked";
+}
+
+function trendTone(trend: "rising" | "stable" | "declining" | null): string {
+  if (trend === "rising") return "text-emerald-400";
+  if (trend === "declining") return "text-red-400";
+  return trend === null ? "text-muted-foreground" : "text-amber-400";
+}
+
+function TrendIcon({ trend }: { trend: "rising" | "stable" | "declining" | null }) {
+  const Icon = trend === "rising" ? TrendingUp : trend === "declining" ? TrendingDown : Activity;
+  return <Icon className={`h-3 w-3 ${trendTone(trend)}`} />;
 }
 
 // ─── Add Product Modal ──────────────────────────────────────────
@@ -252,17 +277,17 @@ function ProductDetailModal({ product, open, onClose, onStageChange, onDelete }:
               <div className="grid grid-cols-3 gap-3">
                 <div className="p-3 rounded-xl bg-surface">
                   <p className="text-[10px] text-muted-foreground mb-1">Competition</p>
-                  <p className={`text-sm font-bold ${product.metrics.competitionCount > 40 ? "text-red-400" : product.metrics.competitionCount > 20 ? "text-amber-400" : "text-emerald-400"}`}>{product.metrics.competitionCount}</p>
+                  <p className={`text-sm font-bold ${competitionTone(product.metrics.competitionCount)}`}>{formatMetric(product.metrics.competitionCount)}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-surface">
                   <p className="text-[10px] text-muted-foreground mb-1">Search Volume</p>
-                  <p className="text-sm font-bold text-foreground">{product.metrics.searchVolume.toLocaleString()}</p>
+                  <p className={`text-sm font-bold ${product.metrics.searchVolume == null ? "text-muted-foreground" : "text-foreground"}`}>{formatMetric(product.metrics.searchVolume)}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-surface">
                   <p className="text-[10px] text-muted-foreground mb-1">Trend</p>
                   <div className="flex items-center gap-1">
-                    {product.metrics.trendDirection === "rising" ? <TrendingUp className="h-3 w-3 text-emerald-400" /> : product.metrics.trendDirection === "declining" ? <TrendingDown className="h-3 w-3 text-red-400" /> : <Activity className="h-3 w-3 text-amber-400" />}
-                    <p className={`text-sm font-bold capitalize ${product.metrics.trendDirection === "rising" ? "text-emerald-400" : product.metrics.trendDirection === "declining" ? "text-red-400" : "text-amber-400"}`}>{product.metrics.trendDirection}</p>
+                    <TrendIcon trend={product.metrics.trendDirection} />
+                    <p className={`text-sm font-bold capitalize ${trendTone(product.metrics.trendDirection)}`}>{trendLabel(product.metrics.trendDirection)}</p>
                   </div>
                 </div>
               </div>
@@ -282,17 +307,19 @@ function ProductDetailModal({ product, open, onClose, onStageChange, onDelete }:
                 </div>
               )}
 
-              {product.recommendations.length > 0 && (
-                <div className="p-3 rounded-xl bg-surface">
-                  <p className="text-[11px] font-semibold text-foreground mb-2">Recommendations</p>
-                  {product.recommendations.map((r, i) => (
+              <div className="p-3 rounded-xl bg-surface">
+                <p className="text-[11px] font-semibold text-foreground mb-2">Recommendations</p>
+                {product.recommendations.length > 0 ? (
+                  product.recommendations.map((r, i) => (
                     <p key={i} className="text-[10px] text-muted-foreground flex items-start gap-1.5 mb-1">
                       <ArrowRight className="h-2.5 w-2.5 mt-0.5 shrink-0 text-accent" />
                       {r}
                     </p>
-                  ))}
-                </div>
-              )}
+                  ))
+                ) : (
+                  <SectionEmpty icon={Zap} title="No recommendations yet" description="Rule-based recommendations appear once stage history and sales data are connected." />
+                )}
+              </div>
             </div>
           )}
 
@@ -326,15 +353,15 @@ function ProductDetailModal({ product, open, onClose, onStageChange, onDelete }:
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-muted-foreground">Search Volume</span>
-                    <span className="text-xs font-bold text-foreground">{product.metrics.searchVolume.toLocaleString()}/mo</span>
+                    <span className={`text-xs font-bold ${product.metrics.searchVolume == null ? "text-muted-foreground" : "text-foreground"}`}>{product.metrics.searchVolume != null ? `${product.metrics.searchVolume.toLocaleString()}/mo` : "Not connected"}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-muted-foreground">Competition</span>
-                    <span className={`text-xs font-bold ${product.metrics.competitionCount > 40 ? "text-red-400" : product.metrics.competitionCount > 20 ? "text-amber-400" : "text-emerald-400"}`}>{product.metrics.competitionCount} sellers</span>
+                    <span className={`text-xs font-bold ${competitionTone(product.metrics.competitionCount)}`}>{product.metrics.competitionCount != null ? `${product.metrics.competitionCount} sellers` : "Not connected"}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-muted-foreground">Trend Direction</span>
-                    <span className={`text-xs font-bold capitalize ${product.metrics.trendDirection === "rising" ? "text-emerald-400" : product.metrics.trendDirection === "declining" ? "text-red-400" : "text-amber-400"}`}>{product.metrics.trendDirection}</span>
+                    <span className={`text-xs font-bold capitalize ${trendTone(product.metrics.trendDirection)}`}>{trendLabel(product.metrics.trendDirection)}</span>
                   </div>
                 </div>
               </div>
@@ -555,16 +582,18 @@ function LifecycleCard({ product, delay, onClick, onStageChange }: {
         </div>
         <div className="p-1.5 rounded-lg bg-surface">
           <p className="text-[9px] text-muted-foreground">Competition</p>
-          <p className={`text-xs font-bold ${product.metrics.competitionCount > 40 ? "text-red-400" : product.metrics.competitionCount > 20 ? "text-amber-400" : "text-emerald-400"}`}>{product.metrics.competitionCount}</p>
+          <p className={`text-xs font-bold ${competitionTone(product.metrics.competitionCount)}`}>{formatMetric(product.metrics.competitionCount)}</p>
         </div>
       </div>
 
       {/* Trend */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
-          {product.metrics.trendDirection === "rising" ? <TrendingUp className="h-3 w-3 text-emerald-400" /> : product.metrics.trendDirection === "declining" ? <TrendingDown className="h-3 w-3 text-red-400" /> : <Activity className="h-3 w-3 text-amber-400" />}
-          <span className={`text-[10px] font-semibold ${product.metrics.trendDirection === "rising" ? "text-emerald-400" : product.metrics.trendDirection === "declining" ? "text-red-400" : "text-amber-400"}`}>{product.metrics.trendDirection}</span>
-          <span className="text-[9px] text-muted-foreground">&middot; {product.metrics.searchVolume.toLocaleString()} searches</span>
+          <TrendIcon trend={product.metrics.trendDirection} />
+          <span className={`text-[10px] font-semibold ${trendTone(product.metrics.trendDirection)}`}>{trendLabel(product.metrics.trendDirection)}</span>
+          {product.metrics.searchVolume != null && (
+            <span className="text-[9px] text-muted-foreground">&middot; {product.metrics.searchVolume.toLocaleString()} searches</span>
+          )}
         </div>
         <div className="flex items-center gap-1">
           {product.supplierUrl && <a href={product.supplierUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="p-1 rounded hover:bg-surface text-muted-foreground hover:text-foreground transition-all"><ExternalLink className="h-3 w-3" /></a>}
@@ -819,7 +848,7 @@ export default function ProductLifecyclePage() {
         p.metrics.totalProfit,
         p.metrics.totalOrders,
         p.metrics.avgProfitMargin,
-        p.metrics.competitionCount,
+        p.metrics.competitionCount ?? "",
         p.totalDaysTracked,
       ].join(",")),
     ].join("\n");
@@ -841,7 +870,7 @@ export default function ProductLifecyclePage() {
           <div className="flex items-center gap-3 mb-1">
             <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground">Product Lifecycle</h1>
           </div>
-          <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">Track products from discovery to sunset. AI-powered stage transitions and recommendations.</p>
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">Track products from discovery to sunset with stage history, notes, and alerts.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {criticalAlerts > 0 && (

@@ -22,11 +22,16 @@ vi.mock("lucide-react", () => ({
   Package: (props: any) => <div data-testid="icon-package" {...props} />,
   Loader2: (props: any) => <div data-testid="icon-loader" {...props} />,
   RefreshCw: (props: any) => <div data-testid="icon-refresh" {...props} />,
+  Search: (props: any) => <div data-testid="icon-search" {...props} />,
+  Construction: (props: any) => <div data-testid="icon-construction" {...props} />,
+  Database: (props: any) => <div data-testid="icon-database" {...props} />,
+  Radio: (props: any) => <div data-testid="icon-radio" {...props} />,
+  User: (props: any) => <div data-testid="icon-user" {...props} />,
 }));
 
 const mockRecommendations = [
-  { id: "1", title: "Winning Product A", reason: "High demand", query: "product a", confidence: 92, category: "electronics" },
-  { id: "2", title: "Winning Product B", reason: "Low competition", query: "product b", confidence: 87, category: "home" },
+  { id: "1", title: "Saved Widget", reason: "You saved this product", query: "saved widget", matchType: "saved", category: "Saved" },
+  { id: "2", title: "fitness accessories", reason: "Run this search again", query: "fitness accessories", matchType: "recent-search", category: "Recent search" },
 ];
 
 beforeEach(() => {
@@ -40,14 +45,14 @@ describe("PersonalizedRecommendations", () => {
   it("shows loading state initially", () => {
     vi.mocked(SafeFetch.safeFetch).mockReturnValue(new Promise(() => {}));
     render(<PersonalizedRecommendations />);
-    expect(screen.getByText("AI is analyzing your portfolio...")).toBeInTheDocument();
+    expect(screen.getByText("Loading your saved products and searches...")).toBeInTheDocument();
   });
 
   it("renders recommendations after load", async () => {
     vi.mocked(SafeFetch.safeFetch).mockResolvedValue({ recommendations: mockRecommendations });
     render(<PersonalizedRecommendations />);
-    expect(await screen.findByText("Winning Product A")).toBeInTheDocument();
-    expect(screen.getByText("Winning Product B")).toBeInTheDocument();
+    expect(await screen.findByText("Saved Widget")).toBeInTheDocument();
+    expect(screen.getByText("fitness accessories")).toBeInTheDocument();
   });
 
   it("renders section heading", () => {
@@ -55,10 +60,26 @@ describe("PersonalizedRecommendations", () => {
     expect(screen.getByText("Recommended for You")).toBeInTheDocument();
   });
 
+  it("does not claim AI analysis", async () => {
+    vi.mocked(SafeFetch.safeFetch).mockResolvedValue({ recommendations: mockRecommendations });
+    render(<PersonalizedRecommendations />);
+    await screen.findByText("Saved Widget");
+    expect(screen.queryByText(/AI is analyzing/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/AI analyzes/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\d+%$/)).not.toBeInTheDocument();
+  });
+
+  it("shows honest empty state when no history", async () => {
+    vi.mocked(SafeFetch.safeFetch).mockResolvedValue({ recommendations: [] });
+    render(<PersonalizedRecommendations />);
+    expect(await screen.findByText("No history yet")).toBeInTheDocument();
+    expect(screen.getByTestId("coming-soon")).toBeInTheDocument();
+  });
+
   it("refresh button triggers fetch", async () => {
     vi.mocked(SafeFetch.safeFetch).mockResolvedValue({ recommendations: mockRecommendations });
     render(<PersonalizedRecommendations />);
-    await screen.findByText("Winning Product A");
+    await screen.findByText("Saved Widget");
     const refreshButtons = screen.getAllByTestId("icon-refresh");
     fireEvent.click(refreshButtons[0].parentElement!);
     expect(SafeFetch.safeFetch).toHaveBeenCalled();

@@ -33,7 +33,7 @@ const TEMPLATES: Template[] = [
     color: "text-violet-400",
     bg: "bg-violet-400/10",
     border: "border-violet-400/20",
-    steps: ["Enter your cost", "Enter competitor price", "AI suggests optimal price", "Compare scenarios"],
+    steps: ["Enter your cost", "Enter competitor price", "Use the recommended price", "Compare scenarios"],
   },
   {
     id: "bulk-order",

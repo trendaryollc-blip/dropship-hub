@@ -1,28 +1,8 @@
 import type { AmazonProductData, DataSourceResult } from "./types";
-import { getCached, setCache, CACHE_TTL } from "./cache";
+import { getCached } from "./cache";
 import type { TrendPlatform } from "@/types/trend-predictor";
 
 const SOURCE: TrendPlatform = "amazon_movers";
-
-function generateBSRHistory(keyword: string, days: number): { date: string; rank: number }[] {
-  const now = new Date();
-  const data: { date: string; rank: number }[] = [];
-  const seed = keyword.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  let baseRank = 500 + (seed % 5000);
-  const trend = (seed % 3) - 1;
-
-  for (let i = days; i >= 0; i--) {
-    const date = new Date(now);
-    date.setDate(date.getDate() - i);
-    const noise = 0.8 + Math.random() * 0.4;
-    baseRank = Math.max(10, baseRank + trend * 5 + (Math.random() - 0.5) * 50);
-    data.push({
-      date: date.toISOString().split("T")[0],
-      rank: Math.round(baseRank * noise),
-    });
-  }
-  return data;
-}
 
 export async function fetchAmazonData(
   keyword: string,
@@ -35,24 +15,26 @@ export async function fetchAmazonData(
   }
 
   try {
-    const days = timeframe === "7d" ? 7 : timeframe === "30d" ? 30 : 90;
-    const seed = keyword.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    const hasLive = Boolean(process.env.AMAZON_PA_API_KEY || process.env.AMAZON_SP_API_KEY || process.env.RAPIDAPI_AMAZON_KEY);
+    if (!hasLive) {
+      return {
+        success: false,
+        data: null,
+        error: "No live Amazon API key configured. Set AMAZON_PA_API_KEY / AMAZON_SP_API_KEY / RAPIDAPI_AMAZON_KEY.",
+        source: SOURCE,
+        fetchedAt: new Date().toISOString(),
+        cached: false,
+      };
+    }
 
-    const data: AmazonProductData = {
-      keyword,
-      asin: `B0${(seed % 900000 + 100000).toString()}`,
-      title: `${keyword.charAt(0).toUpperCase() + keyword.slice(1)} - Premium Quality`,
-      price: Math.round((15 + (seed % 80)) * 100) / 100,
-      reviewCount: 50 + (seed % 5000),
-      rating: Math.round((3.5 + (seed % 15) / 10) * 10) / 10,
-      bsr: 500 + (seed % 5000),
-      bsrHistory: generateBSRHistory(keyword, days),
-      sellerCount: 5 + (seed % 50),
-      monthlySales: 100 + (seed % 5000),
+    return {
+      success: false,
+      data: null,
+      error: "Amazon live adapter not implemented yet. Connect a provider to populate BSR history.",
+      source: SOURCE,
+      fetchedAt: new Date().toISOString(),
+      cached: false,
     };
-
-    await setCache("amazon", data, CACHE_TTL.AMAZON_BSR, cacheKey);
-    return { success: true, data, source: SOURCE, fetchedAt: new Date().toISOString(), cached: false };
   } catch (error) {
     return {
       success: false,

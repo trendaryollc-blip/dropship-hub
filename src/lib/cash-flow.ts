@@ -55,7 +55,7 @@ export function calculateCashFlowSnapshot(params: {
   const burnRate = totalNet7 < 0 ? Math.abs(totalNet7 / 7) : 0;
 
   // Runway: how many days until balance hits 0
-  const runwayDays = burnRate > 0 ? Math.floor(currentBalance / burnRate) : 999;
+  const runwayDays = burnRate > 0 ? Math.floor(currentBalance / burnRate) : null;
 
   // Monthly totals from forecast
   const next30 = forecast.slice(0, 30);

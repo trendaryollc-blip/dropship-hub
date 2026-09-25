@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { Heart, DollarSign, Star, Globe } from "lucide-react";
 import { useSavedProducts } from "./SavedProductsProvider";
+import DataSourceBadge from "@/components/ui/DataSourceBadge";
 
 export default function SavedStatsBar() {
   const { savedProducts } = useSavedProducts();
@@ -59,21 +60,29 @@ export default function SavedStatsBar() {
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      {cards.map((card) => (
-        <div
-          key={card.label}
-          className="glass rounded-xl p-4 flex items-center gap-3 hover:border-accent/20 transition-all"
-        >
-          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${card.bg}`}>
-            <card.icon className={`h-4.5 w-4.5 ${card.color}`} />
+    <div>
+      <div className="flex items-center justify-end mb-1.5">
+        <DataSourceBadge source="firestore" />
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {cards.map((card) => (
+          <div
+            key={card.label}
+            className="glass rounded-xl p-4 flex items-center gap-3 hover:border-accent/20 transition-all"
+          >
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${card.bg}`}>
+              <card.icon className={`h-4.5 w-4.5 ${card.color}`} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-medium text-muted-foreground truncate">{card.label}</p>
+              <p className="font-display text-lg font-bold text-foreground truncate">{card.value}</p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-[11px] font-medium text-muted-foreground truncate">{card.label}</p>
-            <p className="font-display text-lg font-bold text-foreground truncate">{card.value}</p>
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
+      <p className="text-[10px] text-muted-foreground/70 mt-1.5 text-right">
+        Aggregated from your saved products (price snapshots at save time)
+      </p>
     </div>
   );
 }

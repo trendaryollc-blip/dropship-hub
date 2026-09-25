@@ -8,6 +8,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit --pretty -p tsconfig.json",
     "lint": "eslint .",
+    "honesty": "node scripts/honesty-guard.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:quick": "vitest run src/lib src/types src/hooks",

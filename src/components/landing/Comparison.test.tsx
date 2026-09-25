@@ -38,20 +38,20 @@ describe("Comparison", () => {
 
   it("renders comparison rows", () => {
     render(<Comparison />);
-    expect(screen.getByText("AI daily product pick")).toBeInTheDocument();
-    expect(screen.getByText("Live market monitoring")).toBeInTheDocument();
+    expect(screen.getByText("Daily product pick")).toBeInTheDocument();
+    expect(screen.getByText("Market data monitoring")).toBeInTheDocument();
   });
 
   it("renders time comparison", () => {
     render(<Comparison />);
-    expect(screen.getByText("15 min/day")).toBeInTheDocument();
-    expect(screen.getByText("4+ hours/day")).toBeInTheDocument();
+    expect(screen.getByText("Minutes a day")).toBeInTheDocument();
+    expect(screen.getByText("Hours of manual work")).toBeInTheDocument();
   });
 
   it("renders cost comparison", () => {
     render(<Comparison />);
     expect(screen.getByText("Free to start")).toBeInTheDocument();
-    expect(screen.getByText("$200+/mo in tools")).toBeInTheDocument();
+    expect(screen.getByText("Separate paid tools")).toBeInTheDocument();
   });
 
   it("exposes status icons to screen readers", () => {

@@ -111,7 +111,7 @@ function ScenarioCard({
           </div>
           <div className="text-right">
             <span className={`text-lg font-bold font-display ${tc.text}`}>{result.roas.toFixed(1)}x</span>
-            <p className="text-[9px] text-muted-foreground uppercase">ROAS</p>
+            <p className="text-[9px] text-muted-foreground uppercase">Est. ROAS</p>
           </div>
         </div>
 
@@ -125,12 +125,12 @@ function ScenarioCard({
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className={`text-base font-bold font-display ${tc.text}`}>{result.roas.toFixed(1)}x</span>
-            <span className="text-[8px] text-muted-foreground uppercase">ROAS</span>
+            <span className="text-[8px] text-muted-foreground uppercase">Est. ROAS</span>
           </div>
         </div>
 
         {/* Key Metrics */}
-        <div className="grid grid-cols-2 gap-2 mb-4">
+        <div className="grid grid-cols-2 gap-2 mb-1">
           <div className="p-2.5 rounded-lg bg-surface/50 text-center">
             <p className="text-[10px] text-muted-foreground uppercase">Revenue</p>
             <p className="text-sm font-bold text-foreground">${result.monthlyRevenue.toLocaleString()}</p>
@@ -148,6 +148,7 @@ function ScenarioCard({
             <p className="text-sm font-bold text-foreground">${result.cpa.toFixed(2)}</p>
           </div>
         </div>
+        <p className="text-[10px] text-muted-foreground mb-4">Projections from your inputs — Estimated</p>
 
         {result.profit < 0 && (
           <div className="p-3 rounded-lg bg-red-400/5 border border-red-400/20 mb-4 flex items-start gap-2">
@@ -360,7 +361,8 @@ export default function AdRoiPage() {
 
           {/* Profit Comparison Bar Chart */}
           <div className="glass rounded-2xl p-6">
-            <h3 className="font-display text-sm font-semibold text-foreground mb-4">Profit Comparison</h3>
+            <h3 className="font-display text-sm font-semibold text-foreground mb-1">Profit Comparison</h3>
+            <p className="text-[11px] text-muted-foreground mb-4">Estimated projections from your inputs</p>
             <div className="space-y-3">
               {scenarios.map((s) => {
                 const monthlyClicks = Math.round(s.monthlyBudget / s.cpc);
@@ -444,7 +446,10 @@ export default function AdRoiPage() {
 
           {/* View Toggle */}
           <div className="flex items-center justify-between">
-            <h3 className="font-display text-sm font-semibold text-foreground">12-Month Demand Calendar</h3>
+            <div>
+              <h3 className="font-display text-sm font-semibold text-foreground">12-Month Demand Calendar</h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Illustrative seasonal guidance — not live data</p>
+            </div>
             <div className="flex gap-1 bg-surface rounded-lg p-0.5 border border-border">
               <button onClick={() => setTimingView("calendar")}
                 className={`px-3 py-1.5 rounded-md text-[10px] font-medium transition-all ${timingView === "calendar" ? "bg-accent text-white" : "text-muted-foreground hover:text-foreground"}`}>
@@ -553,7 +558,8 @@ export default function AdRoiPage() {
 
           {/* Best Launch Windows */}
           <div className="glass rounded-2xl p-6">
-            <h3 className="font-display text-sm font-semibold text-foreground mb-4">Best Launch Windows</h3>
+            <h3 className="font-display text-sm font-semibold text-foreground mb-1">Best Launch Windows</h3>
+            <p className="text-[11px] text-muted-foreground mb-4">Illustrative seasonal guidance — not live data</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {marketTimingData
                 .filter((m) => m.suggestedAction === "launch" || m.suggestedAction === "scale")
@@ -635,7 +641,7 @@ export default function AdRoiPage() {
           {/* Platform Cards */}
           <div className="glass rounded-2xl p-6">
             <h3 className="font-display text-lg font-semibold text-foreground mb-2">Ad Platform Comparison</h3>
-            <p className="text-xs text-muted-foreground mb-6">Average benchmarks across e-commerce advertisers.</p>
+            <p className="text-xs text-muted-foreground mb-6">Reference CPC/CTR defaults (static reference) — not live advertiser benchmarks. Edit your own CPC in the ROI Calculator.</p>
 
             <div className="space-y-3">
               {adPlatforms.map((p) => (
@@ -653,8 +659,8 @@ export default function AdRoiPage() {
                         <h4 className="font-display text-sm font-semibold text-foreground group-hover:text-accent transition-colors">{p.name}</h4>
                       </div>
                       <div className="flex items-center gap-4 mt-1">
-                        <span className="text-xs text-muted-foreground">Avg CPC: <span className="text-foreground font-bold">${p.avgCPC.toFixed(2)}</span></span>
-                        <span className="text-xs text-muted-foreground">Avg CTR: <span className="text-foreground font-bold">{p.avgCTR}%</span></span>
+                        <span className="text-xs text-muted-foreground">Reference CPC: <span className="text-foreground font-bold">${p.avgCPC.toFixed(2)}</span></span>
+                        <span className="text-xs text-muted-foreground">Reference CTR: <span className="text-foreground font-bold">{p.avgCTR}%</span></span>
                       </div>
                       <div className="flex flex-wrap gap-1 mt-2">
                         {p.bestFor.map((b) => (

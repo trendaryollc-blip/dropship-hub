@@ -264,7 +264,7 @@ describe("Admin AI Keys Page", () => {
     vi.mocked(safeFetch).mockResolvedValue({ providers: mockProviders });
     render(<AdminAiKeysPage />);
     await waitFor(() => {
-      expect(screen.getByText("Real-time price optimization")).toBeDefined();
+      expect(screen.getByText("Chat assistant & listing text")).toBeDefined();
       expect(screen.getByText("Product & market analysis")).toBeDefined();
     });
   });

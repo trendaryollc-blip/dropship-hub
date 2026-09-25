@@ -516,7 +516,7 @@ export default function SRMTab() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiCard label="Supplier Score" value={avgScore.toFixed(1)} icon={<Star className="h-4 w-4 text-amber-400" />} delay={0} />
+        <KpiCard label="Supplier Score" value={scorecards.length > 0 ? avgScore.toFixed(1) : "—"} icon={<Star className="h-4 w-4 text-amber-400" />} delay={0} />
         <KpiCard label="Active Negotiations" value={activeNegotiations} icon={<TrendingUp className="h-4 w-4 text-emerald-400" />} delay={100} />
         <KpiCard label="Unread Messages" value={unreadMessages} icon={<MessageSquare className="h-4 w-4 text-blue-400" />} delay={200} />
         <KpiCard label="Auto-Switch Rules" value={rules.length} icon={<Zap className="h-4 w-4 text-purple-400" />} delay={300} />

@@ -68,33 +68,13 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
       if (!returnId) {
         return NextResponse.json({ error: "returnId required" }, { status: 400 });
       }
-      const ref = db.collection("users").doc(uid).collection("returnRequests").doc(returnId);
-      const doc = await ref.get();
-      if (!doc.exists) {
-        return NextResponse.json({ error: "Return not found" }, { status: 404 });
-      }
-
-      const returnData = doc.data()!;
-      const trackingNumber = `RT${Date.now()}${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-      const carriers = ["USPS", "UPS", "FedEx", "DHL"];
-      const carrier = carriers[Math.floor(Math.random() * carriers.length)];
-
-      const returnLabel = {
-        trackingNumber,
-        carrier,
-        returnAddress: `Returns Center\n${returnData.supplierName || "Supplier"}\n123 Return Lane\nLos Angeles, CA 90001`,
-        instructions: `1. Print this return label and attach it to the package.\n2. Pack the item(s) securely in original packaging if possible.\n3. Drop off at any ${carrier} location.\n4. Keep your tracking number: ${trackingNumber}\n5. Refund will be processed within 3-5 business days of receipt.`,
-        labelUrl: null,
-        generatedAt: new Date().toISOString(),
-      };
-
-      await ref.update({
-        returnLabel,
-        status: "label_generated",
-        updatedAt: new Date().toISOString(),
-      });
-
-      return NextResponse.json({ success: true, returnLabel });
+      return NextResponse.json(
+        {
+          error:
+            "Return labels require a carrier integration (EasyPost or ShipStation), which is not connected yet. Create the label with your carrier directly, or connect a carrier account once the integration ships.",
+        },
+        { status: 501 }
+      );
     }
 
     if (action === "detect") {

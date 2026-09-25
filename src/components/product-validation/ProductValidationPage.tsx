@@ -42,11 +42,13 @@ interface SupplierMatch {
 }
 
 interface EnrichmentData {
-  platforms: { platform: string; price: number; rating: number; reviews: number; url: string; brand?: string }[];
+  platforms: { platform: string; price: number; rating: number | null; reviews: number | null; url: string; brand?: string }[];
   cheapest: { platform: string; price: number } | null;
   mostExpensive: { platform: string; price: number } | null;
   priceSpread: number;
-  supplierMatches: { id: string; name: string; trustBadge: string; reliabilityScore: number; shippingToUS: string }[];
+  supplierMatches: { id: string; name: string; trustBadge: string; reliabilityScore: number; shippingToUS: string; dataSource?: string }[];
+  sourcesUsed?: string[];
+  coverage?: { queried: number; succeeded: number; uniquePlatforms: number };
 }
 
 interface MarketIntelData {
@@ -59,6 +61,7 @@ interface MarketIntelData {
   riskScore: number;
   riskFactors: { label: string; level: string }[];
   seasonality: string;
+  meta?: { status: string; setup?: { what?: string; whereToGet?: string; whereToSet?: string }; quota?: unknown; message?: string };
 }
 
 interface AutoFetchStatus {
@@ -139,29 +142,27 @@ interface FormData {
 
 const defaultForm: FormData = {
   productTitle: "", productImage: "", productUrl: "",
-  searchVolume: "50000", historicalVolumes: "10000,15000,22000,30000,40000,50000",
-  sellerCount: "50", historicalSellers: "10,15,20,30,40,50",
-  currentPrice: "29.99", historicalPrices: "34.99,32.99,31.99,30.99,30.49,29.99",
-  topSellerShare: "20", avgRating: "4.3", avgReviews: "3000",
-  priceMin: "15", priceMax: "45", uniqueVariants: "20", platformCount: "4",
-  productCost: "8", sellingPrice: "29.99", shippingCost: "4.5",
-  platformFee: "13", adCostPerClick: "0.8", conversionRate: "3",
-  returnRate: "5", monthlyBudget: "500", monthlySales: "100",
-  monthlySearchVolumes: "30000,32000,35000,38000,40000,42000,45000,48000,50000,52000,54000,55000",
-  monthlySalesData: "200,210,220,240,250,260,280,300,320,330,340,350",
-  monthlyRevenue: "2000,2100,2200,2400,2500,2600,2800,3000,3200,3300,3400,3500",
-  category: "Electronics",
-  reviewScore: "4.3", reviewCount: "2500", supplierReliability: "88",
-  shippingSpeed: "7", competitionLevel: "medium",
+  searchVolume: "", historicalVolumes: "",
+  sellerCount: "", historicalSellers: "",
+  currentPrice: "", historicalPrices: "",
+  topSellerShare: "", avgRating: "", avgReviews: "",
+  priceMin: "", priceMax: "", uniqueVariants: "", platformCount: "",
+  productCost: "", sellingPrice: "", shippingCost: "",
+  platformFee: "", adCostPerClick: "", conversionRate: "",
+  returnRate: "", monthlyBudget: "", monthlySales: "",
+  monthlySearchVolumes: "", monthlySalesData: "", monthlyRevenue: "",
+  category: "",
+  reviewScore: "", reviewCount: "", supplierReliability: "",
+  shippingSpeed: "", competitionLevel: "medium",
   brand: "", materials: "", certifications: "",
-  supplierName: "", supplierUrl: "", yearsInBusiness: "3",
-  fulfillmentRate: "95", communicationScore: "80", moq: "50", sampleAvailable: true,
-  avgMarketPrice: "32.99",
-  comp1Name: "", comp1Price: "", comp1Rating: "", comp1Reviews: "", comp1Platform: "Amazon",
-  comp2Name: "", comp2Price: "", comp2Rating: "", comp2Reviews: "", comp2Platform: "eBay",
-  targetMarkets: "US,UK,CA", shippingMethods: "standard", weight: "2",
-  dimLength: "10", dimWidth: "8", dimHeight: "4", isBranded: false, hasVariants: true,
-  targetAudience: "25-44", monthlySalesEstimate: "100", avgOrderValue: "35", customerSegment: "general",
+  supplierName: "", supplierUrl: "", yearsInBusiness: "",
+  fulfillmentRate: "", communicationScore: "", moq: "", sampleAvailable: false,
+  avgMarketPrice: "",
+  comp1Name: "", comp1Price: "", comp1Rating: "", comp1Reviews: "", comp1Platform: "",
+  comp2Name: "", comp2Price: "", comp2Rating: "", comp2Reviews: "", comp2Platform: "",
+  targetMarkets: "", shippingMethods: "standard", weight: "",
+  dimLength: "", dimWidth: "", dimHeight: "", isBranded: false, hasVariants: false,
+  targetAudience: "", monthlySalesEstimate: "", avgOrderValue: "", customerSegment: "",
 };
 
 function parseList(s: string): number[] {
@@ -208,13 +209,6 @@ export default function ProductValidationPage() {
     if (get("rating")) { initial.avgRating = get("rating")!; initial.reviewScore = get("rating")!; }
     if (get("reviews")) { initial.avgReviews = get("reviews")!; initial.reviewCount = get("reviews")!; }
     if (get("bestPrice")) initial.priceMin = get("bestPrice")!;
-    if (get("estimatedMargin")) {
-      const margin = parseFloat(get("estimatedMargin")!);
-      if (margin > 0 && initial.sellingPrice) {
-        const sp = parseFloat(initial.sellingPrice);
-        initial.productCost = String(+(sp * (1 - margin / 100)).toFixed(2));
-      }
-    }
     if (get("competitorCount")) initial.sellerCount = get("competitorCount")!;
     if (get("trendPhase")) {
       const phase = get("trendPhase")!;
@@ -248,14 +242,14 @@ export default function ProductValidationPage() {
               initial.comp1Price = String(platforms[0].price || "");
               initial.comp1Rating = String(platforms[0].rating || "");
               initial.comp1Reviews = String(platforms[0].reviews || "");
-              initial.comp1Platform = platforms[0].platform || "Amazon";
+              initial.comp1Platform = platforms[0].platform || "";
             }
             if (platforms.length >= 3) {
               initial.comp2Name = platforms[1].platform || "";
               initial.comp2Price = String(platforms[1].price || "");
               initial.comp2Rating = String(platforms[1].rating || "");
               initial.comp2Reviews = String(platforms[1].reviews || "");
-              initial.comp2Platform = platforms[1].platform || "eBay";
+              initial.comp2Platform = platforms[1].platform || "";
             }
           }
         }
@@ -278,7 +272,7 @@ export default function ProductValidationPage() {
   // Single ref to prevent all auto-fetches from re-running (handles StrictMode + remounts)
   const autoFetchDone = useRef(false);
   // Store initial form values captured at mount (for API calls, not affected by auto-fill)
-  const initialFormRef = useRef<{ title: string; price: number; category: string; url: string; rating: number; reviews: number } | null>(null);
+  const initialFormRef = useRef<{ title: string; price: number; category: string; url: string; rating?: number; reviews?: number } | null>(null);
 
   const hasProductContext = searchParams.get("productTitle") || searchParams.get("currentPrice");
 
@@ -303,8 +297,8 @@ export default function ProductValidationPage() {
       price: parseFloat(form.currentPrice) || 0,
       category: form.category,
       url: form.productUrl,
-      rating: parseFloat(form.avgRating) || 4.0,
-      reviews: parseFloat(form.avgReviews) || 100,
+      rating: parseFloat(form.avgRating) || undefined,
+      reviews: parseFloat(form.avgReviews) || undefined,
     };
 
     // No AbortController cleanup — StrictMode double-mount would abort the
@@ -353,17 +347,18 @@ export default function ProductValidationPage() {
           if (suppliers.length > 0) {
             const top = suppliers[0];
             autoSet("supplierName", top.name, setForm);
-            autoSet("supplierUrl", `https://${top.name.toLowerCase().replace(/\s+/g, "")}.com`, setForm);
             if (top.stats) {
-              autoSet("supplierReliability", String(top.stats.reliabilityScore || 85), setForm);
-              autoSet("shippingSpeed", String(top.stats.shippingDays || 7), setForm);
-              autoSet("communicationScore", String(Math.min(100, Math.round((top.stats.rating || 4) * 20))), setForm);
+              if (top.stats.reliabilityScore > 0) {
+                autoSet("supplierReliability", String(top.stats.reliabilityScore), setForm);
+              }
+              if (top.stats.shippingDays > 0) {
+                autoSet("shippingSpeed", String(top.stats.shippingDays), setForm);
+              }
             }
             if (top.yearsInBusiness) autoSet("yearsInBusiness", String(top.yearsInBusiness), setForm);
             if (top.certifications && top.certifications.length > 0) {
               autoSet("certifications", top.certifications.join(", "), setForm);
             }
-            if (top.trustBadge === "gold") autoSet("sampleAvailable", true, setForm);
           }
           setAutoFetchStatus((s) => ({ ...s, suppliers: "done" }));
         } catch (e) {
@@ -392,31 +387,34 @@ export default function ProductValidationPage() {
               autoSet("avgMarketPrice", String(+(prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2)), setForm);
               autoSet("platformCount", String(data.platforms.length), setForm);
             }
-            const ratings = data.platforms.filter((p) => p.rating > 0).map((p) => p.rating);
+            const ratings = data.platforms
+              .filter((p) => typeof p.rating === "number" && p.rating > 0)
+              .map((p) => p.rating as number);
             if (ratings.length > 0) {
               autoSet("avgRating", String(+(ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1)), setForm);
               autoSet("reviewScore", String(+(ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1)), setForm);
             }
-            const reviews = data.platforms.filter((p) => p.reviews > 0).map((p) => p.reviews);
+            const reviews = data.platforms
+              .filter((p) => typeof p.reviews === "number" && p.reviews > 0)
+              .map((p) => p.reviews as number);
             if (reviews.length > 0) {
               autoSet("avgReviews", String(Math.round(reviews.reduce((a, b) => a + b, 0) / reviews.length)), setForm);
               autoSet("reviewCount", String(Math.round(reviews.reduce((a, b) => a + b, 0) / reviews.length)), setForm);
             }
 
-            // Competitors from platform data (sorted by reviews = most established)
-            const sorted = [...data.platforms].sort((a, b) => b.reviews - a.reviews);
+            const sorted = [...data.platforms].sort((a, b) => (b.reviews ?? 0) - (a.reviews ?? 0));
             if (sorted.length >= 1) {
               autoSet("comp1Name", sorted[0].platform, setForm);
               autoSet("comp1Price", String(sorted[0].price), setForm);
-              autoSet("comp1Rating", String(sorted[0].rating), setForm);
-              autoSet("comp1Reviews", String(sorted[0].reviews), setForm);
+              autoSet("comp1Rating", sorted[0].rating != null ? String(sorted[0].rating) : "", setForm);
+              autoSet("comp1Reviews", sorted[0].reviews != null ? String(sorted[0].reviews) : "", setForm);
               autoSet("comp1Platform", sorted[0].platform, setForm);
             }
             if (sorted.length >= 2) {
               autoSet("comp2Name", sorted[1].platform, setForm);
               autoSet("comp2Price", String(sorted[1].price), setForm);
-              autoSet("comp2Rating", String(sorted[1].rating), setForm);
-              autoSet("comp2Reviews", String(sorted[1].reviews), setForm);
+              autoSet("comp2Rating", sorted[1].rating != null ? String(sorted[1].rating) : "", setForm);
+              autoSet("comp2Reviews", sorted[1].reviews != null ? String(sorted[1].reviews) : "", setForm);
               autoSet("comp2Platform", sorted[1].platform, setForm);
             }
           }
@@ -438,7 +436,7 @@ export default function ProductValidationPage() {
             }
           }
 
-          // Product Details: derive materials & certifications from category
+          // Product Details: derive materials from category only (never certifications — regulatory claims)
           const catLower = init.category.toLowerCase();
           const titleLower = init.title.toLowerCase();
           const isElectronics = /electron|led|light|bluetooth|wireless|charg|power|battery|cable|speaker|headphone|earb/i.test(catLower + " " + titleLower);
@@ -449,22 +447,14 @@ export default function ProductValidationPage() {
 
           if (isElectronics) {
             autoSet("materials", "plastic, metal, silicone", setForm);
-            autoSet("certifications", "CE, FCC, UL", setForm);
           } else if (isToys) {
             autoSet("materials", "plastic, ABS", setForm);
-            autoSet("certifications", "CE, ASTM, CPSIA", setForm);
           } else if (isFashion) {
             autoSet("materials", "cotton, polyester", setForm);
-            autoSet("certifications", "OEKO-TEX", setForm);
           } else if (isBeauty) {
             autoSet("materials", "natural extracts", setForm);
-            autoSet("certifications", "FDA, GMP", setForm);
           } else if (isHome) {
             autoSet("materials", "stainless steel, silicone", setForm);
-            autoSet("certifications", "CE, FDA", setForm);
-          } else {
-            autoSet("materials", "plastic, metal", setForm);
-            autoSet("certifications", "CE", setForm);
           }
 
           setAutoFetchStatus((s) => ({ ...s, enrichment: "done" }));
@@ -490,22 +480,25 @@ export default function ProductValidationPage() {
           }, 20000);
           if (!res.ok) throw new Error("Failed");
           const data: MarketIntelData = await res.json();
+          const metaStatus = data.meta?.status;
+          const metaLive = !metaStatus || metaStatus === "live";
 
-          if (data.searchVolume) autoSet("searchVolume", String(data.searchVolume), setForm);
-          if (data.estimatedSellers) autoSet("sellerCount", String(data.estimatedSellers), setForm);
-          if (data.avgSellerRating) autoSet("avgRating", String(data.avgSellerRating), setForm);
-          if (data.competitionLevel) {
-            const levelMap: Record<string, FormData["competitionLevel"]> = {
-              low: "low", medium: "medium", high: "high", "very-high": "very-high",
-            };
-            autoSet("competitionLevel", levelMap[data.competitionLevel] || "medium", setForm);
+          if (metaLive) {
+            if (data.estimatedSellers) autoSet("sellerCount", String(data.estimatedSellers), setForm);
+            if (data.avgSellerRating) autoSet("avgRating", String(data.avgSellerRating), setForm);
+            if (data.competitionLevel) {
+              const levelMap: Record<string, FormData["competitionLevel"]> = {
+                low: "low", medium: "medium", high: "high", "very-high": "very-high",
+              };
+              autoSet("competitionLevel", levelMap[data.competitionLevel] || "medium", setForm);
+            }
+          } else {
+            autoFilledFields.current.add("sellerCount");
+            autoFilledFields.current.add("avgRating");
+            autoFilledFields.current.add("competitionLevel");
           }
-          if (data.riskScore) {
-            const margin = Math.max(5, 40 - Math.round(data.riskScore / 3));
-            const sp = init.price || 29.99;
-            autoSet("productCost", String(+(sp * (1 - margin / 100)).toFixed(2)), setForm);
-          }
-          if (data.seasonality) autoSet("targetAudience", data.seasonality, setForm);
+
+          // Do not derive productCost from risk score, and never write seasonality into targetAudience.
 
           setAutoFetchStatus((s) => ({ ...s, marketIntel: "done" }));
         } catch (e) {
@@ -530,7 +523,7 @@ export default function ProductValidationPage() {
     setLoading(true);
     setError(null);
     setResult(null);
-    setEnginesRunning(["Trend Velocity", "Saturation", "Profit", "Seasonal", "Golden Score"]);
+    setEnginesRunning(["Trend", "Saturation", "Profit", "Seasonal", "Score"]);
 
     try {
       const token = await (await import("@/lib/firebase")).auth.currentUser?.getIdToken();
@@ -604,7 +597,7 @@ export default function ProductValidationPage() {
             communicationScore: parseFloat(form.communicationScore) || 0,
             yearsInBusiness: parseFloat(form.yearsInBusiness) || 0,
             certifications: form.certifications.split(",").map(s => s.trim()).filter(Boolean),
-            paymentMethods: ["PayPal", "Escrow"],
+            paymentMethods: [],
             minOrderQuantity: parseFloat(form.moq) || 0,
             sampleAvailable: form.sampleAvailable,
           } : undefined,
@@ -696,11 +689,11 @@ export default function ProductValidationPage() {
       <div className="text-center space-y-2">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/20 mb-2">
           <Sparkles className="h-3.5 w-3.5 text-accent" />
-          <span className="text-[11px] font-medium text-accent">AI-Powered Analysis</span>
+          <span className="text-[11px] font-medium text-accent">Rule-Based Analysis</span>
         </div>
         <h1 className="font-display text-3xl font-bold text-foreground">Product Validation Engine</h1>
         <p className="text-sm text-muted-foreground max-w-lg mx-auto">
-          Score products on 10+ criteria across 11 engines. Get instant insights on trend, profit, risk, and market potential.
+          Score products with deterministic scoring across trend, profit, risk, and market engines. Optional engines run when you fill Supply and Market tabs.
         </p>
       </div>
 
@@ -1083,18 +1076,19 @@ export default function ProductValidationPage() {
             <div className="glass rounded-2xl p-12 text-center">
               <Loader2 className="h-12 w-12 text-accent mx-auto mb-4 animate-spin" />
               <h3 className="font-display text-lg font-semibold text-foreground mb-2">Running Validation...</h3>
-              <p className="text-sm text-muted-foreground mb-4">Analyzing 10+ criteria across 11 engines</p>
+              <p className="text-sm text-muted-foreground mb-4">Running deterministic scoring engines</p>
               <div className="flex flex-wrap justify-center gap-2">
                 {["Trend", "Saturation", "Profit", "Seasonal", "Score",
                   "Auth", "Supplier", "Competition", "Risk", "Market", "Bundle"
                 ].map((e) => (
                   <span key={e} className={`text-[10px] px-3 py-1.5 rounded-full border transition-all ${
                     enginesRunning.includes(e)
-                      ? "bg-accent/20 text-accent border-accent/40 animate-pulse"
+                      ? "bg-accent/20 text-accent border-accent/40"
                       : "bg-surface/50 text-muted-foreground border-border"
                   }`}>{e}</span>
                 ))}
               </div>
+              <p className="text-[10px] text-muted-foreground mt-3">Optional engines skip when required inputs are empty</p>
             </div>
           )}
 
@@ -1139,10 +1133,10 @@ export default function ProductValidationPage() {
               />
 
               <RiskSummaryBar
-                authenticityScore={result.productAuthenticity?.score ?? 0}
-                supplierScore={result.supplierValidation?.score ?? 0}
-                riskScore={result.riskAssessment?.score ?? 0}
-                marketScore={result.marketIntelligence?.score ?? 0}
+                authenticityScore={result.productAuthenticity?.score}
+                supplierScore={result.supplierValidation?.score}
+                riskScore={result.riskAssessment?.score}
+                marketScore={result.marketIntelligence?.score}
               />
 
               <GoldenScoreBoard data={result.goldenProduct} />

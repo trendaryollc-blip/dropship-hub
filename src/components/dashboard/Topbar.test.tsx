@@ -185,7 +185,8 @@ describe("Topbar", () => {
     const input = screen.getByPlaceholderText(/Search products/);
     fireEvent.change(input, { target: { value: "xyz" } });
     fireEvent.focus(input);
-    expect(screen.getByText("No matches found")).toBeInTheDocument();
+    expect(screen.getByText("No matching history entries")).toBeInTheDocument();
+    expect(screen.getByText(/Press Enter to run a full search/)).toBeInTheDocument();
   });
 
   it("shows loading spinner while searching", () => {
@@ -201,7 +202,8 @@ describe("Topbar", () => {
     render(<Topbar onMenuToggle={onMenuToggle} />);
     const input = screen.getByPlaceholderText(/Search products/);
     fireEvent.focus(input);
-    expect(screen.getByText("Start typing to search")).toBeInTheDocument();
+    expect(screen.getByText("Start typing to search your history")).toBeInTheDocument();
+    expect(screen.getByText(/Full-text product search opens after you press Enter/)).toBeInTheDocument();
   });
 
   it("clicks search history item and navigates", () => {

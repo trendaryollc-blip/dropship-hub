@@ -29,8 +29,20 @@ describe("ResultsHeader", () => {
     expect(screen.getByText("Price: High to Low")).toBeInTheDocument();
     expect(screen.getByText("Top Rated")).toBeInTheDocument();
     expect(screen.getByText("Most Reviews")).toBeInTheDocument();
-    expect(screen.getByText("Highest Margin")).toBeInTheDocument();
-    expect(screen.getByText("Golden Score")).toBeInTheDocument();
+    expect(screen.getByText("Highest Margin (est.)")).toBeInTheDocument();
+    expect(screen.getByText("Golden Score (est.)")).toBeInTheDocument();
+  });
+
+  it("shows estimated metrics note when sorting by margin or golden", () => {
+    render(<ResultsHeader {...baseProps} sortBy="margin" />);
+    expect(screen.getByText("Estimated metrics")).toBeInTheDocument();
+    render(<ResultsHeader {...baseProps} sortBy="golden" />);
+    expect(screen.getAllByText("Estimated metrics").length).toBeGreaterThan(0);
+  });
+
+  it("hides estimated metrics note for live sorts", () => {
+    render(<ResultsHeader {...baseProps} sortBy="relevance" />);
+    expect(screen.queryByText("Estimated metrics")).not.toBeInTheDocument();
   });
 
   it("calls setSortBy when the select changes", () => {

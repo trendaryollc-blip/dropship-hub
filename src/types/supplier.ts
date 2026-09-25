@@ -83,7 +83,7 @@ export interface SupplierPerformance {
   totalOrders: number;
   responseTimeHours: number;
   dailySnapshots: SupplierMetricSnapshot[];
-  status: "excellent" | "good" | "warning" | "critical";
+  status: "excellent" | "good" | "warning" | "critical" | "unknown";
 }
 
 export interface SupplierMetricSnapshot {
@@ -374,7 +374,7 @@ export interface SupplierMessageItem {
   direction: "outgoing" | "incoming";
   subject?: string;
   body: string;
-  status: "sent" | "delivered" | "read" | "failed";
+  status: "sent" | "delivered" | "read" | "failed" | "logged";
   timestamp: string;
 }
 

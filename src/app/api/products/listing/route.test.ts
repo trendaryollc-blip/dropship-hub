@@ -37,6 +37,7 @@ describe("POST /api/products/listing", () => {
     expect(data.description).toBeDefined();
     expect(data.tags).toBeDefined();
     expect(data.suggestedPriceRange).toBeDefined();
+    expect(typeof data.fallback).toBe("boolean");
     expect(data.platformTips).toBeDefined();
     expect(data.platformTips.length).toBeGreaterThan(0);
   });
@@ -45,6 +46,13 @@ describe("POST /api/products/listing", () => {
     const res = await POST(makeReq({ title: "LED Strip" }), null as any);
     const data = await res.json();
     expect(data.suggestedPriceRange).toContain("$");
+  });
+
+  it("flags the price range as a fallback estimate when no live competitor prices are available", async () => {
+    const res = await POST(makeReq({ title: "Wireless Mouse", category: "Electronics", price: 29.99 }), null as any);
+    const data = await res.json();
+    expect(data.fallback).toBe(true);
+    expect(data.suggestedPriceRange).toBe("$23.99 - $59.98");
   });
 
   it("includes tips for Amazon, Shopify, and eBay", async () => {

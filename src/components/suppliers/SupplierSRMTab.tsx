@@ -175,13 +175,14 @@ function MessagesSection({ messages, supplierId }: { messages: SupplierMessage[]
                   <span className="text-xs font-medium text-white">{msg.subject}</span>
                   <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
                     msg.status === "sent" ? "text-emerald-400 bg-emerald-400/10" :
+                    msg.status === "logged" ? "text-amber-400 bg-amber-400/10" :
                     msg.status === "read" ? "text-blue-400 bg-blue-400/10" :
                     "text-red-400 bg-red-400/10"
-                  }`}>{msg.status}</span>
+                  }`} title={msg.status === "logged" ? "Saved to your records only — not delivered to the supplier" : undefined}>{msg.status}</span>
                 </div>
                 <p className="text-[11px] text-neutral-300 line-clamp-2">{msg.body}</p>
                 <div className="flex items-center gap-2 mt-1.5">
-                  <span className="text-[9px] text-neutral-500">{isOutgoing ? "→ Sent" : "← Received"}</span>
+                  <span className="text-[9px] text-neutral-500">{isOutgoing ? (msg.status === "sent" ? "→ Sent" : "→ Logged") : "← Received"}</span>
                   <span className="text-[9px] text-neutral-500">•</span>
                   <span className="text-[9px] text-neutral-500">{new Date(msg.createdAt).toLocaleDateString()}</span>
                 </div>

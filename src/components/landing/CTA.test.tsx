@@ -14,14 +14,14 @@ describe("CTA", () => {
 
   it("renders description", () => {
     render(<CTA />);
-    expect(screen.getByText(/AI picks your winners/)).toBeInTheDocument();
+    expect(screen.getByText(/Data picks your winners/)).toBeInTheDocument();
   });
 
   it("renders feature pills", () => {
     render(<CTA />);
-    expect(screen.getByText("AI Daily Pick")).toBeInTheDocument();
+    expect(screen.getByText("Daily Pick")).toBeInTheDocument();
     expect(screen.getByText("Niche Radar")).toBeInTheDocument();
-    expect(screen.getByText("Live Intelligence")).toBeInTheDocument();
+    expect(screen.getByText("Market Intelligence")).toBeInTheDocument();
     expect(screen.getByText("Trending Scores")).toBeInTheDocument();
   });
 

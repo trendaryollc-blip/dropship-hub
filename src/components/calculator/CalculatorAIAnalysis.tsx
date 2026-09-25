@@ -25,7 +25,7 @@ function generateInsights(activeTab: string, inputs: Record<string, number>, res
     const netProfit = results.netProfit || 0;
 
     if (margin >= 40) {
-      insights.push({ type: "good", title: "Excellent Margin", description: `${margin.toFixed(1)}% margin is above the 30% industry average. You're in a strong position.` });
+      insights.push({ type: "good", title: "Strong Margin", description: `${margin.toFixed(1)}% of revenue remains after your entered costs. You have room for refunds and fees.` });
     } else if (margin >= 20) {
       insights.push({ type: "warning", title: "Moderate Margin", description: `${margin.toFixed(1)}% margin is workable but consider optimizing costs or raising price.` });
     } else if (margin > 0) {
@@ -43,13 +43,13 @@ function generateInsights(activeTab: string, inputs: Record<string, number>, res
     }
 
     if (netProfit > 0) {
-      insights.push({ type: "action", title: "Scale This Product", description: `At $${netProfit.toFixed(2)} profit/unit, selling 100 units/month = $${(netProfit * 100).toFixed(2)} monthly profit.` });
+      insights.push({ type: "action", title: "Scale This Product", description: `Projected: at $${netProfit.toFixed(2)} profit/unit, 100 units/month would earn $${(netProfit * 100).toFixed(2)}. Your inputs only — not a forecast.` });
     }
   }
 
   if (activeTab === "shipping") {
-    insights.push({ type: "tip", title: "Volume Discounts", description: "Shipping costs decrease significantly at higher volumes. Negotiate rates at 500+ units/month." });
-    insights.push({ type: "action", title: "Compare Carriers", description: "Get quotes from 3+ carriers. Prices can vary 30-50% for the same route." });
+    insights.push({ type: "tip", title: "Volume Discounts", description: "Ask suppliers about volume shipping rates before committing to large orders." });
+    insights.push({ type: "action", title: "Compare Carriers", description: "Request quotes from multiple carriers for your route — prices differ by service level." });
   }
 
   if (activeTab === "landed") {
@@ -61,8 +61,8 @@ function generateInsights(activeTab: string, inputs: Record<string, number>, res
       insights.push({ type: "warning", title: "High Tariff", description: "Tariffs over 15% significantly impact margins. Consider sourcing from tariff-free countries." });
     }
 
-    insights.push({ type: "tip", title: "Optimize Quantity", description: "Buying in bulk (500+ units) can reduce per-unit landed cost by 15-25%." });
-    insights.push({ type: "action", title: "Find Alternative Source", description: "Compare landed costs from China vs Vietnam vs India for the same product." });
+    insights.push({ type: "tip", title: "Optimize Quantity", description: "Larger orders spread fixed shipping and handling across more units — compare per-unit cost at higher quantities." });
+    insights.push({ type: "action", title: "Find Alternative Source", description: "Compare landed costs from multiple sourcing countries for the same product." });
   }
 
   if (activeTab === "margin") {
@@ -116,7 +116,8 @@ export default function CalculatorAIAnalysis({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-violet-400" />
-          <span className="text-sm font-semibold text-foreground">AI Analysis</span>
+          <span className="text-sm font-semibold text-foreground">Rule-Based Insights</span>
+          <span className="text-[10px] text-muted-foreground">from your inputs</span>
         </div>
         {onAskAI && (
           <button
@@ -162,7 +163,7 @@ export default function CalculatorAIAnalysis({
           className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-violet-500 to-purple-500 text-white text-xs font-medium hover:opacity-90 transition-all"
         >
           <Sparkles className="h-3.5 w-3.5" />
-          Get Full AI Analysis
+          Open in AI Assistant
         </button>
       )}
     </div>

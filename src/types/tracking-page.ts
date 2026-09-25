@@ -88,8 +88,6 @@ export interface TrackingPageStats {
   avgDuration: number;
   upsellClickRate: number;
   upsellConversionRate: number;
-  totalUpsellRevenue: number;
-  supportTicketReduction: number;
   topCountries: { country: string; views: number }[];
   deviceBreakdown: { device: string; count: number }[];
   recentViews: TrackingPageView[];

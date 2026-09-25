@@ -47,6 +47,7 @@ export interface PlatformOrder {
   platform: string;
   platformOrderId: string;
   trackingNumber: string | null;
+  trackingUrl?: string | null;
   carrier: string | null;
   status: string;
   placedAt: string | null;
@@ -294,21 +295,21 @@ export const BULK_ACTION_CONFIG: Record<string, { label: string; icon: string; c
 export interface SLADashboardData {
   summary: {
     totalOrders: number;
-    onTimeRate: number;
-    avgFulfillmentHours: number;
+    onTimeRate: number | null;
+    avgFulfillmentHours: number | null;
     atRiskOrders: number;
     overdueOrders: number;
   };
   breakdown: Array<{
     status: string;
     count: number;
-    avgHours: number;
-    onTimeRate: number;
+    avgHours: number | null;
+    onTimeRate: number | null;
   }>;
   alerts: Array<{
     orderId: string;
     orderNumber: string;
-    customerName: string;
+    customerName?: string;
     hoursElapsed: number;
     expectedBy: string;
     severity: "warning" | "critical";
@@ -327,49 +328,36 @@ export interface SupplierPerformanceData {
     supplierId: string;
     supplierName: string;
     orderCount: number;
-    avgShippingDays: number;
-    onTimeRate: number;
-    returnRate: number;
-    avgQualityScore: number;
+    avgShippingDays: number | null;
+    onTimeRate: number | null;
+    cancellationRate: number;
+    avgQualityScore: number | null;
     totalRevenue: number;
     totalProfit: number;
-    avgMargin: number;
-    reliabilityTrend: "improving" | "stable" | "declining";
-    status: "excellent" | "good" | "warning" | "poor";
+    avgMargin: number | null;
+    reliabilityTrend: "improving" | "stable" | "declining" | "unknown";
+    status: "excellent" | "good" | "warning" | "poor" | "unknown";
   }>;
   summary: {
     totalSuppliers: number;
     bestPerformer: string;
     worstPerformer: string;
-    avgOverallScore: number;
+    avgOverallScore: number | null;
   };
 }
 
 export interface InventoryDashboardData {
   summary: {
     totalSKUs: number;
-    lowStockCount: number;
-    outOfStockCount: number;
-    avgStockLevel: number;
-    totalInventoryValue: number;
+    avgUnitsPerOrder: number;
+    totalCogs30d: number;
   };
-  alerts: Array<{
-    productId: string;
-    productName: string;
-    supplierName: string;
-    currentStock: number;
-    reorderPoint: number;
-    severity: "out_of_stock" | "critical" | "low";
-    lastUpdated: string;
-  }>;
   topProducts: Array<{
     productId: string;
     productName: string;
     totalSold: number;
     revenue: number;
     avgDailyDemand: number;
-    daysOfStock: number;
-    status: "healthy" | "low" | "critical" | "stockout";
   }>;
 }
 

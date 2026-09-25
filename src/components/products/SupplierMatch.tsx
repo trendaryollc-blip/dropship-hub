@@ -65,7 +65,7 @@ export default function SupplierMatchSection({ suppliers, productTitle, category
                   <span className="text-[10px] text-muted-foreground">{s.flag} {s.location}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-bold text-emerald-400">${s.price.toFixed(2)}</span>
+                  <span className="text-sm font-bold text-emerald-400">{typeof s.price === "number" ? `$${s.price.toFixed(2)}` : "Price n/a"}</span>
                   <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
                     <Truck className="h-2.5 w-2.5" /> {s.shippingToUS}
                   </span>
@@ -85,7 +85,7 @@ export default function SupplierMatchSection({ suppliers, productTitle, category
         })}
 
         {suppliers.length === 0 && (
-          <SectionEmpty icon={Truck} title="No supplier matches found yet" description="We're searching for the best suppliers for this product" iconColor="text-accent" />
+          <SectionEmpty icon={Truck} title="No supplier matches found yet" description="Connect a supplier data source to shortlist vendors for this product" iconColor="text-accent" />
         )}
 
         <Link href={`/suppliers?product=${encodeURIComponent(productTitle)}&category=${encodeURIComponent(category || "")}`} className="supplier-cta">

@@ -46,7 +46,7 @@ describe("/api/ai/recommendations", () => {
     vi.resetModules();
   });
 
-  it("POST returns product recommendations", async () => {
+  it("returns only real user history — no demo catalog", async () => {
     vi.doMock("@/lib/firebase-admin", () => ({
       getAdminDB: vi.fn().mockResolvedValue(
         buildMockDb({
@@ -59,7 +59,7 @@ describe("/api/ai/recommendations", () => {
             { query: "kitchen gadgets", createdAt: "2026-09-01T00:00:00.000Z" },
           ],
           favorites: [
-            { title: "Smart Widget" },
+            { title: "Smart Widget", price: 19.99 },
           ],
         })
       ),
@@ -80,10 +80,34 @@ describe("/api/ai/recommendations", () => {
     expect(data.userProfile).toBeDefined();
     expect(data.userProfile.productCount).toBe(2);
     expect(data.generatedAt).toBeDefined();
+    expect(data.source).toBe("firestore");
 
-    const first = data.recommendations[0];
-    expect(first.matchScore).toBeDefined();
-    expect(first.reasoning).toBeDefined();
+    const titles = data.recommendations.map((r: any) => r.title);
+    expect(titles).toContain("Smart Widget");
+    expect(titles).toContain("Smart Health Device");
+    expect(titles).toContain("fitness accessories");
+
+    for (const rec of data.recommendations) {
+      expect(rec).not.toHaveProperty("confidence");
+      expect(["saved", "lifecycle", "recent-search"]).toContain(rec.matchType);
+    }
+  });
+
+  it("returns empty recommendations when user has no history", async () => {
+    vi.doMock("@/lib/firebase-admin", () => ({
+      getAdminDB: vi.fn().mockResolvedValue(buildMockDb({})),
+    }));
+
+    const { POST } = await import("./route");
+    const request = new Request("http://localhost/api/ai/recommendations", {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+    const response = await POST(request as any);
+    expect(response.status).toBe(200);
+
+    const data = await response.json();
+    expect(data.recommendations).toEqual([]);
   });
 
   it("POST returns 500 on Firestore error", async () => {
@@ -100,6 +124,6 @@ describe("/api/ai/recommendations", () => {
     expect(response.status).toBe(500);
 
     const data = await response.json();
-    expect(data.error).toBe("Failed to generate recommendations");
+    expect(data.error).toBe("Failed to load recommendations");
   });
 });

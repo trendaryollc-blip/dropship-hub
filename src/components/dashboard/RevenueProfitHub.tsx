@@ -49,9 +49,9 @@ export function RevenueProfitHub({ stats, chartData, storesConnected, suppliersA
             <span className="text-xs font-medium text-amber-400">{pendingOrders} pending</span>
           </div>
         )}
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06]">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06]" title="Revenue and order totals from your Firestore entries">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-xs font-medium text-gray-400">Live</span>
+          <span className="text-xs font-medium text-gray-400">Your data</span>
         </div>
       </div>
 

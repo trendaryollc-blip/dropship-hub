@@ -148,9 +148,15 @@ function SupplierDetailContent({ id }: { id: string }) {
         {/* CTA Buttons */}
         <div className="mt-6 pt-5 border-t border-border/50">
           <div className="flex flex-col sm:flex-row gap-3">
-            <a href={supplier.sourceUrl || "#"} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-all hover:shadow-[0_0_20px_rgba(var(--glow-color),0.3)] active:scale-[0.97]">
-              <Mail className="h-4 w-4" /> Visit Supplier
-            </a>
+            {supplier.sourceUrl ? (
+              <a href={supplier.sourceUrl} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-all hover:shadow-[0_0_20px_rgba(var(--glow-color),0.3)] active:scale-[0.97]">
+                <Mail className="h-4 w-4" /> Visit Supplier
+              </a>
+            ) : (
+              <span title="No website on record for this supplier" className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-surface border border-border text-sm font-semibold text-muted-foreground cursor-not-allowed">
+                <Mail className="h-4 w-4" /> Visit Supplier
+              </span>
+            )}
             {supplier.source === "cj" && (
               <Link href={`/products?q=${encodeURIComponent(supplier.name)}`} className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-surface transition-all">
                 <Package className="h-4 w-4" /> Browse Products
@@ -250,7 +256,7 @@ function OverviewTab({ supplier }: { supplier: SupplierProfile }) {
             <Shield className="h-4 w-4 text-accent" /> About
           </h3>
           <div className="space-y-1">
-            <Row label="Year Established" value={supplier.stats.yearEstablished} />
+            <Row label="Year Established" value={<span title="Static catalog default — not verified per supplier">Not verified</span>} />
             <Row label="Location" value={`${supplier.flag} ${supplier.location}`} />
             <Row label="Specializations" value={supplier.specializations.join(", ")} />
             <Row label="Categories" value={supplier.catalog.categories.length} />
@@ -265,8 +271,8 @@ function OverviewTab({ supplier }: { supplier: SupplierProfile }) {
           <div className="space-y-1">
             <Row label="Shipping Methods" value={supplier.shipping.methods.join(", ")} />
             <Row label="Processing Time" value={supplier.shipping.processingTime} />
-            <Row label="Shipping to US" value={`${supplier.stats.shippingDays} days`} />
-            <Row label="Shipping to EU" value={`${supplier.stats.shippingDaysEU} days`} />
+            <Row label="Shipping to US" value={supplier.stats.shippingDays > 0 ? `${supplier.stats.shippingDays} days` : <span title="No shipping-time measurement for this supplier">Not measured</span>} />
+            <Row label="Shipping to EU" value={supplier.stats.shippingDaysEU > 0 ? `${supplier.stats.shippingDaysEU} days` : <span title="No shipping-time measurement for this supplier">Not measured</span>} />
             <Row label="Free Shipping Threshold" value={supplier.shipping.freeShippingThreshold ? `$${supplier.shipping.freeShippingThreshold}+` : "N/A"} />
             <Row label="Packaging Quality" value={<span className="text-emerald-400 capitalize">{supplier.shipping.packagingQuality}</span>} />
           </div>
@@ -280,7 +286,7 @@ function OverviewTab({ supplier }: { supplier: SupplierProfile }) {
             <Award className="h-4 w-4 text-amber-400" /> Quality & Trust
           </h3>
           <div className="space-y-1">
-            <Row label="Quality Score" value={<span className="text-emerald-400">{supplier.stats.qualityScore}/100</span>} />
+            <Row label="Quality Score" value={supplier.stats.qualityScore > 0 ? <span className="text-emerald-400">{supplier.stats.qualityScore}/100</span> : <span title="No quality-score feed for this supplier">—</span>} />
             <Row label="Inspection" value={supplier.quality.inspection} />
             <Row label="Return Policy" value={supplier.quality.returnPolicy} />
             <Row label="Refund Policy" value={supplier.quality.refundPolicy} />
@@ -297,7 +303,7 @@ function OverviewTab({ supplier }: { supplier: SupplierProfile }) {
           <div className="space-y-1">
             <Row label="Total Products" value={supplier.stats.totalProducts.toLocaleString()} />
             <Row label="Categories" value={supplier.catalog.categories.length} />
-            <Row label="Price Range" value={`$${supplier.catalog.priceRange.min} - $${supplier.catalog.priceRange.max}`} />
+            <Row label="Price Range" value={<span title="Heuristic band from avg sample price ×0.3–×3 — not a verified catalog range">${supplier.catalog.priceRange.min} - ${supplier.catalog.priceRange.max} <span className="text-muted-foreground text-[10px]">(est.)</span></span>} />
             <Row label="MOQ" value={`${supplier.catalog.moq} unit${supplier.catalog.moq > 1 ? "s" : ""}`} />
             <Row label="Samples" value={supplier.catalog.samplesAvailable ? <span className="text-emerald-400">Available{supplier.catalog.samplePrice ? ` - $${supplier.catalog.samplePrice}` : ""}</span> : "Not available"} />
           </div>
@@ -309,34 +315,35 @@ function OverviewTab({ supplier }: { supplier: SupplierProfile }) {
         <h3 className="font-display text-sm font-semibold text-foreground mb-5 flex items-center gap-2">
           <MessageSquare className="h-4 w-4 text-blue-400" /> Communication
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Response Rate</span>
-              <span className="text-xs font-bold text-foreground">{Math.min(Math.round(supplier.stats.responseTimeHours < 4 ? 95 : supplier.stats.responseTimeHours < 8 ? 85 : 70), 100)}%</span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Response Rate</span>
+                <span className="text-xs font-bold text-foreground" title="Inquiry response rate needs messaging/SLA data — not measured">—</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground/70">Not measured — needs inquiry response tracking</p>
             </div>
-            <ProgressBar value={supplier.stats.responseTimeHours < 4 ? 95 : supplier.stats.responseTimeHours < 8 ? 85 : 70} />
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Communication Score</span>
-              <span className="text-xs font-bold text-foreground">{supplier.stats.communicationScore}/100</span>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Communication Score</span>
+                <span className="text-xs font-bold text-foreground" title="Needs scored message threads — not measured">{supplier.stats.communicationScore > 0 ? `${supplier.stats.communicationScore}/100` : "—"}</span>
+              </div>
+              {supplier.stats.communicationScore > 0 && <ProgressBar value={supplier.stats.communicationScore} />}
+              {supplier.stats.communicationScore <= 0 && <p className="text-[10px] text-muted-foreground/70">Not measured</p>}
             </div>
-            <ProgressBar value={supplier.stats.communicationScore} />
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Response Time</span>
-              <span className="text-xs font-bold text-foreground">{supplier.stats.responseTime}</span>
-            </div>
-            <div className="glass rounded-lg p-3 mt-1">
-              <div className="flex items-center gap-2">
-                <Clock className="h-3.5 w-3.5 text-blue-400" />
-                <span className="text-xs text-muted-foreground">Avg. first response</span>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Response Time</span>
+                <span className="text-xs font-bold text-foreground">{supplier.stats.responseTimeHours > 0 ? supplier.stats.responseTime : "—"}</span>
+              </div>
+              <div className="glass rounded-lg p-3 mt-1">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-3.5 w-3.5 text-blue-400" />
+                  <span className="text-xs text-muted-foreground">{supplier.stats.responseTimeHours > 0 ? "Avg. first response" : "No response samples yet"}</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
       </div>
     </div>
   );

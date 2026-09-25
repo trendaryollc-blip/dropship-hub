@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Truck, ArrowRight } from "lucide-react";
 import ShippingOptimizerPanel from "@/components/shipping/ShippingOptimizerPanel";
 import { ToastProvider } from "@/components/shipping/Toast";
+import { SHIPPING_ZONES } from "@/lib/shipping/country-data";
 
 export default function ShippingOptimizerPage() {
   return (
@@ -43,9 +44,9 @@ export default function ShippingOptimizerPage() {
             >
               <span>5 carriers</span>
               <ArrowRight className="h-3 w-3" />
-              <span>20 countries</span>
+              <span>{Object.keys(SHIPPING_ZONES).length} countries</span>
               <ArrowRight className="h-3 w-3" />
-              <span>Real-time rates</span>
+              <span>Estimated rates (reference table)</span>
             </motion.div>
           </div>
         </motion.div>

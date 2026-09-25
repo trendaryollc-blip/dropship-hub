@@ -170,9 +170,25 @@ describe("CashFlowPage", () => {
 
   it("renders forecast charts with guarded money rendering", () => {
     render(<CashFlowPage />);
-    expect(screen.getByText("30-Day Cash Flow Forecast")).toBeTruthy();
-    expect(screen.getByText("Running Balance Projection")).toBeTruthy();
+    expect(screen.getByText("30-Day Cash Flow Forecast (Estimated)")).toBeTruthy();
+    expect(screen.getByText("Running Balance Projection (Estimated)")).toBeTruthy();
     expect(screen.getByText(/Today: /)).toBeTruthy();
     expect(screen.queryByText("$undefined")).toBeNull();
+  });
+
+  it("labels the cash conversion cycle as a benchmark", () => {
+    render(<CashFlowPage />);
+    expect(screen.getByText("Typical 14-day benchmark (Estimated)")).toBeTruthy();
+    expect(screen.getByText("45 days runway")).toBeTruthy();
+  });
+
+  it("shows N/A runway when there is no net outflow", () => {
+    mockUseAPI.mockImplementation((url: string) =>
+      url.includes("type=snapshot")
+        ? { data: { snapshot: { ...mockSnapshot, runwayDays: null } }, mutate: mockMutate, isLoading: false, error: undefined }
+        : defaultUseAPIMock(url)
+    );
+    render(<CashFlowPage />);
+    expect(screen.getByText("N/A — no net outflow")).toBeTruthy();
   });
 });

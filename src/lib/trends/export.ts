@@ -1,7 +1,7 @@
 import type { TrendPrediction, RisingStar, TrendWatchlistEntry } from "@/types/trend-predictor";
 import { toIsoString } from "@/lib/dates";
 
-function escapeCSV(value: string | number | boolean | undefined): string {
+function escapeCSV(value: string | number | boolean | undefined | null): string {
   if (value === undefined || value === null) return "";
   const str = String(value);
   if (str.includes(",") || str.includes('"') || str.includes("\n")) {
@@ -87,7 +87,7 @@ export function exportAnalysisToCSV(
     ["Trend Score", prediction.trendScore],
     ["Direction", prediction.direction],
     ["Confidence", prediction.confidence],
-    ["Time to Peak", prediction.timeToPeak],
+    ["Time to Peak", prediction.timeToPeak || "—"],
     ["Estimated Margin", `${prediction.estimatedMargin}%`],
     ["Saturation Risk", `${prediction.saturationRisk}%`],
     ["Competition Level", prediction.competitionLevel],

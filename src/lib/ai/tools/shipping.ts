@@ -73,10 +73,11 @@ export const predictDeliveryTool = createTool({
     });
 
     const riskFactors = prediction.riskFactors.map((r) => `${r.type}: ${r.severity} risk`).join(", ");
+    const basis = prediction.estimateBasis === "reference-table" ? "reference-table estimate" : "general default estimate";
     return {
       success: true,
       data: prediction,
-      summary: `Predicted delivery: ${prediction.predictedDays.average} days (${prediction.confidence}% confidence). Estimated arrival: ${prediction.estimatedArrival.average}. Risks: ${riskFactors || "minimal"}.`,
+      summary: `Predicted delivery: ${prediction.predictedDays.average} days (${basis}). Estimated arrival: ${prediction.estimatedArrival.average}. Risks: ${riskFactors || "minimal"}.`,
     };
   },
 });

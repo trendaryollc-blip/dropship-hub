@@ -42,7 +42,7 @@ const mockOpportunities = [
 describe("OpportunityFinder", () => {
   it("renders heading", () => {
     render(<OpportunityFinder opportunities={mockOpportunities} />);
-    expect(screen.getByText("AI Opportunity Finder")).toBeInTheDocument();
+    expect(screen.getByText("Opportunity Finder")).toBeInTheDocument();
   });
 
   it("renders all opportunity cards with titles", () => {
@@ -59,9 +59,9 @@ describe("OpportunityFinder", () => {
     expect(screen.getByText("AVOID")).toBeInTheDocument();
   });
 
-  it("shows potential margin for opportunity cards", () => {
+  it("shows potential margin as USD price gap", () => {
     render(<OpportunityFinder opportunities={mockOpportunities} />);
-    expect(screen.getByText("45%")).toBeInTheDocument();
+    expect(screen.getByText("$45.00")).toBeInTheDocument();
   });
 
   it("opens detail modal on card click", () => {

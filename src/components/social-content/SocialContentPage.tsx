@@ -594,7 +594,7 @@ export default function SocialContentPage() {
                 <div className="p-3 rounded-xl bg-surface/50 border border-border/50">
                   <p className="text-xs text-muted-foreground mb-1">🎵 Suggested Audio</p>
                   <p className="text-sm font-medium text-foreground">{result.audioSuggestion.name} — {result.audioSuggestion.artist}</p>
-                  <p className="text-xs text-muted-foreground">{result.audioSuggestion.usageCount.toLocaleString()} uses {result.audioSuggestion.trending ? "• Trending" : ""}</p>
+                  <p className="text-xs text-muted-foreground">Suggested audio — verify trend on the platform before use</p>
                 </div>
               )}
 
@@ -775,11 +775,9 @@ export default function SocialContentPage() {
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
                       <span className="text-xs px-2 py-0.5 rounded-lg bg-accent/10 text-accent font-medium">{idea.ideaType}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-lg font-medium ${
-                        idea.estimatedEngagement === "viral" ? "bg-red-500/10 text-red-400" :
-                        idea.estimatedEngagement === "high" ? "bg-emerald-500/10 text-emerald-400" :
-                        "bg-surface text-muted-foreground"
-                      }`}>{idea.estimatedEngagement} engagement</span>
+                      <span className="text-xs px-2 py-0.5 rounded-lg font-medium bg-surface text-muted-foreground">
+                        Suggested potential: {idea.estimatedEngagement} (unvalidated)
+                      </span>
                       <span className="text-xs text-muted-foreground">{idea.difficulty}</span>
                     </div>
                     <h4 className="text-sm font-semibold text-foreground">{idea.title}</h4>

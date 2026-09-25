@@ -26,8 +26,8 @@ export interface TrendPrediction {
   trendScore: number;
   confidence: PredictionConfidence;
   direction: TrendDirection;
-  predictedPeak: string;
-  timeToPeak: string;
+  predictedPeak: string | null;
+  timeToPeak: string | null;
   saturationRisk: number;
   competitionLevel: "low" | "medium" | "high" | "very_high";
   reasoning: string;
@@ -92,6 +92,7 @@ export interface TrendAnalysisResponse {
   analysisTime: number;
   provider: string;
   geoData?: { region: string; value: number }[];
+  interestOverTime?: { date: string; value: number }[];
 }
 
 export interface TrendWatchlistEntry {

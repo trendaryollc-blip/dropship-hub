@@ -277,11 +277,11 @@ describe("AI Assistant Page", () => {
       expect(screen.getByText("AI Command Center")).toBeInTheDocument();
     });
 
-    it("renders Live badge", async () => {
+    it("does not render an unbacked Live badge", async () => {
       await act(async () => {
         render(<AIPage />);
       });
-      expect(screen.getByText("Live")).toBeInTheDocument();
+      expect(screen.queryByText("Live")).not.toBeInTheDocument();
     });
 
     it("renders ModeToggle in header", async () => {
@@ -1129,7 +1129,7 @@ describe("AI Assistant Page", () => {
       expect(screen.getAllByText("Priority Actions").length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText("Intelligence").length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText("Tools").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("Live Insights").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Business Insights").length).toBeGreaterThanOrEqual(1);
     });
 
     it("collapses and expands sections", async () => {

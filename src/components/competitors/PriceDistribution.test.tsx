@@ -19,10 +19,10 @@ const mockTiers = [
 ];
 
 describe("PriceDistribution", () => {
-  it("renders heading and AI badge", () => {
+  it("renders heading and source badge", () => {
     render(<PriceDistribution tiers={mockTiers} avgPrice={20} />);
     expect(screen.getByText("Price Distribution")).toBeInTheDocument();
-    expect(screen.getByText("AI Analyzed")).toBeInTheDocument();
+    expect(screen.getByText("From live listings")).toBeInTheDocument();
   });
 
   it("renders all tier ranges", () => {

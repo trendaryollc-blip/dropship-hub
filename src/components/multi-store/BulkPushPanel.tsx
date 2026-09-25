@@ -14,6 +14,14 @@ interface BulkPushPanelProps {
   onPushComplete: () => void;
 }
 
+interface BulkPushResponse {
+  success?: boolean;
+  status?: "completed" | "partial" | "failed" | "in_progress";
+  totalPushed?: number;
+  totalFailed?: number;
+  error?: string;
+}
+
 export default function BulkPushPanel({ stores, pushedProducts = [], onPushComplete }: BulkPushPanelProps) {
   const [mode, setMode] = useState<"new" | "existing">("new");
   const [selectedStores, setSelectedStores] = useState<string[]>([]);
@@ -47,7 +55,7 @@ export default function BulkPushPanel({ stores, pushedProducts = [], onPushCompl
     try {
       const authHeaders = await getAuthHeaders();
       if (mode === "new") {
-        await safeFetch("/api/multi-store/bulk-push", {
+        const res = await safeFetch<BulkPushResponse>("/api/multi-store/bulk-push", {
           method: "POST",
           headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({
@@ -58,19 +66,32 @@ export default function BulkPushPanel({ stores, pushedProducts = [], onPushCompl
             targetStoreIds: selectedStores,
           }),
         });
-        setResult({ success: true, message: `Bulk push job created for ${selectedStores.length} stores` });
+        const pushed = res?.totalPushed;
+        const failed = res?.totalFailed;
+        if (typeof pushed === "number" && typeof failed === "number") {
+          if (failed === 0 && pushed > 0) {
+            setResult({ success: true, message: `Pushed to ${pushed} of ${selectedStores.length} stores — all succeeded` });
+          } else if (pushed > 0) {
+            setResult({ success: true, message: `Pushed to ${pushed} of ${selectedStores.length} stores; ${failed} failed — check Recent Push Jobs` });
+          } else {
+            setResult({ success: false, message: `Push failed for all ${selectedStores.length} stores — check store connections and try again` });
+          }
+        } else {
+          // Response accepted but per-store counts missing — don't claim success we can't verify.
+          setResult({ success: true, message: `Push submitted for ${selectedStores.length} stores — per-store results appear in Recent Push Jobs` });
+        }
         setProductTitle("");
         setProductPrice("");
         setProductImage("");
         setProductUrl("");
       } else {
-        // Push each product as its own job; count failures instead of
-        // aborting the whole batch on the first error.
+        // Push each product as its own job; read per-store counts from the
+        // response body (HTTP 200 can still carry partial/failed pushes).
         let ok = 0;
         let failed = 0;
         for (const product of selectedProducts) {
           try {
-            await safeFetch("/api/multi-store/bulk-push", {
+            const res = await safeFetch<BulkPushResponse>("/api/multi-store/bulk-push", {
               method: "POST",
               headers: { "Content-Type": "application/json", ...authHeaders },
               body: JSON.stringify({
@@ -81,7 +102,8 @@ export default function BulkPushPanel({ stores, pushedProducts = [], onPushCompl
                 targetStoreIds: selectedStores,
               }),
             });
-            ok++;
+            if (typeof res?.totalFailed === "number" && res.totalFailed > 0) failed++;
+            else ok++;
           } catch {
             failed++;
           }

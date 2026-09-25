@@ -248,12 +248,15 @@ function ProductDetailContent() {
   const images = fetchedImages.length > storedImages.length ? fetchedImages : storedImages;
   const displayImages = images.filter((img) => img && img.startsWith("http"));
 
-  const hasPrice = price && price !== "" && price !== "null";
-  const hasRating = rating && rating !== "" && rating !== "null";
-  const hasReviews = reviews && reviews !== "" && reviews !== "null";
-  const priceNum = hasPrice ? parseFloat(price) : null;
-  const ratingNum = hasRating ? parseFloat(rating) : null;
-  const reviewsNum = hasReviews ? parseInt(reviews) : null;
+  const parsedPrice = price ? parseFloat(price) : NaN;
+  const parsedRating = rating ? parseFloat(rating) : NaN;
+  const parsedReviews = reviews ? parseInt(reviews, 10) : NaN;
+  const priceNum = Number.isFinite(parsedPrice) && parsedPrice > 0 ? parsedPrice : null;
+  const ratingNum = Number.isFinite(parsedRating) && parsedRating > 0 ? parsedRating : null;
+  const reviewsNum = Number.isFinite(parsedReviews) && parsedReviews >= 0 ? parsedReviews : null;
+  const hasPrice = priceNum !== null;
+  const hasRating = ratingNum !== null;
+  const hasReviews = reviewsNum !== null;
 
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
     if (!user) return {};
@@ -324,7 +327,7 @@ function ProductDetailContent() {
       setEnrichmentError(false);
       try {
         const authHeaders = await getAuthHeaders();
-        const data = await safeFetch<{ platforms?: { platform: string; price: number; rating: number; reviews: number; inStock: boolean; url: string }[]; [k: string]: unknown }>("/api/products/enrich", {
+        const data = await safeFetch<{ platforms?: { platform: string; price: number; rating: number | null; reviews: number | null; inStock: boolean | null; url: string }[]; [k: string]: unknown }>("/api/products/enrich", {
           method: "POST",
           headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({ title, source, price: priceNum }),
@@ -452,20 +455,21 @@ function ProductDetailContent() {
 
   const enriched = useMemo(() => {
     if (enrichmentData?.platforms) {
-      const platformsRaw = enrichmentData.platforms as { platform: string; price: number; rating: number; reviews: number; inStock: boolean; url: string }[];
-      const platforms = platformsRaw.map((p) => ({ ...p, sparkline: [p.price * 0.95, p.price, p.price * 1.02, p.price * 0.98, p.price * 1.01, p.price * 0.97, p.price] }));
+      const platformsRaw = enrichmentData.platforms as { platform: string; price: number; rating: number | null; reviews: number | null; inStock: boolean | null; url: string }[];
+      const platforms = platformsRaw.map((p) => ({
+        ...p,
+        sparkline: p.price > 0 ? [p.price, p.price, p.price, p.price, p.price, p.price, p.price] : [],
+      }));
       const cheapest = enrichmentData.cheapest as { platform: string; price: number } | null;
-      const supplierMatchesRaw = (enrichmentData.supplierMatches || []) as { id: string; name: string; trustBadge: string; location: string; flag: string; price: number; shippingToUS: string; shippingToEU: string; reliabilityScore: number; responseTime: string }[];
+      const supplierMatchesRaw = (enrichmentData.supplierMatches || []) as { id: string; name: string; trustBadge: string; location: string; flag: string; price: number | null; shippingToUS: string; shippingToEU: string; reliabilityScore: number; responseTime: string }[];
       const supplierMatches = supplierMatchesRaw.map((s) => ({ ...s, trustBadge: s.trustBadge as "gold" | "silver" | "bronze" }));
 
-      const basePriceForCalc = cheapest?.price || priceNum || 29.99;
-      const baseRatingForCalc = ratingNum || 4.3;
-      const baseReviewsForCalc = reviewsNum || 1000;
+      const basePriceForCalc = cheapest?.price || priceNum || 0;
       const priceSpreadNum = typeof enrichmentData.priceSpread === "number" ? enrichmentData.priceSpread : 0;
 
       const realReviewsData = reviewData && typeof reviewData.averageRating === "number" ? {
         averageRating: reviewData.averageRating as number,
-        totalReviews: (reviewData.totalReviews as number) || baseReviewsForCalc,
+        totalReviews: (reviewData.totalReviews as number) || reviewsNum || 0,
         distribution: (reviewData.distribution as { stars: number; percent: number }[]) || [],
         sentiment: (reviewData.sentiment as { positive: string[]; neutral: string[]; negative: string[] }) || { positive: [], neutral: [], negative: [] },
         topKeywords: (reviewData.topKeywords as string[]) || [],
@@ -476,14 +480,14 @@ function ProductDetailContent() {
 
       const realMarketIntel = marketIntelData && typeof marketIntelData.searchVolume === "string" ? {
         searchVolume: marketIntelData.searchVolume as "high" | "medium" | "low",
-        searchVolumeNumber: (marketIntelData.searchVolumeNumber as number) || 0,
+        interestIndex: (marketIntelData.interestIndex as number) || 0,
         trendDirection: (marketIntelData.trendDirection as "rising" | "stable" | "declining") || "stable",
         trendSparkline: (marketIntelData.trendSparkline as number[]) || [],
         seasonality: (marketIntelData.seasonality as string) || "",
         bestTimeToSell: (marketIntelData.bestTimeToSell as string) || "",
         competitionLevel: (marketIntelData.competitionLevel as "low" | "medium" | "high" | "very-high") || "medium",
         estimatedSellers: (marketIntelData.estimatedSellers as number) || 0,
-        avgSellerRating: (marketIntelData.avgSellerRating as number) || 0,
+        avgSellerRating: typeof (marketIntelData.avgSellerRating as number | null) === "number" ? (marketIntelData.avgSellerRating as number) : null,
         priceWarRisk: (marketIntelData.priceWarRisk as "low" | "medium" | "high") || "medium",
         canCompete: (marketIntelData.canCompete as string) || "",
         riskScore: (marketIntelData.riskScore as number) || 0,
@@ -495,15 +499,17 @@ function ProductDetailContent() {
         description: (listingData.description as string) || "",
         tags: (listingData.tags as string[]) || [],
         suggestedPriceRange: (listingData.suggestedPriceRange as string) || "",
+        fallback: listingData.fallback === true,
         platformTips: (listingData.platformTips as { platform: string; tip: string }[]) || [],
       } : null;
 
+      const ratedPlatforms = platforms.filter((p) => typeof p.rating === "number");
       return {
         platforms,
-        cheapest: cheapest || { platform: "N/A", price: basePriceForCalc },
-        mostExpensive: enrichmentData.mostExpensive || { platform: "N/A", price: basePriceForCalc },
+        cheapest: cheapest || (basePriceForCalc > 0 ? { platform: source, price: basePriceForCalc } : null),
+        mostExpensive: enrichmentData.mostExpensive || (basePriceForCalc > 0 ? { platform: "N/A", price: basePriceForCalc } : null),
         priceSpread: priceSpreadNum,
-        bestRating: [...platforms].sort((a, b) => b.rating - a.rating)[0] || { platform: "N/A", rating: baseRatingForCalc },
+        bestRating: [...ratedPlatforms].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))[0] || null,
         reviewsData: realReviewsData,
         marketIntel: realMarketIntel,
         listingSuggestion: realListingSuggestion,
@@ -512,7 +518,7 @@ function ProductDetailContent() {
     }
 
     return {
-      platforms: priceNum ? [{ platform: source, price: priceNum, rating: ratingNum || 0, reviews: reviewsNum || 0, inStock: true, url: effectiveLink, sparkline: [priceNum] }] : [],
+      platforms: priceNum ? [{ platform: source, price: priceNum, rating: ratingNum, reviews: reviewsNum, inStock: null, url: effectiveLink, sparkline: [priceNum] }] : [],
       cheapest: priceNum ? { platform: source, price: priceNum } : null,
       mostExpensive: null,
       priceSpread: 0,
@@ -529,14 +535,14 @@ function ProductDetailContent() {
       } : null,
       marketIntel: marketIntelData && typeof marketIntelData.searchVolume === "string" ? {
         searchVolume: marketIntelData.searchVolume as "high" | "medium" | "low",
-        searchVolumeNumber: (marketIntelData.searchVolumeNumber as number) || 0,
+        interestIndex: (marketIntelData.interestIndex as number) || 0,
         trendDirection: (marketIntelData.trendDirection as "rising" | "stable" | "declining") || "stable",
         trendSparkline: (marketIntelData.trendSparkline as number[]) || [],
         seasonality: (marketIntelData.seasonality as string) || "",
         bestTimeToSell: (marketIntelData.bestTimeToSell as string) || "",
         competitionLevel: (marketIntelData.competitionLevel as "low" | "medium" | "high" | "very-high") || "medium",
         estimatedSellers: (marketIntelData.estimatedSellers as number) || 0,
-        avgSellerRating: (marketIntelData.avgSellerRating as number) || 0,
+        avgSellerRating: typeof (marketIntelData.avgSellerRating as number | null) === "number" ? (marketIntelData.avgSellerRating as number) : null,
         priceWarRisk: (marketIntelData.priceWarRisk as "low" | "medium" | "high") || "medium",
         canCompete: (marketIntelData.canCompete as string) || "",
         riskScore: (marketIntelData.riskScore as number) || 0,
@@ -547,6 +553,7 @@ function ProductDetailContent() {
         description: (listingData.description as string) || "",
         tags: (listingData.tags as string[]) || [],
         suggestedPriceRange: (listingData.suggestedPriceRange as string) || "",
+        fallback: listingData.fallback === true,
         platformTips: (listingData.platformTips as { platform: string; tip: string }[]) || [],
       } : null,
       supplierMatches: [],
@@ -796,7 +803,7 @@ function ProductDetailContent() {
       {/* === SECTION 3: PROFIT CALCULATOR === */}
       <section id="calculator" className="section-group">
         <p className="section-label mb-2">Financials</p>
-        <ProfitCalculator sourcePrice={enriched.cheapest?.price || priceNum || 29.99} sellPrice={priceNum ? priceNum * 2.2 : 59.99} productTitle={title} />
+        <ProfitCalculator sourcePrice={enriched.cheapest?.price || priceNum || 0} sellPrice={priceNum ? priceNum * 2.2 : 0} productTitle={title} />
       </section>
 
       {/* === SECTION 4: MARKET INTELLIGENCE === */}

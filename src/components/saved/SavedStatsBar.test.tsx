@@ -7,6 +7,10 @@ vi.mock("lucide-react", () => ({
   DollarSign: () => <div data-testid="icon" />,
   Star: () => <div data-testid="icon" />,
   Globe: () => <div data-testid="icon" />,
+  Database: () => <div data-testid="icon" />,
+  Radio: () => <div data-testid="icon" />,
+  User: () => <div data-testid="icon" />,
+  Sparkles: () => <div data-testid="icon" />,
 }));
 
 const mockUseSavedProducts = vi.fn();

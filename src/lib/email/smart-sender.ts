@@ -101,7 +101,7 @@ export function renderOrderShippedEmail(data: {
   carrier: string;
   estimatedDelivery?: string;
   items: Array<{ name: string; quantity: number }>;
-  trackingUrl: string;
+  trackingUrl: string | null;
 }): string {
   const itemList = data.items.map((i) => `<li>${i.name} × ${i.quantity}</li>`).join("");
   const deliveryText = data.estimatedDelivery ? `<p style="color:#888;font-size:14px;">Estimated delivery: <strong style="color:#fff;">${data.estimatedDelivery}</strong></p>` : "";
@@ -135,9 +135,10 @@ export function renderOrderShippedEmail(data: {
         <ul style="margin:8px 0 0;padding-left:20px;font-size:14px;color:#ccc;">${itemList}</ul>
       </div>
 
+      ${data.trackingUrl ? `
       <div style="text-align:center;margin-top:24px;">
         <a href="${data.trackingUrl}" class="btn">Track Your Order</a>
-      </div>
+      </div>` : ""}
     </div>
   `);
 }
@@ -180,7 +181,7 @@ export function renderTrackingUpdateEmail(data: {
   trackingNumber: string;
   carrier: string;
   location?: string;
-  trackingUrl: string;
+  trackingUrl: string | null;
 }): string {
   return baseTemplate("Tracking Update", `
     <div class="card">
@@ -208,9 +209,10 @@ export function renderTrackingUpdateEmail(data: {
         <div class="value">${data.trackingNumber} (${data.carrier})</div>
       </div>
 
+      ${data.trackingUrl ? `
       <div style="text-align:center;margin-top:24px;">
         <a href="${data.trackingUrl}" class="btn">Track Your Order</a>
-      </div>
+      </div>` : ""}
     </div>
   `);
 }

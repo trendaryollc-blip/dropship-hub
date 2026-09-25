@@ -47,7 +47,7 @@ export function AIIntelligenceHub({
 
   return (
     <div ref={ref} className={`transition-all duration-700 ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
-      <SectionDivider label="AI Intelligence" icon={Brain} />
+      <SectionDivider label="Insights" icon={Brain} />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mt-4">
 
         {/* ═══ AI Daily Pick — Full Detail Card ═══ */}
@@ -63,7 +63,7 @@ export function AIIntelligenceHub({
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-white">AI Pick of the Day</span>
+                      <span className="text-sm font-bold text-white" title="Deterministic composite score from rating, reviews, and price — not an AI model">Top Pick (scored)</span>
                       <ScoreRing score={dailyPick.overallScore ?? 0} size={32} strokeWidth={3} />
                     </div>
                     <p className="text-[10px] text-gray-500 mt-0.5">
@@ -98,7 +98,7 @@ export function AIIntelligenceHub({
                       <Package className="h-12 w-12 text-purple-400/30" />
                     </div>
                   )}
-                  <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-purple-500 text-white text-[8px] font-bold uppercase shadow-lg">AI Pick</div>
+                  <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-purple-500 text-white text-[8px] font-bold uppercase shadow-lg" title="Scored pick, not generative AI">TOP PICK</div>
                   <div className="absolute bottom-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded bg-black/50 backdrop-blur-sm">
                     <Star className="h-2.5 w-2.5 text-amber-400 fill-amber-400" />
                     <span className="text-[9px] font-semibold text-white">{dailyPick.overallScore}/100</span>
@@ -121,11 +121,11 @@ export function AIIntelligenceHub({
                       <p className="text-xs font-bold text-white">${(dailyPick.sourcePrice ?? 0).toFixed(2)}</p>
                     </div>
                     <div className="p-2 rounded-lg bg-emerald-500/[0.06] border border-emerald-500/15">
-                      <p className="text-[8px] text-emerald-400/70 uppercase mb-0.5">Sell Price</p>
+                      <p className="text-[8px] text-emerald-400/70 uppercase mb-0.5" title="Suggested sell price at 2.5× source + $4.99 — your markup, not market price">Est. sell price</p>
                       <p className="text-xs font-bold text-emerald-400">${(dailyPick.sellPrice ?? 0).toFixed(2)}</p>
                     </div>
                     <div className="p-2 rounded-lg bg-white/[0.04] border border-white/[0.06]">
-                      <p className="text-[8px] text-gray-500 uppercase mb-0.5">Margin</p>
+                      <p className="text-[8px] text-gray-500 uppercase mb-0.5" title="From assumed sell price vs source — estimate">Est. margin</p>
                       <p className="text-xs font-bold text-white">{dailyPick.margin ?? 0}%</p>
                     </div>
                     <div className="p-2 rounded-lg bg-white/[0.04] border border-white/[0.06]">
@@ -144,7 +144,7 @@ export function AIIntelligenceHub({
                 <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
                   <div className="flex items-center gap-2 mb-3">
                     <Brain className="h-4 w-4 text-purple-400" />
-                    <span className="text-xs font-bold text-white">Why AI Picked This</span>
+                    <span className="text-xs font-bold text-white">Why we scored this</span>
                   </div>
                   <div className="space-y-2">
                     {(dailyPick.reasonPoints ?? []).map((point, i) => (
@@ -181,8 +181,8 @@ export function AIIntelligenceHub({
                     </div>
                     <div className="h-px bg-emerald-500/10" />
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-emerald-400/80 font-medium">Monthly Revenue Est.</span>
-                      <span className="text-sm font-bold text-emerald-400">${(dailyPick.earningsPreview?.monthlyRevenue ?? 0).toLocaleString()}</span>
+                      <span className="text-[10px] text-emerald-400/80 font-medium">Est. monthly revenue</span>
+                      <span className="text-sm font-bold text-emerald-400" title="Estimated from review-derived order count × profit — not observed sales">${(dailyPick.earningsPreview?.monthlyRevenue ?? 0).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
@@ -192,7 +192,7 @@ export function AIIntelligenceHub({
               <div className="flex items-center gap-4 mb-4">
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] text-gray-500">Market Saturation</span>
+                    <span className="text-[10px] text-gray-500" title="Price-based proxy vs category average — not observed market share">Est. saturation</span>
                     <span className="text-[10px] font-semibold text-white">{dailyPick.saturation ?? 0}%</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
@@ -223,7 +223,7 @@ export function AIIntelligenceHub({
           <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.1] transition-all duration-300">
             <div className="flex items-center gap-2 mb-3">
               <Brain className="h-4 w-4 text-cyan-400" />
-              <span className="text-xs font-semibold text-white">AI Briefing</span>
+              <span className="text-xs font-semibold text-white">Market Briefing</span>
               <span className="ml-auto text-[9px] text-gray-600">{formatLastScan(briefing.lastScan)}</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
@@ -245,7 +245,7 @@ export function AIIntelligenceHub({
               <span className={`text-[10px] font-semibold ${(briefing.sentiment ?? 0) >= 60 ? "text-emerald-400" : (briefing.sentiment ?? 0) >= 40 ? "text-amber-400" : "text-red-400"}`}>
                 {briefing.sentimentLabel ?? "N/A"}
               </span>
-              <span className="text-[10px] text-gray-600">({briefing.sentiment ?? 0}%)</span>
+              <span className="text-[10px] text-gray-600" title="Estimated from average product ratings & review counts — not surveyed sentiment">({briefing.sentiment ?? 0}% est.)</span>
             </div>
             {(briefing.insights ?? []).length > 0 && (
               <div className="space-y-1.5">
@@ -258,7 +258,7 @@ export function AIIntelligenceHub({
               </div>
             )}
             <Link href="/ai" className="mt-3 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-[10px] font-semibold hover:bg-cyan-500/20 transition-all">
-              Full AI Tools <ArrowUpRight className="h-3 w-3" />
+              Full Insights <ArrowUpRight className="h-3 w-3" />
             </Link>
           </div>
 

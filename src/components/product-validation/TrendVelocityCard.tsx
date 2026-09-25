@@ -45,7 +45,7 @@ export default function TrendVelocityCard({ data }: { data: TrendVelocityResult 
               <span className="text-4xl font-display font-black text-foreground">
                 {data.velocity > 0 ? "+" : ""}{data.velocity}%
               </span>
-              <p className="text-[11px] text-muted-foreground mt-0.5">weekly velocity</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">velocity (from your series)</p>
             </div>
           </div>
 

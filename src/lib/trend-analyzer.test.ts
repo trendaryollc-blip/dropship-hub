@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { calculateTrendScore, predictTrend, detectRisingStars, generateMockSignals } from "./trend-analyzer";
+import { calculateTrendScore, predictTrend, detectRisingStars } from "./trend-analyzer";
 import type { TrendSignal } from "@/types/trend-predictor";
 
 function createSignal(overrides: Partial<TrendSignal> = {}): TrendSignal {
@@ -55,6 +55,12 @@ describe("trend-analyzer", () => {
   });
 
   describe("predictTrend", () => {
+    it("throws an honest error instead of fabricating a prediction with no live signals", () => {
+      expect(() => predictTrend([])).toThrow(
+        "No live trend data for this keyword — connect a trends source (Google Trends API)"
+      );
+    });
+
     it("returns a valid TrendPrediction", () => {
       const signals = [createSignal()];
       const prediction = predictTrend(signals);
@@ -64,10 +70,30 @@ describe("trend-analyzer", () => {
       expect(prediction.trendScore).toBeLessThanOrEqual(100);
       expect(["rising", "peaking", "stable", "declining"]).toContain(prediction.direction);
       expect(["high", "medium", "low"]).toContain(prediction.confidence);
-      expect(prediction.predictedPeak).toBeTruthy();
-      expect(prediction.timeToPeak).toBeTruthy();
+      if (prediction.direction === "rising" || prediction.direction === "peaking") {
+        expect(prediction.predictedPeak).toBeTruthy();
+        expect(prediction.timeToPeak).toBeTruthy();
+      } else {
+        expect(prediction.predictedPeak).toBeNull();
+        expect(prediction.timeToPeak).toBeNull();
+      }
       expect(prediction.estimatedMargin).toBeGreaterThanOrEqual(10);
       expect(prediction.estimatedMargin).toBeLessThanOrEqual(70);
+    });
+
+    it("forecasts a peak for rising trends", () => {
+      const prediction = predictTrend([createSignal({ volume: 15000, previousVolume: 7000, velocity: 80, acceleration: 40, saturationLevel: 20 })]);
+      expect(prediction.direction).toBe("rising");
+      expect(prediction.predictedPeak).toBeTruthy();
+      expect(prediction.timeToPeak).toBeTruthy();
+    });
+
+    it("returns null peak fields for stable trends without a forecast", () => {
+      const prediction = predictTrend([createSignal({ volume: 10000, previousVolume: 9500, velocity: 5, acceleration: 0, saturationLevel: 40 })]);
+      if (prediction.direction !== "rising" && prediction.direction !== "peaking") {
+        expect(prediction.predictedPeak).toBeNull();
+        expect(prediction.timeToPeak).toBeNull();
+      }
     });
 
     it("generates reasoning based on direction", () => {
@@ -135,31 +161,11 @@ describe("trend-analyzer", () => {
       const stars = detectRisingStars(signals);
       expect(stars.length).toBeLessThanOrEqual(10);
     });
-  });
 
-  describe("generateMockSignals", () => {
-    it("generates signals for all platforms", () => {
-      const signals = generateMockSignals("test keyword", "general");
-      expect(signals.length).toBe(4);
-      expect(signals.map((s) => s.platform)).toEqual(
-        expect.arrayContaining(["tiktok", "instagram", "google_trends", "amazon_movers"])
-      );
-    });
-
-    it("uses the provided keyword and category", () => {
-      const signals = generateMockSignals("yoga mat", "fitness");
-      signals.forEach((s) => {
-        expect(s.keyword).toBe("yoga mat");
-        expect(s.category).toBe("fitness");
-      });
-    });
-
-    it("generates realistic volume ranges", () => {
-      const signals = generateMockSignals("test", "general");
-      signals.forEach((s) => {
-        expect(s.volume).toBeGreaterThan(0);
-        expect(s.volume).toBeLessThanOrEqual(55000);
-      });
+    it("uses the signal fetchedAt as firstSeen", () => {
+      const fetchedAt = "2024-06-01T12:00:00.000Z";
+      const stars = detectRisingStars([createSignal({ velocity: 60, acceleration: 40, saturationLevel: 25, fetchedAt })]);
+      expect(stars[0].firstSeen).toBe(fetchedAt);
     });
   });
 });

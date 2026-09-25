@@ -52,8 +52,9 @@ describe("CarrierComparisonCard", () => {
     expect(screen.getByText("3-5 days")).toBeInTheDocument();
   });
 
-  it("shows reliability score", () => {
+  it("shows reliability score as a static reference value", () => {
     render(<CarrierComparisonCard rate={mockRate} />);
+    expect(screen.getByText("Reference reliability (static)")).toBeInTheDocument();
     expect(screen.getByText("95%")).toBeInTheDocument();
   });
 
@@ -67,9 +68,10 @@ describe("CarrierComparisonCard", () => {
     expect(screen.getByText("Insurance")).toBeInTheDocument();
   });
 
-  it("shows guaranteed badge when included", () => {
+  it("shows carrier guarantee badge as a reference label", () => {
     render(<CarrierComparisonCard rate={mockRate} />);
-    expect(screen.getByText("Guaranteed")).toBeInTheDocument();
+    expect(screen.getByText("Carrier guarantee (reference)")).toBeInTheDocument();
+    expect(screen.queryByText("Guaranteed")).not.toBeInTheDocument();
   });
 
   it("shows customs badge when included", () => {

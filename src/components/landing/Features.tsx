@@ -17,9 +17,9 @@ import {
 const features = [
   {
     icon: Brain,
-    title: "AI Daily Pick",
+    title: "Daily Pick",
     description:
-      "Every 24 hours, our AI analyzes thousands of products and picks the single best opportunity based on margin, demand, competition, and trend data.",
+      "When your dashboard loads, products from your latest supplier search are scored on rating, review count, and margin headroom — and the single best opportunity is highlighted for you.",
     color: "text-pink-400",
     bg: "bg-pink-400/10",
     gradient: "from-pink-400/20 via-pink-500/10 to-transparent",
@@ -29,7 +29,7 @@ const features = [
     icon: Sparkles,
     title: "Intelligence Hub",
     description:
-      "Live AI monitoring detects opportunities, risks, and market trends in real-time. Get a daily briefing with sentiment analysis and actionable insights.",
+      "A daily briefing surfaces opportunities, risks, and market trends from your connected platforms, with actionable insights you can act on.",
     color: "text-blue-400",
     bg: "bg-blue-400/10",
     gradient: "from-blue-400/20 via-blue-500/10 to-transparent",
@@ -39,7 +39,7 @@ const features = [
     icon: Target,
     title: "Niche Radar",
     description:
-      "AI-scored niche cards with radar charts showing market size, competition, growth, and margin potential. Find untapped niches before your competitors.",
+      "Niche cards scored on catalog size, pricing, competition, growth, and margin potential, shown with radar charts. Find untapped niches before your competitors.",
     color: "text-purple-400",
     bg: "bg-purple-400/10",
     gradient: "from-purple-400/20 via-purple-500/10 to-transparent",
@@ -49,7 +49,7 @@ const features = [
     icon: TrendingUp,
     title: "Revenue Forecast",
     description:
-      "AI-powered revenue predictions with actual vs. forecast charts. Set goals, track progress, and see projected earnings with confidence intervals.",
+      "Revenue projections from your inputs — estimated, with actual vs. forecast charts. Set goals and track progress toward projected earnings.",
     color: "text-emerald-400",
     bg: "bg-emerald-400/10",
     gradient: "from-emerald-400/20 via-emerald-500/10 to-transparent",
@@ -59,7 +59,7 @@ const features = [
     icon: Flame,
     title: "Trending Products",
     description:
-      "Ranked trending products with AI confidence scores, demand and competition badges, supplier reliability, and expandable market analysis for each.",
+      "Ranked trending products with rule-based scores, demand and competition badges, supplier reliability, and expandable market analysis for each.",
     color: "text-orange-400",
     bg: "bg-orange-400/10",
     gradient: "from-orange-400/20 via-orange-500/10 to-transparent",
@@ -89,7 +89,7 @@ const features = [
     icon: Calculator,
     title: "Smart Calculator",
     description:
-      "5-in-1 profit calculator with real-time margins, shipping costs, landed costs with tariffs, ROI forecasting, and ad spend breakpoints.",
+      "5-in-1 profit calculator with margins, shipping costs, landed costs with tariffs, ROI forecasting, and ad spend breakpoints.",
     color: "text-cyan-400",
     bg: "bg-cyan-400/10",
     gradient: "from-cyan-400/20 via-cyan-500/10 to-transparent",
@@ -114,9 +114,8 @@ export default function Features() {
             <span className="gradient-text">Puts You Ahead</span>
           </h2>
           <p className="text-lg text-muted-foreground leading-relaxed">
-            Stop guessing. Our AI analyzes the market 24/7 and hands you
-            winning products, untapped niches, and profit opportunities
-            before anyone else sees them.
+            Stop guessing. Market signals from your connected platforms hand
+            you winning products, untapped niches, and profit opportunities.
           </p>
         </div>
 

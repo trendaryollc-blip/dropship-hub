@@ -67,7 +67,7 @@ function generateEmailHTML(digest: DigestData): string {
 
     <!-- Summary -->
     <div style="background:#111827;border:1px solid #1f2937;border-radius:12px;padding:20px;margin-bottom:24px;">
-      <h2 style="color:#a78bfa;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:0 0 12px;">AI Summary</h2>
+      <h2 style="color:#a78bfa;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:0 0 12px;">${digest.summarySource === "ai" ? "AI Summary" : "Generated Summary"}</h2>
       <p style="color:#d1d5db;font-size:14px;line-height:1.6;margin:0;">${escapeHtml(digest.summary)}</p>
     </div>
 

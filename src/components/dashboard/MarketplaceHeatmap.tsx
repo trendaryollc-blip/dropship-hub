@@ -88,11 +88,11 @@ function MarketOverview({ categories }: { categories: HeatmapCategory[] }) {
             <Flame className="h-4 w-4 text-orange-400" />
             <h3 className="font-display text-sm font-semibold text-foreground">Market Pulse</h3>
             <span className="flex items-center gap-1 text-[10px] text-emerald-400">
-              <Activity className="h-2.5 w-2.5" /> Live
+              <Activity className="h-2.5 w-2.5" /> Tracked
             </span>
           </div>
           <p className="text-xs text-muted-foreground">
-            AI scanned <span className="font-semibold text-foreground">{totalProducts.toLocaleString()}</span> products across <span className="font-semibold text-foreground">{categories.length}</span> categories
+            Tracking <span className="font-semibold text-foreground">{totalProducts.toLocaleString()}</span> products across <span className="font-semibold text-foreground">{categories.length}</span> categories
           </p>
         </div>
 
@@ -158,10 +158,13 @@ function HeatTile({ cat, index }: { cat: HeatmapCategory; index: number }) {
         <Link href="/products" className="flex items-center gap-1.5 mb-2 hover:opacity-80 transition-opacity">
           <ShoppingCart className="h-3 w-3 text-accent shrink-0" />
           <span className="text-[10px] font-medium text-foreground truncate">{cat.topProduct}</span>
-          <span className="text-[9px] text-emerald-400 shrink-0">{cat.topProductMargin}%</span>
+          {cat.topProductMargin != null && (
+            <span className="text-[9px] text-emerald-400 shrink-0">{cat.topProductMargin}%</span>
+          )}
         </Link>
 
-        {/* AI Insight */}
+        {/* Insight (from category stats) */}
+        <p className="text-[9px] text-muted-foreground/60 uppercase tracking-wide mb-1">Insight (from category stats)</p>
         <p className="text-[10px] text-muted-foreground leading-relaxed mb-3 line-clamp-2">{cat.aiInsight}</p>
 
         {/* Metrics */}
@@ -175,14 +178,14 @@ function HeatTile({ cat, index }: { cat: HeatmapCategory; index: number }) {
 
         {/* Bottom row */}
         <div className="flex items-center justify-between mt-2">
-          <span className="text-[9px] text-muted-foreground/60">7-day trend</span>
+          <span className="text-[9px] text-muted-foreground/60" title="Prices of the top 7 listings in this category (not a daily series)">Top 7 prices</span>
           <div className="flex items-center gap-2">
-            <span className={`flex items-center gap-0.5 text-[10px] font-medium ${trendColor}`}>
+            <span className={`flex items-center gap-0.5 text-[10px] font-medium ${trendColor}`} title="Derived from average listing rating (rule-based)">
               <TrendIcon className="h-2.5 w-2.5" /> {cat.trend}
             </span>
             {cat.velocity !== 0 && (
-              <span className={`text-[9px] font-semibold ${cat.velocity > 0 ? "text-emerald-400" : "text-red-400"}`}>
-                {cat.velocity > 0 ? "+" : ""}{cat.velocity}%/wk
+              <span className={`text-[9px] font-semibold ${cat.velocity > 0 ? "text-emerald-400" : "text-red-400"}`} title="Listing density index vs category average (rule-based, not a weekly rate)">
+                density {cat.velocity > 0 ? "+" : ""}{cat.velocity}
               </span>
             )}
           </div>
@@ -199,7 +202,7 @@ function HeatTile({ cat, index }: { cat: HeatmapCategory; index: number }) {
         <div className="px-4 pb-4 pt-2 border-t border-white/5">
           <div className="space-y-2">
             <div className="flex items-center justify-between text-[10px]">
-              <span className="text-muted-foreground">Demand score</span>
+              <span className="text-muted-foreground" title="Rule-based: listing count vs the average category">Listing density score</span>
               <span className="font-semibold text-foreground">{cat.heat}/100</span>
             </div>
             <div className="flex items-center justify-between text-[10px]">
@@ -211,9 +214,9 @@ function HeatTile({ cat, index }: { cat: HeatmapCategory; index: number }) {
               <span className="font-semibold text-foreground">{cat.productCount}</span>
             </div>
             <div className="flex items-center justify-between text-[10px]">
-              <span className="text-muted-foreground">Velocity</span>
+              <span className="text-muted-foreground" title="Rule-based: category listing count vs the average category">Listing density index</span>
               <span className={`font-semibold ${cat.velocity > 0 ? "text-emerald-400" : cat.velocity < 0 ? "text-red-400" : "text-muted-foreground"}`}>
-                {cat.velocity > 0 ? "+" : ""}{cat.velocity}% per week
+                {cat.velocity > 0 ? "+" : ""}{cat.velocity}
               </span>
             </div>
           </div>

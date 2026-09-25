@@ -144,8 +144,9 @@ export default function ProvidersTab({
                   {/* API Key Inputs */}
                   <div className="space-y-3">
                     {provider.freeTier && (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
                         <span>Free tier: <span className="text-foreground">{provider.freeTier}</span></span>
+                        <span className="text-[10px] text-muted-foreground/70">Static reference — check provider site for current limits</span>
                       </div>
                     )}
                     
@@ -241,8 +242,9 @@ export default function ProvidersTab({
                   </div>
 
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-border/50">
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
                       <span>Free tier: <span className="text-foreground">{provider.freeTier}</span></span>
+                      <span className="text-[10px] text-muted-foreground/70">Static reference — check provider site for current limits</span>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
                       <select value={provider.priority}

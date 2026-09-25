@@ -165,8 +165,17 @@ describe("ProductsPage - discovery (initial state)", () => {
     render(<ProductsPage />);
     expect(searchInput()).toBeInTheDocument();
     expect(screen.getByText("Discovery")).toBeInTheDocument();
-    expect(screen.getByText("Trending Right Now")).toBeInTheDocument();
+    expect(screen.getByText("Fresh from live search")).toBeInTheDocument();
     expect(screen.getByText("How It Works")).toBeInTheDocument();
+  });
+
+  it("does not claim fabricated ranking language on discovery sections", async () => {
+    render(<ProductsPage />);
+    expect(screen.queryByText(/highest profit potential/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/ranked by profit potential/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Latest live search results/)).toBeInTheDocument();
+    expect(screen.getByText(/Live CJ product counts/)).toBeInTheDocument();
+    expect(screen.getByText(/Suggested search presets \(not live rankings\)/)).toBeInTheDocument();
   });
 });
 
@@ -235,6 +244,8 @@ describe("ProductsPage - search flow", () => {
 
     expect(await screen.findByText("No products found")).toBeInTheDocument();
     expect(screen.getByText("Try a different search query or enable more platforms")).toBeInTheDocument();
+    expect(screen.getByText("Smart search (filter parser)")).toBeInTheDocument();
+    expect(screen.queryByText("Ask AI to find products for me")).not.toBeInTheDocument();
   });
 
   it("shows a network error message when the search request fails, then recovers on a retry", async () => {

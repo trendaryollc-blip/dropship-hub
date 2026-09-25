@@ -266,7 +266,7 @@ export default function IntelTab() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="font-display text-xl sm:text-2xl font-bold text-foreground mb-1">Supplier Intelligence</h2>
-          <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">Track supplier performance over time, get AI-powered alerts, and compare alternatives.</p>
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">Track supplier performance over time, compare suppliers and track alerts.</p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
           {criticalAlerts > 0 && (
@@ -319,7 +319,7 @@ export default function IntelTab() {
                 <div className="glass rounded-2xl p-12 text-center">
                   <CheckCircle2 className="h-10 w-10 text-emerald-400 mx-auto mb-3" />
                   <p className="text-sm font-medium text-foreground mb-1">No alerts</p>
-                  <p className="text-xs text-muted-foreground">All suppliers are performing within normal ranges.</p>
+                  <p className="text-xs text-muted-foreground">Alerts appear after reliability data, shipping samples, or order outcomes are recorded for your suppliers.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">

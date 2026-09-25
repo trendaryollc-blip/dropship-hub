@@ -11,7 +11,8 @@ interface Category {
   icon: string;
   image: string;
   productCount: number;
-  avgMargin: number;
+  /** Always null — category-level margin needs cost data we do not have. */
+  avgMargin: number | null;
   trending: boolean;
   query: string;
 }
@@ -59,24 +60,16 @@ export const GET = withAuth(async () => {
       const config = CATEGORY_QUERIES[i];
 
       let productCount = 0;
-      let avgPrice = 10;
       let productImage = "";
 
       if (r.status === "fulfilled") {
         const items = r.value.search_results.filter((p) => p.price !== null && p.price > 0);
         productCount = items.length;
-        if (productCount > 0) {
-          avgPrice = items.reduce((s, p) => s + p.price!, 0) / productCount;
-        }
         const firstWithImage = items.find((p) => p.image && p.image.startsWith("http"));
         if (firstWithImage) {
           productImage = firstWithImage.image!;
         }
       }
-
-      const avgMargin = avgPrice > 0
-        ? Math.min(80, Math.round(Math.max(20, 60 - avgPrice * 0.5)))
-        : 30;
 
       categories.push({
         id: config.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
@@ -84,7 +77,7 @@ export const GET = withAuth(async () => {
         icon: config.icon,
         image: productImage || CATEGORY_IMAGES[config.name] || "",
         productCount: productCount,
-        avgMargin,
+        avgMargin: null,
         trending: productCount > 10,
         query: config.query,
       });

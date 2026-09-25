@@ -128,7 +128,7 @@ export default function CarrierComparisonCard({
           <div className="p-2 rounded-lg bg-surface/50 group-hover:bg-surface transition-colors">
             <div className="flex items-center gap-1 mb-0.5">
               <Shield className="h-3 w-3 text-muted-foreground" />
-              <span className="text-[9px] text-muted-foreground">Reliability</span>
+              <span className="text-[9px] text-muted-foreground">Reference reliability (static)</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="flex-1 h-1.5 rounded-full bg-surface overflow-hidden">
@@ -174,7 +174,7 @@ export default function CarrierComparisonCard({
           )}
           {rate.guaranteedDelivery && (
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] text-purple-400 bg-purple-400/5">
-              <CheckCircle2 className="h-2.5 w-2.5" /> Guaranteed
+              <CheckCircle2 className="h-2.5 w-2.5" /> Carrier guarantee (reference)
             </span>
           )}
           {rate.customsHandled && (

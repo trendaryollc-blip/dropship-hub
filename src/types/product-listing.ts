@@ -61,7 +61,7 @@ export interface ListingGenerationResponse {
     description: string;
     bulletPoints: string[];
   }[];
-  keywordSuggestions: { keyword: string; volume: string; competition: string }[];
+  keywordSuggestions: { keyword: string; volume: string; competition: string }[] | null;
   generationTime: number;
   provider: string;
 }

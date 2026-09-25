@@ -26,6 +26,18 @@ import {
   DEFECT_RESOLUTION_LABELS,
 } from "@/types/returns";
 
+interface ReturnCandidate {
+  orderId: string;
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  items: Array<{ productId: string; productName: string; quantity: number; unitPrice: number; imageUrl: string }>;
+  supplierId: string;
+  supplierName: string;
+  platform: string;
+  storePlatform: string;
+}
+
 function KPICard({ label, value, prefix, suffix, icon: Icon, color, delay }: {
   label: string; value: number; prefix?: string; suffix?: string; icon: typeof RotateCcw; color: string; delay: number;
 }) {
@@ -313,7 +325,7 @@ export default function ReturnsPage() {
   const [selectedReturnId, setSelectedReturnId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showDetect, setShowDetect] = useState(false);
-  const [detectResults, setDetectResults] = useState<Array<{ orderId: string; orderNumber: string; customerName: string }>>([]);
+  const [detectResults, setDetectResults] = useState<ReturnCandidate[]>([]);
 
   const filteredReturns = returns.filter((r) => {
     const matchesStatus = statusFilter === "all" || r.status === statusFilter;
@@ -370,8 +382,8 @@ export default function ReturnsPage() {
       mutateReturns();
       mutateDefects();
       mutateRefunds();
-    } catch {
-      toastError("Action failed. Please try again.");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Action failed. Please try again.");
     }
     setActionLoading(null);
   };
@@ -380,7 +392,7 @@ export default function ReturnsPage() {
     if (!user) return;
     setShowDetect(true);
     try {
-      const res = await safeFetch<{ candidates?: Array<{ orderId: string; orderNumber: string; customerName: string }> }>("/api/returns", {
+      const res = await safeFetch<{ candidates?: ReturnCandidate[] }>("/api/returns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uid: user.uid, action: "detect" }),
@@ -717,14 +729,14 @@ export default function ReturnsPage() {
                               orderNumber: candidate.orderNumber,
                               customerId: "",
                               customerName: candidate.customerName,
-                              customerEmail: "",
-                              items: [],
+                              customerEmail: candidate.customerEmail,
+                              items: candidate.items,
                               reason: "other" as ReturnReason,
                               reasonDetails: "Auto-detected from cancelled order",
-                              supplierId: "unknown",
-                              supplierName: "Unknown",
-                              platform: "unknown",
-                              storePlatform: "custom",
+                              supplierId: candidate.supplierId,
+                              supplierName: candidate.supplierName,
+                              platform: candidate.platform,
+                              storePlatform: candidate.storePlatform,
                             }),
                           });
                           setDetectResults((prev) => prev.filter((c) => c.orderId !== candidate.orderId));

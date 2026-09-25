@@ -48,7 +48,7 @@ export default function HowItWorksSection() {
             { step: 1, text: "Get a free API key from Groq (fastest setup)", href: "https://groq.com", external: true },
             { step: 2, text: "Paste your key in the Groq provider card above and click Save", href: null, external: false },
             { step: 3, text: "Click Test to verify your connection works", href: null, external: false },
-            { step: 4, text: "Search for products with AI-powered insights", href: "/products", external: false },
+            { step: 4, text: "Search across platforms with live data", href: "/products", external: false },
           ].map((item) => (
             <div key={item.step} className="flex items-center gap-3 p-3 rounded-xl bg-surface/50">
               <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center text-xs font-bold text-accent shrink-0">

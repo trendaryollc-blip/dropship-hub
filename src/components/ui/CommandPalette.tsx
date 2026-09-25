@@ -69,7 +69,10 @@ export default function CommandPalette({ open, onOpenChange }: CommandPalettePro
 
         <Command.List className="max-h-[300px] overflow-y-auto p-2">
           <Command.Empty className="text-center py-6 text-xs text-muted-foreground">
-            No results found.
+            <p>No matching commands.</p>
+            <p className="mt-1 text-[10px] text-muted-foreground/70">
+              Try a page name (Stores, Products, Settings) or an action (push, sync).
+            </p>
           </Command.Empty>
 
           <Command.Group heading="Navigation" className="mb-2">
@@ -132,14 +135,14 @@ export default function CommandPalette({ open, onOpenChange }: CommandPalettePro
             />
           </Command.Group>
 
-          <Command.Group heading="AI">
+          <Command.Group heading="Assistant">
             <CommandItem
               icon={<Zap className="h-4 w-4" />}
-              label="AI Store Assistant"
-              description="Ask anything about your stores"
+              label="Open Store Assistant"
+              description="Opens the store chat panel (if visible on this page)"
               onSelect={() => runAction(() => {
-                const btn = document.querySelector('[title="AI Store Assistant"]') as HTMLButtonElement;
-                btn?.click();
+                const btn = document.querySelector('[title="Store Assistant"]') as HTMLButtonElement;
+                if (btn) btn.click();
               })}
             />
           </Command.Group>

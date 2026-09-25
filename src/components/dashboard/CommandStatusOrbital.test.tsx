@@ -148,7 +148,7 @@ describe("CommandStatusOrbital", () => {
 
   it("renders live indicator", () => {
     render(<CommandStatusOrbital {...defaultProps} />);
-    expect(screen.getAllByText("Live").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Synced").length).toBeGreaterThanOrEqual(1);
   });
 
   it("links stores to /store", () => {

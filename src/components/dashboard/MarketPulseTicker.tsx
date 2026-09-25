@@ -43,7 +43,7 @@ export default function MarketPulseTicker({ items }: { items: TickerItem[] }) {
       <div className="flex items-center">
         <div className="shrink-0 flex items-center gap-2 px-4 py-2.5 border-r border-border bg-surface/50">
           <Activity className="h-3.5 w-3.5 text-accent animate-pulse" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-accent">Live</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-accent">Markets</span>
         </div>
         <div className="overflow-hidden flex-1">
           <div className="flex items-center gap-0 animate-ticker whitespace-nowrap">

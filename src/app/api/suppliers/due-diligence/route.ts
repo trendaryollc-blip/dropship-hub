@@ -72,6 +72,13 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     return NextResponse.json({ report: fullReport, provider, cached: false });
   } catch (error) {
     console.error("Due diligence generation error:", error);
+    const message = error instanceof Error ? error.message : "";
+    if (/No API key/i.test(message)) {
+      return NextResponse.json(
+        { error: "No AI provider connected — add a key in Settings → AI", code: "no_provider" },
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
       { error: "Failed to generate due diligence report" },
       { status: 500 }

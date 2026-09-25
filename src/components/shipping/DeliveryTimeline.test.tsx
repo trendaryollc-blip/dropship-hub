@@ -17,7 +17,7 @@ const mockPrediction: DeliveryPredictionResult = {
   ],
   shipByDate: "2024-01-15",
   estimatedArrival: { earliest: "2024-01-18", latest: "2024-01-22", average: "2024-01-20" },
-  historicalAccuracy: 0.92,
+  estimateBasis: "reference-table",
   weatherDelayRisk: 1,
   customsDelayRisk: 2,
   holidayDelayRisk: 0,
@@ -29,9 +29,16 @@ describe("DeliveryTimeline", () => {
     expect(screen.getByText("Delivery Prediction")).toBeInTheDocument();
   });
 
-  it("displays confidence percentage", () => {
+  it("shows qualitative estimate certainty instead of a confidence percentage", () => {
     render(<DeliveryTimeline prediction={mockPrediction} />);
-    expect(screen.getByText("85%")).toBeInTheDocument();
+    expect(screen.getByText("Estimate certainty")).toBeInTheDocument();
+    expect(screen.getByText("Reference-table estimate")).toBeInTheDocument();
+    expect(screen.queryByText(/%/)).not.toBeInTheDocument();
+  });
+
+  it("labels estimates without lane data honestly", () => {
+    render(<DeliveryTimeline prediction={{ ...mockPrediction, estimateBasis: "general-default" }} />);
+    expect(screen.getByText("General estimate (no lane data)")).toBeInTheDocument();
   });
 
   it("shows ship date", () => {
@@ -79,10 +86,9 @@ describe("DeliveryTimeline", () => {
     expect(screen.getByText("Customs processing time")).toBeInTheDocument();
   });
 
-  it("shows historical accuracy", () => {
+  it("does not show a fabricated historical accuracy metric", () => {
     render(<DeliveryTimeline prediction={mockPrediction} />);
-    expect(screen.getByText("Historical accuracy")).toBeInTheDocument();
-    expect(screen.getByText("92%")).toBeInTheDocument();
+    expect(screen.queryByText("Historical accuracy")).not.toBeInTheDocument();
   });
 
   it("shows holiday delay when present", () => {

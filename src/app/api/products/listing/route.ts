@@ -1,53 +1,56 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
-
-const SERP_API_KEY = process.env.SERP_API_KEY;
+import { withKeyPool } from "@/lib/api-keys/pool";
 
 interface ListingSuggestion {
   title: string;
   description: string;
   tags: string[];
   suggestedPriceRange: string;
+  fallback: boolean;
   platformTips: { platform: string; tip: string }[];
 }
 
 async function fetchCompetitorListings(query: string): Promise<{ titles: string[]; descriptions: string[]; priceRange: { min: number; max: number } } | null> {
-  if (!SERP_API_KEY) return null;
-
   try {
-    const params = new URLSearchParams({
-      engine: "google_shopping",
-      q: query,
-      api_key: SERP_API_KEY,
-      num: "10",
+    return await withKeyPool("serpapi", async (apiKey) => {
+      const params = new URLSearchParams({
+        engine: "google_shopping",
+        q: query,
+        api_key: apiKey,
+        num: "10",
+      });
+
+      const res = await fetch(`https://serpapi.com/search?${params}`, {
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(`SerpAPI ${res.status}: ${body.slice(0, 200)}`);
+      }
+
+      const data = await res.json();
+      const results = data.shopping_results || [];
+
+      const titles = results
+        .map((r: { title?: string }) => r.title)
+        .filter((t: unknown): t is string => typeof t === "string" && t.length > 5)
+        .slice(0, 8);
+
+      const prices = results
+        .map((r: { extracted_price?: number; price?: number }) => r.extracted_price || (typeof r.price === "number" ? r.price : 0))
+        .filter((p: number) => p > 0);
+
+      return {
+        titles,
+        descriptions: [],
+        priceRange: {
+          min: prices.length > 0 ? Math.min(...prices) : 0,
+          max: prices.length > 0 ? Math.max(...prices) : 0,
+        },
+      };
     });
-
-    const res = await fetch(`https://serpapi.com/search?${params}`, {
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!res.ok) return null;
-
-    const data = await res.json();
-    const results = data.shopping_results || [];
-
-    const titles = results
-      .map((r: { title?: string }) => r.title)
-      .filter((t: unknown): t is string => typeof t === "string" && t.length > 5)
-      .slice(0, 8);
-
-    const prices = results
-      .map((r: { extracted_price?: number; price?: number }) => r.extracted_price || (typeof r.price === "number" ? r.price : 0))
-      .filter((p: number) => p > 0);
-
-    return {
-      titles,
-      descriptions: [],
-      priceRange: {
-        min: prices.length > 0 ? Math.min(...prices) : 0,
-        max: prices.length > 0 ? Math.max(...prices) : 0,
-      },
-    };
   } catch {
     return null;
   }
@@ -59,8 +62,11 @@ function generateListingFromCompetitors(
   price: number,
   competitorData: { titles: string[]; priceRange: { min: number; max: number } } | null
 ): ListingSuggestion {
-  const priceMin = competitorData?.priceRange.min || price * 0.8;
-  const priceMax = competitorData?.priceRange.max || price * 2.0;
+  const competitorMin = competitorData?.priceRange.min || 0;
+  const competitorMax = competitorData?.priceRange.max || 0;
+  const priceMin = competitorMin || price * 0.8;
+  const priceMax = competitorMax || price * 2.0;
+  const fallback = !competitorMin || !competitorMax;
 
   const titleWords = title.split(" ").filter((w) => w.length > 2);
   const keywords = titleWords.slice(0, 6).map((w) => w.toLowerCase());
@@ -97,6 +103,7 @@ function generateListingFromCompetitors(
     description: suggestedDescription,
     tags: keywords,
     suggestedPriceRange: `$${priceMin.toFixed(2)} - $${priceMax.toFixed(2)}`,
+    fallback,
     platformTips,
   };
 }

@@ -97,8 +97,6 @@ export async function getTrackingPageStats(uid: string): Promise<TrackingPageSta
       avgDuration: Math.round(avgDuration),
       upsellClickRate: total > 0 ? Math.round((upsellClicks / total) * 100) : 0,
       upsellConversionRate: upsellClicks > 0 ? Math.round((upsellConversions / upsellClicks) * 100) : 0,
-      totalUpsellRevenue: 0,
-      supportTicketReduction: Math.round(total * 0.35),
       topCountries,
       deviceBreakdown,
       recentViews: views.slice(0, 10),
@@ -107,8 +105,8 @@ export async function getTrackingPageStats(uid: string): Promise<TrackingPageSta
     handleFirestoreError("getTrackingPageStats", error);
     return {
       totalViews: 0, uniqueVisitors: 0, avgDuration: 0,
-      upsellClickRate: 0, upsellConversionRate: 0, totalUpsellRevenue: 0,
-      supportTicketReduction: 0, topCountries: [], deviceBreakdown: [], recentViews: [],
+      upsellClickRate: 0, upsellConversionRate: 0,
+      topCountries: [], deviceBreakdown: [], recentViews: [],
     };
   }
 }

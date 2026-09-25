@@ -34,7 +34,7 @@ function buildPredictionTable(predictions: TrendPrediction[]): string {
       <td style="padding:8px;border-bottom:1px solid #eee;font-size:12px;text-align:center;">${escapeHtml(p.direction)}</td>
       <td style="padding:8px;border-bottom:1px solid #eee;font-size:12px;text-align:center;font-weight:bold;">${p.trendScore}%</td>
       <td style="padding:8px;border-bottom:1px solid #eee;font-size:12px;text-align:center;">${p.confidence}</td>
-      <td style="padding:8px;border-bottom:1px solid #eee;font-size:12px;text-align:center;">${escapeHtml(p.timeToPeak)}</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;font-size:12px;text-align:center;">${escapeHtml(p.timeToPeak || "—")}</td>
       <td style="padding:8px;border-bottom:1px solid #eee;font-size:12px;text-align:center;color:#16a34a;">${p.estimatedMargin}%</td>
       <td style="padding:8px;border-bottom:1px solid #eee;font-size:12px;text-align:center;">${escapeHtml(p.competitionLevel.replace("_", " "))}</td>
     </tr>
@@ -202,7 +202,7 @@ export function createReportData(options: {
     sections: [
       {
         title: "Executive Summary",
-        content: `This report contains ${options.predictions?.length || 0} trend predictions and ${(options.risingStars?.length || 0)} rising star opportunities identified by the AI Trend Predictor. All predictions are based on multi-source data aggregation from Google Trends, Amazon, TikTok, Instagram, and Reddit.`,
+        content: `This report contains ${options.predictions?.length || 0} trend predictions and ${(options.risingStars?.length || 0)} rising star opportunities identified by the rule-based trend predictor. Predictions are derived from the trend signals attached to this report.`,
       },
     ],
   };

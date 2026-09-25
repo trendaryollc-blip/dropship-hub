@@ -151,7 +151,7 @@ describe("SuppliersPage", () => {
     (useAPI as any).mockReturnValue({ data: { suppliers: [mockSupplier] }, error: null, isLoading: false, mutate: vi.fn() });
     render(<SuppliersContent />);
     fireEvent.click(screen.getByText("Ask AI"));
-    expect(screen.getByText("AI-Powered Supplier Search")).toBeInTheDocument();
+    expect(screen.getByText("Supplier Search")).toBeInTheDocument();
   });
 
   it("renders Filters button", () => {

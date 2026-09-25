@@ -27,7 +27,7 @@ export default function MarketIntelligence({ data }: { data: MarketIntel | null 
   const trendIcon = data.trendDirection === "rising" ? TrendingUp : data.trendDirection === "declining" ? TrendingDown : Minus;
   const trendColor = data.trendDirection === "rising" ? "text-emerald-400" : data.trendDirection === "declining" ? "text-red-400" : "text-muted-foreground";
   const TrendIcon = trendIcon;
-  const volPct = data.searchVolume === "high" ? 90 : data.searchVolume === "medium" ? 55 : 25;
+  const volPct = Math.min(100, Math.max(0, data.interestIndex));
 
   const compPct = data.competitionLevel === "low" ? 20 : data.competitionLevel === "medium" ? 50 : data.competitionLevel === "high" ? 75 : 95;
 
@@ -65,13 +65,13 @@ export default function MarketIntelligence({ data }: { data: MarketIntel | null 
           <div className="intel-tile">
             <div className="flex items-center gap-1.5 mb-2">
               <Users className="h-3.5 w-3.5 text-blue-400" />
-              <span className="text-[10px] text-muted-foreground font-medium">Search Volume</span>
+              <span className="text-[10px] text-muted-foreground font-medium">Search Interest</span>
             </div>
-            <p className="text-base font-bold text-foreground capitalize mb-3">{data.searchVolume}</p>
+            <p className="text-base font-bold text-foreground mb-3">{`${data.interestIndex}/100`}</p>
             <div className="h-2 rounded-full bg-surface overflow-hidden mb-1.5">
               <div className="h-full rounded-full bg-gradient-to-r from-blue-400 to-blue-500 transition-all duration-700" style={{ width: `${volPct}%` }} />
             </div>
-            <p className="text-[9px] text-muted-foreground">{data.searchVolumeNumber.toLocaleString()} searches/mo</p>
+            <p className="text-[9px] text-muted-foreground">Est. interest index (0-100, Google Trends-style)</p>
           </div>
         </div>
 
@@ -108,7 +108,7 @@ export default function MarketIntelligence({ data }: { data: MarketIntel | null 
           </div>
           <div className="flex items-center justify-between">
             <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-[10px]">
-              <div><span className="text-muted-foreground">Sellers: </span><span className="text-foreground font-semibold">{data.estimatedSellers.toLocaleString()}</span></div>
+              <div><span className="text-muted-foreground">Est. sellers: </span><span className="text-foreground font-semibold">{data.estimatedSellers.toLocaleString()}</span></div>
               <div><span className="text-muted-foreground">Avg Rating: </span><span className="text-foreground font-semibold">{data.avgSellerRating}</span></div>
             </div>
             <div className="flex items-center gap-1">
@@ -154,6 +154,10 @@ export default function MarketIntelligence({ data }: { data: MarketIntel | null 
             ))}
           </div>
         </div>
+
+        <p className="text-[9px] text-muted-foreground">
+          Heuristic from live price/rating signals: trend, seasonality, competition level and price war risk are estimates, not market measurement.
+        </p>
       </div>
     </div>
   );

@@ -240,7 +240,7 @@ export default function CommandStatusOrbital({
             )}
             <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-surface/50 border border-border">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[9px] font-medium text-muted-foreground">Live</span>
+              <span className="text-[9px] font-medium text-muted-foreground">Synced</span>
             </div>
           </div>
         </div>
@@ -285,7 +285,7 @@ export default function CommandStatusOrbital({
           )}
           <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-surface/50 border border-border">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-[9px] font-medium text-muted-foreground">Live</span>
+            <span className="text-[9px] font-medium text-muted-foreground">Synced</span>
           </div>
         </div>
       </div>

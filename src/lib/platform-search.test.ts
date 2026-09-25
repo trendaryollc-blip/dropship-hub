@@ -9,6 +9,7 @@ import {
   searchAliExpress,
   searchViaScraper,
   platforms,
+  buildCJProductUrl,
   type SearchResult,
 } from "./platform-search";
 
@@ -30,6 +31,7 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import { getAllPlatforms, incrementKeyUsage, markKeyHealthy, resetBillingPeriodIfNeeded } from "./platform-config";
+import { __resetPoolStateForTests } from "@/lib/api-keys/pool";
 
 function mockFetchResponse(ok: boolean, body: unknown, status = 200) {
   if (ok) {
@@ -58,6 +60,7 @@ function mockFetchResponse(ok: boolean, body: unknown, status = 200) {
 describe("platform-search individual search functions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    __resetPoolStateForTests();
     process.env.RAINFOREST_API_KEY = "test-rainforest-key";
     process.env.SERP_API_KEY = "test-serp-key";
     process.env.CJ_API_KEY = "test-cj-key";
@@ -152,7 +155,9 @@ describe("platform-search individual search functions", () => {
 
     it("handles SerpAPI errors", async () => {
       mockFetchResponse(false, {}, 429);
-      await expect(searchGoogleShopping("test")).rejects.toThrow("SerpAPI 429");
+      // Pool converts a single-key 429 into a typed QuotaExhaustedError
+      // instead of leaking the raw provider error to callers.
+      await expect(searchGoogleShopping("test")).rejects.toThrow(/quota/i);
     });
 
     it("uses price fallback when extracted_price is missing", async () => {
@@ -347,6 +352,7 @@ describe("platform-search individual search functions", () => {
 describe("searchAllPlatformsFromFirestore", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    __resetPoolStateForTests();
   });
 
   it("returns empty when no platforms configured", async () => {
@@ -484,6 +490,7 @@ describe("searchAllPlatformsFromFirestore", () => {
 describe("searchAllPlatforms", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    __resetPoolStateForTests();
   });
 
   it("falls back to env-based search when Firestore fails", async () => {
@@ -546,6 +553,7 @@ describe("searchAllPlatformsFromFirestore — error paths", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.unstubAllGlobals();
+    __resetPoolStateForTests();
   });
 
   it("sets cooldown when all keys are exhausted", async () => {
@@ -749,6 +757,7 @@ describe("searchAllPlatforms — backward-compatible exports", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.unstubAllGlobals();
+    __resetPoolStateForTests();
   });
 
   it("searchAmazon delegates to searchAmazonWithKey", async () => {
@@ -861,6 +870,7 @@ describe("platform-search — individual function deep coverage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.unstubAllGlobals();
+    __resetPoolStateForTests();
     process.env.RAINFOREST_API_KEY = "test-key";
     process.env.SERP_API_KEY = "test-key";
     process.env.CJ_API_KEY = "test-cj";
@@ -891,6 +901,7 @@ describe("platform-search — individual function deep coverage", () => {
       expect(result.search_results[0].price).toBe(8.99);
       expect(result.search_results[0].source).toBe("cj");
       expect(result.search_results[0].images).toBeDefined();
+      expect(result.search_results[0].link).toBe("https://www.cjdropshipping.com/product/cj-widget-p-P001.html");
     });
 
     it("skips non-string non-object entries in productImageSet", async () => {
@@ -1044,6 +1055,87 @@ describe("platform-search — individual function deep coverage", () => {
       const result = await searchAllPlatformsFromFirestore("serper err");
       expect(result).toHaveLength(1);
       expect(result[0].error).toContain("Serper.dev 429");
+    });
+
+    it("queries the dedicated /shopping engine and maps imageUrl and ratingCount", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            shopping: [
+              {
+                title: "Shopping Item",
+                source: "Target",
+                price: "$19.99",
+                imageUrl: "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:abc",
+                rating: 4.4,
+                ratingCount: 128,
+                link: "https://www.google.com/search?ibp=oshop&q=test",
+              },
+            ],
+          }),
+        text: () => Promise.resolve(""),
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const { getAllPlatforms } = await import("./platform-config");
+      vi.mocked(getAllPlatforms).mockResolvedValue([
+        {
+          id: "serper_shop",
+          name: "Serper Shop",
+          enabled: true,
+          method: "serper",
+          keys: [{ id: "k1", key: "test", label: "P", priority: 1, requestsUsed: 0, requestsLimit: 100, resetDate: "2099-01-01", lastError: null, lastTested: null, lastStatus: "untested" }],
+          lastHealth: "untested", lastSearched: null, lastError: null, cooldownUntil: null, createdAt: null, updatedAt: null,
+        },
+      ] as never);
+
+      const { searchAllPlatformsFromFirestore } = await import("./platform-search");
+      const result = await searchAllPlatformsFromFirestore("serper shopping");
+
+      expect(String(fetchMock.mock.calls[0][0])).toContain("google.serper.dev/shopping");
+      const item = result[0].data?.search_results[0];
+      expect(item?.source).toBe("google_shopping");
+      expect(item?.image).toBe("https://encrypted-tbn0.gstatic.com/shopping?q=tbn:abc");
+      expect(item?.price).toBe(19.99);
+      expect(item?.brand).toBe("Target");
+      expect(item?.rating).toBe(4.4);
+      expect(item?.reviews).toBe(128);
+    });
+
+    it("never falls back to organic web results that have no price or image", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              organic: [{ title: "Some Article", link: "https://example.com/phone-accessories" }],
+            }),
+          text: () => Promise.resolve(""),
+        })
+      );
+
+      const { getAllPlatforms } = await import("./platform-config");
+      vi.mocked(getAllPlatforms).mockResolvedValue([
+        {
+          id: "serper_organic",
+          name: "Serper Organic",
+          enabled: true,
+          method: "serper",
+          keys: [{ id: "k1", key: "test", label: "P", priority: 1, requestsUsed: 0, requestsLimit: 100, resetDate: "2099-01-01", lastError: null, lastTested: null, lastStatus: "untested" }],
+          lastHealth: "untested", lastSearched: null, lastError: null, cooldownUntil: null, createdAt: null, updatedAt: null,
+        },
+      ] as never);
+
+      const { searchAllPlatformsFromFirestore } = await import("./platform-search");
+      const result = await searchAllPlatformsFromFirestore("serper organic");
+
+      expect(result).toHaveLength(1);
+      expect(result[0].error).toBeUndefined();
+      expect(result[0].data?.search_results).toEqual([]);
     });
   });
 
@@ -1227,6 +1319,7 @@ describe("platform-search — custom connectors and fallbacks", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.unstubAllGlobals();
+    __resetPoolStateForTests();
     process.env.SCRAPER_API_KEY = "test-scraper";
   });
 
@@ -1424,5 +1517,33 @@ describe("platform-search — custom connectors and fallbacks", () => {
     const result = await searchAllPlatforms("fallback");
     expect(logger.warn).toHaveBeenCalled();
     expect(result).toBeDefined();
+  });
+});
+
+describe("buildCJProductUrl", () => {
+  it("builds a /product/<slug>-p-<pid>.html url", () => {
+    expect(buildCJProductUrl("2609250256581624900", "Portable Wireless Capsule Coffee Machine")).toBe(
+      "https://www.cjdropshipping.com/product/portable-wireless-capsule-coffee-machine-p-2609250256581624900.html"
+    );
+  });
+
+  it("never emits the route-less /product-p-<pid> form that 404s on CJ", () => {
+    const url = buildCJProductUrl("123", "Widget");
+    expect(url).not.toMatch(/\/product-p-/);
+    expect(url).toMatch(/^https:\/\/www\.cjdropshipping\.com\/product\/.+\.html$/);
+  });
+
+  it("slugifies titles with punctuation and keeps legacy guid pids", () => {
+    expect(buildCJProductUrl("000B9312-456A-4D31-94BD-B083E2A198E8", "CJ Widget! 2.0 (Black)")).toBe(
+      "https://www.cjdropshipping.com/product/cj-widget-20-black-p-000B9312-456A-4D31-94BD-B083E2A198E8.html"
+    );
+  });
+
+  it("keeps the product reachable when the title is empty", () => {
+    expect(buildCJProductUrl("P001")).toBe("https://www.cjdropshipping.com/product/-p-P001.html");
+  });
+
+  it("falls back to the CJ homepage when there is no pid", () => {
+    expect(buildCJProductUrl("", "No Pid")).toBe("https://www.cjdropshipping.com/");
   });
 });

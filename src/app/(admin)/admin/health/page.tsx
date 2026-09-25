@@ -24,18 +24,22 @@ export default function AdminHealthPage() {
   const { user } = useAuth();
   const [platforms, setPlatforms] = useState<PlatformHealth[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const fetchHealth = async () => {
     if (!user) return;
     setLoading(true);
+    setError(false);
     try {
       const token = await user.getIdToken();
       const data = await safeFetch<{ platforms?: PlatformHealth[] }>("/api/platforms/admin", {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (data?.platforms) setPlatforms(data.platforms);
+      else setError(true);
     } catch (err) {
       console.warn("[AdminHealth] Failed to fetch:", err);
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -57,6 +61,44 @@ export default function AdminHealthPage() {
         <div className="text-center">
           <div className="h-8 w-8 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">Checking health...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || platforms.length === 0) {
+    return (
+      <div className="space-y-8 max-w-6xl">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-display font-bold text-foreground mb-2">
+              System Health
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Monitor platform connections and system status.
+            </p>
+          </div>
+          <button onClick={fetchHealth}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface border border-border text-sm text-muted-foreground hover:text-foreground hover:border-white/10 transition-all shrink-0">
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </button>
+        </div>
+        <div className="glass rounded-2xl p-6 border border-amber-400/20">
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-xl bg-amber-400/10 border border-amber-400/20">
+              <AlertTriangle className="h-8 w-8 text-amber-400" />
+            </div>
+            <div>
+              <h2 className="font-display text-lg font-semibold text-foreground">
+                {error ? "Status unavailable" : "No platforms configured"}
+              </h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {error
+                  ? "Couldn't load platform health data — this is not a health result. Try again."
+                  : "Health checks appear once platforms are enabled."}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     );

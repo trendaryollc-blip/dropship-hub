@@ -8,6 +8,115 @@ import type { FulfillmentOrder } from "@/types/fulfillment";
 import type { FulfillmentRule } from "@/types/automation";
 import { safeErrorMessage } from "@/lib/api-errors";
 
+type AdminDB = Awaited<ReturnType<typeof getAdminDB>>;
+
+interface StoredSupplierMetrics {
+  reliabilityScore: number;
+  shippingDays: number;
+  qualityScore: number;
+  stockLevel: number;
+}
+
+const DEFAULT_SUPPLIER_METRICS: StoredSupplierMetrics = {
+  stockLevel: 999,
+  shippingDays: 10,
+  reliabilityScore: 85,
+  qualityScore: 80,
+};
+
+interface SupplierMetricsLookup {
+  byId: Map<string, StoredSupplierMetrics>;
+  byName: Map<string, StoredSupplierMetrics>;
+}
+
+interface SupplierInventoryEntry {
+  supplierId: string;
+  supplierName: string;
+  inStock: boolean;
+  stockLevel: number;
+  unitCost: number;
+  shippingCost: number;
+  shippingDays: number;
+  reliabilityScore: number;
+  qualityScore: number;
+}
+
+function toStoredMetrics(data: FirebaseFirestore.DocumentData): StoredSupplierMetrics | null {
+  if (typeof data.reliabilityScore !== "number" || typeof data.avgShippingDays !== "number") return null;
+  return {
+    reliabilityScore: data.reliabilityScore,
+    shippingDays: data.avgShippingDays,
+    qualityScore: typeof data.qualityScore === "number" ? data.qualityScore : DEFAULT_SUPPLIER_METRICS.qualityScore,
+    stockLevel: typeof data.stockLevel === "number" ? data.stockLevel : DEFAULT_SUPPLIER_METRICS.stockLevel,
+  };
+}
+
+async function loadStoredSupplierMetrics(db: AdminDB, uid: string): Promise<SupplierMetricsLookup> {
+  const byId = new Map<string, StoredSupplierMetrics>();
+  const byName = new Map<string, StoredSupplierMetrics>();
+  try {
+    const snap = await db
+      .collection("users")
+      .doc(uid)
+      .collection("supplierPerformance")
+      .orderBy("createdAt", "desc")
+      .get();
+    for (const doc of snap.docs) {
+      const data = doc.data();
+      const metrics = toStoredMetrics(data);
+      if (!metrics) continue;
+      if (typeof data.supplierId === "string" && data.supplierId && !byId.has(data.supplierId)) {
+        byId.set(data.supplierId, metrics);
+      }
+      if (typeof data.supplierName === "string" && data.supplierName && !byName.has(data.supplierName)) {
+        byName.set(data.supplierName, metrics);
+      }
+    }
+  } catch {
+    return { byId, byName };
+  }
+  return { byId, byName };
+}
+
+function buildSupplierInventory(
+  items: FulfillmentOrder["items"],
+  lookup: SupplierMetricsLookup
+): { inventory: SupplierInventoryEntry[]; storedCount: number; defaultCount: number } {
+  const inventory: SupplierInventoryEntry[] = [];
+  let storedCount = 0;
+  let defaultCount = 0;
+
+  for (const item of items) {
+    const stored =
+      (item.supplierId && lookup.byId.get(item.supplierId)) ||
+      (item.supplierName && lookup.byName.get(item.supplierName)) ||
+      null;
+
+    if (stored) storedCount++;
+    else defaultCount++;
+
+    inventory.push({
+      supplierId: item.supplierId || "cj",
+      supplierName: item.supplierName || "CJ Dropshipping",
+      inStock: true,
+      stockLevel: stored ? stored.stockLevel : DEFAULT_SUPPLIER_METRICS.stockLevel,
+      unitCost: item.unitCost || 0,
+      shippingCost: 0,
+      shippingDays: stored ? stored.shippingDays : DEFAULT_SUPPLIER_METRICS.shippingDays,
+      reliabilityScore: stored ? stored.reliabilityScore : DEFAULT_SUPPLIER_METRICS.reliabilityScore,
+      qualityScore: stored ? stored.qualityScore : DEFAULT_SUPPLIER_METRICS.qualityScore,
+    });
+  }
+
+  return { inventory, storedCount, defaultCount };
+}
+
+function selectionBasisFor(storedCount: number, defaultCount: number): string {
+  if (defaultCount === 0) return "stored supplier performance data";
+  if (storedCount === 0) return "default metrics — no supplier data stored";
+  return "stored supplier performance data where available, defaults for the rest";
+}
+
 export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
     const body = await req.json();
@@ -24,6 +133,9 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
 
       let processed = 0;
       let failed = 0;
+      const metricsLookup = await loadStoredSupplierMetrics(db, uid);
+      let totalStoredMetrics = 0;
+      let totalDefaultMetrics = 0;
 
       for (const doc of pendingSnap.docs) {
         try {
@@ -34,17 +146,10 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
             ? createDefaultRules()
             : rulesSnap.docs.map((d) => ({ id: d.id, ...d.data() } as FulfillmentRule));
 
-          const supplierInventory = orderData.items.map((item) => ({
-            supplierId: item.supplierId || "cj",
-            supplierName: item.supplierName || "CJ Dropshipping",
-            inStock: true,
-            stockLevel: 999,
-            unitCost: item.unitCost || 0,
-            shippingCost: 0,
-            shippingDays: 10,
-            reliabilityScore: 85,
-            qualityScore: 80,
-          }));
+          const built = buildSupplierInventory(orderData.items, metricsLookup);
+          const supplierInventory = built.inventory;
+          totalStoredMetrics += built.storedCount;
+          totalDefaultMetrics += built.defaultCount;
 
           const settingsDoc = await db.collection("users").doc(uid).collection("fulfillmentSettings").doc("config").get();
           const settings = settingsDoc.exists ? settingsDoc.data() : {};
@@ -99,6 +204,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
         success: true,
         processed,
         failed,
+        selectionBasis: selectionBasisFor(totalStoredMetrics, totalDefaultMetrics),
         message: `Auto-fulfill complete: ${processed} processed, ${failed} failed out of ${pendingSnap.size} pending orders`,
       });
     }
@@ -121,29 +227,22 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
       ? createDefaultRules()
       : rulesSnap.docs.map((d) => ({ id: d.id, ...d.data() } as FulfillmentRule));
 
-    const supplierInventory = orderData.items.map((item) => ({
-      supplierId: item.supplierId || "cj",
-      supplierName: item.supplierName || "CJ Dropshipping",
-      inStock: true,
-      stockLevel: 999,
-      unitCost: item.unitCost || 0,
-      shippingCost: 0,
-      shippingDays: 10,
-      reliabilityScore: 85,
-      qualityScore: 80,
-    }));
+    const metricsLookup = await loadStoredSupplierMetrics(db, uid);
+    const built = buildSupplierInventory(orderData.items, metricsLookup);
+    const supplierInventory = built.inventory;
+    const usedEmptyFallback = supplierInventory.length === 0;
 
-    if (supplierInventory.length === 0) {
+    if (usedEmptyFallback) {
       supplierInventory.push({
         supplierId: "cj",
         supplierName: "CJ Dropshipping",
         inStock: true,
-        stockLevel: 999,
+        stockLevel: DEFAULT_SUPPLIER_METRICS.stockLevel,
         unitCost: 0,
         shippingCost: 0,
-        shippingDays: 10,
-        reliabilityScore: 85,
-        qualityScore: 80,
+        shippingDays: DEFAULT_SUPPLIER_METRICS.shippingDays,
+        reliabilityScore: DEFAULT_SUPPLIER_METRICS.reliabilityScore,
+        qualityScore: DEFAULT_SUPPLIER_METRICS.qualityScore,
       });
     }
 
@@ -205,6 +304,7 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
       success: true,
       action: result.action,
       message: result.message,
+      selectionBasis: selectionBasisFor(built.storedCount, built.defaultCount + (usedEmptyFallback ? 1 : 0)),
       pipeline: {
         status: result.state.status,
         selectedSupplier: result.state.selectedSupplier,

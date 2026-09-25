@@ -581,7 +581,7 @@ function DiscoverContent() {
               <Sparkles className="h-4 w-4 text-violet-400" />
             </div>
             <div>
-              <span className="text-sm font-semibold text-violet-400">AI-Powered Supplier Search</span>
+              <span className="text-sm font-semibold text-violet-400" title="Keyword search across your supplier catalog — not a model">Supplier Search</span>
               <p className="text-[10px] text-muted-foreground">Describe what you need in natural language</p>
             </div>
           </div>

@@ -235,6 +235,9 @@ export default function SavedProductCard({ product, viewMode, onAIAction }: Save
             </span>
           )}
         </div>
+        {product.price != null && (
+          <p className="text-[10px] text-muted-foreground/60">Price snapshot from when you saved — not live</p>
+        )}
 
         <div className="flex items-center justify-between pt-1">
           <span className="text-[10px] text-muted-foreground/60">Saved {timeAgo(product.savedAt)}</span>

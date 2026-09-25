@@ -36,14 +36,15 @@ describe("ForecastChart", () => {
     expect(screen.getByText("Revenue Forecast")).toBeInTheDocument();
   });
 
-  it("renders default description when no forecast", () => {
+  it("renders empty-state description when no forecast", () => {
     render(<ForecastChart forecast={null} onGenerate={vi.fn()} />);
-    expect(screen.getByText("AI-powered prediction")).toBeInTheDocument();
+    expect(screen.getByText("No forecast yet — generate one from your revenue data")).toBeInTheDocument();
+    expect(screen.queryByText("AI-powered prediction")).not.toBeInTheDocument();
   });
 
   it("renders confidence level description with forecast", () => {
     render(<ForecastChart forecast={mockForecast} onGenerate={vi.fn()} />);
-    expect(screen.getByText("high confidence prediction")).toBeInTheDocument();
+    expect(screen.getByText("high confidence (Estimated)")).toBeInTheDocument();
   });
 
   it("renders projected revenue when forecast provided", () => {

@@ -53,6 +53,9 @@ export default function PlatformComparisonPage() {
         <div className="lg:col-span-2 space-y-4">
           <div className={cardClass}>
             <h3 className="font-display text-lg font-semibold text-foreground mb-4">Platform Comparison</h3>
+            <p className="text-[10px] text-muted-foreground mb-4">
+              Static reference rates — verify current platform pricing. Fees and effective rates are from a bundled reference card, not live platform quotes.
+            </p>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -83,7 +86,7 @@ export default function PlatformComparisonPage() {
                       <td className="py-3 px-3 text-center">
                         {p.platform === result.bestPlatform && (
                           <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400">
-                            <CheckCircle className="h-3 w-3" /> Best
+                            <CheckCircle className="h-3 w-3" /> Best on reference rate card
                           </span>
                         )}
                       </td>
@@ -117,6 +120,9 @@ export default function PlatformComparisonPage() {
 
           <div className={cardClass}>
             <h3 className="font-display text-lg font-semibold text-foreground mb-4">Detailed Fee Breakdown</h3>
+            <p className="text-[10px] text-muted-foreground mb-4">
+              Static reference rates — verify current platform pricing.
+            </p>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>

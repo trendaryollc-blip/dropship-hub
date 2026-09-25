@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Target, ArrowUpRight, TrendingUp, TrendingDown, Package, DollarSign, ChevronDown, ChevronUp } from "lucide-react";
+import { Target, ArrowUpRight, Package, DollarSign, ChevronDown, ChevronUp } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { NicheCard as NicheCardType } from "@/types/dashboard";
 
@@ -105,16 +105,14 @@ function NicheCard({ card, index }: { card: NicheCardType; index: number }) {
             <span className="text-[10px] font-bold uppercase tracking-wider text-accent">{card.category}</span>
             <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${gradeColors[card.grade]}`}>{card.grade}</span>
           </div>
-          <div className="flex items-center gap-1">
-            {card.growth >= 0 ? (
-              <span className="flex items-center gap-0.5 text-[10px] font-semibold text-emerald-400">
-                <TrendingUp className="h-2.5 w-2.5" />+{card.growth}%
-              </span>
-            ) : (
-              <span className="flex items-center gap-0.5 text-[10px] font-semibold text-red-400">
-                <TrendingDown className="h-2.5 w-2.5" />{card.growth}%
-              </span>
-            )}
+          <div
+            className="flex items-center gap-1"
+            title="Rule-based score derived from this category's average listing rating"
+          >
+            <span className={`text-[10px] font-semibold ${card.ratingScore >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+              {card.ratingScore >= 0 ? "+" : ""}{card.ratingScore}
+            </span>
+            <span className="text-[9px] text-muted-foreground">rating score</span>
           </div>
         </div>
 
@@ -139,10 +137,16 @@ function NicheCard({ card, index }: { card: NicheCardType; index: number }) {
         </div>
 
         {/* Sparkline */}
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] text-muted-foreground">7-day demand trend</span>
-          <MiniSparkline points={card.demandSparkline ?? []} />
-        </div>
+        {card.demandSparkline && card.demandSparkline.length > 1 ? (
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-muted-foreground">7-day demand trend</span>
+            <MiniSparkline points={card.demandSparkline} />
+          </div>
+        ) : (
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-muted-foreground">No demand history yet</span>
+          </div>
+        )}
       </Link>
 
       {/* Expand toggle */}
@@ -206,7 +210,7 @@ export default function NicheRadarCards({ niches }: { niches: NicheCardType[] })
           <Target className="h-4 w-4 text-accent" />
           <div>
             <h3 className="font-display text-sm font-semibold text-foreground">Niche Opportunities</h3>
-            <p className="text-[10px] text-muted-foreground">AI ranked by demand, margin, competition & trend data</p>
+            <p className="text-[10px] text-muted-foreground">Rule-based ranking by demand, margin, competition & trend signals</p>
           </div>
         </div>
         <Link href="/products/niches" className="text-xs text-accent hover:text-accent-hover transition-colors flex items-center gap-1">

@@ -27,6 +27,7 @@ import AlertConfig from "@/components/trends/AlertConfig";
 import NotificationCenter from "@/components/trends/NotificationCenter";
 import AccuracyTracker from "@/components/trends/AccuracyTracker";
 import PDFExportButton from "@/components/trends/PDFExportButton";
+import SectionEmpty from "@/components/products/SectionEmpty";
 import { exportPredictionsToCSV, exportWatchlistToCSV, exportRisingStarsToCSV } from "@/lib/trends/export";
 import type { TrendPrediction, RisingStar, TrendWatchlistEntry, TrendAnalysisResponse } from "@/types/trend-predictor";
 
@@ -56,7 +57,7 @@ export default function TrendsPage() {
   const { data: predictionsData, mutate: mutatePredictions } = useAPI<{ predictions?: TrendPrediction[] }>(uid ? "/api/ai/trends/predictions" : null);
   const { data: watchlistData, mutate: mutateWatchlist } = useAPI<{ entries?: TrendWatchlistEntry[] }>(uid ? "/api/ai/trends/watchlist" : null);
 
-  const trending = trendingData?.trending || [];
+  const trending = (trendingData?.trending || []).filter((t) => t.volume > 0 || t.growth !== 0);
   const risingStars = risingData?.risingStars || trendingData?.risingStars || [];
   const predictions = predictionsData?.predictions || [];
   const watchlist = watchlistData?.entries || [];
@@ -199,8 +200,8 @@ export default function TrendsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground">AI Trend Predictor</h1>
-            <span className="px-2 py-0.5 rounded-lg bg-purple-400/10 text-purple-400 text-[10px] font-bold">AI POWERED</span>
+            <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground">Trend Predictor</h1>
+            <span className="px-2 py-0.5 rounded-lg bg-purple-400/10 text-purple-400 text-[10px] font-bold">RULE-BASED</span>
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">
             Predict which products will trend before they peak. Find rising stars with low competition.
@@ -268,7 +269,7 @@ export default function TrendsPage() {
                 Retry
               </button>
             </div>
-          ) : trending.length > 0 && (
+          ) : trending.length > 0 ? (
             <div className="glass rounded-2xl p-4 sm:p-5">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-display text-sm font-semibold text-foreground">Trending Keywords</h3>
@@ -303,6 +304,14 @@ export default function TrendsPage() {
                 })}
               </div>
             </div>
+          ) : (
+            <div className="glass rounded-2xl p-4 sm:p-5">
+              <SectionEmpty
+                icon={TrendingUp}
+                title="No live trending keywords"
+                description="No signals from connected sources. Connect a trends source (Google Trends API) to see live trending keywords."
+              />
+            </div>
           )}
 
           {/* Rising Stars */}
@@ -324,22 +333,17 @@ export default function TrendsPage() {
                         <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${STATUS_COLORS[rs.status]}`}>{rs.status}</span>
                       </div>
                       <p className="text-[10px] text-muted-foreground">
-                        {rs.category} · {rs.growthVelocity.toFixed(0)}% velocity · {rs.opportunityScore}% opportunity
+                        {rs.category} · Est. {rs.growthVelocity.toFixed(0)}% velocity · Est. {rs.opportunityScore}% opportunity
                       </p>
                     </div>
                     <div className="text-right shrink-0 ml-3">
-                      <p className="text-xs font-bold text-foreground">{rs.opportunityScore}%</p>
+                      <p className="text-xs font-bold text-foreground">Est. {rs.opportunityScore}%</p>
                       <p className="text-[9px] text-muted-foreground">opportunity</p>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-          )}
-
-          {!trendsLoading && !trendsError && trending.length === 0 && risingStars.length === 0 && (
-            <EmptyState iconName="analytics" title="No trends data yet" description="Click 'Analyze' to discover trending products and rising stars"
-              action={{ label: "Start Analyzing", onClick: () => setActiveTab("analyze") }} />
           )}
         </div>
       )}
@@ -429,7 +433,7 @@ export default function TrendsPage() {
                     </div>
                     <div className="p-3 rounded-xl bg-surface">
                       <p className="text-[10px] text-muted-foreground">Time to Peak</p>
-                      <p className="text-lg font-bold text-foreground">{analysisResult.prediction.timeToPeak}</p>
+                      <p className="text-lg font-bold text-foreground">{analysisResult.prediction.timeToPeak || "—"}</p>
                     </div>
                     <div className="p-3 rounded-xl bg-surface">
                       <p className="text-[10px] text-muted-foreground">Est. Margin</p>
@@ -483,17 +487,11 @@ export default function TrendsPage() {
                 {/* Lifecycle Curve */}
                 {analysisResult.signals && analysisResult.signals.length > 0 && (
                   <TrendLifecycleCurve
-                    actualData={Array.from({ length: 30 }, (_, i) => {
-                      const d = new Date(); d.setDate(d.getDate() - 29 + i);
-                      const seed = analysisResult.prediction.productIdea.charCodeAt(0) + i;
-                      return { date: d.toISOString().split("T")[0], value: 30 + (seed % 40) + Math.round(Math.sin(i / 5) * 15) };
-                    })}
-                    predictedData={Array.from({ length: 90 }, (_, i) => {
-                      const d = new Date(); d.setDate(d.getDate() + i + 1);
-                      return { date: d.toISOString().split("T")[0], value: Math.round(50 + Math.sin(i / 10) * 20 - (i > 60 ? i - 60 : 0)), predicted: true };
-                    })}
+                    actualData={analysisResult.interestOverTime || []}
+                    emptyNote="No history source connected — connect Google Trends to see actual interest over time"
+                    forecastNote="Forecast unavailable — no historical series"
                     currentStage={analysisResult.prediction.direction === "rising" ? "rising" : analysisResult.prediction.direction === "peaking" ? "peak" : analysisResult.prediction.direction === "declining" ? "declining" : "emerging"}
-                    predictedPeakDate={analysisResult.prediction.predictedPeak}
+                    predictedPeakDate={analysisResult.prediction.predictedPeak ?? undefined}
                     height={200}
                   />
                 )}
@@ -523,7 +521,7 @@ export default function TrendsPage() {
                         <span className="text-xs font-medium text-foreground">{rs.productKeyword}</span>
                         <span className={`ml-2 px-1.5 py-0.5 rounded text-[8px] font-bold ${STATUS_COLORS[rs.status]}`}>{rs.status}</span>
                       </div>
-                      <span className="text-xs font-bold text-emerald-400">{rs.opportunityScore}%</span>
+                      <span className="text-xs font-bold text-emerald-400">Est. {rs.opportunityScore}%</span>
                     </div>
                   ))}
                 </div>
@@ -621,8 +619,8 @@ export default function TrendsPage() {
                       <p className="text-[10px] text-muted-foreground mb-2 line-clamp-1">{pred.reasoning}</p>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
                         <span>Score: <span className="text-foreground font-semibold">{pred.trendScore}%</span></span>
-                        <span>Peak: <span className="text-foreground font-semibold">{pred.timeToPeak}</span></span>
-                        <span>Margin: <span className="text-emerald-400 font-semibold">{pred.estimatedMargin}%</span></span>
+                        <span>Peak: <span className="text-foreground font-semibold">{pred.timeToPeak || "—"}</span></span>
+                        <span>Est. Margin: <span className="text-emerald-400 font-semibold">{pred.estimatedMargin}%</span></span>
                         <span className={`font-semibold ${
                           pred.competitionLevel === "low" ? "text-emerald-400" :
                           pred.competitionLevel === "medium" ? "text-amber-400" : "text-red-400"
@@ -734,6 +732,7 @@ export default function TrendsPage() {
         }}
         signals={analysisResult?.signals || []}
         geoData={analysisResult?.geoData || []}
+        history={analysisResult?.interestOverTime || []}
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         onAddToWatchlist={(kw, cat) => {

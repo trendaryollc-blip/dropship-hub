@@ -13,8 +13,8 @@ function castPrediction(p: {
   trendScore: number;
   confidence: string;
   direction: string;
-  predictedPeak: string;
-  timeToPeak: string;
+  predictedPeak: string | null;
+  timeToPeak: string | null;
   saturationRisk: number;
   competitionLevel: string;
   reasoning: string;

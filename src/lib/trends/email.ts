@@ -22,7 +22,7 @@ function buildDigestHTML(data: TrendEmailData): string {
       <td style="padding:8px;border-bottom:1px solid #333;font-size:14px;color:${p.direction === "rising" ? "#22c55e" : p.direction === "peaking" ? "#f59e0b" : "#ef4444"};">${p.direction}</td>
       <td style="padding:8px;border-bottom:1px solid #333;font-size:14px;color:#fff;">${p.trendScore}%</td>
       <td style="padding:8px;border-bottom:1px solid #333;font-size:14px;color:#22c55e;">${p.estimatedMargin}%</td>
-      <td style="padding:8px;border-bottom:1px solid #333;font-size:14px;color:#fff;">${p.timeToPeak}</td>
+      <td style="padding:8px;border-bottom:1px solid #333;font-size:14px;color:#fff;">${p.timeToPeak || "—"}</td>
     </tr>
   `).join("");
 

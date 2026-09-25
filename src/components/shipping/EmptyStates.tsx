@@ -28,7 +28,7 @@ const emptyConfig = {
   predict: {
     icon: Clock,
     title: "Predict Delivery Time",
-    description: "Select a carrier and service level to get AI-powered delivery predictions with detailed risk analysis.",
+    description: "Select a carrier and service level to get delivery estimates (rules-based) with detailed risk analysis.",
     action: "Get Prediction",
     color: "text-purple-400",
     bg: "bg-purple-400/10",

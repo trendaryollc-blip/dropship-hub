@@ -92,7 +92,7 @@ export default function CompetitorMonitoringPanel() {
       <div className="glass rounded-2xl p-4">
         <div className="flex items-center gap-2 mb-2">
           <Eye className="h-4 w-4 text-accent" />
-          <h3 className="text-xs font-semibold text-foreground">Live Competitor Changes</h3>
+          <h3 className="text-xs font-semibold text-foreground">Recent Competitor Changes</h3>
         </div>
         <p className="text-xs text-muted-foreground/60">No competitor changes detected yet. Add competitors to your watchlist to start monitoring.</p>
       </div>
@@ -104,7 +104,7 @@ export default function CompetitorMonitoringPanel() {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Eye className="h-4 w-4 text-accent" />
-          <h3 className="text-xs font-semibold text-foreground">Live Competitor Changes</h3>
+          <h3 className="text-xs font-semibold text-foreground">Recent Competitor Changes</h3>
           {summary && summary.critical > 0 && (
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-400/10 text-red-400 font-medium">
               {summary.critical} critical

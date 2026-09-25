@@ -124,12 +124,12 @@ export default function HealthPresets({ onApplyPreset }: HealthPresetsProps) {
                   {appliedPreset === preset.id ? (
                     <>
                       <Check className="h-3.5 w-3.5" />
-                      Applied!
+                      Scroll to tasks
                     </>
                   ) : (
                     <>
                       <Sparkles className="h-3.5 w-3.5" />
-                      Use Template
+                      Jump to Checklist
                     </>
                   )}
                 </button>

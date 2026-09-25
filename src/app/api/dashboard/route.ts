@@ -304,7 +304,7 @@ export const GET = withAuth(async (_request: Request) => {
       ? Number((allProducts.reduce((s, p) => s + (p.price ?? 0), 0) / totalProducts).toFixed(2))
       : 0;
 
-    // ── Fix #8: Niche growth derived from real product data ──────────────
+    // ── Fix #8: Niche scores derived from real product data ──────────────
     const nicheCards: NicheCard[] = Object.entries(categoryData).slice(0, 5).map(([cat, data], idx) => {
       const products = data.search_results.filter((p) => p.price !== null && p.price > 0);
       const catAvgPrice = products.length > 0 ? products.reduce((s, p) => s + (p.price ?? 0), 0) / products.length : 0;
@@ -317,21 +317,19 @@ export const GET = withAuth(async (_request: Request) => {
       const overallScore = Math.round((demand + profitScore + trend) / 3);
       const grade: NicheCard["grade"] = overallScore >= 85 ? "A+" : overallScore >= 75 ? "A" : overallScore >= 65 ? "B+" : overallScore >= 55 ? "B" : overallScore >= 45 ? "C+" : "C";
 
-      // Derive growth from avg rating vs category average (real signal)
+      // Rating-based score (not a time-series growth rate): avg rating vs 3.5 baseline
       const avgRating = products.length > 0
         ? products.reduce((s, p) => s + (p.rating ?? 4), 0) / products.length
         : 4.0;
-      const growthRaw = Math.round((avgRating - 3.5) * 20 + (products.length > 10 ? 5 : -3));
-      const growth = Math.max(-20, Math.min(30, growthRaw));
+      const ratingRaw = Math.round((avgRating - 3.5) * 20 + (products.length > 10 ? 5 : -3));
+      const ratingScore = Math.max(-20, Math.min(30, ratingRaw));
 
-      const base = Math.round(catAvgPrice * 10);
-      const demandSparkline = Array.from({ length: 7 }, (_, i) => Math.max(5, base + (i - 3) * 2 + Math.round((products.length + i) * 1.5)));
       const aiInsights = [
-        `High demand category with ${products.length} products. Average price $${catAvgPrice.toFixed(2)} with ${avgMargin}% margins.`,
-        `Growing market with ${products.length} listings. Average rating ${avgRating.toFixed(1)} stars across products.`,
+        `${products.length} products listed here. Average price $${catAvgPrice.toFixed(2)} with an est. ${avgMargin}% margin (2.5× sell-price rule).`,
+        `${products.length} listings with an average rating of ${avgRating.toFixed(1)} stars.`,
         `${products.length} products in this niche. Price range $${Math.min(...products.map((p) => p.price ?? 0)).toFixed(2)} - $${Math.max(...products.map((p) => p.price ?? 0)).toFixed(2)}.`,
-        `Premium segment with ${avgMargin}% avg margin. ${(products.reduce((s, p) => s + (p.reviews ?? 0), 0)).toLocaleString()} total reviews.`,
-        `Emerging niche with ${products.length} active products. ${demand}% demand score indicates ${demand > 60 ? "strong" : "growing"} buyer interest.`,
+        `${products.length} listings with ${(products.reduce((s, p) => s + (p.reviews ?? 0), 0)).toLocaleString()} total reviews and an est. ${avgMargin}% avg margin.`,
+        `${products.length} active products. Rule-based demand score ${demand}/100 indicates ${demand > 60 ? "strong" : "moderate"} buyer interest.`,
       ];
       const aiInsight = aiInsights[idx % aiInsights.length];
       return {
@@ -342,9 +340,8 @@ export const GET = withAuth(async (_request: Request) => {
         grade,
         productCount: data.search_results.length,
         avgMargin,
-        growth,
+        ratingScore,
         aiInsight,
-        demandSparkline,
         topProduct: products[0]?.title?.slice(0, 50) || "N/A",
       };
     });
@@ -356,12 +353,16 @@ export const GET = withAuth(async (_request: Request) => {
     const supplierStatus: SupplierStatus = {
       name: "CJ Dropshipping",
       productCount: totalProducts,
+      // Catalog tier from listing count only — not a verified badge.
       trustBadge: totalProducts > 30 ? "gold" : totalProducts > 15 ? "silver" : "bronze",
-      responseTime: totalProducts > 20 ? "< 1h" : "2-4h",
-      responseLevel: totalProducts > 20 ? "fast" : totalProducts > 10 ? "moderate" : "slow",
-      completionRate: Math.min(100, Math.round(60 + totalProducts * 1.2 + avgProductRating * 3)),
+      // No messaging/SLA feed yet: omit response time rather than invent one.
+      responseTime: "—",
+      responseLevel: "slow",
+      // Order-completion rate needs CJ Partner API fulfillment stats — not derived from search results.
+      completionRate: 0,
       status: "online",
-      rating: Math.min(5, avgProductRating + 0.3),
+      // Real average product rating only — no inflation.
+      rating: avgProductRating,
       location: "China",
     };
 
@@ -389,9 +390,11 @@ export const GET = withAuth(async (_request: Request) => {
         : 3;
       const trend: "up" | "down" | "stable" = avgRating > 4.2 ? "up" : avgRating < 3.5 ? "down" : "stable";
 
-      // Build sparkline from actual product prices in this category
+      // Category price points only — pad with last real price only if we have at least one.
       const weeklyData = products.slice(0, 7).map((p) => Math.round((p.price ?? 0) * 100) / 100);
-      while (weeklyData.length < 7) weeklyData.push(weeklyData[weeklyData.length - 1] || 0);
+      const paddedWeekly = weeklyData.length > 0
+        ? weeklyData.concat(Array.from({ length: Math.max(0, 7 - weeklyData.length) }, () => weeklyData[weeklyData.length - 1]))
+        : [];
 
       const velocity = Math.round((products.length / Math.max(1, Object.keys(categoryData).length)) * 5 - 10);
       return {
@@ -399,10 +402,9 @@ export const GET = withAuth(async (_request: Request) => {
         productCount: data.search_results.length,
         avgMargin,
         trend,
-        weeklyData,
+        weeklyData: paddedWeekly,
         topProduct,
-        topProductMargin: Math.round(avgMargin * 0.6 + 10),
-        aiInsight: `Category "${cat}" has ${data.search_results.length} active listings with avg. price $${avgPrice.toFixed(2)}.`,
+        aiInsight: `Category "${cat}" has ${data.search_results.length} active listings with avg. price $${categoryAvgPrice.toFixed(2)}.`,
         velocity,
         heat,
       };
@@ -436,13 +438,12 @@ export const GET = withAuth(async (_request: Request) => {
       const competitionLevel: "low" | "medium" | "high" = catProductCount <= 5 ? "low" : catProductCount <= 15 ? "medium" : "high";
 
       const supplierReliability = Math.round(70 + (p.rating ?? 4) * 3 + Math.min(20, (p.reviews ?? 0) / 10));
-      const monthlyVolume = Math.round(50 + (p.reviews ?? 0) * 10 + srcPrice * 2);
 
-      // ── Fix #9: Sparkline from real product prices in same category ────
+      // Category price points only — never invent a fake ramp when <2 prices.
       const catPrices = allProducts
         .filter((ap) => ap.category === p.category)
         .map((ap) => Number((ap.price ?? 0).toFixed(2)));
-      const sparkline = catPrices.length >= 2 ? catPrices.slice(0, 7) : Array.from({ length: 7 }, (_, i) => Number(((srcPrice ?? 0) * (0.85 + 0.15 * (i / 6))).toFixed(2)));
+      const sparkline = catPrices.length >= 2 ? catPrices.slice(0, 7) : [];
 
       return {
         name: p.title.length > 60 ? p.title.slice(0, 57) + "..." : p.title,
@@ -459,8 +460,10 @@ export const GET = withAuth(async (_request: Request) => {
         demandLevel,
         competitionLevel,
         supplierReliability,
-        monthlyVolume,
-        shippingDays: "7-15",
+        // Monthly volume needs sales data we don't have — omit rather than invent.
+        monthlyVolume: null,
+        // Shipping estimate needs CJ shipping API — omit rather than hardcode.
+        shippingDays: null,
         sourceUrl: p.link || "#",
         competitors,
         listingSuggestion: {
@@ -560,60 +563,55 @@ export const GET = withAuth(async (_request: Request) => {
         actionHref: "/products",
         timestamp: "just now",
         read: false,
+        // Heuristic score from rating/reviews — not model confidence.
         confidence: p.confidence,
-        aiAnalysis: `This product shows strong signals. ${p.whyTrending || "Trending with high demand and competitive pricing."} Consider adding to your store.`,
+        aiAnalysis: `Composite score from listing rating and reviews. ${p.whyTrending || ""}`,
         sparkline: p.sparkline,
       })),
       ...heatmap.filter((c) => c.heat >= 70).slice(0, 2).map((c, i) => ({
         id: stableAlertId("risk", `${c.category}@${c.heat}`),
         type: "risk" as const,
         title: `${c.category} market overheating`,
-        description: `Heat score ${c.heat}/100. ${c.velocity > 0 ? `Growing ${c.velocity}% per week.` : "Cooling trend detected."} Competition rising.`,
+        description: `Heat score ${c.heat}/100 from listing density vs category average. Competition signal elevated.`,
         action: "Analyze Niche",
         actionHref: "/products/niches",
         timestamp: "just now",
         read: false,
-        confidence: Math.min(c.heat + 10, 99),
-        aiAnalysis: `${c.category} is showing signs of market saturation. ${c.aiInsight} Monitor closely before investing more inventory.`,
-        sparkline: c.weeklyData ?? [c.heat - 10, c.heat - 5, c.heat, c.heat + 3, c.heat - 2, c.heat + 1, c.heat],
+        // Heat-based score, not a model confidence.
+        confidence: Math.min(c.heat, 100),
+        aiAnalysis: `${c.category} has high listing density. ${c.aiInsight}`,
+        sparkline: c.weeklyData ?? [],
       })),
       ...trendingProducts.slice(0, 2).map((p) => ({
-        id: stableAlertId("info", `${p.name}@${p.monthlyVolume}`),
+        id: stableAlertId("info", `${p.name}@${p.trend}`),
         type: "info" as const,
         title: `Trending: ${p.name}`,
-        description: `${p.trend > 0 ? "+" : ""}${p.trend}% trend score. ${p.monthlyVolume} monthly volume on ${p.platform}.`,
+        description: `${p.trend > 0 ? "+" : ""}${p.trend}% vs category average price on ${p.platform}.`,
         action: "Explore",
         actionHref: "/products",
         timestamp: "just now",
         read: true,
         confidence: p.confidence,
-        aiAnalysis: `Steady demand detected. ${p.demandLevel} demand level with ${p.competitionLevel} competition. Good candidate for store listing.`,
+        aiAnalysis: `${p.demandLevel} demand level with ${p.competitionLevel} competition (estimated from listing counts).`,
         sparkline: p.sparkline,
       })),
       // Warning alerts only when the feed is live — in degraded mode the
       // briefing insight is an outage notice, not an actionable alert.
       ...(productsAvailable
         ? aiBriefing.insights.slice(0, 2).map((insight: string, i: number) => {
-            // Deterministic values derived from insight content and sentiment
-            const insightHash = insight.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
-            const sentimentValue = aiBriefing.sentiment ?? 50;
-            const deterministicConfidence = Math.min(95, Math.round(sentimentValue * 0.7 + (insightHash % 20) + 10));
-            const baseValue = 40 + (insightHash % 30);
-            const deterministicSparkline = Array.from({ length: 7 }, (_, idx) =>
-              Math.round(baseValue + Math.sin(insightHash + idx) * 10)
-            );
+            // No fabricated confidence% or sine-wave sparkline — keep content only.
             return {
               id: stableAlertId("warn", insight),
               type: "warning" as const,
-              title: `AI Alert: ${insight.slice(0, 50)}`,
+              title: insight.slice(0, 60),
               description: insight,
               action: "View Details",
               actionHref: "/ai",
               timestamp: "just now",
               read: i > 0,
-              confidence: deterministicConfidence,
-              aiAnalysis: `Automated intelligence briefing. ${insight}`,
-              sparkline: deterministicSparkline,
+              confidence: 0,
+              aiAnalysis: "Rules-based briefing from category listing stats.",
+              sparkline: [],
             };
           })
         : []),

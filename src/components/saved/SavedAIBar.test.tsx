@@ -22,11 +22,11 @@ describe("SavedAIBar", () => {
     expect(container.innerHTML).toBe("");
   });
 
-  it("renders all 4 AI action buttons", () => {
+  it("renders all 4 action buttons", () => {
     render(<SavedAIBar {...defaultProps} />);
     expect(screen.getByText("Analyze All")).toBeInTheDocument();
     expect(screen.getByText("Find Similar")).toBeInTheDocument();
-    expect(screen.getByText("Optimize Pricing")).toBeInTheDocument();
+    expect(screen.getByText("Analyze Pricing")).toBeInTheDocument();
     expect(screen.getByText("Generate Listings")).toBeInTheDocument();
   });
 

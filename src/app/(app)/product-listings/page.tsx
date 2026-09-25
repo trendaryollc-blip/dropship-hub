@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { useAPI } from "@/hooks/useAPI";
 import { useToast } from "@/components/ui/Toast";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import SectionEmpty from "@/components/products/SectionEmpty";
 import { authJson } from "@/lib/auth-headers";
 import { copyToClipboard } from "@/lib/clipboard";
 import { URLImporter, CompetitorPanel, ListingPreview, MarketInsightsPanel, SmartAutofill } from "@/components/listings/intelligence";
@@ -197,7 +198,7 @@ export default function ProductListingsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground">AI Listing Generator</h1>
+            <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground">Listing Generator</h1>
             <span className="px-2 py-0.5 rounded-lg bg-accent/10 text-accent text-[10px] font-bold flex items-center gap-1">
               <Zap className="h-3 w-3" /> 20X
             </span>
@@ -419,7 +420,7 @@ export default function ProductListingsPage() {
                   </div>
                   <div className="text-left">
                     <p className="text-xs font-semibold text-foreground">Listing Generated!</p>
-                    <p className="text-[10px] text-muted-foreground">{result.listing.optimizationScore}% optimized · Click to preview</p>
+                    <p className="text-[10px] text-muted-foreground">{result.listing.optimizationScore}% checklist score · Click to preview</p>
                   </div>
                 </div>
                 <Eye className="h-4 w-4 text-muted-foreground" />
@@ -432,7 +433,7 @@ export default function ProductListingsPage() {
                 <div className="flex items-center justify-between">
                   <h3 className="font-display text-sm font-semibold text-foreground">Generated Listing</h3>
                   <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${result.listing.optimizationScore >= 80 ? "bg-emerald-400/10 text-emerald-400" : result.listing.optimizationScore >= 50 ? "bg-amber-400/10 text-amber-400" : "bg-red-400/10 text-red-400"}`}>
-                    {result.listing.optimizationScore}% optimized
+                    {result.listing.optimizationScore}% checklist score
                   </span>
                 </div>
 
@@ -494,24 +495,14 @@ export default function ProductListingsPage() {
                   </div>
                 )}
 
-                {result.keywordSuggestions?.length > 0 && (
-                  <div>
-                    <label className="text-[10px] text-muted-foreground mb-1 block">Keyword Suggestions</label>
-                    <div className="space-y-1">
-                      {result.keywordSuggestions.map((kw: { keyword: string; volume: string; competition: string }, i: number) => (
-                        <div key={i} className="flex items-center justify-between text-[10px] bg-surface rounded-lg px-2.5 py-1.5">
-                          <span className="text-foreground">{kw.keyword}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground">{kw.volume}</span>
-                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-semibold ${kw.competition === "low" ? "bg-emerald-400/10 text-emerald-400" : kw.competition === "medium" ? "bg-amber-400/10 text-amber-400" : "bg-red-400/10 text-red-400"}`}>
-                              {kw.competition}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <div>
+                  <label className="text-[10px] text-muted-foreground mb-1 block">Keyword Suggestions</label>
+                  <SectionEmpty
+                    icon={Search}
+                    title="Keyword demand not tracked"
+                    description="Search volume and competition need a keyword API — not connected yet."
+                  />
+                </div>
               </div>
             )}
 

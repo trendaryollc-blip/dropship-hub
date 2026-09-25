@@ -15,7 +15,7 @@ describe("MultiStoreChatSidebar", () => {
     render(
       <MultiStoreChatSidebar storeCount={2} totalOrders={50} totalRevenue={2000} storeNames={["Store A", "Store B"]} />
     );
-    expect(screen.getByTitle("Multi-Store AI Assistant")).toBeInTheDocument();
+    expect(screen.getByTitle("Multi-Store Assistant")).toBeInTheDocument();
   });
 
   it("opens sidebar when clicked", () => {
@@ -23,9 +23,9 @@ describe("MultiStoreChatSidebar", () => {
       <MultiStoreChatSidebar storeCount={2} totalOrders={50} totalRevenue={2000} storeNames={["Store A", "Store B"]} />
     );
 
-    fireEvent.click(screen.getByTitle("Multi-Store AI Assistant"));
+    fireEvent.click(screen.getByTitle("Multi-Store Assistant"));
 
-    expect(screen.getByText("Multi-Store AI")).toBeInTheDocument();
+    expect(screen.getByText("Multi-Store Assistant")).toBeInTheDocument();
     expect(screen.getByText("Ask anything about your multi-store setup")).toBeInTheDocument();
   });
 
@@ -34,10 +34,10 @@ describe("MultiStoreChatSidebar", () => {
       <MultiStoreChatSidebar storeCount={2} totalOrders={50} totalRevenue={2000} storeNames={["Store A", "Store B"]} />
     );
 
-    fireEvent.click(screen.getByTitle("Multi-Store AI Assistant"));
+    fireEvent.click(screen.getByTitle("Multi-Store Assistant"));
 
     expect(screen.getByText(/2 stores/)).toBeInTheDocument();
-    expect(screen.getByText(/\$2,000 revenue/)).toBeInTheDocument();
+    expect(screen.getByText(/\$2,000 \(30d\)/)).toBeInTheDocument();
   });
 
   it("has message input", () => {
@@ -45,7 +45,7 @@ describe("MultiStoreChatSidebar", () => {
       <MultiStoreChatSidebar storeCount={2} totalOrders={50} totalRevenue={2000} storeNames={["Store A", "Store B"]} />
     );
 
-    fireEvent.click(screen.getByTitle("Multi-Store AI Assistant"));
+    fireEvent.click(screen.getByTitle("Multi-Store Assistant"));
 
     expect(screen.getByPlaceholderText("Ask about your stores...")).toBeInTheDocument();
   });
@@ -55,7 +55,7 @@ describe("MultiStoreChatSidebar", () => {
       <MultiStoreChatSidebar storeCount={2} totalOrders={50} totalRevenue={2000} storeNames={["Store A", "Store B"]} />
     );
 
-    fireEvent.click(screen.getByTitle("Multi-Store AI Assistant"));
+    fireEvent.click(screen.getByTitle("Multi-Store Assistant"));
 
     expect(screen.getByText("How are my stores performing overall?")).toBeInTheDocument();
     expect(screen.getByText("Which store needs the most attention?")).toBeInTheDocument();
@@ -66,8 +66,8 @@ describe("MultiStoreChatSidebar", () => {
       <MultiStoreChatSidebar storeCount={2} totalOrders={50} totalRevenue={2000} storeNames={["Store A", "Store B"]} />
     );
 
-    fireEvent.click(screen.getByTitle("Multi-Store AI Assistant"));
-    expect(screen.getByText("Multi-Store AI")).toBeInTheDocument();
+    fireEvent.click(screen.getByTitle("Multi-Store Assistant"));
+    expect(screen.getByText("Multi-Store Assistant")).toBeInTheDocument();
 
     const closeButtons = screen.getAllByRole("button");
     const closeBtn = closeButtons.find((btn) => btn.querySelector("svg"));

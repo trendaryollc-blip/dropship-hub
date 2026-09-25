@@ -60,7 +60,7 @@ export const calculateShippingTool = createTool({
       input.originCountry as string,
       input.destinationCountry as string
     );
-    const carrierList = result.carriers.map((c) => `${c.name}: $${c.cost} (${c.days} days, ${c.reliability}% reliable)`).join("\n");
+    const carrierList = result.carriers.map((c) => `${c.name}: $${c.cost} (${c.days} days, estimate)`).join("\n");
     return {
       success: true,
       data: result,

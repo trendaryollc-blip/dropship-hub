@@ -306,8 +306,7 @@ export default function FulfillmentPage() {
           break;
         }
         case "optimize-routing": {
-          const pendingOrders = orders.filter((o) => o.status === "pending");
-          result = `Optimized routing for ${pendingOrders.length} pending orders`;
+          result = "Routing is not automated yet — review pending orders manually.";
           break;
         }
         case "bulk-tracking-sync": {
@@ -315,7 +314,7 @@ export default function FulfillmentPage() {
             "/api/fulfillment/sync-tracking",
             { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid: user.uid, bulk: true }) }
           );
-          result = `Tracking sync completed — ${res?.synced || 0} orders synced`;
+          result = `${res?.synced || 0} orders already have tracking`;
           break;
         }
         case "analyze-profitability": {

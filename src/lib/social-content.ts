@@ -20,7 +20,7 @@ const HOOK_TEMPLATES: Record<SocialPlatform, Record<ContentTone, string[]>> = {
       "POV: You just found the product everyone's been asking about",
       "This sold out 3 times — here's why",
       "Run, don't walk — this won't last",
-      "I can't believe this is only ${price}",
+      "I can't believe this is only {price}",
     ],
     casual: [
       "Okay so I'm obsessed with this rn",
@@ -176,7 +176,7 @@ const HOOK_TEMPLATES: Record<SocialPlatform, Record<ContentTone, string[]>> = {
     hype: [
       "EVERYONE is talking about this — let me show you why",
       "This is about to be everywhere",
-      "The most viral product of 2024",
+      "The most viral product of the year",
       "If you haven't seen this yet — you will",
       "Breaking down the internet's favorite product",
     ],
@@ -237,16 +237,16 @@ const CAPTION_TEMPLATES: Record<ContentType, string[]> = {
   hashtag_set: [
     "#{product} #viral #trending #musthave #fyp #shopping #onlineshopping #addtocart #shopnow #tiktokmademebuyit",
     "#{niche} #{product} #review #honestreview #productreview #worthit #notsponsored #myfavorite #cantlivewithoutit",
-    "#{category} #finds #amazingfinds #hiddenfinds #amazonfinds #shopifyfinds #trending2024 #viralproduct",
+    "#{category} #finds #amazingfinds #hiddenfinds #amazonfinds #shopifyfinds #trending #viralproduct",
     "#sale #discount #deal #bargain #affordable #budgetfriendly #cheap #save #smartshopping #bestdeal",
     "#{product} #unboxing #firstimpressions #haul #newarrival #justarrived #excited #obsessed #love",
   ],
   ad_copy: [
     "🔥 {product} — The product that's breaking the internet.\n\n✅ {benefit1}\n✅ {benefit2}\n✅ {benefit3}\n\n⚡ Limited stock — Order now before it's gone!\n\n#shopnow #trending",
-    "Tired of {problem}? Meet {product}.\n\n💡 Why 10,000+ customers love it:\n→ {benefit1}\n→ {benefit2}\n→ {benefit3}\n\n🚚 Free shipping on all orders\n\n👉 Shop now — link in bio",
+    "Tired of {problem}? Meet {product}.\n\n💡 Why [customer count] customers love it:\n→ {benefit1}\n→ {benefit2}\n→ {benefit3}\n\n🚚 Free shipping on all orders\n\n👉 Shop now — link in bio",
     "This changes everything.\n\n{product} isn't just another product — it's THE product.\n\nHere's what makes it different:\n⭐ {benefit1}\n⭐ {benefit2}\n⭐ {benefit3}\n\nDon't just take our word for it. Try it yourself.",
-    "⚡ FLASH SALE ⚡\n\n{product} — 24 hours only\n\nBefore: ${old_price}\nNow: ${new_price}\n\nThis won't last. Seriously.\n\n→ Link in bio",
-    "The #1 {category} product of 2024\n\n{product} has:\n✅ {benefit1}\n✅ {benefit2}\n✅ {benefit3}\n\n⭐⭐⭐⭐⭐ (2,847 reviews)\n\nJoin 10,000+ happy customers",
+    "⚡ FLASH SALE ⚡\n\n{product} — 24 hours only\n\nBefore: {old_price}\nNow: {new_price}\n\nThis won't last. Seriously.\n\n→ Link in bio",
+    "The #1 {category} product this year\n\n{product} has:\n✅ {benefit1}\n✅ {benefit2}\n✅ {benefit3}\n\n⭐⭐⭐⭐⭐ ([X] reviews)\n\nJoin [customer count] happy customers",
   ],
   ugc_script: [
     "Hey guys! So I finally got {product} and honestly? I'm impressed.\n\n[Show unboxing]\nFirst impressions — the packaging is really nice. Let me show you what's inside.\n\n[Show product]\nThe quality is way better than I expected for the price.\n\n[Demo]\nOkay so here's how it works... *shows* See that? That's exactly what I needed.\n\n[Verdict]\nOverall? 10/10 would recommend. Link is in my bio if you want to check it out.",
@@ -306,19 +306,19 @@ function generateHashtags(productTitle: string, platform: SocialPlatform): strin
 }
 
 function generateAudioSuggestion(platform: SocialPlatform): AudioSuggestion {
-  const trendingAudios: AudioSuggestion[] = [
-    { name: "Original Sound", artist: "Trending", trending: true, platform: "tiktok", usageCount: 500000 },
-    { name: "Cruel Summer", artist: "Taylor Swift", trending: true, platform: "tiktok", usageCount: 2000000 },
-    { name: "Paint The Town Red", artist: "Doja Cat", trending: true, platform: "instagram_reels", usageCount: 1500000 },
-    { name: "Greedy", artist: "Tate McRae", trending: true, platform: "tiktok", usageCount: 1200000 },
-    { name: "Lovin On Me", artist: "Jack Harlow", trending: true, platform: "instagram_reels", usageCount: 900000 },
-    { name: "Water", artist: "Tyla", trending: true, platform: "tiktok", usageCount: 3000000 },
-    { name: "Snooze", artist: "SZA", trending: false, platform: "youtube_shorts", usageCount: 600000 },
-    { name: "Escapism", artist: "RAYE", trending: true, platform: "tiktok", usageCount: 800000 },
+  const suggestedAudios: AudioSuggestion[] = [
+    { name: "Original audio", artist: "You", platform: "tiktok" },
+    { name: "Cruel Summer", artist: "Taylor Swift", platform: "tiktok" },
+    { name: "Paint The Town Red", artist: "Doja Cat", platform: "instagram_reels" },
+    { name: "Greedy", artist: "Tate McRae", platform: "tiktok" },
+    { name: "Lovin On Me", artist: "Jack Harlow", platform: "instagram_reels" },
+    { name: "Water", artist: "Tyla", platform: "tiktok" },
+    { name: "Snooze", artist: "SZA", platform: "youtube_shorts" },
+    { name: "Escapism", artist: "RAYE", platform: "tiktok" },
   ];
 
-  const filtered = trendingAudios.filter((a) => a.platform === platform || a.platform === "tiktok");
-  return pickRandom(filtered.length > 0 ? filtered : trendingAudios);
+  const filtered = suggestedAudios.filter((a) => a.platform === platform || a.platform === "tiktok");
+  return pickRandom(filtered.length > 0 ? filtered : suggestedAudios);
 }
 
 export function generateSingleContent(params: {
@@ -331,26 +331,31 @@ export function generateSingleContent(params: {
 }): SocialContent {
   const { productTitle, productImage, platform, contentType, tone, targetAudience } = params;
 
+  const fill = (text: string) =>
+    text
+      .replace(/\{product\}/g, productTitle)
+      .replace(/\{price\}/g, "[your price]")
+      .replace(/\{old_price\}/g, "[your old price]")
+      .replace(/\{new_price\}/g, "[your price]")
+      .replace(/\{benefit1\}/g, "Amazing quality")
+      .replace(/\{benefit2\}/g, "Fast shipping")
+      .replace(/\{benefit3\}/g, "Great value for money")
+      .replace(/\{problem\}/g, "finding quality products at good prices")
+      .replace(/\{proof\}/g, "[your social proof]")
+      .replace(/\{result\}/g, "complete transformation")
+      .replace(/\{niche\}/g, targetAudience || "lifestyle")
+      .replace(/\{category\}/g, "trending");
+
   // Pick hook
   const hooks = HOOK_TEMPLATES[platform]?.[tone] || HOOK_TEMPLATES.tiktok[tone];
-  const hook = pickRandom(hooks);
+  const hook = fill(pickRandom(hooks));
 
   // Pick caption/script template
   const templates = CAPTION_TEMPLATES[contentType];
   const template = pickRandom(templates);
 
   // Fill template
-  const content = template
-    .replace(/\{product\}/g, productTitle)
-    .replace(/\{price\}/g, "$29.99")
-    .replace(/\{benefit1\}/g, "Amazing quality")
-    .replace(/\{benefit2\}/g, "Fast shipping")
-    .replace(/\{benefit3\}/g, "Great value for money")
-    .replace(/\{problem\}/g, "finding quality products at good prices")
-    .replace(/\{proof\}/g, "10,000+ happy customers")
-    .replace(/\{result\}/g, "complete transformation")
-    .replace(/\{niche\}/g, targetAudience || "lifestyle")
-    .replace(/\{category\}/g, "trending");
+  const content = fill(template);
 
   // Generate hashtags
   const hashtags = generateHashtags(productTitle, platform);

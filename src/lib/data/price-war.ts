@@ -1,4 +1,4 @@
-import { doc, setDoc, deleteDoc, collection, query, orderBy, limit, getDocs, serverTimestamp, Timestamp, where, updateDoc, writeBatch } from "firebase/firestore";
+import { doc, setDoc, deleteDoc, collection, query, orderBy, limit, getDocs, getDoc, serverTimestamp, Timestamp, where, updateDoc, writeBatch } from "firebase/firestore";
 import { db } from "../firebase";
 import { handleFirestoreError } from "./utils";
 import { AddPriceRuleInputSchema, AddPriceAdjustmentLogInputSchema } from "./schemas";
@@ -174,6 +174,37 @@ export async function getPriceWarStats(uid: string): Promise<{
   } catch (error) {
     handleFirestoreError("getPriceWarStats", error);
     return { totalRules: 0, activeRules: 0, pausedRules: 0, triggeredToday: 0, totalAdjustments: 0, avgMarginMaintained: 0, totalSavingsFromAdjustments: 0 };
+  }
+}
+
+export interface PriceWarSettings {
+  enabled: boolean;
+  checkIntervalMinutes: number;
+  autoApply: boolean;
+  maxDailyAdjustments: number;
+  notifyOnAdjustment: boolean;
+  notifyOnFloorBreach: boolean;
+}
+
+const DEFAULT_PRICE_WAR_SETTINGS: PriceWarSettings = {
+  enabled: true,
+  checkIntervalMinutes: 60,
+  autoApply: true,
+  maxDailyAdjustments: 50,
+  notifyOnAdjustment: true,
+  notifyOnFloorBreach: true,
+};
+
+export async function getPriceWarSettings(uid: string): Promise<PriceWarSettings> {
+  try {
+    const snap = await getDoc(doc(db, "users", uid, "priceWarSettings", "config"));
+    if (snap.exists()) {
+      return { ...DEFAULT_PRICE_WAR_SETTINGS, ...(snap.data() as Partial<PriceWarSettings>) };
+    }
+    return DEFAULT_PRICE_WAR_SETTINGS;
+  } catch (error) {
+    handleFirestoreError("getPriceWarSettings", error);
+    return DEFAULT_PRICE_WAR_SETTINGS;
   }
 }
 

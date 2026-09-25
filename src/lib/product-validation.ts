@@ -183,12 +183,12 @@ export function calculateSaturation(input: SaturationInput): SaturationResult {
   if (totalSellers === 0) {
     return {
       index: 0,
-      level: "unsaturated",
+      level: "unknown",
       sellerCount: 0,
       marketConcentration: 0,
       priceWarRisk: "low",
       barrierToEntry: "low",
-      insight: "No sellers detected — this is a completely untapped market.",
+      insight: "Seller count not provided — cannot assess saturation.",
     };
   }
 
@@ -625,20 +625,23 @@ export function calculateProductAuthenticity(input: ProductAuthenticityInput): P
     brandNotes = "No brand specified — unbranded products require extra scrutiny.";
   }
 
-  const avgMarketPrice = pricePoint > 0 ? pricePoint * 1.1 : 0;
+  const avgMarketPrice = pricePoint > 0 ? +(pricePoint * 1.1).toFixed(2) : 0;
   const priceDeviation = avgMarketPrice > 0 ? Math.abs(pricePoint - avgMarketPrice) / avgMarketPrice : 0;
-  const isReasonablePrice = priceDeviation < 0.4;
+  const isReasonablePrice = avgMarketPrice === 0 ? false : priceDeviation < 0.4;
   let priceScore: number;
   let priceFlag: string | null = null;
 
-  if (isReasonablePrice) {
+  if (avgMarketPrice === 0) {
+    priceScore = 10;
+    priceFlag = "No market average available — price check skipped";
+  } else if (isReasonablePrice) {
     priceScore = 25;
   } else if (priceDeviation < 0.7) {
     priceScore = 15;
-    priceFlag = "Price deviates significantly from market average";
+    priceFlag = "Price deviates significantly from estimated market average";
   } else {
     priceScore = 5;
-    priceFlag = "Price is suspiciously low — potential counterfeit risk";
+    priceFlag = "Price is far from estimated market average — verify legitimacy";
   }
 
   const verifiedMaterials = materials.filter(m => m.length > 0);
@@ -652,11 +655,12 @@ export function calculateProductAuthenticity(input: ProductAuthenticityInput): P
   const verifiedCerts = certifications.filter(c => c.length > 0);
   const imageScore = input.productImage ? 15 : 5;
   const imageConcerns: string[] = [];
-  if (!input.productImage) imageConcerns.push("No product image provided for verification");
+  if (!input.productImage) imageConcerns.push("No product image provided");
+  else imageConcerns.push("Image provided — reverse image search not connected");
 
   const redFlags: string[] = [];
   if (isHighRiskCategory && !isKnownBrand) redFlags.push("Unbranded product in high-risk counterfeit category");
-  if (priceDeviation > 0.5) redFlags.push("Suspiciously low pricing");
+  if (avgMarketPrice > 0 && priceDeviation > 0.5) redFlags.push("Price far from estimated market average");
   if (verifiedMaterials.length === 0) redFlags.push("No material specifications provided");
   if (verifiedCerts.length === 0 && isHighRiskCategory) redFlags.push("No certifications in high-risk category");
 
@@ -688,7 +692,7 @@ export function calculateProductAuthenticity(input: ProductAuthenticityInput): P
     brandVerification: { isKnown: isKnownBrand, riskLevel: brandRisk, notes: brandNotes },
     priceAnalysis: { isReasonable: isReasonablePrice, marketAvg: round(avgMarketPrice), deviation: round(priceDeviation * 100, 1), flag: priceFlag },
     materialCheck: { verified: verifiedMaterials.length > 0, concerns: materialConcerns },
-    imageAnalysis: { isOriginal: !!input.productImage, matchScore: imageScore, concerns: imageConcerns },
+    imageAnalysis: { isOriginal: !!input.productImage, matchScore: input.productImage ? 15 : 5, concerns: imageConcerns },
     redFlags,
     insight,
   };
@@ -853,17 +857,17 @@ export function calculateCompetitionAnalysis(input: CompetitionAnalysisInput): C
 
   if (!topCompetitors.length) {
     return {
-      score: 85,
-      competitivePosition: "strong",
+      score: 0,
+      competitivePosition: "unknown",
       pricePosition: "average",
       competitorCount: 0,
-      topCompetitor: { name: "None detected", price: 0, rating: 0, threat: "low" },
+      topCompetitor: { name: "None provided", price: 0, rating: 0, threat: "low" },
       priceGap: { vsLowest: 0, vsHighest: 0, vsAverage: 0 },
       reviewGap: { vsBest: 0, vsAverage: 0 },
-      differentiationOpportunities: ["First mover advantage — no direct competitors detected"],
+      differentiationOpportunities: [],
       threats: [],
-      marketPositioning: "No direct competition — strong opportunity to establish market presence.",
-      insight: "No direct competitors detected. Excellent opportunity to establish market presence before competition arrives.",
+      marketPositioning: "No competitor data provided — market position cannot be assessed.",
+      insight: "No competitor names/prices provided. Enrich a product or enter competitors manually to assess market position.",
     };
   }
 
@@ -1016,9 +1020,7 @@ export function calculateRiskAssessment(input: RiskAssessmentInput): RiskAssessm
   }
 
   complianceIssues.push(
-    { area: "Product Safety", status: "compliant", details: "Standard safety compliance" },
-    { area: "Labeling", status: "compliant", details: "Standard labeling requirements" },
-    { area: "Import/Export", status: targetMarkets.length > 0 ? "warning" : "compliant", details: targetMarkets.length > 0 ? "Multi-market compliance required" : "Domestic only" }
+    { area: "Compliance checks", status: "warning", details: "Not run — no marketplace policy or compliance API is connected. Treat as unverified." }
   );
 
   const platforms = ["shopify", "amazon", "ebay", "woocommerce"];
@@ -1026,11 +1028,13 @@ export function calculateRiskAssessment(input: RiskAssessmentInput): RiskAssessm
     const issues: string[] = [];
     if (isRestricted) issues.push("Restricted category on most platforms");
     if (pricePoint > 1000) issues.push("High-value items may require additional verification");
-    platformRisks.push({
-      platform: p,
-      compliant: issues.length === 0,
-      issues,
-    });
+    if (issues.length > 0) {
+      platformRisks.push({
+        platform: p,
+        compliant: false,
+        issues,
+      });
+    }
   });
 
   if (weight > HEAVY_ITEMS_THRESHOLD) {
@@ -1136,14 +1140,13 @@ export function calculateMarketIntelligence(input: MarketIntelligenceInput): Mar
 
   const totalScore = clamp(Math.round(marketSizeScore + growthScore + audienceScore + demandScore + maturityScore), 0, 100);
 
-  const ageRanges = ["18-24", "25-34", "35-44", "45-54", "55+"];
-  const primaryAge = targetAudience.match(/\d{2}-\d{2}/)?.[0] || ageRanges[Math.floor(Math.random() * ageRanges.length)];
+  const primaryAge = targetAudience.match(/\d{2}-\d{2}/)?.[0] || "—";
 
   let insight: string;
   if (totalScore >= 80) {
-    insight = `Strong market opportunity. ${category} market is valued at $${(tam / 1000000).toFixed(0)}M with ${growthRate}% growth.`;
+    insight = `Strong market opportunity (estimated from category benchmarks). ${category} TAM ~$${(tam / 1000000).toFixed(0)}M with ~${growthRate}% growth — benchmark, not measured.`;
   } else if (totalScore >= 60) {
-    insight = `Good market potential. ${category} is in ${benchmark.maturity} phase with steady demand.`;
+    insight = `Good market potential (estimated). ${category} is in ${benchmark.maturity} phase with steady demand.`;
   } else if (totalScore >= 40) {
     insight = `Moderate market opportunity. Consider niche positioning within ${category}.`;
   } else {
@@ -1156,8 +1159,8 @@ export function calculateMarketIntelligence(input: MarketIntelligenceInput): Mar
     growthRate: { current: growthRate, projected: Math.round(growthRate * 1.2), trend: growthRate > 10 ? "accelerating" : growthRate > 5 ? "stable" : "decelerating" },
     audienceDemographics: {
       primaryAge,
-      genderSplit: "50/50",
-      topLocations: ["United States", "United Kingdom", "Canada", "Australia"],
+      genderSplit: "—",
+      topLocations: [],
       buyingBehavior: pricePoint < 25 ? "Impulse purchase" : pricePoint < 100 ? "Considered purchase" : "Research-heavy purchase",
     },
     demandIndicators: {
@@ -1188,13 +1191,17 @@ export function calculateBundleAnalysis(input: BundleAnalysisInput): BundleAnaly
 
   const categoryBundles = CATEGORY_BUNDLES[category.toLowerCase()] || ["accessories", "care kit", "storage"];
 
-  const bundleOpportunities = categoryBundles.slice(0, 5).map((item, i) => ({
-    name: `${productTitle} ${item}`,
-    type: (i % 4 === 0 ? "upsell" : i % 3 === 0 ? "bundle" : i % 2 === 0 ? "cross-sell" : "accessory") as "cross-sell" | "upsell" | "bundle" | "accessory",
-    expectedLift: round(15 + Math.random() * 25, 1),
-    confidence: round(0.6 + Math.random() * 0.3, 2),
-    rationale: `${item} naturally complements ${productTitle} for ${customerSegment || "typical"} customers`,
-  }));
+  const bundleOpportunities = categoryBundles.slice(0, 5).map((item, i) => {
+    const expectedLift = round(Math.min(35, Math.max(12, 12 + i * 3 + (pricePoint >= 50 ? 4 : 0))), 1);
+    const confidence = averageOrderValue > 0 ? 0.7 : 0.5;
+    return {
+      name: `${productTitle} ${item}`,
+      type: (i % 4 === 0 ? "upsell" : i % 3 === 0 ? "bundle" : i % 2 === 0 ? "cross-sell" : "accessory") as "cross-sell" | "upsell" | "bundle" | "accessory",
+      expectedLift,
+      confidence,
+      rationale: `${item} naturally complements ${productTitle} for ${customerSegment || "typical"} customers (rule-based heuristic)`,
+    };
+  });
 
   const avgLift = bundleOpportunities.reduce((s, o) => s + o.expectedLift, 0) / bundleOpportunities.length;
   const aovPotential = Math.round(averageOrderValue * (1 + avgLift / 100));

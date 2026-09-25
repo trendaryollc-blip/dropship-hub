@@ -3,6 +3,8 @@
 import { useInView } from "@/hooks/useInView";
 import type { StorePerformance } from "@/types/multi-store";
 import { platformColors } from "./constants";
+import DataSourceBadge from "@/components/ui/DataSourceBadge";
+import ComingSoon from "@/components/ui/ComingSoon";
 
 interface StorePerformanceCardProps {
   perf: StorePerformance;
@@ -19,7 +21,10 @@ export default function StorePerformanceCard({ perf, delay }: StorePerformanceCa
           <h4 className="text-xs font-semibold text-foreground">{perf.storeName}</h4>
           <p className="text-[10px] text-muted-foreground capitalize">{perf.storePlatform}</p>
         </div>
-        <span className="text-[10px] font-semibold text-muted-foreground">{perf.period}</span>
+        <div className="flex items-center gap-1.5">
+          <DataSourceBadge source="firestore" />
+          <span className="text-[10px] font-semibold text-muted-foreground">{perf.period}</span>
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div className="p-2 rounded-lg bg-surface">
@@ -42,9 +47,23 @@ export default function StorePerformanceCard({ perf, delay }: StorePerformanceCa
         </div>
         <div className="p-2 rounded-lg bg-surface">
           <p className="text-[9px] text-muted-foreground">Conv. Rate</p>
-          <p className="text-xs font-bold text-foreground">{perf.metrics.conversionRate}%</p>
+          {perf.metrics.conversionRate > 0 ? (
+            <p className="text-xs font-bold text-foreground">{perf.metrics.conversionRate}%</p>
+          ) : (
+            <>
+              <p className="text-xs font-bold text-muted-foreground/50">—</p>
+              <p className="text-[9px] text-muted-foreground">not tracked</p>
+            </>
+          )}
         </div>
       </div>
+      {perf.metrics.conversionRate === 0 && (
+        <ComingSoon
+          className="mt-2"
+          whatNeeded="Conversion rate from store traffic analytics (needs a store analytics API — order data alone has no visit counts)"
+          howToGet="Ships when Shopify/Woo analytics integrations land"
+        />
+      )}
     </div>
   );
 }

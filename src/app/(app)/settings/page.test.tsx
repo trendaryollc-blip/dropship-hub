@@ -129,9 +129,10 @@ describe("Settings Page", () => {
     expect(screen.getByText("Competitors")).toBeDefined();
   });
 
-  it("renders tab bar with all 5 tabs", () => {
+  it("renders tab bar with all 6 tabs", () => {
     render(<AISettingsPage />);
     expect(screen.getByText("API Providers")).toBeDefined();
+    expect(screen.getByText("Platforms")).toBeDefined();
     expect(screen.getByText("Stores")).toBeDefined();
     expect(screen.getByText("Notifications")).toBeDefined();
     expect(screen.getByText("Account")).toBeDefined();
@@ -141,6 +142,13 @@ describe("Settings Page", () => {
   it("providers tab shows provider list", () => {
     render(<AISettingsPage />);
     expect(screen.getByTestId("providers-tab")).toBeDefined();
+  });
+
+  it("platforms tab shows platform connectors", () => {
+    render(<AISettingsPage />);
+    fireEvent.click(screen.getByText("Platforms"));
+    expect(screen.getByTestId("platforms-tab")).toBeDefined();
+    expect(screen.getByText("SerpAPI")).toBeDefined();
   });
 
   it("stores tab shows connected stores or empty state", () => {
@@ -203,5 +211,9 @@ describe("Settings Page", () => {
     fireEvent.click(screen.getByText("API Providers"));
     expect(screen.getByTestId("providers-tab")).toBeDefined();
     expect(screen.queryByTestId("data-tab")).toBeNull();
+
+    fireEvent.click(screen.getByText("Platforms"));
+    expect(screen.getByTestId("platforms-tab")).toBeDefined();
+    expect(screen.queryByTestId("providers-tab")).toBeNull();
   });
 });

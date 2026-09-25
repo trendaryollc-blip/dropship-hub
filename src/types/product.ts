@@ -87,9 +87,9 @@ export interface ProductLifecycle {
     totalRevenue: number;
     totalProfit: number;
     avgProfitMargin: number;
-    competitionCount: number;
-    searchVolume: number;
-    trendDirection: "rising" | "stable" | "declining";
+    competitionCount: number | null;
+    searchVolume: number | null;
+    trendDirection: "rising" | "stable" | "declining" | null;
   };
   alerts: LifecycleAlert[];
   recommendations: string[];

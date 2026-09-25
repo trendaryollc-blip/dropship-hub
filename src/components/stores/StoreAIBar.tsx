@@ -26,7 +26,7 @@ export default function StoreAIBar({ onAction, loading, storeCount, selectedProd
     {
       id: "store-performance",
       label: "Store Performance",
-      description: "Get metrics for all stores",
+      description: "Fetch real 30d orders & revenue",
       icon: BarChart3,
       gradient: "from-emerald-500/20 to-emerald-600/10",
       border: "border-emerald-400/20 hover:border-emerald-400/40",
@@ -46,7 +46,7 @@ export default function StoreAIBar({ onAction, loading, storeCount, selectedProd
     {
       id: "optimize-listings",
       label: "Optimize Listings",
-      description: "AI-improve product listings",
+      description: "Open AI Listings with product",
       icon: FileText,
       gradient: "from-amber-500/20 to-amber-600/10",
       border: "border-amber-400/20 hover:border-amber-400/40",
@@ -59,7 +59,7 @@ export default function StoreAIBar({ onAction, loading, storeCount, selectedProd
     <div className="glass rounded-2xl p-4">
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="h-4 w-4 text-accent" />
-        <h3 className="text-xs font-semibold text-foreground">AI-Powered Actions</h3>
+        <h3 className="text-xs font-semibold text-foreground">Store Actions</h3>
         <span className="text-[10px] text-muted-foreground">• {storeCount} store{storeCount !== 1 ? "s" : ""} connected</span>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">

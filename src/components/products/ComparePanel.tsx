@@ -145,7 +145,7 @@ export default function ComparePanel({ selectedProducts, onRemove, onClearAll, o
               ) : (
                 <Sparkles className="h-4 w-4" />
               )}
-              {aiLoading ? "AI is comparing..." : "AI Compare Products"}
+              {aiLoading ? "Comparing..." : "Compare on AI page"}
             </button>
           )}
         </div>

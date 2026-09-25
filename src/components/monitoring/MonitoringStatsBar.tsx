@@ -25,7 +25,7 @@ export default function MonitoringStatsBar({ metrics, products, unreadAlertCount
       <div className="p-3 rounded-xl bg-surface/80 border border-border text-center">
         <TrendingDown className="h-4 w-4 text-emerald-400 mx-auto mb-1" />
         <p className="font-display text-lg font-bold text-foreground">{metrics?.priceDrops24h ?? fallbackDrops}</p>
-        <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Price Drops 24h</p>
+        <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{metrics?.priceDrops24h != null ? "Price Drops 24h" : "Price Drops (all-time)"}</p>
       </div>
       <div className="p-3 rounded-xl bg-surface/80 border border-border text-center">
         <AlertTriangle className="h-4 w-4 text-amber-400 mx-auto mb-1" />

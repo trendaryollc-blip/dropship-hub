@@ -74,6 +74,7 @@ export default function ShippingOptimizerPanel() {
   // Results state
   const [rates, setRates] = useState<CarrierRateResponse[]>([]);
   const [filteredRates, setFilteredRates] = useState<CarrierRateResponse[]>([]);
+  const [bestValue, setBestValue] = useState<CarrierRateResponse | null>(null);
   const [autoResult, setAutoResult] = useState<AutoSelectResult | null>(null);
   const [prediction, setPrediction] = useState<DeliveryPredictionResult | null>(null);
   const [customsResult, setCustomsResult] = useState<CustomsCalculationResult | null>(null);
@@ -135,10 +136,11 @@ export default function ShippingOptimizerPanel() {
         declaredValue,
         currency,
       });
-      const data = await safeFetch<{ result: { rates: CarrierRateResponse[] } }>(`/api/shipping/rate-compare?${params}`);
+      const data = await safeFetch<{ result: { rates: CarrierRateResponse[]; bestValue?: CarrierRateResponse | null } }>(`/api/shipping/rate-compare?${params}`);
       if (data?.result?.rates) {
         setRates(data.result.rates);
         setFilteredRates(data.result.rates);
+        setBestValue(data.result.bestValue ?? null);
         setLastUpdated(new Date());
         toast(`Found ${data.result.rates.length} shipping options`, "success");
       }
@@ -486,11 +488,13 @@ export default function ShippingOptimizerPanel() {
                       <p className="text-[9px] text-muted-foreground">{fastest.carrierName}</p>
                     </motion.div>
                     <motion.div whileHover={{ scale: 1.02 }} className="glass rounded-xl p-3 text-center">
-                      <p className="text-[9px] text-muted-foreground mb-0.5">Best Value</p>
-                      <p className="text-sm font-bold text-accent">
-                        ${((cheapest.cost + fastest.cost) / 2).toFixed(2)}
+                      <p className="text-[9px] text-muted-foreground mb-0.5">
+                        {bestValue ? "Best Value" : "Avg of cheapest + fastest"}
                       </p>
-                      <p className="text-[9px] text-muted-foreground">avg price</p>
+                      <p className="text-sm font-bold text-accent">
+                        ${bestValue ? bestValue.cost.toFixed(2) : ((cheapest.cost + fastest.cost) / 2).toFixed(2)}
+                      </p>
+                      <p className="text-[9px] text-muted-foreground">{bestValue ? bestValue.carrierName : "avg price"}</p>
                     </motion.div>
                   </div>
                 )}

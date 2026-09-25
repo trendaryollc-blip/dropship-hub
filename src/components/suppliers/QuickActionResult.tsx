@@ -332,7 +332,7 @@ export default function QuickActionResult({ actionId, actionLabel, prompt, onClo
           <div className="px-4 py-3 flex items-center justify-between bg-surface/20">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <p className="text-[10px] text-muted-foreground">AI-generated analysis based on supplier data</p>
+              <p className="text-[10px] text-muted-foreground">Analysis generated from supplier data via your configured AI provider</p>
             </div>
             <button
               onClick={() => window.open(`/ai?q=${encodeURIComponent(prompt)}`, "_blank")}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Zap, Store, Tag, Truck, ChevronDown, ChevronUp, Check } from "lucide-react";
+import DataSourceBadge from "@/components/ui/DataSourceBadge";
 
 interface PlatformPreset {
   id: string;
@@ -121,10 +122,16 @@ export default function CalculatorPresets({
 
   return (
     <div className="glass rounded-2xl p-4 space-y-2">
-      <div className="flex items-center gap-2 mb-2">
-        <Zap className="h-4 w-4 text-accent" />
-        <span className="text-sm font-semibold text-foreground">Quick Presets</span>
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          <Zap className="h-4 w-4 text-accent" />
+          <span className="text-sm font-semibold text-foreground">Quick Presets</span>
+        </div>
+        <DataSourceBadge source="estimated" />
       </div>
+      <p className="text-[10px] text-muted-foreground mb-2">
+        Static reference values bundled with the app — not live platform or market data. Verify fees with each platform before relying on them.
+      </p>
 
       {visibleSections.map((section) => (
         <div key={section.id}>

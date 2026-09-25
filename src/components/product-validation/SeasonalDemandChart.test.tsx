@@ -75,7 +75,7 @@ describe("SeasonalDemandChart", () => {
 
   it("hides forecast when empty", () => {
     render(<SeasonalDemandChart data={{ ...mockData, forecast: [], monthLabels: [] }} />);
-    expect(screen.queryByText("6-Month Forecast")).not.toBeInTheDocument();
+    expect(screen.queryByText("6-Month Projection (heuristic)")).not.toBeInTheDocument();
   });
 
   it("renders peak phase", () => {

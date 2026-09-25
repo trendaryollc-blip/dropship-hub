@@ -15,7 +15,7 @@ export default function CompetitorAIBar({ onAction, loading, query }: Competitor
     {
       id: "optimize-pricing",
       label: "Optimize My Pricing",
-      description: "AI price suggestions based on competition",
+        description: "Price suggestions based on live competitor listings",
       icon: DollarSign,
       gradient: "from-emerald-500/20 to-emerald-600/10",
       border: "border-emerald-400/20 hover:border-emerald-400/40",
@@ -58,7 +58,7 @@ export default function CompetitorAIBar({ onAction, loading, query }: Competitor
     <div className="glass rounded-2xl p-4">
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="h-4 w-4 text-accent" />
-        <h3 className="text-xs font-semibold text-foreground">AI-Powered Analysis</h3>
+        <h3 className="text-xs font-semibold text-foreground">Analysis actions</h3>
         <span className="text-[10px] text-muted-foreground">• for &ldquo;{query}&rdquo;</span>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">

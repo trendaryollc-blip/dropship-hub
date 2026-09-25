@@ -46,6 +46,8 @@ import SWOTAnalysis from "@/components/competitors/SWOTAnalysis";
 import AdMarketingIntel from "@/components/competitors/AdMarketingIntel";
 import ActionItems from "@/components/competitors/ActionItems";
 import { PageErrorBoundary } from "@/components/ui/PageErrorBoundary";
+import DataUnavailable from "@/components/ui/DataUnavailable";
+import ComingSoon from "@/components/ui/ComingSoon";
 
 interface RawMarketData {
   platforms: { platform: string; icon: string; avgPrice: number; minPrice: number; maxPrice: number; sellerCount: number; trend: string; trendPercent: number; sparkline: number[]; listings: { id: string; title: string; price: number; source: string; seller: string; sellerRating: number; sellerProducts: number; link: string; shipping: string; condition: string; daysAgo: number }[] }[];
@@ -141,77 +143,16 @@ function castToMarketData(raw: RawMarketData, query: string): MarketData {
       : `Focus on their weakest product categories where they have fewer listings.`,
   }));
 
-  const gapAnalysis = [
-    {
-      type: "product" as const,
-      title: "Underserved Product Variant",
-      description: `Many sellers offer basic ${query} but premium/pro variants have less competition.`,
-      demandScore: 78,
-      competitionLevel: "low" as const,
-      estimatedValue: "$2-5k/mo",
-      actionLabel: "Explore variant",
-    },
-    {
-      type: "feature" as const,
-      title: "Missing Bundle Deals",
-      description: "Competitors sell single items — bundles with accessories could capture more value.",
-      demandScore: 65,
-      competitionLevel: "low" as const,
-      estimatedValue: "$1-3k/mo",
-      actionLabel: "Create bundles",
-    },
-    {
-      type: "content" as const,
-      title: "Poor Listing Quality",
-      description: "Top sellers have weak descriptions and stock photos — better content wins.",
-      demandScore: 82,
-      competitionLevel: "medium" as const,
-      estimatedValue: "$3-7k/mo",
-      actionLabel: "Improve listings",
-    },
-    {
-      type: "keyword" as const,
-      title: "Long-tail Keywords Gap",
-      description: "Competitors target broad terms — long-tail keywords have less competition.",
-      demandScore: 71,
-      competitionLevel: "low" as const,
-      estimatedValue: "$1-2k/mo",
-      actionLabel: "Target keywords",
-    },
-    {
-      type: "price" as const,
-      title: "Mid-tier Price Gap",
-      description: `Market clusters at $${raw.priceRange.min.toFixed(0)} and $${raw.priceRange.max.toFixed(0)} — mid-tier pricing is underserved.`,
-      demandScore: 85,
-      competitionLevel: "medium" as const,
-      estimatedValue: "$4-8k/mo",
-      actionLabel: "Set mid-tier price",
-    },
-  ];
+  const gapAnalysis: import("@/types/competitors").GapItem[] = [];
 
-  const adIntel = raw.topSellers.slice(0, 3).map((s) => ({
-    sellerName: s.name,
-    totalAdSpend: `$${(Math.floor(Math.random() * 5000) + 1000).toLocaleString()}`,
-    platforms: [
-      { platform: "Google Ads", estimatedSpend: `$${(Math.floor(Math.random() * 2000) + 500).toLocaleString()}`, adCount: Math.floor(Math.random() * 20) + 5, topKeywords: [query, `${query} best`, `buy ${query}`], adType: "Shopping", socialFollowers: 0, engagementRate: "" },
-      { platform: "Facebook", estimatedSpend: `$${(Math.floor(Math.random() * 3000) + 800).toLocaleString()}`, adCount: Math.floor(Math.random() * 15) + 3, topKeywords: [query, `${query} deal`, `cheap ${query}`], adType: "Carousel", socialFollowers: 0, engagementRate: "" },
-    ],
-    socialPresence: [
-      { platform: "Instagram", followers: Math.floor(Math.random() * 50000) + 5000, engagement: `${(Math.random() * 5 + 1).toFixed(1)}%` },
-      { platform: "TikTok", followers: Math.floor(Math.random() * 100000) + 10000, engagement: `${(Math.random() * 8 + 2).toFixed(1)}%` },
-    ],
-    topPerformingAd: { title: `Best ${query} - Limited Time Offer`, platform: "Google Ads", estimatedReach: `${(Math.floor(Math.random() * 500) + 100).toLocaleString()}K` },
-    seoScore: Math.floor(Math.random() * 40) + 60,
-    keywordOverlap: Math.floor(Math.random() * 30) + 10,
-  }));
+  const adIntel: import("@/types/competitors").CompetitorAdIntel[] = [];
 
   const actionItems = [
-    { id: "1", priority: "critical" as const, category: "pricing" as const, title: "Adjust pricing to competitive zone", description: `Your target price should be between $${(raw.avgPrice * 0.9).toFixed(2)} and $${raw.avgPrice.toFixed(2)} to compete effectively.`, impact: "High revenue impact", effort: "easy" as const, estimatedGain: "+15-25% conversions", relatedCompetitor: raw.topSellers[0]?.name },
-    { id: "2", priority: "high" as const, category: "listing" as const, title: "Optimize product listings", description: "Add better photos, detailed descriptions, and SEO-optimized titles to outperform competitors.", impact: "Better ranking & conversions", effort: "medium" as const, estimatedGain: "+20-40% visibility" },
-    { id: "3", priority: "high" as const, category: "marketing" as const, title: "Launch targeted ad campaign", description: `Focus on long-tail keywords competitors miss. Budget: $${(Math.floor(Math.random() * 500) + 200)}/day.`, impact: "Market share growth", effort: "medium" as const, estimatedGain: "+30-50% traffic" },
-    { id: "4", priority: "medium" as const, category: "product" as const, title: "Create product bundles", description: "Bundle main product with accessories to increase AOV and differentiate from single-item sellers.", impact: "Higher average order value", effort: "medium" as const, estimatedGain: "+$5-15 AOV" },
-    { id: "5", priority: "medium" as const, category: "sourcing" as const, title: "Find better supplier", description: "Negotiate lower costs or find faster shipping suppliers to improve margins and delivery times.", impact: "Better margins & reviews", effort: "hard" as const, estimatedGain: "+5-10% margin" },
-    { id: "6", priority: "low" as const, category: "listing" as const, title: "Add video content", description: "Create product demo videos — most competitors only use static images.", impact: "Higher engagement", effort: "hard" as const, estimatedGain: "+10-20% engagement" },
+    { id: "1", priority: "critical" as const, category: "pricing" as const, title: "Adjust pricing to competitive zone", description: `Market avg is $${raw.avgPrice.toFixed(2)} (range $${raw.priceRange.min.toFixed(2)}–$${raw.priceRange.max.toFixed(2)}). Compare against your landed cost before repricing.`, impact: "Price competitiveness", effort: "easy" as const, estimatedGain: "", relatedCompetitor: raw.topSellers[0]?.name },
+    { id: "2", priority: "high" as const, category: "listing" as const, title: "Optimize product listings", description: "Add better photos, detailed descriptions, and SEO-optimized titles to outperform competitors.", impact: "Listing quality", effort: "medium" as const, estimatedGain: "" },
+    { id: "3", priority: "medium" as const, category: "product" as const, title: "Create product bundles", description: "Bundle main product with accessories to increase AOV and differentiate from single-item sellers.", impact: "Higher average order value", effort: "medium" as const, estimatedGain: "" },
+    { id: "4", priority: "medium" as const, category: "sourcing" as const, title: "Find better supplier", description: "Negotiate lower costs or find faster shipping suppliers to improve margins and delivery times.", impact: "Margins & delivery", effort: "hard" as const, estimatedGain: "" },
+    { id: "5", priority: "low" as const, category: "listing" as const, title: "Add video content", description: "Create product demo videos — many competitors only use static images.", impact: "Engagement", effort: "hard" as const, estimatedGain: "" },
   ];
 
   return {
@@ -248,7 +189,7 @@ function castToMarketData(raw: RawMarketData, query: string): MarketData {
       tradeoff: o.competition, isRecommended: false, color: (["blue", "emerald", "purple"] as const)[i % 3],
       competition: o.competition, recommendation: o.recommendation,
     })),
-    priceHistory: (raw.priceHistory ?? []).map((h) => ({ date: h.date, avg: h.price, min: h.price * 0.9, max: h.price * 1.1 })),
+    priceHistory: (raw.priceHistory ?? []).map((h) => ({ date: h.date, avg: h.price, min: h.price, max: h.price })),
     insights: raw.insights,
     executiveSummary,
     competitorSWOT,
@@ -269,7 +210,7 @@ const tabs: { id: TabId; label: string; icon: typeof BarChart3 }[] = [
   { id: "strategy", label: "Strategy", icon: TrendingUp },
   { id: "ads", label: "Ad Intel", icon: Megaphone },
   { id: "actions", label: "Actions", icon: CheckSquare },
-  { id: "insights", label: "AI Insights", icon: Sparkles },
+  { id: "insights", label: "Insights", icon: Sparkles },
 ];
 
 const suggestedSearches = ["wireless earbuds", "phone case", "usb hub", "laptop stand", "ring light"];
@@ -504,7 +445,7 @@ function CompetitorsContent() {
           </div>
           <div>
             <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">Competitor Intelligence</h1>
-            <p className="text-sm text-muted-foreground">Real-time market analysis across 5+ platforms</p>
+            <p className="text-sm text-muted-foreground">Live listing search across Amazon, Google Shopping, CJ, Keepa & AliExpress</p>
           </div>
         </div>
       </div>
@@ -650,8 +591,14 @@ function CompetitorsContent() {
 
           {activeTab === "gaps" && (
             <div className="space-y-5">
-              {marketData.gapAnalysis && marketData.gapAnalysis.length > 0 && (
+              {marketData.gapAnalysis && marketData.gapAnalysis.length > 0 ? (
                 <GapAnalysis gaps={marketData.gapAnalysis} />
+              ) : (
+                <ComingSoon
+                  title="Gap analysis"
+                  whatNeeded="Keyword-volume demand scores and revenue estimates for market gaps"
+                  howToGet="Wire a keyword research API (Ahrefs, Semrush, or Google Keyword Planner) and compute gap value from real volume × margin"
+                />
               )}
               <OpportunityFinder opportunities={marketData.opportunities} />
             </div>
@@ -668,6 +615,15 @@ function CompetitorsContent() {
 
           {activeTab === "ads" && (
             <div className="space-y-5">
+              <DataUnavailable
+                title="Ad & SEO intel not available"
+                reason="Ad spend, follower counts, SEO scores, and keyword overlap require Meta Ads Library / Google Ads Transparency / an SEO API. Not wired yet — no numbers shown instead of inventing them."
+                setup={{
+                  what: "Meta Ads Library API, Google Ads Transparency Center, or an SEO provider (Ahrefs/Moz)",
+                  whereToGet: "https://www.facebook.com/ads/library/api/ | https://ahrefs.com/",
+                  whereToSet: "Add provider keys in Settings → API Keys",
+                }}
+              />
               {marketData.adIntel && marketData.adIntel.length > 0 && (
                 <AdMarketingIntel intel={marketData.adIntel} />
               )}
@@ -700,11 +656,11 @@ function CompetitorsContent() {
           </div>
           <h3 className="font-display text-lg sm:text-xl font-bold text-foreground mb-2">Ready to Spy on Competitors</h3>
           <p className="text-sm text-muted-foreground max-w-md mx-auto mb-3">
-            Enter any product to get a complete competitive analysis: real pricing intelligence, platform breakdown, opportunity finder, and AI-powered pricing strategy.
+            Enter any product to search live listings across platforms: pricing intelligence, platform breakdown, and opportunity finder. Ad spend and SEO scores need external APIs (not wired yet).
           </p>
           <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground/60 mb-6">
             <Sparkles className="h-3.5 w-3.5 text-accent/40" />
-            <span>Powered by AI analysis across 5+ platforms</span>
+            <span>Sources: live marketplace search APIs</span>
           </div>
           <div className="flex flex-wrap justify-center gap-2">
             {suggestedSearches.map((s) => (

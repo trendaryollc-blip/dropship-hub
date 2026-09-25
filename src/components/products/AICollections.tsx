@@ -84,7 +84,7 @@ export default function AICollections() {
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="h-3.5 w-3.5 text-violet-400" />
         <h3 className="text-xs font-semibold text-foreground">Quick Start</h3>
-        <p className="text-[10px] text-muted-foreground ml-1">Curated collections</p>
+        <p className="text-[10px] text-muted-foreground ml-1">Suggested search presets (not live rankings)</p>
       </div>
 
       <div className="flex flex-wrap gap-2">

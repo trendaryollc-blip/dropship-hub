@@ -2,9 +2,9 @@ import Link from "next/link";
 import { ArrowRight, Sparkles, Brain, Target, Flame } from "lucide-react";
 
 const pills = [
-  { icon: Brain, label: "AI Daily Pick", href: "/dashboard" },
+  { icon: Brain, label: "Daily Pick", href: "/dashboard" },
   { icon: Target, label: "Niche Radar", href: "/products/niches" },
-  { icon: Sparkles, label: "Live Intelligence", href: "/dashboard" },
+  { icon: Sparkles, label: "Market Intelligence", href: "/dashboard" },
   { icon: Flame, label: "Trending Scores", href: "/products" },
 ];
 
@@ -25,9 +25,9 @@ export default function CTA() {
             </h2>
 
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-              AI picks your winners. Radar finds your niches. Missions keep
-              you sharp. Join thousands of dropshippers who moved from
-              guesswork to data-driven decisions.
+              Data picks your winners. Radar finds your niches. Missions keep
+              you sharp. Join dropshippers who moved from guesswork to
+              data-driven decisions.
             </p>
 
             {/* Mini feature pills */}

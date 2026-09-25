@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Heart, Trash2, Package, ArrowLeft, Sparkles } from "lucide-react";
+import { Heart, Trash2 } from "lucide-react";
 import { useSavedProducts, type SavedProduct } from "@/components/saved/SavedProductsProvider";
 import SavedStatsBar from "@/components/saved/SavedStatsBar";
 import SavedToolbar, { type SortOption } from "@/components/saved/SavedToolbar";
@@ -12,6 +12,9 @@ import SavedBulkBar from "@/components/saved/SavedBulkBar";
 import SavedAIResults, { type AIResult } from "@/components/saved/SavedAIResults";
 import SavedChatSidebar from "@/components/saved/SavedChatSidebar";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import EmptyState from "@/components/ui/EmptyState";
+import DataSourceBadge from "@/components/ui/DataSourceBadge";
+import ComingSoon from "@/components/ui/ComingSoon";
 import { safeFetch } from "@/lib/safe-fetch";
 import { auth } from "@/lib/firebase";
 
@@ -388,10 +391,11 @@ export default function SavedPage() {
           <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-1 flex items-center gap-3">
             <Heart className="h-7 w-7 text-accent fill-current" /> Saved Products
           </h1>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground text-sm flex items-center gap-2">
             {savedProducts.length === 0
               ? "Products you save will appear here for later viewing."
-              : `${savedProducts.length} saved product${savedProducts.length === 1 ? "" : "s"} — powered by AI`}
+              : `${savedProducts.length} saved product${savedProducts.length === 1 ? "" : "s"}`}
+            {savedProducts.length > 0 && <DataSourceBadge source="firestore" />}
           </p>
         </div>
         {savedProducts.length > 0 && (
@@ -405,28 +409,21 @@ export default function SavedPage() {
       </div>
 
       {savedProducts.length === 0 ? (
-        <div className="glass rounded-2xl p-6 sm:p-16 text-center">
-          <div className="w-20 h-20 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-5">
-            <Package className="h-10 w-10 text-accent/40" />
-          </div>
-          <h3 className="font-display text-xl font-bold text-foreground mb-2">No saved products yet</h3>
-          <p className="text-sm text-muted-foreground mb-3 max-w-md mx-auto">
-            Tap the heart on any product card to save it here. Once saved, you can analyze, optimize, and manage them with AI.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground/60 mb-6">
-            <Sparkles className="h-3.5 w-3.5 text-accent/40" />
-            <span>AI-powered analysis, pricing optimization, and bulk actions</span>
-          </div>
-          <button
-            onClick={() => router.push("/products")}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-all"
-          >
-            <ArrowLeft className="h-4 w-4" /> Find Products
-          </button>
+        <div className="glass rounded-2xl">
+          <EmptyState
+            iconName="products"
+            title="No saved products yet"
+            description="Tap the heart on any product card to save it here. Saved products sync to your account so you can analyze, push to your store, and manage them later."
+            action={{ label: "Find Products", onClick: () => router.push("/products") }}
+          />
         </div>
       ) : (
         <>
           <SavedStatsBar />
+          <ComingSoon
+            whatNeeded="Live price refresh for saved products (needs a periodic re-fetch job against SerpAPI/Keepa — prices shown are snapshots from when you saved)"
+            howToGet="Prices stay accurate to the save date until the refresh job ships"
+          />
           <SavedAIBar onAction={handleAIBarAction} loading={aiLoading} productCount={selectedIds.size > 0 ? actionTargets.length : savedProducts.length} />
           <SavedToolbar
             search={search}
@@ -440,10 +437,12 @@ export default function SavedPage() {
           />
 
           {filteredProducts.length === 0 ? (
-            <div className="glass rounded-2xl p-8 sm:p-12 text-center">
-              <Package className="h-12 w-12 text-muted-foreground/25 mx-auto mb-4" />
-              <h3 className="font-display text-lg font-semibold text-foreground mb-2">No matching products</h3>
-              <p className="text-sm text-muted-foreground">Try adjusting your search or filters.</p>
+            <div className="glass rounded-2xl">
+              <EmptyState
+                iconName="search"
+                title="No matching products"
+                description="Try adjusting your search or filters."
+              />
             </div>
           ) : viewMode === "grid" ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
