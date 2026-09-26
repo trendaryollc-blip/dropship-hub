@@ -1,9 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { safeErrorMessage } from "@/lib/api-errors";
 
+function timingSafeStringEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
 export async function POST(req: NextRequest) {
   try {
+    // Etsy does not sign webhook deliveries, so the webhook URL must carry a
+    // shared secret (?secret=... or X-Webhook-Secret). Fail closed: without a
+    // configured secret this endpoint accepts nothing, and wrong secrets are
+    // rejected before any payload is processed or written to Firestore.
+    const expected = process.env.ETSY_WEBHOOK_SECRET;
+    if (!expected) {
+      return NextResponse.json(
+        { error: "Etsy webhook is not configured — set ETSY_WEBHOOK_SECRET and add it as ?secret=... to the webhook URL" },
+        { status: 501 }
+      );
+    }
+    const provided = new URL(req.url).searchParams.get("secret") || req.headers.get("x-webhook-secret") || "";
+    if (!timingSafeStringEqual(provided, expected)) {
+      return NextResponse.json({ error: "Invalid webhook secret" }, { status: 401 });
+    }
+
     const body = await req.text();
     const topic = req.headers.get("x-etsy-topic") || req.headers.get("x-hook-topic") || "";
 

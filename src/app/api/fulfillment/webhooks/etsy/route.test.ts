@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("@/lib/firebase-admin", () => ({
   getAdminDB: vi.fn(),
@@ -40,8 +40,8 @@ function buildMockDb(options: { storesSnap?: any; existingOrder?: any; supplierD
   };
 }
 
-function makeEtsyRequest(body: string, headers: Record<string, string>) {
-  return new Request("http://localhost/api/fulfillment/webhooks/etsy", {
+function makeEtsyRequest(body: string, headers: Record<string, string>, query = "?secret=webhook-test-secret") {
+  return new Request(`http://localhost/api/fulfillment/webhooks/etsy${query}`, {
     method: "POST",
     body,
     headers,
@@ -49,8 +49,46 @@ function makeEtsyRequest(body: string, headers: Record<string, string>) {
 }
 
 describe("Etsy Webhook POST", () => {
+  const savedSecret = process.env.ETSY_WEBHOOK_SECRET;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.ETSY_WEBHOOK_SECRET = "webhook-test-secret";
+  });
+
+  afterEach(() => {
+    if (savedSecret === undefined) delete process.env.ETSY_WEBHOOK_SECRET;
+    else process.env.ETSY_WEBHOOK_SECRET = savedSecret;
+  });
+
+  it("returns 501 when no webhook secret is configured (fail closed)", async () => {
+    delete process.env.ETSY_WEBHOOK_SECRET;
+    const req = makeEtsyRequest(JSON.stringify({}), { "x-etsy-topic": "receipt/paid" });
+
+    const res = await POST(req);
+    expect(res.status).toBe(501);
+    expect(getAdminDB).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 when the secret does not match, without touching the payload", async () => {
+    const req = makeEtsyRequest(JSON.stringify({ receipt_id: 1 }), { "x-etsy-topic": "receipt/paid" }, "?secret=wrong-secret");
+
+    const res = await POST(req);
+    expect(res.status).toBe(401);
+    expect(getAdminDB).not.toHaveBeenCalled();
+  });
+
+  it("accepts the secret via header as well as query param", async () => {
+    const mockDb = buildMockDb({ storesSnap: { empty: true, docs: [] } });
+    (getAdminDB as any).mockResolvedValue(mockDb);
+
+    const req = makeEtsyRequest(JSON.stringify({ receipt_id: 1 }), {
+      "x-etsy-topic": "receipt/paid",
+      "x-webhook-secret": "webhook-test-secret",
+    }, "");
+
+    const res = await POST(req);
+    expect(res.status).toBe(404);
   });
 
   it("returns skipped when topic doesn't include receipt", async () => {

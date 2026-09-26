@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { X, Copy, Check, ExternalLink, Sparkles, AlertTriangle, RefreshCw } from "lucide-react";
 import { safeFetch } from "@/lib/safe-fetch";
 import { auth } from "@/lib/firebase";
+import { escapeHtml } from "@/lib/chat-utils";
 
 interface QuickActionResultProps {
   actionId: string;
@@ -69,6 +70,79 @@ const ACTION_STYLES: Record<string, {
     badge: "bg-pink-400/10 text-pink-400 border-pink-400/20",
   },
 };
+
+export function renderMarkdown(text: string) {
+  // Escape before any structural markup — AI output is untrusted input.
+  const lines = escapeHtml(text).split("\n");
+  let inTable = false;
+  let tableHtml = "";
+  const result: string[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const isTableRow = line.startsWith("|") && line.endsWith("|");
+    const isSeparator = /^\|[\s\-|]+\|$/.test(line);
+
+    if (isTableRow && !isSeparator) {
+      if (!inTable) {
+        inTable = true;
+        tableHtml = '<div class="my-4 overflow-x-auto rounded-xl border border-border/50"><table class="w-full text-xs"><thead>';
+        const cells = line.split("|").filter((c) => c.trim());
+        tableHtml += "<tr>" + cells.map((c) => `<th class="px-3 py-2.5 text-left font-semibold text-foreground bg-surface/50 border-b border-border/50">${c.trim()}</th>`).join("") + "</tr></thead><tbody>";
+      } else {
+        const cells = line.split("|").filter((c) => c.trim());
+        const rowIdx = result.length;
+        tableHtml += `<tr class="${rowIdx % 2 === 0 ? "bg-transparent" : "bg-surface/30"} hover:bg-surface/50 transition-colors">` +
+          cells.map((c) => {
+            let content = c.trim();
+            content = content.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-foreground">$1</strong>');
+            return `<td class="px-3 py-2 text-muted-foreground border-b border-border/30">${content}</td>`;
+          }).join("") + "</tr>";
+      }
+      continue;
+    }
+
+    if (inTable) {
+      inTable = false;
+      tableHtml += "</tbody></table></div>";
+      result.push(tableHtml);
+      tableHtml = "";
+    }
+
+    if (isSeparator) continue;
+
+    if (line.startsWith("### ")) {
+      result.push(`<h3 class="text-sm font-bold text-foreground mt-5 mb-2.5 flex items-center gap-2"><span class="w-1 h-4 rounded-full bg-accent inline-block"></span>${line.slice(4)}</h3>`);
+    } else if (line.startsWith("## ")) {
+      result.push(`<h2 class="text-base font-bold text-foreground mt-6 mb-3 pb-2 border-b border-border/50">${line.slice(3)}</h2>`);
+    } else if (line.startsWith("# ")) {
+      result.push(`<h1 class="text-lg font-black text-foreground mt-7 mb-3 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">${line.slice(2)}</h1>`);
+    } else if (line.startsWith("**") && line.endsWith("**")) {
+      result.push(`<p class="font-bold text-foreground mt-3 mb-1 text-sm">${line.slice(2, -2)}</p>`);
+    } else if (line.startsWith("- ") || line.startsWith("• ")) {
+      const item = line.startsWith("- ") ? line.slice(2) : line.slice(2);
+      let content = item;
+      content = content.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-foreground">$1</strong>');
+      result.push(`<div class="flex items-start gap-2 my-1 ml-1"><span class="w-1.5 h-1.5 rounded-full bg-accent/60 mt-1.5 shrink-0"></span><span class="text-sm text-muted-foreground leading-relaxed">${content}</span></div>`);
+    } else if (line.startsWith("> ")) {
+      result.push(`<div class="my-3 px-4 py-3 rounded-xl bg-accent/5 border-l-2 border-accent/40 text-sm text-muted-foreground italic">${line.slice(2)}</div>`);
+    } else if (line.trim() === "") {
+      result.push("<div class='h-2'></div>");
+    } else {
+      let content = line;
+      content = content.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-foreground">$1</strong>');
+      content = content.replace(/`(.*?)`/g, '<code class="px-1.5 py-0.5 rounded-md bg-surface text-accent text-[11px] font-mono">$1</code>');
+      result.push(`<p class="text-sm text-muted-foreground leading-relaxed">${content}</p>`);
+    }
+  }
+
+  if (inTable) {
+    tableHtml += "</tbody></table></div>";
+    result.push(tableHtml);
+  }
+
+  return result.join("");
+}
 
 export default function QuickActionResult({ actionId, actionLabel, prompt, onClose }: QuickActionResultProps) {
   const [response, setResponse] = useState("");
@@ -140,78 +214,6 @@ export default function QuickActionResult({ actionId, actionLabel, prompt, onClo
     await navigator.clipboard.writeText(response);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  };
-
-  const renderMarkdown = (text: string) => {
-    const lines = text.split("\n");
-    let inTable = false;
-    let tableHtml = "";
-    const result: string[] = [];
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const isTableRow = line.startsWith("|") && line.endsWith("|");
-      const isSeparator = /^\|[\s\-|]+\|$/.test(line);
-
-      if (isTableRow && !isSeparator) {
-        if (!inTable) {
-          inTable = true;
-          tableHtml = '<div class="my-4 overflow-x-auto rounded-xl border border-border/50"><table class="w-full text-xs"><thead>';
-          const cells = line.split("|").filter((c) => c.trim());
-          tableHtml += "<tr>" + cells.map((c) => `<th class="px-3 py-2.5 text-left font-semibold text-foreground bg-surface/50 border-b border-border/50">${c.trim()}</th>`).join("") + "</tr></thead><tbody>";
-        } else {
-          const cells = line.split("|").filter((c) => c.trim());
-          const rowIdx = result.length;
-          tableHtml += `<tr class="${rowIdx % 2 === 0 ? "bg-transparent" : "bg-surface/30"} hover:bg-surface/50 transition-colors">` +
-            cells.map((c) => {
-              let content = c.trim();
-              content = content.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-foreground">$1</strong>');
-              return `<td class="px-3 py-2 text-muted-foreground border-b border-border/30">${content}</td>`;
-            }).join("") + "</tr>";
-        }
-        continue;
-      }
-
-      if (inTable) {
-        inTable = false;
-        tableHtml += "</tbody></table></div>";
-        result.push(tableHtml);
-        tableHtml = "";
-      }
-
-      if (isSeparator) continue;
-
-      if (line.startsWith("### ")) {
-        result.push(`<h3 class="text-sm font-bold text-foreground mt-5 mb-2.5 flex items-center gap-2"><span class="w-1 h-4 rounded-full bg-accent inline-block"></span>${line.slice(4)}</h3>`);
-      } else if (line.startsWith("## ")) {
-        result.push(`<h2 class="text-base font-bold text-foreground mt-6 mb-3 pb-2 border-b border-border/50">${line.slice(3)}</h2>`);
-      } else if (line.startsWith("# ")) {
-        result.push(`<h1 class="text-lg font-black text-foreground mt-7 mb-3 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">${line.slice(2)}</h1>`);
-      } else if (line.startsWith("**") && line.endsWith("**")) {
-        result.push(`<p class="font-bold text-foreground mt-3 mb-1 text-sm">${line.slice(2, -2)}</p>`);
-      } else if (line.startsWith("- ") || line.startsWith("• ")) {
-        const item = line.startsWith("- ") ? line.slice(2) : line.slice(2);
-        let content = item;
-        content = content.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-foreground">$1</strong>');
-        result.push(`<div class="flex items-start gap-2 my-1 ml-1"><span class="w-1.5 h-1.5 rounded-full bg-accent/60 mt-1.5 shrink-0"></span><span class="text-sm text-muted-foreground leading-relaxed">${content}</span></div>`);
-      } else if (line.startsWith("> ")) {
-        result.push(`<div class="my-3 px-4 py-3 rounded-xl bg-accent/5 border-l-2 border-accent/40 text-sm text-muted-foreground italic">${line.slice(2)}</div>`);
-      } else if (line.trim() === "") {
-        result.push("<div class='h-2'></div>");
-      } else {
-        let content = line;
-        content = content.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-foreground">$1</strong>');
-        content = content.replace(/`(.*?)`/g, '<code class="px-1.5 py-0.5 rounded-md bg-surface text-accent text-[11px] font-mono">$1</code>');
-        result.push(`<p class="text-sm text-muted-foreground leading-relaxed">${content}</p>`);
-      }
-    }
-
-    if (inTable) {
-      tableHtml += "</tbody></table></div>";
-      result.push(tableHtml);
-    }
-
-    return result.join("");
   };
 
   return (

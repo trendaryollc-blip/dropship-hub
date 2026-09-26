@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { safeFetch } from "@/lib/safe-fetch";
+import { escapeHtml } from "@/lib/chat-utils";
 import { auth } from "@/lib/firebase";
 
 interface Message {
@@ -74,8 +75,9 @@ const QUICK_ACTIONS: QuickAction[] = [
   },
 ];
 
-function renderMarkdown(text: string) {
-  return text
+export function renderMarkdown(text: string) {
+  // Escape before any structural markup — AI output is untrusted input.
+  return escapeHtml(text)
     .split("\n")
     .map((line) => {
       if (line.startsWith("### ")) return `<h3 class="text-sm font-semibold text-white mt-4 mb-2">${line.slice(4)}</h3>`;
