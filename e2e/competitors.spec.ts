@@ -21,10 +21,10 @@ test.describe("Competitors Page - Authenticated - Initial State", () => {
     await expect(page.getByText("Competitor Intelligence")).toBeVisible();
   });
 
-  test("shows subtitle about real-time analysis", async ({ page }) => {
+  test("shows listing search subtitle", async ({ page }) => {
     await page.goto("/competitors");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText(/real-time market analysis/i)).toBeVisible();
+    await expect(page.getByText(/listing search across/i)).toBeVisible();
   });
 
   test("has search input for product analysis", async ({ page }) => {

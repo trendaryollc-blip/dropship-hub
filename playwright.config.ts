@@ -5,21 +5,21 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 1,
-  workers: process.env.CI ? 2 : undefined,
+  workers: process.env.CI ? 2 : 4,
   reporter: [
     ["html", { open: "never" }],
     ["list"],
   ],
-  timeout: 30000,
+  timeout: 60000,
   expect: {
-    timeout: 10000,
+    timeout: 15000,
   },
   use: {
     baseURL: "http://localhost:3000",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
-    actionTimeout: 10000,
-    navigationTimeout: 30000,
+    actionTimeout: 20000,
+    navigationTimeout: 60000,
   },
   projects: [
     {

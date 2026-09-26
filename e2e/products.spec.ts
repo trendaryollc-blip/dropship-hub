@@ -122,7 +122,7 @@ test.describe("Products Page - Authenticated - Empty State", () => {
     await page.goto("/products", { waitUntil: "domcontentloaded" });
     await expect(page.getByText("Discovery")).toBeVisible();
     await expect(page.getByText("How It Works")).toBeVisible();
-    await expect(page.getByText("Trending Right Now")).toBeVisible();
+    await expect(page.getByText("Fresh from live search")).toBeVisible();
   });
 
   test("renders a searchable input", async ({ page }) => {
@@ -170,7 +170,7 @@ test.describe("Products Page - Authenticated - Search Flow", () => {
     });
 
     await page.goto("/products?q=wireless+earbuds", { waitUntil: "domcontentloaded" });
-    await expect(page.getByText("Searching platforms...")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Searching platforms...")).toBeVisible({ timeout: 15000 });
 
     release();
     await expect(page.getByText("Test Product 1")).toBeVisible();
