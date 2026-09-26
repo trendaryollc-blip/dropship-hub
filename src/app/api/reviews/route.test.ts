@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { ConfigMissingError } from "@/lib/api-keys/pool";
 
 vi.mock("@/lib/auth", () => ({
   withAuth: vi.fn((handler: any) => async (req: any) => {
@@ -22,6 +23,15 @@ vi.mock("@/lib/data/reviews", () => ({
   getReviewStats: (...args: unknown[]) => mockGetReviewStats(...args),
 }));
 
+const mockFetchAmazon = vi.fn();
+vi.mock("@/lib/reviews/import-service", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/reviews/import-service")>();
+  return {
+    ...actual,
+    fetchAmazonReviewRows: (...args: unknown[]) => mockFetchAmazon(...args),
+  };
+});
+
 function post(body: unknown) {
   return new Request("http://localhost/api/reviews", {
     method: "POST",
@@ -33,6 +43,7 @@ function post(body: unknown) {
 describe("/api/reviews", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFetchAmazon.mockReset();
     mockAddReviews.mockResolvedValue([]);
     mockAddImportJob.mockResolvedValue("job-1");
     mockGetReviews.mockResolvedValue([]);
@@ -50,22 +61,167 @@ describe("/api/reviews", () => {
     });
   });
 
-  it("POST import returns 501 and writes nothing when no review source is connected", async () => {
+  it("POST import of CSV saves real rows and records a completed job", async () => {
+    const { POST } = await import("./route");
+    const csv = [
+      "rating,author,content",
+      '5,Jane D.,"Great quality"',
+      '4,Bob,"Pretty good"',
+      "9,Broken,Rating out of range",
+    ].join("\n");
+    const response = await POST(
+      post({ action: "import", productTitle: "Earbuds", productUrl: "", source: "csv", maxReviews: 10, csv }) as any
+    );
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.imported).toBe(2);
+    expect(body.skipped).toBe(1);
+    expect(body.jobId).toBe("job-1");
+
+    expect(mockAddReviews).toHaveBeenCalledTimes(1);
+    const docs = mockAddReviews.mock.calls[0][1];
+    expect(docs).toHaveLength(2);
+    expect(docs[0]).toMatchObject({
+      productId: "",
+      productTitle: "Earbuds",
+      source: "csv",
+      author: "Jane D.",
+      rating: 5,
+      content: "Great quality",
+      syncStatus: "pending",
+    });
+
+    expect(mockAddImportJob).toHaveBeenCalledTimes(1);
+    const job = mockAddImportJob.mock.calls[0][1];
+    expect(job).toMatchObject({
+      productTitle: "Earbuds",
+      source: "csv",
+      status: "completed",
+      totalFound: 3,
+      imported: 2,
+      skipped: 1,
+      failed: 0,
+    });
+    expect(job.completedAt).toBeTruthy();
+  });
+
+  it("POST import without a CSV file returns 400 and writes nothing", async () => {
     const { POST } = await import("./route");
     const response = await POST(
-      post({ action: "import", productTitle: "Earbuds", productUrl: "https://aliexpress.com/item/1", source: "aliexpress", maxReviews: 10 }) as any
+      post({ action: "import", productTitle: "Earbuds", source: "csv", maxReviews: 10 }) as any
+    );
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error).toMatch(/Attach a CSV file/);
+    expect(mockAddReviews).not.toHaveBeenCalled();
+    expect(mockAddImportJob).not.toHaveBeenCalled();
+  });
+
+  it("POST import with CSV rows that have no valid ratings returns 400", async () => {
+    const { POST } = await import("./route");
+    const response = await POST(
+      post({ action: "import", productTitle: "Earbuds", source: "csv", maxReviews: 10, csv: "rating,content\n9,nope" }) as any
+    );
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error).toMatch(/No valid review rows/);
+    expect(mockAddReviews).not.toHaveBeenCalled();
+  });
+
+  it("POST import from unconnected sources returns an honest 501 and writes nothing", async () => {
+    const { POST } = await import("./route");
+    for (const source of ["aliexpress", "cj", "ebay"]) {
+      const response = await POST(
+        post({ action: "import", productTitle: "Earbuds", productUrl: "https://x.com/1", source, maxReviews: 10 }) as any
+      );
+      expect(response.status).toBe(501);
+      const body = await response.json();
+      expect(body.error).toMatch(/not connected yet/);
+      expect(body.error).toMatch(/nothing was imported/);
+    }
+    expect(mockAddReviews).not.toHaveBeenCalled();
+    expect(mockAddImportJob).not.toHaveBeenCalled();
+    expect(mockFetchAmazon).not.toHaveBeenCalled();
+  });
+
+  it("POST import from Amazon without a product URL returns 400 (no ASIN)", async () => {
+    const { POST } = await import("./route");
+    const response = await POST(
+      post({ action: "import", productTitle: "Earbuds", productUrl: "https://aliexpress.com/item/1", source: "amazon", maxReviews: 10 }) as any
+    );
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error).toMatch(/ASIN/);
+    expect(mockFetchAmazon).not.toHaveBeenCalled();
+    expect(mockAddReviews).not.toHaveBeenCalled();
+  });
+
+  it("POST import from Amazon returns 501 when Rainforest is not configured", async () => {
+    mockFetchAmazon.mockRejectedValue(new ConfigMissingError("rainforest"));
+    const { POST } = await import("./route");
+    const response = await POST(
+      post({ action: "import", productTitle: "Earbuds", productUrl: "https://www.amazon.com/dp/B0ABC12345", source: "amazon", maxReviews: 10 }) as any
     );
     expect(response.status).toBe(501);
     const body = await response.json();
-    expect(body.error).toMatch(/supplier review source/);
-    expect(body.error).toMatch(/not connected yet/);
+    expect(body.error).toMatch(/Rainforest API is not configured/);
     expect(mockAddReviews).not.toHaveBeenCalled();
     expect(mockAddImportJob).not.toHaveBeenCalled();
+  });
+
+  it("POST import from Amazon saves fetched rows and records a completed job", async () => {
+    mockFetchAmazon.mockResolvedValue({
+      rows: [
+        { author: "Sam", rating: 5, title: "Solid", content: "Works well", images: [], verified: true, sourceReviewId: "R1" },
+        { author: "Amy", rating: 4, title: "", content: "Nice", images: [], verified: false },
+      ],
+      totalFound: 1234,
+    });
+    const { POST } = await import("./route");
+    const response = await POST(
+      post({ action: "import", productTitle: "Earbuds", productUrl: "https://www.amazon.com/dp/B0ABC12345", source: "amazon", maxReviews: 10 }) as any
+    );
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.imported).toBe(2);
+    expect(body.totalFound).toBe(1234);
+    expect(mockFetchAmazon).toHaveBeenCalledWith("B0ABC12345", 10);
+    expect(mockAddReviews).toHaveBeenCalledTimes(1);
+    const docs = mockAddReviews.mock.calls[0][1];
+    expect(docs[0]).toMatchObject({ source: "amazon", author: "Sam", syncStatus: "pending" });
+    expect(mockAddImportJob.mock.calls[0][1]).toMatchObject({
+      source: "amazon",
+      status: "completed",
+      imported: 2,
+      totalFound: 1234,
+    });
+  });
+
+  it("POST import maps a Rainforest auth failure to an honest 501", async () => {
+    const authError = Object.assign(new Error("Rainforest API rejected the key (HTTP 401)"), { status: 401 });
+    mockFetchAmazon.mockRejectedValue(authError);
+    const { POST } = await import("./route");
+    const response = await POST(
+      post({ action: "import", productTitle: "Earbuds", productUrl: "https://www.amazon.com/dp/B0ABC12345", source: "amazon", maxReviews: 10 }) as any
+    );
+    expect(response.status).toBe(501);
+    const body = await response.json();
+    expect(body.error).toMatch(/rejected the API key/);
+    expect(mockAddReviews).not.toHaveBeenCalled();
   });
 
   it("POST import returns 400 without required fields", async () => {
     const { POST } = await import("./route");
     const response = await POST(post({ action: "import", source: "aliexpress" }) as any);
+    expect(response.status).toBe(400);
+    expect(mockAddReviews).not.toHaveBeenCalled();
+  });
+
+  it("POST import returns 400 when maxReviews is out of range", async () => {
+    const { POST } = await import("./route");
+    const response = await POST(
+      post({ action: "import", productTitle: "Earbuds", source: "csv", maxReviews: 500, csv: "rating,content\n5,ok" }) as any
+    );
     expect(response.status).toBe(400);
     expect(mockAddReviews).not.toHaveBeenCalled();
   });

@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { useAPI } from "@/hooks/useAPI";
 import { useToast } from "@/components/ui/Toast";
-import ComingSoon from "@/components/ui/ComingSoon";
 import { authJson, getAuthHeaders } from "@/lib/auth-headers";
 import { copyToClipboard } from "@/lib/clipboard";
 import { safeFetch } from "@/lib/safe-fetch";
@@ -28,7 +27,17 @@ const SOURCES: { id: ReviewSource; label: string; color: string; icon: string }[
   { id: "cj", label: "CJ Dropshipping", color: "text-blue-400", icon: "📦" },
   { id: "amazon", label: "Amazon", color: "text-amber-400", icon: "📋" },
   { id: "ebay", label: "eBay", color: "text-emerald-400", icon: "🏷️" },
+  { id: "csv", label: "CSV", color: "text-purple-400", icon: "📄" },
 ];
+
+// Honest per-source status: sources with no backend connection say so instead
+// of pretending the import works.
+const SOURCE_NOT_CONNECTED: Partial<Record<ReviewSource, string>> = {
+  aliexpress:
+    "No AliExpress review source is set up yet, so nothing will be imported. Switch to CSV upload or Amazon (product URL) — both work today.",
+  cj: "No CJ review source is set up yet, so nothing will be imported. Switch to CSV upload or Amazon (product URL) — both work today.",
+  ebay: "No eBay review source is set up yet, so nothing will be imported. Switch to CSV upload or Amazon (product URL) — both work today.",
+};
 
 function StarRating({ rating, size = "sm" }: { rating: number; size?: "sm" | "lg" }) {
   const sizeClass = size === "lg" ? "h-5 w-5" : "h-3.5 w-3.5";
@@ -91,6 +100,9 @@ export default function ReviewsPage() {
   const [productUrl, setProductUrl] = useState("");
   const [source, setSource] = useState<ReviewSource>("aliexpress");
   const [maxReviewsInput, setMaxReviewsInput] = useState("10");
+  const [csvText, setCsvText] = useState("");
+  const [csvFileName, setCsvFileName] = useState<string | null>(null);
+  const [csvInputKey, setCsvInputKey] = useState(0);
   const [filterSource, setFilterSource] = useState<ReviewSource | "all">("all");
   const [copied, setCopied] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -124,29 +136,66 @@ export default function ReviewsPage() {
   const reviews = reviewsData?.reviews || [];
   const jobs = jobsData?.jobs || [];
 
+  const handleCsvFile = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (file.size > 400_000) {
+        showError("CSV file is too large (max 400KB) — export fewer reviews and try again");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        setCsvText(String(reader.result ?? ""));
+        setCsvFileName(file.name);
+      };
+      reader.onerror = () => showError("Couldn't read that file — try another CSV");
+      reader.readAsText(file);
+    },
+    [showError]
+  );
+
   const handleImport = useCallback(async () => {
     if (!productTitle.trim()) return;
+    if (source === "csv" && !csvText.trim()) {
+      showError("Choose a CSV file first");
+      return;
+    }
+    if (source === "amazon" && !productUrl.trim()) {
+      showError("Paste the Amazon product page URL first");
+      return;
+    }
     setLoading(true);
     try {
-      const data = await authJson<{ imported: number }>("/api/reviews", {
+      const payload: Record<string, unknown> = {
         action: "import",
         productTitle: productTitle.trim(),
         productUrl: productUrl.trim(),
         source,
         maxReviews,
-      });
-      success(`Imported ${data.imported} review${data.imported === 1 ? "" : "s"} from ${SOURCES.find(s => s.id === source)?.label}`);
+      };
+      if (source === "csv") payload.csv = csvText;
+      const data = await authJson<{ imported: number; skipped?: number }>("/api/reviews", payload);
+      const skippedNote = data.skipped
+        ? `, ${data.skipped} row${data.skipped === 1 ? "" : "s"} skipped`
+        : "";
+      success(
+        `Imported ${data.imported} review${data.imported === 1 ? "" : "s"} from ${SOURCES.find(s => s.id === source)?.label}${skippedNote}`
+      );
       mutateStats();
       mutateReviews();
       mutateJobs();
       setProductTitle("");
       setProductUrl("");
+      setCsvText("");
+      setCsvFileName(null);
+      setCsvInputKey((k) => k + 1);
     } catch (err) {
       showError(err instanceof Error ? err.message : "Import failed");
     } finally {
       setLoading(false);
     }
-  }, [productTitle, productUrl, source, maxReviews, success, showError, mutateStats, mutateReviews, mutateJobs]);
+  }, [productTitle, productUrl, source, maxReviews, csvText, success, showError, mutateStats, mutateReviews, mutateJobs]);
 
   const handleCopy = useCallback(
     async (text: string, id: string) => {
@@ -241,10 +290,23 @@ export default function ReviewsPage() {
           <Download className="h-4 w-4 text-accent" />
           Import Reviews
         </h3>
-        <ComingSoon
-          title="Supplier source not connected"
-          whatNeeded="Review import needs a supplier review source (AliExpress/CJ API), which is not connected yet. Nothing is imported until a source is connected — the product name and URL below are kept for that."
-        />
+        {SOURCE_NOT_CONNECTED[source] ? (
+          <div className="flex items-start gap-2 p-3 rounded-xl border border-amber-500/20 bg-amber-500/5" role="status">
+            <AlertCircle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-semibold text-amber-400">
+                {SOURCES.find((s) => s.id === source)?.label} import not connected yet
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">{SOURCE_NOT_CONNECTED[source]}</p>
+            </div>
+          </div>
+        ) : source === "amazon" ? (
+          <p className="text-xs text-muted-foreground">
+            Paste the full Amazon product page URL (…/dp/B0XXXXXXXX). Reviews are fetched live via
+            Rainforest (<code className="text-foreground/70">RAINFOREST_API_KEY</code>) — if the key
+            isn&apos;t set up on the server you&apos;ll get a setup message instead of a fake import.
+          </p>
+        ) : null}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label htmlFor="rv-title" className="block text-xs font-medium text-muted-foreground mb-1.5">Product Name *</label>
@@ -253,18 +315,35 @@ export default function ReviewsPage() {
               className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-accent/30 transition-all" />
           </div>
           <div>
-            <label htmlFor="rv-url" className="block text-xs font-medium text-muted-foreground mb-1.5">Product URL</label>
+            <label htmlFor="rv-url" className="block text-xs font-medium text-muted-foreground mb-1.5">Product URL{source === "amazon" ? " *" : ""}</label>
             <input id="rv-url" type="url" value={productUrl} onChange={(e) => setProductUrl(e.target.value)} maxLength={500}
-              placeholder="https://aliexpress.com/item/..."
+              placeholder={source === "amazon" ? "https://www.amazon.com/dp/B0XXXXXXXX" : "https://aliexpress.com/item/..."}
               className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-accent/30 transition-all" />
           </div>
         </div>
+        {source === "csv" && (
+          <div>
+            <label htmlFor="rv-csv" className="block text-xs font-medium text-muted-foreground mb-1.5">
+              CSV file * — columns: rating, author, content (title, verified, image optional)
+            </label>
+            <input
+              key={csvInputKey}
+              id="rv-csv"
+              type="file"
+              accept=".csv,text/csv"
+              onChange={handleCsvFile}
+              className="block w-full text-xs text-muted-foreground file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-surface file:text-xs file:font-medium file:text-foreground hover:file:bg-border cursor-pointer"
+            />
+            {csvFileName && <p className="text-xs text-emerald-400 mt-1.5">{csvFileName} loaded</p>}
+          </div>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1.5">Source</label>
             <div className="flex flex-wrap gap-1.5">
               {SOURCES.map((s) => (
                 <button key={s.id} onClick={() => setSource(s.id)} aria-pressed={source === s.id}
+                  aria-label={`Import from ${s.label}`}
                   className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                     source === s.id ? "bg-accent/10 text-accent border border-accent/20" : "bg-surface border border-border text-muted-foreground hover:text-foreground"
                   }`}>
@@ -283,7 +362,14 @@ export default function ReviewsPage() {
               className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30 transition-all" />
           </div>
         </div>
-        <button onClick={handleImport} disabled={!productTitle.trim() || loading}
+        <button
+          onClick={handleImport}
+          disabled={
+            !productTitle.trim() ||
+            loading ||
+            (source === "csv" && !csvText.trim()) ||
+            (source === "amazon" && !productUrl.trim())
+          }
           className="flex items-center gap-2 px-6 py-3 rounded-xl bg-accent hover:bg-accent-hover text-white font-semibold text-sm transition-all disabled:opacity-50">
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
           Import Reviews
@@ -316,11 +402,13 @@ export default function ReviewsPage() {
       {/* Filter */}
       <div className="flex flex-wrap gap-2">
         <button onClick={() => setFilterSource("all")} aria-pressed={filterSource === "all"}
+          aria-label="Filter by all sources"
           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${filterSource === "all" ? "bg-accent/10 text-accent border border-accent/20" : "bg-surface border border-border text-muted-foreground hover:text-foreground"}`}>
           All
         </button>
         {SOURCES.map((s) => (
           <button key={s.id} onClick={() => setFilterSource(s.id)} aria-pressed={filterSource === s.id}
+            aria-label={`Filter by ${s.label}`}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${filterSource === s.id ? "bg-accent/10 text-accent border border-accent/20" : "bg-surface border border-border text-muted-foreground hover:text-foreground"}`}>
             <span aria-hidden="true">{s.icon}</span> {s.label.split(" ")[0]}
           </button>

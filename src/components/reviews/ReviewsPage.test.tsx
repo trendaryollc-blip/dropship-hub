@@ -71,8 +71,9 @@ describe("ReviewsPage", () => {
     render(<ReviewsPage />);
     expect(screen.getByText("Review Importer")).toBeTruthy();
     expect(screen.getByText("Import reviews from a connected supplier source.")).toBeTruthy();
-    expect(screen.getByTestId("coming-soon")).toBeTruthy();
-    expect(screen.getByText(/which is not connected yet/)).toBeTruthy();
+    expect(screen.queryByTestId("coming-soon")).toBeNull();
+    expect(screen.getByText("AliExpress import not connected yet")).toBeTruthy();
+    expect(screen.getByText(/No AliExpress review source is set up yet/)).toBeTruthy();
     expect(screen.getByText("Total Reviews")).toBeTruthy();
     expect(screen.getByText("4.5★")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Import Reviews" })).toBeTruthy();
@@ -210,5 +211,73 @@ describe("ReviewsPage", () => {
     }));
     render(<ReviewsPage />);
     expect(screen.getByText("No reviews imported yet")).toBeTruthy();
+  });
+
+  it("switches to CSV source, shows the file input, and imports the file contents", async () => {
+    mockAuthJson.mockResolvedValue({ imported: 2, skipped: 1 });
+    render(<ReviewsPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Import from CSV" }));
+    expect(screen.queryByText("AliExpress import not connected yet")).toBeNull();
+    const fileInput = screen.getByLabelText(/CSV file/) as HTMLInputElement;
+    const file = new File(["rating,author,content\n5,Jane,Great product"], "reviews.csv", {
+      type: "text/csv",
+    });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+    await waitFor(() => expect(screen.getByText("reviews.csv loaded")).toBeTruthy());
+
+    fireEvent.change(screen.getByLabelText("Product Name *"), { target: { value: "Earbuds" } });
+    fireEvent.click(screen.getByRole("button", { name: "Import Reviews" }));
+    await waitFor(() => {
+      expect(mockAuthJson).toHaveBeenCalledWith("/api/reviews", {
+        action: "import",
+        productTitle: "Earbuds",
+        productUrl: "",
+        source: "csv",
+        maxReviews: 10,
+        csv: "rating,author,content\n5,Jane,Great product",
+      });
+    });
+    expect(mockToast.success).toHaveBeenCalledWith(
+      "Imported 2 reviews from CSV, 1 row skipped"
+    );
+    expect(mockMutate).toHaveBeenCalledTimes(3);
+  });
+
+  it("blocks CSV import without a selected file", () => {
+    render(<ReviewsPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Import from CSV" }));
+    fireEvent.change(screen.getByLabelText("Product Name *"), { target: { value: "Earbuds" } });
+    const importButton = screen.getByRole("button", { name: "Import Reviews" }) as HTMLButtonElement;
+    expect(importButton.disabled).toBe(true);
+    fireEvent.click(importButton);
+    expect(mockAuthJson).not.toHaveBeenCalled();
+  });
+
+  it("blocks Amazon import without a product URL", () => {
+    render(<ReviewsPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Import from Amazon" }));
+    expect(screen.getByText(/Paste the full Amazon product page URL/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Product Name *"), { target: { value: "Earbuds" } });
+    const importButton = screen.getByRole("button", { name: "Import Reviews" }) as HTMLButtonElement;
+    expect(importButton.disabled).toBe(true);
+    fireEvent.click(importButton);
+    expect(mockAuthJson).not.toHaveBeenCalled();
+  });
+
+  it("keeps the 501 honest-error toast for unconnected sources", async () => {
+    mockAuthJson.mockRejectedValue(
+      new Error("AliExpress review import is not connected yet — no AliExpress review source is set up, so nothing was imported.")
+    );
+    render(<ReviewsPage />);
+    fireEvent.change(screen.getByLabelText("Product Name *"), { target: { value: "Earbuds" } });
+    fireEvent.click(screen.getByRole("button", { name: "Import Reviews" }));
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith(
+        expect.stringContaining("not connected yet")
+      );
+    });
+    expect(mockToast.success).not.toHaveBeenCalled();
+    expect(mockMutate).not.toHaveBeenCalled();
   });
 });

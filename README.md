@@ -9,8 +9,8 @@ Scoring and recommendations are **rule-based** (deterministic formulas over real
 ## Current status
 
 - **Works out of the box:** auth, all 10 calculators, dashboard from your own store data, profit/revenue/cash-flow tracking, price-war and order-routing rules, missions, compliance checks, listing templates, reports, settings, and the full admin area.
-- **Work fully once API keys are added:** product search & trending, market intel (Google Trends interest index), trend analysis, niche catalog, competitor enrichment, CJ fulfillment, return labels (EasyPost), AI provider features. Without keys these pages show honest empty/setup states.
-- **Needs a new integration:** review import (`501` — needs a review source).
+- **Work fully once API keys are added:** product search & trending, market intel (Google Trends interest index), trend analysis, niche catalog, competitor enrichment, CJ fulfillment, return labels (EasyPost), review import (Amazon via Rainforest), AI provider features. Without keys these pages show honest empty/setup states.
+- **Review import:** CSV upload works out of the box (no key); Amazon works with `RAINFOREST_API_KEY`; AliExpress/CJ/eBay sources honestly report they aren't connected instead of importing anything fake.
 
 Full per-feature status: **[FEATURE-CATALOG.md](FEATURE-CATALOG.md)**.
 

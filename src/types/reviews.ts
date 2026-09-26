@@ -1,4 +1,5 @@
 import { Timestamp } from "firebase/firestore";
+import { z } from "zod";
 
 // ── Review Types ─────────────────────────────────────────────────────────────
 
@@ -111,3 +112,16 @@ export interface ReviewImportJobDoc {
   completedAt?: string;
   createdAt: Timestamp;
 }
+
+// ── Zod Schemas ──────────────────────────────────────────────────────────────
+
+export const ImportReviewsInputSchema = z.object({
+  action: z.literal("import"),
+  productTitle: z.string().trim().min(1).max(200),
+  productUrl: z.string().trim().max(500).default(""),
+  source: z.enum(["aliexpress", "cj", "amazon", "ebay", "csv"]),
+  maxReviews: z.coerce.number().int().min(1).max(50).default(10),
+  csv: z.string().max(400_000).optional(),
+});
+
+export type ImportReviewsInput = z.infer<typeof ImportReviewsInputSchema>;

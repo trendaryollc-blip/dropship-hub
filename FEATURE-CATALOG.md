@@ -135,15 +135,15 @@ This is the app's central rule, enforced by `scripts/honesty-guard.mjs` in CI (`
 
 ### 4.9 Engagement, content & operations
 
-| Route               | Feature                                                               | Status | Notes                                                                                                                                                                         |
-| ------------------- | --------------------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/missions`         | Daily missions, XP, streaks, badges                                   | ✅     | Generated from **your store activity** with rule-based tasks (labeled as such).                                                                                               |
-| `/saved`            | Saved/wishlist products, quick actions                                | ✅     | Quick actions are real ToolRegistry executions (labeled rule-based); "Analyze Pricing" maps to the real pricing tool.                                                         |
-| `/reviews`          | Review inbox, sentiment, reply templates                              | ✅/⛔  | Review management + rule-based reply templates work on entered data. **Import** is ⛔ HTTP 501 (needs a review source like Rainforest); no seeded fake reviews.               |
-| `/customer-service` | Ticket metrics, macros, AI reply drafts                               | ✅/🔑  | Avg response time/confidence computed from real Firestore tickets (no fixed 85/95% confidences); labeled rule-based. LLM drafts 🔑.                                           |
-| `/social-content`   | Content generator: hooks, scripts, hashtags, ad copy, story templates | ✅     | Template library with placeholders (`{product}`, `[X] reviews`) for the user to fill — clearly template copy, no invented statistics. Audio/engagement usage counts are real. |
-| `/compliance`       | Compliance checks (restricted products, claims)                       | ✅     | Rule-based scan of your product data.                                                                                                                                         |
-| `/settings`         | Profile, AI provider keys, notifications, subscription, quota         | ✅     | Quota panel captioned "Static reference — check provider site".                                                                                                               |
+| Route               | Feature                                                               | Status | Notes                                                                                                                                                                                                                                     |
+| ------------------- | --------------------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/missions`         | Daily missions, XP, streaks, badges                                   | ✅     | Generated from **your store activity** with rule-based tasks (labeled as such).                                                                                                                                                           |
+| `/saved`            | Saved/wishlist products, quick actions                                | ✅     | Quick actions are real ToolRegistry executions (labeled rule-based); "Analyze Pricing" maps to the real pricing tool.                                                                                                                     |
+| `/reviews`          | Review inbox, sentiment, reply templates, import                      | ✅/🔑  | Inbox + rule-based reply templates work on entered data. **Import** works: CSV upload (zero-config) and Amazon via Rainforest (🔑 `RAINFOREST_API_KEY`); AliExpress/CJ/eBay return an honest 501 "not connected"; no seeded fake reviews. |
+| `/customer-service` | Ticket metrics, macros, AI reply drafts                               | ✅/🔑  | Avg response time/confidence computed from real Firestore tickets (no fixed 85/95% confidences); labeled rule-based. LLM drafts 🔑.                                                                                                       |
+| `/social-content`   | Content generator: hooks, scripts, hashtags, ad copy, story templates | ✅     | Template library with placeholders (`{product}`, `[X] reviews`) for the user to fill — clearly template copy, no invented statistics. Audio/engagement usage counts are real.                                                             |
+| `/compliance`       | Compliance checks (restricted products, claims)                       | ✅     | Rule-based scan of your product data.                                                                                                                                                                                                     |
+| `/settings`         | Profile, AI provider keys, notifications, subscription, quota         | ✅     | Quota panel captioned "Static reference — check provider site".                                                                                                                                                                           |
 
 ### 4.10 Admin area (owner-only, all ✅)
 
@@ -225,19 +225,19 @@ Minimum set to make discovery pages live: **SerpAPI + RapidAPI Google Trends + G
 
 ## 8. What is NOT done yet (next steps)
 
-| #   | Item                              | Detail                                                                                                            |
-| --- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| 1   | ~~**Commit the work**~~           | ✅ Committed and pushed; working tree clean.                                                                      |
-| 2   | **Push & confirm CI green**       | `.github/workflows/ci.yml` must pass on GitHub after push.                                                        |
-| 3   | **Obtain and configure API keys** | Tier 1 first (SerpAPI, Groq, CJ, Keepa, EasyPost) — turns discovery/trends/label pages from honest-empty to live. |
-| 4   | **Run the Playwright e2e suite**  | Specs exist but haven't been executed in this environment (`npm run test:e2e`).                                   |
-| 5   | **Vercel preview deploy**         | With full env vars from `.env.example`; deploy Firestore rules/indexes.                                           |
-| 6   | ~~**Carrier label integration**~~ | ✅ Shipped — EasyPost integration replaces the `501` (needs `EASYPOST_API_KEYS`).                                 |
-| 7   | **Review import integration**     | Build a review data source to replace the honest `501` on review import.                                          |
-| 8   | **Monitoring**                    | Add Sentry (or similar) for production error tracking.                                                            |
-| 9   | **Stripe live-mode test**         | Verify live webhook + subscription flow end-to-end.                                                               |
-| 10  | **Lint warning debt**             | ≈3,000 pre-existing warnings (0 errors) — gradual cleanup, not blocking.                                          |
-| 11  | **Multi-store OAuth live test**   | Store connections work with credentials; end-to-end push against a real Shopify/Woo store not yet verified.       |
+| #   | Item                              | Detail                                                                                                                               |
+| --- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | ~~**Commit the work**~~           | ✅ Committed and pushed; working tree clean.                                                                                         |
+| 2   | **Push & confirm CI green**       | `.github/workflows/ci.yml` must pass on GitHub after push.                                                                           |
+| 3   | **Obtain and configure API keys** | Tier 1 first (SerpAPI, Groq, CJ, Keepa, EasyPost) — turns discovery/trends/label pages from honest-empty to live.                    |
+| 4   | **Run the Playwright e2e suite**  | Specs exist but haven't been executed in this environment (`npm run test:e2e`).                                                      |
+| 5   | **Vercel preview deploy**         | With full env vars from `.env.example`; deploy Firestore rules/indexes.                                                              |
+| 6   | ~~**Carrier label integration**~~ | ✅ Shipped — EasyPost integration replaces the `501` (needs `EASYPOST_API_KEYS`).                                                    |
+| 7   | ~~**Review import integration**~~ | ✅ Shipped — CSV import works with zero config; Amazon via Rainforest (`RAINFOREST_API_KEY`). AliExpress/CJ/eBay stay honest `501`s. |
+| 8   | **Monitoring**                    | Add Sentry (or similar) for production error tracking.                                                                               |
+| 9   | **Stripe live-mode test**         | Verify live webhook + subscription flow end-to-end.                                                                                  |
+| 10  | **Lint warning debt**             | ≈3,000 pre-existing warnings (0 errors) — gradual cleanup, not blocking.                                                             |
+| 11  | **Multi-store OAuth live test**   | Store connections work with credentials; end-to-end push against a real Shopify/Woo store not yet verified.                          |
 
 ---
 
