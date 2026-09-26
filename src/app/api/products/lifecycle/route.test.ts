@@ -29,6 +29,7 @@ function buildQueryChain(docs: any[]) {
     where: vi.fn().mockReturnThis(),
     orderBy: vi.fn().mockReturnThis(),
     limit: vi.fn().mockReturnThis(),
+    count: vi.fn().mockReturnValue({ get: vi.fn().mockResolvedValue({ data: () => ({ count: 0 }) }) }),
     get: vi.fn().mockResolvedValue({ docs: buildMockDocs(docs), empty: docs.length === 0 }),
   };
 }
@@ -105,6 +106,11 @@ describe("POST /api/products/lifecycle", () => {
           doc: vi.fn().mockReturnValue({
             collection: vi.fn().mockReturnValue({
               add: vi.fn().mockResolvedValue({ id: "new-id" }),
+              where: vi.fn().mockReturnValue({
+                count: vi.fn().mockReturnValue({
+                  get: vi.fn().mockResolvedValue({ data: () => ({ count: 0 }) }),
+                }),
+              }),
             }),
           }),
         }),
@@ -120,5 +126,35 @@ describe("POST /api/products/lifecycle", () => {
     }), null as any);
     const data = await res.json();
     expect(data.success).toBe(true);
+  });
+
+  it("POST returns 429 when the plan product cap is reached", async () => {
+    vi.doMock("@/lib/firebase-admin", () => ({
+      getAdminDB: vi.fn().mockResolvedValue({
+        collection: vi.fn().mockReturnValue({
+          doc: vi.fn().mockReturnValue({
+            collection: vi.fn().mockReturnValue({
+              add: vi.fn().mockResolvedValue({ id: "new-id" }),
+              where: vi.fn().mockReturnValue({
+                count: vi.fn().mockReturnValue({
+                  get: vi.fn().mockResolvedValue({ data: () => ({ count: 50 }) }),
+                }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    }));
+    const { POST } = await import("./route");
+    const res = await POST(makeReq("http://localhost/api/products/lifecycle", {
+      productId: "p1",
+      productTitle: "Test Product",
+      currentStage: "discovery",
+      stageEnteredAt: "2025-01-01T00:00:00Z",
+      totalDaysTracked: 0,
+    }), null as any);
+    expect(res.status).toBe(429);
+    const data = await res.json();
+    expect(data.error).toBe("Product limit reached");
   });
 });

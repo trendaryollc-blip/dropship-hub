@@ -67,6 +67,9 @@ describe("/api/store/connections", () => {
         doc: vi.fn().mockReturnValue({
           collection: vi.fn().mockReturnValue({
             add: vi.fn().mockResolvedValue({ id: "conn-1" }),
+            count: vi.fn().mockReturnValue({
+              get: vi.fn().mockResolvedValue({ data: () => ({ count: 0 }) }),
+            }),
           }),
         }),
       }),
@@ -81,6 +84,33 @@ describe("/api/store/connections", () => {
     });
     const response = await POST(request);
     expect(response.status).toBe(200);
+  });
+
+  it("POST returns 429 when the plan store cap is reached", async () => {
+    mockGetAdminDB.mockResolvedValue({
+      collection: vi.fn().mockReturnValue({
+        doc: vi.fn().mockReturnValue({
+          collection: vi.fn().mockReturnValue({
+            add: vi.fn().mockResolvedValue({ id: "conn-1" }),
+            count: vi.fn().mockReturnValue({
+              get: vi.fn().mockResolvedValue({ data: () => ({ count: 1 }) }),
+            }),
+          }),
+        }),
+      }),
+    });
+
+    const { POST } = await import("./route");
+    const request = makeRequest("/api/store/connections", "POST", {
+      platform: "shopify",
+      name: "My Store",
+      url: "https://store.myshopify.com",
+      accessToken: "shpat_xxx",
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(429);
+    const data = await response.json();
+    expect(data.error).toBe("Store limit reached");
   });
 
   it("DELETE removes a connection", async () => {

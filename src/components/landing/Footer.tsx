@@ -5,6 +5,7 @@ const footerLinks = {
   Product: [
     { label: "Features", href: "/#features" },
     { label: "How It Works", href: "/#how-it-works" },
+    { label: "Pricing", href: "/pricing" },
     { label: "Dashboard", href: "/dashboard" },
     { label: "Calculator", href: "/calculator" },
   ],
@@ -19,6 +20,7 @@ const footerLinks = {
     { label: "Create Account", href: "/sign-up" },
     { label: "Dashboard", href: "/dashboard" },
     { label: "Settings", href: "/settings" },
+    { label: "Billing", href: "/settings/billing" },
   ],
 };
 

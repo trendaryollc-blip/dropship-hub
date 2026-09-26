@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
+import { getAdminDB } from "@/lib/firebase-admin";
 import { getUsage } from "@/lib/billing/stripe";
 import { getUsageLimit, type UsageMetric } from "@/lib/billing/types";
 import { getUserTier } from "@/lib/billing/stripe";
@@ -13,7 +14,21 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
     const usage: Record<string, { used: number; limit: number; percentage: number }> = {};
 
     for (const metric of metrics) {
-      const used = await getUsage(uid, metric);
+      // "products" reflects the live tracked-product count (what the cap is
+      // enforced against), not increment events — keeps the bar honest when
+      // products are archived/removed.
+      let used: number;
+      if (metric === "products") {
+        const db = await getAdminDB();
+        const snap = await db
+          .collection("users").doc(uid).collection("productLifecycle")
+          .where("archived", "!=", true)
+          .count()
+          .get();
+        used = snap.data().count;
+      } else {
+        used = await getUsage(uid, metric);
+      }
       const limit = getUsageLimit(tier, metric);
       usage[metric] = {
         used,

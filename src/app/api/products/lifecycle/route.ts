@@ -11,6 +11,8 @@ import {
   validateBody,
 } from "@/lib/validation";
 import { LIMITS } from "@/lib/rate-limit";
+import { getUserTier } from "@/lib/billing/stripe";
+import { getPlanByTier } from "@/lib/billing/types";
 import { safeErrorMessage } from "@/lib/api-errors";
 
 export const GET = withAuth(async (request: NextRequest, uid: string) => {
@@ -103,6 +105,27 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     const entry = validation.data;
 
     const db = await getAdminDB();
+
+    // Plan enforcement: product tracking cap from BILLING_PLANS.limits.maxProducts.
+    const tier = await getUserTier(uid);
+    const maxProducts = getPlanByTier(tier).limits.maxProducts;
+    if (maxProducts !== -1) {
+      const countSnap = await db
+        .collection("users").doc(uid).collection("productLifecycle")
+        .where("archived", "!=", true)
+        .count()
+        .get();
+      if (countSnap.data().count >= maxProducts) {
+        return NextResponse.json(
+          {
+            error: "Product limit reached",
+            details: `Your ${tier} plan tracks up to ${maxProducts} products. Upgrade at /pricing or archive products you no longer track.`,
+          },
+          { status: 429 }
+        );
+      }
+    }
+
     const ref = await db.collection("users").doc(uid).collection("productLifecycle").add({
       ...entry,
       archived: false,

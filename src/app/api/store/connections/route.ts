@@ -3,6 +3,8 @@ import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { StoreConnectionSchema, StoreConnectionUpdateSchema, validateBody } from "@/lib/validation";
 import { LIMITS } from "@/lib/rate-limit";
+import { getUserTier } from "@/lib/billing/stripe";
+import { getPlanByTier } from "@/lib/billing/types";
 import { unregisterShopifyWebhooks } from "@/lib/shopify/webhooks";
 import { safeErrorMessage } from "@/lib/api-errors";
 
@@ -35,6 +37,23 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     const store = validation.data;
 
     const db = await getAdminDB();
+
+    // Plan enforcement: store connection cap from BILLING_PLANS.limits.maxStores.
+    const tier = await getUserTier(uid);
+    const maxStores = getPlanByTier(tier).limits.maxStores;
+    if (maxStores !== -1) {
+      const countSnap = await db.collection("users").doc(uid).collection("storeConnections").count().get();
+      if (countSnap.data().count >= maxStores) {
+        return NextResponse.json(
+          {
+            error: "Store limit reached",
+            details: `Your ${tier} plan allows ${maxStores} store connection${maxStores === 1 ? "" : "s"}. Upgrade at /pricing or disconnect a store first.`,
+          },
+          { status: 429 }
+        );
+      }
+    }
+
     const ref = await db.collection("users").doc(uid).collection("storeConnections").add({
       ...store,
       status: "connected",

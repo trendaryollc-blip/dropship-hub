@@ -25,6 +25,23 @@ vi.mock("@/lib/billing/types", () => ({
   getUsageLimit: (...args: any[]) => mockGetUsageLimit(...args),
 }));
 
+const mockProductCount = 7;
+vi.mock("@/lib/firebase-admin", () => ({
+  getAdminDB: vi.fn().mockResolvedValue({
+    collection: vi.fn().mockReturnValue({
+      doc: vi.fn().mockReturnValue({
+        collection: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            count: vi.fn().mockReturnValue({
+              get: vi.fn().mockResolvedValue({ data: () => ({ count: mockProductCount }) }),
+            }),
+          }),
+        }),
+      }),
+    }),
+  }),
+}));
+
 function makeReq(url: string) {
   const req = new Request(url);
   (req as any).nextUrl = new URL(url);
@@ -51,7 +68,8 @@ describe("/api/billing/usage", () => {
     expect(json.usage.ai_calls).toEqual({ used: 42, limit: 100, percentage: 42 });
     expect(json.usage.api_calls).toEqual({ used: 42, limit: 100, percentage: 42 });
     expect(json.usage.webhook_calls).toEqual({ used: 42, limit: 100, percentage: 42 });
-    expect(json.usage.products).toEqual({ used: 42, limit: 100, percentage: 42 });
+    // products is the live tracked-product count, not increment events
+    expect(json.usage.products).toEqual({ used: 7, limit: 100, percentage: 7 });
     expect(json.usage.store_pushes).toEqual({ used: 42, limit: 100, percentage: 42 });
   });
 

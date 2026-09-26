@@ -5,6 +5,7 @@ import { LIMITS } from "@/lib/rate-limit";
 import { validateBody, StorePushInputSchema } from "@/lib/validation";
 import { safeErrorMessage } from "@/lib/api-errors";
 import { pushProductToStore } from "@/lib/store-push";
+import { trackUsage } from "@/lib/billing/stripe";
 
 export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -28,6 +29,8 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     if (!result.success && result.error === "Store not found") {
       return NextResponse.json({ error: "Store not found" }, { status: 404 });
     }
+
+    if (result.success) void trackUsage(uid, "store_pushes");
 
     return NextResponse.json({
       success: result.success,

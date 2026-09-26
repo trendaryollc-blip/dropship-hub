@@ -196,7 +196,8 @@ export async function getUserSubscription(uid: string): Promise<Subscription | n
 
 export async function getUserTier(uid: string): Promise<BillingTier> {
   const sub = await getUserSubscription(uid);
-  if (!sub || sub.status !== "active") return "free";
+  // Keep in sync with getUserTier in src/lib/auth.ts (rate-limit tier).
+  if (!sub || (sub.status !== "active" && sub.status !== "trialing")) return "free";
   return sub.tier;
 }
 

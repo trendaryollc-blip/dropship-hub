@@ -3,6 +3,9 @@ import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { validateBody, AIChatSchema } from "@/lib/validation";
 import { getSupplierById } from "@/lib/supplier-service";
+import { getUserTier, getUsage, trackUsage } from "@/lib/billing/stripe";
+import { getUsageLimit } from "@/lib/billing/types";
+import { getAllowedProviders } from "@/lib/ai-provider-guard";
 import { logger } from "@/lib/logger";
 import { PublicError, safeErrorMessage } from "@/lib/api-errors";
 
@@ -718,6 +721,25 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     if (!parseResult.success) return parseResult.response;
     const { messages, providerPriority, context, stream, testKey, supplierId } = parseResult.data;
 
+    // Plan enforcement: monthly AI-chat allowance from BILLING_PLANS.limits
+    // (usage page and pricing page show the same numbers).
+    const tier = await getUserTier(uid);
+    const aiLimit = getUsageLimit(tier, "ai_calls");
+    if (aiLimit !== -1) {
+      const aiUsed = await getUsage(uid, "ai_calls");
+      if (aiUsed >= aiLimit) {
+        return NextResponse.json(
+          {
+            error: "Monthly AI message limit reached",
+            details: `Your ${tier} plan allows ${aiLimit} AI messages per month (${aiUsed} used). Upgrade at /pricing for a higher limit.`,
+          },
+          { status: 429 }
+        );
+      }
+    }
+    // Free plan is limited to free providers (groq / gemini / huggingface).
+    const allowedProviderIds = new Set<string>(getAllowedProviders(tier));
+
     // Build system prompt — supplier-specific if supplierId provided, else contextual or generic
     let systemPrompt: string;
     if (supplierId) {
@@ -730,13 +752,27 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     }
 
     // Build ordered list from user preference or default priority
-    const orderedProviders = providerPriority
+    const preferredOrdered = providerPriority
       ? providerPriority
           .filter((p: { id: string; active: boolean }) => p.active)
           .sort((a: { priority: number }, b: { priority: number }) => a.priority - b.priority)
           .map((p: { id: string }) => allProviders.find((pr) => pr.id === p.id))
           .filter(Boolean)
       : allProviders;
+
+    // Plan enforcement: drop providers the current tier may not use.
+    const orderedProviders = preferredOrdered.filter((p) => p && allowedProviderIds.has(p.id));
+
+    if (preferredOrdered.length > 0 && orderedProviders.length === 0) {
+      const blocked = preferredOrdered[0]!;
+      return NextResponse.json(
+        {
+          error: "Provider not available on your plan",
+          details: `"${blocked.name}" requires a Pro or Enterprise plan. See /pricing to upgrade.`,
+        },
+        { status: 403 }
+      );
+    }
 
     // Get user-saved API keys from Firebase (falls back to env vars)
     const userApiKeys = await getUserApiKeys(uid);
@@ -764,13 +800,14 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
 
     // ── Streaming mode ──────────────────────────────────────
     if (stream) {
-      const streamOrdered = providerPriority
+      const streamOrdered = (providerPriority
         ? providerPriority
             .filter((p: { id: string; active: boolean }) => p.active)
             .sort((a: { priority: number }, b: { priority: number }) => a.priority - b.priority)
             .map((p: { id: string }) => streamProviders.find((sp) => sp.id === p.id))
             .filter(Boolean)
-        : streamProviders;
+        : streamProviders
+      ).filter((p) => p && allowedProviderIds.has(p.id));
 
       let lastError = "";
 
@@ -832,6 +869,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
                     controller.enqueue(encoder.encode(JSON.stringify({ type: "token", content: token }) + "\n"));
                   }
 
+                  void trackUsage(uid, "ai_calls");
                   controller.enqueue(encoder.encode(JSON.stringify({ type: "done" }) + "\n"));
                   controller.close();
                 } catch (error) {
@@ -902,6 +940,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
 
         try {
           const response = await provider.callAPI(messages, apiKey, systemPrompt);
+          void trackUsage(uid, "ai_calls");
           return NextResponse.json({ response, provider: provider.name, providerId: provider.id, keyUsed: keyLabel });
         } catch (error) {
           const errorMsg = safeErrorMessage(error, "Unknown error");
@@ -938,10 +977,13 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
 // List available providers
 export const GET = withAuth(async (_request: NextRequest, uid: string) => {
   const userApiKeys = await getUserApiKeys(uid);
+  const tier = await getUserTier(uid);
+  const allowed = new Set<string>(getAllowedProviders(tier));
   const available = allProviders.map((p) => ({
     id: p.id,
     name: p.name,
     configured: !!userApiKeys[p.id] || !!process.env[p.envKey],
+    locked: !allowed.has(p.id),
   }));
   return NextResponse.json({ providers: available });
 }, LIMITS.AI_CHAT);

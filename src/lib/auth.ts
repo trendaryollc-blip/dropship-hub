@@ -65,7 +65,12 @@ export async function getUserTier(uid: string): Promise<UserTier> {
     if (userDoc.exists) {
       const data = userDoc.data();
       const tier = data?.tier as string;
-      if (tier === "enterprise" || tier === "pro") return tier;
+      // Paid tiers only while the subscription actually grants access —
+      // must match getUserTier in src/lib/billing/stripe.ts (active|trialing).
+      const status = data?.status as string | undefined;
+      if ((status === "active" || status === "trialing") && (tier === "enterprise" || tier === "pro")) {
+        return tier;
+      }
     }
   } catch {
     // Fall through to free tier (incl. when the Admin SDK is unavailable)
