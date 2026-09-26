@@ -35,6 +35,8 @@ const envSchema = z.object({
   SCRAPER_API_KEY: z.string().optional(),
   SCRAPER_API_KEYS: z.string().optional(),
   GROQ_API_KEYS: z.string().optional(),
+  EASYPOST_API_KEY: z.string().optional(),
+  EASYPOST_API_KEYS: z.string().optional(),
   ZENROWS_API_KEY: z.string().optional(),
   WOOCOMMERCE_URL: z.string().min(1).optional(),
   WOOCOMMERCE_CONSUMER_KEY: z.string().optional(),

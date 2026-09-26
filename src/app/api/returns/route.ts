@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
-import { safeErrorMessage } from "@/lib/api-errors";
+import { safeErrorMessage, PublicError } from "@/lib/api-errors";
+import { ConfigMissingError, QuotaExhaustedError } from "@/lib/api-keys/pool";
+import { purchaseReturnLabel } from "@/lib/shipping/label-service";
+import { GenerateLabelInputSchema, type LabelAddress } from "@/types/returns";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -20,7 +23,14 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
 
     const snap = await query.limit(limitParam).get();
     const returns = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    return NextResponse.json({ returns });
+
+    const settingsSnap = await db
+      .collection("users").doc(uid).collection("returnSettings")
+      .doc("default")
+      .get();
+    const returnSettings = settingsSnap.exists ? settingsSnap.data() : null;
+
+    return NextResponse.json({ returns, returnSettings });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch returns", details: safeErrorMessage(error, "Unknown") }, { status: 500 });
   }
@@ -64,17 +74,100 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     }
 
     if (action === "generateLabel") {
-      const { returnId } = data;
-      if (!returnId) {
-        return NextResponse.json({ error: "returnId required" }, { status: 400 });
+      const parsed = GenerateLabelInputSchema.safeParse(data);
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: "Invalid generateLabel input", details: parsed.error.flatten().fieldErrors },
+          { status: 400 }
+        );
       }
-      return NextResponse.json(
-        {
-          error:
-            "Return labels require a carrier integration (EasyPost or ShipStation), which is not connected yet. Create the label with your carrier directly, or connect a carrier account once the integration ships.",
-        },
-        { status: 501 }
-      );
+      const { returnId, fromAddress, toAddress, weightOz } = parsed.data;
+
+      const retRef = db.collection("users").doc(uid).collection("returnRequests").doc(returnId);
+      const retSnap = await retRef.get();
+      if (!retSnap.exists) {
+        return NextResponse.json({ error: "Return not found" }, { status: 404 });
+      }
+      const ret = retSnap.data() as {
+        orderNumber?: string;
+        customerAddress?: LabelAddress | null;
+      };
+
+      const from: LabelAddress | null = fromAddress ?? ret.customerAddress ?? null;
+      let to: LabelAddress | null = toAddress ?? null;
+      if (!to) {
+        const settingsSnap = await db
+          .collection("users").doc(uid).collection("returnSettings")
+          .doc("default")
+          .get();
+        to = (settingsSnap.exists ? settingsSnap.data()?.returnAddress : null) ?? null;
+      }
+
+      if (!from) {
+        return NextResponse.json(
+          { error: "The customer's return address is required to buy a label. Fill in the ship-from address and try again.", field: "fromAddress" },
+          { status: 400 }
+        );
+      }
+      if (!to) {
+        return NextResponse.json(
+          { error: "Your return address is required to buy a label. Fill in the ship-to address and try again.", field: "toAddress" },
+          { status: 400 }
+        );
+      }
+
+      try {
+        const label = await purchaseReturnLabel({
+          fromAddress: from,
+          toAddress: to,
+          reference: ret.orderNumber || returnId,
+          parcel: weightOz ? { weightOz } : undefined,
+        });
+
+        await retRef.update({
+          returnLabel: {
+            trackingNumber: label.trackingNumber,
+            carrier: label.carrier,
+            returnAddress: label.returnAddress,
+            instructions: label.instructions,
+            labelUrl: label.labelUrl,
+            generatedAt: new Date().toISOString(),
+          },
+          customerAddress: from,
+          status: "label_generated",
+          updatedAt: new Date().toISOString(),
+        });
+
+        if (toAddress) {
+          await db
+            .collection("users").doc(uid).collection("returnSettings")
+            .doc("default")
+            .set({ returnAddress: toAddress }, { merge: true });
+        }
+
+        return NextResponse.json({ success: true, label, postagePrice: label.postagePrice });
+      } catch (error) {
+        if (error instanceof ConfigMissingError) {
+          return NextResponse.json({ error: error.message }, { status: 501 });
+        }
+        if (error instanceof QuotaExhaustedError) {
+          return NextResponse.json({ error: error.message }, { status: 429 });
+        }
+        if (error instanceof PublicError) {
+          return NextResponse.json({ error: error.message }, { status: 400 });
+        }
+        const status = (error as { status?: number })?.status;
+        if (status === 401 || status === 403) {
+          return NextResponse.json(
+            { error: "EasyPost rejected the API key. Check EASYPOST_API_KEYS in Settings → API Keys." },
+            { status: 502 }
+          );
+        }
+        return NextResponse.json(
+          { error: "Failed to purchase the return label", details: safeErrorMessage(error, "Unknown") },
+          { status: 502 }
+        );
+      }
     }
 
     if (action === "detect") {

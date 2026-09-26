@@ -9,8 +9,8 @@ Scoring and recommendations are **rule-based** (deterministic formulas over real
 ## Current status
 
 - **Works out of the box:** auth, all 10 calculators, dashboard from your own store data, profit/revenue/cash-flow tracking, price-war and order-routing rules, missions, compliance checks, listing templates, reports, settings, and the full admin area.
-- **Work fully once API keys are added:** product search & trending, market intel (Google Trends interest index), trend analysis, niche catalog, competitor enrichment, CJ fulfillment, AI provider features. Without keys these pages show honest empty/setup states.
-- **Needs a new integration:** carrier return labels (returns a clear `501` — needs EasyPost/ShipStation) and review import (`501` — needs a review source).
+- **Work fully once API keys are added:** product search & trending, market intel (Google Trends interest index), trend analysis, niche catalog, competitor enrichment, CJ fulfillment, return labels (EasyPost), AI provider features. Without keys these pages show honest empty/setup states.
+- **Needs a new integration:** review import (`501` — needs a review source).
 
 Full per-feature status: **[FEATURE-CATALOG.md](FEATURE-CATALOG.md)**.
 

@@ -17,6 +17,7 @@ Multi-key rotation lives in `src/lib/api-keys/pool.ts`. Providers and pool env v
 | ScraperAPI      | `SCRAPER_API_KEYS`               | https://www.scraperapi.com/dashboard/                        |
 | OpenAI          | `OPENAI_API_KEYS`                | https://platform.openai.com/api-keys                         |
 | Groq            | `GROQ_API_KEYS`                  | https://console.groq.com/keys                                |
+| EasyPost        | `EASYPOST_API_KEYS`              | https://www.easypost.com/dashboard                           |
 
 On quota exhaustion the pool cools the key and the envelope UI explains how to add another free-tier key.
 
@@ -38,6 +39,7 @@ On quota exhaustion the pool cools the key and the envelope UI explains how to a
 | Niche / category catalog                             | CJ + local catalog                                                     | `CJ_API_KEY`                                                                     | Catalog-only or empty with setup hint                                                      |
 | Store connections (Shopify / WooCommerce)            | User OAuth / store credentials                                         | See `.env.example`                                                               | Connection not configured state                                                            |
 | Fulfillment (CJ)                                     | CJ API                                                                 | `CJ_API_KEYS`                                                                    | Adapter unavailable message                                                                |
+| Return label purchase                                | EasyPost (real postage, cheapest rate auto-selected)                   | `EASYPOST_API_KEYS`                                                              | Honest `501` with setup instructions; never a fabricated tracking number                   |
 | AI assists                                           | OpenAI / Groq pools                                                    | `OPENAI_API_KEYS`, `GROQ_API_KEYS`                                               | Provider unavailable; no fake completions                                                  |
 | Email (trend digest)                                 | Resend / SendGrid                                                      | `RESEND_API_KEY` / `SENDGRID_API_KEY`                                            | Email not configured state                                                                 |
 | Revenue / profit KPIs                                | User Firestore entries                                                 | Firebase Admin                                                                   | Empty / coming soon naming the missing deliverable                                         |

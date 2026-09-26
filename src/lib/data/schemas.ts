@@ -981,6 +981,16 @@ export const ReturnLabelSchema = z.object({
   generatedAt: z.string(),
 });
 
+export const LabelAddressSchema = z.object({
+  name: z.string().min(1).max(200),
+  street1: z.string().min(1).max(300),
+  city: z.string().min(1).max(100),
+  state: z.string().min(1).max(100),
+  zip: z.string().min(1).max(20),
+  country: z.string().min(2).max(3).default("US"),
+  email: z.string().email().max(320).optional(),
+});
+
 export const ReturnRequestDocSchema = z.object({
   orderId: z.string(),
   orderNumber: z.string(),
@@ -998,6 +1008,7 @@ export const ReturnRequestDocSchema = z.object({
     "received", "inspected", "refunded", "denied", "cancelled",
   ]),
   returnLabel: ReturnLabelSchema.nullable(),
+  customerAddress: LabelAddressSchema.nullable().optional(),
   refundAmount: z.number(),
   supplierId: z.string(),
   supplierName: z.string(),
@@ -1103,6 +1114,7 @@ export const ReturnSettingsDocSchema = z.object({
   notifyCustomer: z.boolean(),
   restockingFeePercent: z.number(),
   returnWindowDays: z.number(),
+  returnAddress: LabelAddressSchema.nullable().default(null),
 });
 
 export const AddReturnSettingsInputSchema = z.object({

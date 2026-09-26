@@ -5,7 +5,7 @@ import {
   RotateCcw, Package, AlertTriangle, CheckCircle2, Clock,
   DollarSign, Shield, Loader2, Search, RefreshCw,
   Eye, ChevronRight, X, Send, TrendingDown,
-  Tag, Truck,
+  Tag, Truck, Printer,
 } from "lucide-react";
 import VoiceInput from "@/components/ai/VoiceInput";
 import Image from "next/image";
@@ -18,7 +18,7 @@ import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
 import type {
   ReturnRequest, RefundCalculation,
   DefectReport, DefectAnalytics,
-  ReturnReason,
+  ReturnReason, LabelAddress,
 } from "@/types/returns";
 import {
   RETURN_REASON_LABELS, RETURN_STATUS_LABELS, RETURN_STATUS_COLORS,
@@ -56,8 +56,9 @@ function KPICard({ label, value, prefix, suffix, icon: Icon, color, delay }: {
   );
 }
 
-function ReturnCard({ ret, onAction, selected, onSelect, loading }: {
+function ReturnCard({ ret, onAction, onRequestLabel, selected, onSelect, loading }: {
   ret: ReturnRequest; onAction: (id: string, action: string, data?: Record<string, unknown>) => void;
+  onRequestLabel: (ret: ReturnRequest) => void;
   selected: boolean; onSelect: (id: string) => void;
   loading: boolean;
 }) {
@@ -104,11 +105,22 @@ function ReturnCard({ ret, onAction, selected, onSelect, loading }: {
 
       {ret.returnLabel && (
         <div className="p-2 rounded-lg bg-surface/50 mb-3">
-          <div className="flex items-center gap-2">
-            <Truck className="h-3 w-3 text-purple-400" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <Truck className="h-3 w-3 text-purple-400 shrink-0" />
             <span className="text-[9px] text-muted-foreground">
               {ret.returnLabel.carrier} · {ret.returnLabel.trackingNumber}
             </span>
+            {ret.returnLabel.labelUrl && (
+              <a
+                href={ret.returnLabel.labelUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-purple-400/10 text-purple-400 hover:bg-purple-400/20 transition-all ml-auto"
+              >
+                <Printer className="h-3 w-3" /> Print label
+              </a>
+            )}
           </div>
         </div>
       )}
@@ -134,7 +146,7 @@ function ReturnCard({ ret, onAction, selected, onSelect, loading }: {
         )}
         {ret.status === "approved" && (
           <button
-            onClick={(e) => { e.stopPropagation(); onAction(ret.id, "generateLabel"); }}
+            onClick={(e) => { e.stopPropagation(); onRequestLabel(ret); }}
             disabled={loading}
             className="flex items-center gap-1 px-2.5 py-1.5 bg-purple-500/20 text-purple-400 rounded-lg text-[10px] font-medium hover:bg-purple-500/30 transition-all disabled:opacity-50"
           >
@@ -293,21 +305,41 @@ function SupplierDefectRow({ supplier }: { supplier: { supplierId: string; suppl
   );
 }
 
+function TextField({ label, value, onChange, placeholder, type, min, className }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string;
+  type?: string; min?: number; className?: string;
+}) {
+  return (
+    <div className={className}>
+      <p className="text-[9px] font-semibold text-muted-foreground mb-1">{label}</p>
+      <input
+        type={type || "text"}
+        {...(min !== undefined ? { min } : {})}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full px-3 py-2 bg-surface border border-white/10 rounded-lg text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent"
+      />
+    </div>
+  );
+}
+
 export default function ReturnsPage() {
   const { user } = useAuth();
   const uid = user?.uid || "";
-  const { error: toastError } = useToast();
+  const { error: toastError, success: toastSuccess } = useToast();
 
   const returnsUrl = uid ? `/api/returns?uid=${uid}` : null;
   const defectsUrl = uid ? `/api/returns/defects?type=analytics&uid=${uid}` : null;
   const refundsUrl = uid ? `/api/returns/refund?uid=${uid}` : null;
 
-  const { data: returnsData, isLoading: returnsLoading, mutate: mutateReturns } = useAPI<{ returns?: ReturnRequest[] }>(returnsUrl);
+  const { data: returnsData, isLoading: returnsLoading, mutate: mutateReturns } = useAPI<{ returns?: ReturnRequest[]; returnSettings?: { returnAddress?: LabelAddress | null } | null }>(returnsUrl);
   const { data: defectsData, isLoading: defectsLoading, mutate: mutateDefects } = useAPI<{ defects?: DefectReport[] }>(uid ? `/api/returns/defects?uid=${uid}` : null);
   const { data: analyticsData, isLoading: analyticsLoading } = useAPI<{ suppliers?: DefectAnalytics["suppliers"]; totalDefects?: number; severityBreakdown?: Record<string, number>; topDefectProducts?: { productId: string; productName: string; defectCount: number; supplierName: string }[] }>(defectsUrl);
   const { data: refundsData, isLoading: refundsLoading, mutate: mutateRefunds } = useAPI<{ refunds?: RefundCalculation[] }>(refundsUrl);
 
   const returns = returnsData?.returns ?? [];
+  const returnSettings = returnsData?.returnSettings ?? null;
   const defects = defectsData?.defects ?? [];
   const refunds = refundsData?.refunds ?? [];
   const analytics: {
@@ -326,6 +358,11 @@ export default function ReturnsPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showDetect, setShowDetect] = useState(false);
   const [detectResults, setDetectResults] = useState<ReturnCandidate[]>([]);
+  const [labelTarget, setLabelTarget] = useState<ReturnRequest | null>(null);
+  const [labelFrom, setLabelFrom] = useState<LabelAddress | null>(null);
+  const [labelTo, setLabelTo] = useState<LabelAddress | null>(null);
+  const [labelWeightOz, setLabelWeightOz] = useState(16);
+  const [labelLoading, setLabelLoading] = useState(false);
 
   const filteredReturns = returns.filter((r) => {
     const matchesStatus = statusFilter === "all" || r.status === statusFilter;
@@ -360,12 +397,6 @@ export default function ReturnsPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ uid: user.uid, action: "updateStatus", returnId: id, status }),
         });
-      } else if (action === "generateLabel") {
-        await safeFetch<unknown>("/api/returns", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ uid: user.uid, action: "generateLabel", returnId: id }),
-        });
       } else if (action === "updateStatus") {
         await safeFetch<unknown>("/api/returns", {
           method: "POST",
@@ -386,6 +417,69 @@ export default function ReturnsPage() {
       toastError(err instanceof Error ? err.message : "Action failed. Please try again.");
     }
     setActionLoading(null);
+  };
+
+  const openLabelModal = (ret: ReturnRequest) => {
+    setLabelFrom(
+      ret.customerAddress ?? {
+        name: ret.customerName || "",
+        street1: "",
+        city: "",
+        state: "",
+        zip: "",
+        country: "US",
+        ...(ret.customerEmail ? { email: ret.customerEmail } : {}),
+      }
+    );
+    setLabelTo(
+      returnSettings?.returnAddress ?? {
+        name: "",
+        street1: "",
+        city: "",
+        state: "",
+        zip: "",
+        country: "US",
+      }
+    );
+    setLabelWeightOz(16);
+    setLabelTarget(ret);
+  };
+
+  const labelFormValid =
+    !!labelFrom && !!labelTo &&
+    labelFrom.name.trim() !== "" && labelFrom.street1.trim() !== "" &&
+    labelFrom.city.trim() !== "" && labelFrom.state.trim() !== "" && labelFrom.zip.trim() !== "" &&
+    labelTo.name.trim() !== "" && labelTo.street1.trim() !== "" &&
+    labelTo.city.trim() !== "" && labelTo.state.trim() !== "" && labelTo.zip.trim() !== "";
+
+  const submitLabel = async () => {
+    if (!user || !labelTarget || !labelFrom || !labelTo) return;
+    if (!labelFormValid) {
+      toastError("Fill in both the ship-from and ship-to addresses completely.");
+      return;
+    }
+    setLabelLoading(true);
+    try {
+      const res = await safeFetch<{ success?: boolean; label?: { trackingNumber?: string; carrier?: string; labelUrl?: string | null } }>("/api/returns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uid: user.uid,
+          action: "generateLabel",
+          returnId: labelTarget.id,
+          fromAddress: labelFrom,
+          toAddress: labelTo,
+          weightOz: labelWeightOz,
+        }),
+      });
+      const tracking = res?.label?.trackingNumber;
+      toastSuccess(tracking ? `Label purchased — tracking ${tracking}` : "Return label purchased");
+      setLabelTarget(null);
+      mutateReturns();
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Label purchase failed. Please try again.");
+    }
+    setLabelLoading(false);
   };
 
   const handleDetect = async () => {
@@ -532,6 +626,7 @@ export default function ReturnsPage() {
                   key={ret.id}
                   ret={ret}
                   onAction={handleAction}
+                  onRequestLabel={openLabelModal}
                   loading={actionLoading === ret.id}
                   selected={selectedReturnId === ret.id}
                   onSelect={(id) => setSelectedReturnId(selectedReturnId === id ? null : id)}
@@ -683,6 +778,83 @@ export default function ReturnsPage() {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* Generate Label Modal */}
+      {labelTarget && labelFrom && labelTo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="glass rounded-2xl w-full max-w-lg max-h-[85vh] overflow-hidden border border-white/10 flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
+              <h3 className="font-display text-sm font-semibold text-foreground flex items-center gap-2">
+                <Tag className="h-4 w-4 text-purple-400" /> Generate Return Label
+                <span className="text-[10px] text-muted-foreground font-mono">#{labelTarget.orderNumber}</span>
+              </h3>
+              <button onClick={() => setLabelTarget(null)} className="p-1 rounded-lg hover:bg-surface transition-colors">
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto space-y-4">
+              <div>
+                <p className="text-[10px] font-semibold text-foreground mb-2 flex items-center gap-1.5">
+                  <Send className="h-3 w-3 text-accent" /> Ship from — customer
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <TextField label="Full name" value={labelFrom.name} onChange={(v) => setLabelFrom({ ...labelFrom, name: v })} placeholder="Jane Customer" className="col-span-2" />
+                  <TextField label="Street address" value={labelFrom.street1} onChange={(v) => setLabelFrom({ ...labelFrom, street1: v })} placeholder="123 Main St" className="col-span-2" />
+                  <TextField label="City" value={labelFrom.city} onChange={(v) => setLabelFrom({ ...labelFrom, city: v })} placeholder="Austin" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <TextField label="State" value={labelFrom.state} onChange={(v) => setLabelFrom({ ...labelFrom, state: v })} placeholder="TX" />
+                    <TextField label="ZIP" value={labelFrom.zip} onChange={(v) => setLabelFrom({ ...labelFrom, zip: v })} placeholder="78701" />
+                  </div>
+                </div>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold text-foreground mb-2 flex items-center gap-1.5">
+                  <Package className="h-3 w-3 text-purple-400" /> Ship to — your return address
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <TextField label="Name / company" value={labelTo.name} onChange={(v) => setLabelTo({ ...labelTo, name: v })} placeholder="Trendaryo Returns" className="col-span-2" />
+                  <TextField label="Street address" value={labelTo.street1} onChange={(v) => setLabelTo({ ...labelTo, street1: v })} placeholder="500 Commerce St" className="col-span-2" />
+                  <TextField label="City" value={labelTo.city} onChange={(v) => setLabelTo({ ...labelTo, city: v })} placeholder="Los Angeles" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <TextField label="State" value={labelTo.state} onChange={(v) => setLabelTo({ ...labelTo, state: v })} placeholder="CA" />
+                    <TextField label="ZIP" value={labelTo.zip} onChange={(v) => setLabelTo({ ...labelTo, zip: v })} placeholder="90001" />
+                  </div>
+                </div>
+              </div>
+              <TextField
+                label="Package weight (oz)"
+                value={String(labelWeightOz)}
+                onChange={(v) => setLabelWeightOz(Math.max(1, Math.min(1000, parseInt(v, 10) || 1)))}
+                type="number"
+                min={1}
+                placeholder="16"
+              />
+              <p className="text-[10px] text-muted-foreground leading-relaxed">
+                A real postage label will be purchased through EasyPost — postage cost is charged by your carrier
+                account. Requires an EasyPost key (free test keys available in Settings → API Keys). The ship-to
+                address is saved as your default return address.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2 p-4 border-t border-border shrink-0">
+              <button
+                onClick={() => setLabelTarget(null)}
+                disabled={labelLoading}
+                className="px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-surface transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitLabel}
+                disabled={!labelFormValid || labelLoading}
+                className="flex items-center gap-1.5 px-4 py-2 bg-purple-500/20 text-purple-400 rounded-lg text-xs font-semibold hover:bg-purple-500/30 transition-all disabled:opacity-50"
+              >
+                {labelLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Tag className="h-3.5 w-3.5" />}
+                {labelLoading ? "Purchasing…" : "Generate Label"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

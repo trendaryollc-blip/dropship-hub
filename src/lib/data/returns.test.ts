@@ -26,7 +26,6 @@ import {
   getDefectAnalytics,
   saveReturnSettings,
   getReturnSettings,
-  generateReturnLabel,
   calculateRefund,
   detectReturnsFromOrders,
 } from "./returns";
@@ -469,24 +468,6 @@ describe("getReturnSettings", () => {
     const result = await getReturnSettings("uid1");
     expect(result).not.toBeNull();
     expect(result!.autoDetectReturns).toBe(true);
-  });
-});
-
-describe("generateReturnLabel", () => {
-  it("generates label with tracking number", () => {
-    const label = generateReturnLabel("ord-1", "ret-1", "Test Supplier");
-    expect(label).not.toBeNull();
-    expect(label!.trackingNumber).toMatch(/^RT/);
-    expect(label!.carrier).toBeTruthy();
-    expect(label!.returnAddress).toContain("Test Supplier");
-    expect(label!.instructions).toContain("Print this return label");
-    expect(label!.instructions).toContain(label!.trackingNumber);
-    expect(label!.generatedAt).toBeTruthy();
-  });
-
-  it("labelUrl is null", () => {
-    const label = generateReturnLabel("ord-1", "ret-1", "Supplier");
-    expect(label!.labelUrl).toBeNull();
   });
 });
 

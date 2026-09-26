@@ -13,7 +13,8 @@ export type ProviderId =
   | "keepa"
   | "scraperapi"
   | "openai"
-  | "groq";
+  | "groq"
+  | "easypost";
 
 export interface ProviderSetup {
   id: ProviderId;
@@ -79,6 +80,13 @@ export const PROVIDERS: Record<ProviderId, ProviderSetup> = {
     envVars: ["GROQ_API_KEYS", "GROQ_API_KEY"],
     poolEnvVar: "GROQ_API_KEYS",
     getKeyUrl: "https://console.groq.com/keys",
+  },
+  easypost: {
+    id: "easypost",
+    name: "EasyPost",
+    envVars: ["EASYPOST_API_KEYS", "EASYPOST_API_KEY"],
+    poolEnvVar: "EASYPOST_API_KEYS",
+    getKeyUrl: "https://www.easypost.com/dashboard",
   },
 };
 

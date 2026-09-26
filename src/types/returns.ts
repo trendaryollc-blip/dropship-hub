@@ -32,6 +32,16 @@ export interface ReturnLabel {
   generatedAt: string;
 }
 
+export interface LabelAddress {
+  name: string;
+  street1: string;
+  city: string;
+  state: string;
+  zip: string;
+  country: string;
+  email?: string;
+}
+
 export interface ReturnRequestItem {
   productId: string;
   productName: string;
@@ -52,6 +62,7 @@ export interface ReturnRequest {
   reasonDetails: string;
   status: ReturnStatus;
   returnLabel: ReturnLabel | null;
+  customerAddress: LabelAddress | null;
   refundAmount: number;
   supplierId: string;
   supplierName: string;
@@ -247,6 +258,7 @@ export interface ReturnSettings {
   notifyCustomer: boolean;
   restockingFeePercent: number;
   returnWindowDays: number;
+  returnAddress: LabelAddress | null;
 }
 
 export const DEFAULT_RETURN_SETTINGS: ReturnSettings = {
@@ -257,6 +269,7 @@ export const DEFAULT_RETURN_SETTINGS: ReturnSettings = {
   notifyCustomer: true,
   restockingFeePercent: 0,
   returnWindowDays: 30,
+  returnAddress: null,
 };
 
 // ── Return Stats ────────────────────────────────────────────────────────────
@@ -289,6 +302,16 @@ export const ReturnLabelSchema = z.object({
   generatedAt: z.string(),
 });
 
+export const LabelAddressSchema = z.object({
+  name: z.string().min(1).max(200),
+  street1: z.string().min(1).max(300),
+  city: z.string().min(1).max(100),
+  state: z.string().min(1).max(100),
+  zip: z.string().min(1).max(20),
+  country: z.string().min(2).max(3).default("US"),
+  email: z.string().email().max(320).optional(),
+});
+
 export const ReturnRequestSchema = z.object({
   id: z.string(),
   orderId: z.string(),
@@ -307,6 +330,7 @@ export const ReturnRequestSchema = z.object({
     "received", "inspected", "refunded", "denied", "cancelled",
   ]),
   returnLabel: ReturnLabelSchema.nullable(),
+  customerAddress: LabelAddressSchema.nullable().optional(),
   refundAmount: z.number().min(0),
   supplierId: z.string(),
   supplierName: z.string(),
@@ -370,6 +394,7 @@ export const ReturnSettingsSchema = z.object({
   notifyCustomer: z.boolean(),
   restockingFeePercent: z.number().min(0).max(100),
   returnWindowDays: z.number().int().min(1).max(365),
+  returnAddress: LabelAddressSchema.nullable().optional(),
 });
 
 // ── Input Schemas ───────────────────────────────────────────────────────────
@@ -390,6 +415,13 @@ export const AddReturnRequestInputSchema = z.object({
   supplierName: z.string().min(1).max(500),
   platform: z.string().min(1).max(100),
   storePlatform: z.string().min(1).max(100),
+});
+
+export const GenerateLabelInputSchema = z.object({
+  returnId: z.string().min(1).max(200),
+  fromAddress: LabelAddressSchema.optional(),
+  toAddress: LabelAddressSchema.optional(),
+  weightOz: z.number().int().min(1).max(1000).optional(),
 });
 
 export const AddRefundCalculationInputSchema = z.object({

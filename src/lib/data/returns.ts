@@ -465,25 +465,10 @@ export async function getReturnSettings(uid: string): Promise<ReturnSettings | n
 }
 
 // ── Return Label Generation ─────────────────────────────────────────────────
-
-export function generateReturnLabel(
-  orderId: string,
-  returnId: string,
-  supplierName: string
-): ReturnRequest["returnLabel"] {
-  const trackingNumber = `RT${Date.now()}${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-  const carriers = ["USPS", "UPS", "FedEx", "DHL"];
-  const carrier = carriers[Math.floor(Math.random() * carriers.length)];
-
-  return {
-    trackingNumber,
-    carrier,
-    returnAddress: `Returns Center\n${supplierName}\n123 Return Lane\nLos Angeles, CA 90001`,
-    instructions: `1. Print this return label and attach it to the package.\n2. Pack the item(s) securely in original packaging if possible.\n3. Drop off at any ${carrier} location.\n4. Keep your tracking number: ${trackingNumber}\n5. Refund will be processed within 3-5 business days of receipt.`,
-    labelUrl: null,
-    generatedAt: new Date().toISOString(),
-  };
-}
+// Real label purchase lives in src/lib/shipping/label-service.ts (EasyPost).
+// The old local generator fabricated random tracking numbers and carriers and
+// has been removed — labels are only ever rendered when a carrier API bought
+// one. See src/app/api/returns/route.ts → action "generateLabel".
 
 // ── Refund Calculation Engine ───────────────────────────────────────────────
 

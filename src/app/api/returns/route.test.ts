@@ -21,6 +21,10 @@ vi.mock("@/lib/firebase-admin", () => ({
   getAdminDB: vi.fn().mockResolvedValue({ collection: mockCollection }),
 }));
 
+vi.mock("@/lib/shipping/label-service", () => ({
+  purchaseReturnLabel: vi.fn(),
+}));
+
 describe("/api/returns", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -102,21 +106,6 @@ describe("/api/returns", () => {
     expect(response.status).toBe(400);
   });
 
-  it("POST generateLabel returns 501 until a carrier integration exists", async () => {
-    const { POST } = await import("./route");
-    const request = new Request("http://localhost/api/returns", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "generateLabel", returnId: "ret-1" }),
-    });
-    (request as any).nextUrl = new URL("http://localhost/api/returns");
-    const response = await POST(request as any);
-    expect(response.status).toBe(501);
-    const body = await response.json();
-    expect(body.error).toMatch(/carrier integration/);
-    expect(mockUpdate).not.toHaveBeenCalled();
-  });
-
   it("POST generateLabel returns 400 without returnId", async () => {
     const { POST } = await import("./route");
     const request = new Request("http://localhost/api/returns", {
@@ -127,6 +116,108 @@ describe("/api/returns", () => {
     (request as any).nextUrl = new URL("http://localhost/api/returns");
     const response = await POST(request as any);
     expect(response.status).toBe(400);
+  });
+
+  it("POST generateLabel returns 404 for missing return", async () => {
+    mockGet.mockResolvedValue({ exists: false });
+    const { POST } = await import("./route");
+    const request = new Request("http://localhost/api/returns", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "generateLabel",
+        returnId: "nonexistent",
+        fromAddress: { name: "A", street1: "1 St", city: "X", state: "TX", zip: "1", country: "US" },
+        toAddress: { name: "B", street1: "2 St", city: "Y", state: "CA", zip: "2", country: "US" },
+      }),
+    });
+    (request as any).nextUrl = new URL("http://localhost/api/returns");
+    const response = await POST(request as any);
+    expect(response.status).toBe(404);
+  });
+
+  it("POST generateLabel returns 400 when the customer address is missing", async () => {
+    mockGet.mockResolvedValue({ exists: true, data: () => ({ orderNumber: "ORD-1" }) });
+    const { POST } = await import("./route");
+    const request = new Request("http://localhost/api/returns", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "generateLabel", returnId: "ret-1" }),
+    });
+    (request as any).nextUrl = new URL("http://localhost/api/returns");
+    const response = await POST(request as any);
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.field).toBe("fromAddress");
+  });
+
+  it("POST generateLabel returns 501 when EasyPost is not configured", async () => {
+    mockGet.mockResolvedValue({ exists: true, data: () => ({ orderNumber: "ORD-1" }) });
+    const { purchaseReturnLabel } = await import("@/lib/shipping/label-service");
+    const { ConfigMissingError } = await import("@/lib/api-keys/pool");
+    vi.mocked(purchaseReturnLabel).mockRejectedValue(new ConfigMissingError("easypost"));
+
+    const { POST } = await import("./route");
+    const request = new Request("http://localhost/api/returns", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "generateLabel",
+        returnId: "ret-1",
+        fromAddress: { name: "A", street1: "1 St", city: "X", state: "TX", zip: "1", country: "US" },
+        toAddress: { name: "B", street1: "2 St", city: "Y", state: "CA", zip: "2", country: "US" },
+      }),
+    });
+    (request as any).nextUrl = new URL("http://localhost/api/returns");
+    const response = await POST(request as any);
+    expect(response.status).toBe(501);
+    const body = await response.json();
+    expect(body.error).toMatch(/EasyPost is not configured/);
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it("POST generateLabel purchases a label and stores it on the return", async () => {
+    mockGet.mockResolvedValue({ exists: true, data: () => ({ orderNumber: "ORD-1" }) });
+    const { purchaseReturnLabel } = await import("@/lib/shipping/label-service");
+    vi.mocked(purchaseReturnLabel).mockResolvedValue({
+      trackingNumber: "940011189922319876543210",
+      carrier: "USPS",
+      service: "Priority Mail",
+      labelUrl: "https://api.easypost.com/postage_label/label.pdf",
+      postagePrice: { amount: 7.35, currency: "USD" },
+      shipmentId: "shp_1",
+      returnAddress: "B\n2 St\nY, CA 2",
+      instructions: "Print this return label. Tracking: 940011189922319876543210",
+    });
+
+    const { POST } = await import("./route");
+    const request = new Request("http://localhost/api/returns", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "generateLabel",
+        returnId: "ret-1",
+        fromAddress: { name: "A", street1: "1 St", city: "X", state: "TX", zip: "1", country: "US" },
+        toAddress: { name: "B", street1: "2 St", city: "Y", state: "CA", zip: "2", country: "US" },
+        weightOz: 20,
+      }),
+    });
+    (request as any).nextUrl = new URL("http://localhost/api/returns");
+    const response = await POST(request as any);
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.label.trackingNumber).toBe("940011189922319876543210");
+    expect(purchaseReturnLabel).toHaveBeenCalledWith(
+      expect.objectContaining({ reference: "ORD-1", parcel: { weightOz: 20 } })
+    );
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "label_generated",
+        returnLabel: expect.objectContaining({ trackingNumber: "940011189922319876543210", labelUrl: expect.any(String) }),
+      })
+    );
+    expect(mockSet).toHaveBeenCalled();
   });
 
   it("POST detect action finds return candidates", async () => {
