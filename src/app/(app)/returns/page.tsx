@@ -186,7 +186,7 @@ function ReturnCard({ ret, onAction, selected, onSelect, loading }: {
             <p className="text-[9px] font-semibold text-muted-foreground mb-1">Items</p>
             {ret.items.map((item, i) => (
               <div key={i} className="flex items-center gap-2 py-1">
-                {item.imageUrl && <Image src={item.imageUrl} alt="" width={24} height={24} className="w-6 h-6 rounded object-cover" />}
+                {item.imageUrl && <Image src={item.imageUrl} alt="" width={24} height={24} unoptimized className="w-6 h-6 rounded object-cover" />}
                 <span className="text-[10px] text-foreground flex-1 truncate">{item.productName}</span>
                 <span className="text-[10px] text-muted-foreground">x{item.quantity}</span>
                 <span className="text-[10px] text-foreground">${(item.unitPrice * item.quantity).toFixed(2)}</span>

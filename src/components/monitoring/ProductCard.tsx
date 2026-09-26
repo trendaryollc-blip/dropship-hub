@@ -19,6 +19,7 @@ import PriceHistoryChart from "./PriceHistoryChart";
 import CompetitorPanel from "./CompetitorPanel";
 import RepricingRuleEditor from "./RepricingRuleEditor";
 import { safeFetch } from "@/lib/safe-fetch";
+import { normalizeCJLink } from "@/lib/cj-url";
 import { useToast } from "@/components/ui/Toast";
 import type { MonitoredProduct } from "@/lib/monitoring/types";
 
@@ -94,6 +95,7 @@ export default function ProductCard({ product, onRemove, onCheck, onUpdate, remo
               alt={product.productTitle}
               width={56}
               height={56}
+              unoptimized
               className="h-14 w-14 rounded-lg object-cover border border-border shrink-0"
             />
           )}
@@ -142,7 +144,7 @@ export default function ProductCard({ product, onRemove, onCheck, onUpdate, remo
                 </button>
                 {product.sourceUrl && (
                   <a
-                    href={product.sourceUrl}
+                    href={normalizeCJLink(product.sourceUrl)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition-all"

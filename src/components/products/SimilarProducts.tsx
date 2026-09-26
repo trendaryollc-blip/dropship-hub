@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Package, Sparkles, ExternalLink, Star, RefreshCw } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { safeFetch } from "@/lib/safe-fetch";
+import { normalizeCJLink } from "@/lib/cj-url";
 import { useAuth } from "@/components/auth/AuthProvider";
 import SectionEmpty from "./SectionEmpty";
 
@@ -23,7 +24,7 @@ function SimilarCard({ product, index }: { product: SimilarProduct; index: numbe
 
   return (
     <div ref={ref} className={`group similar-card ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transition: `all 0.5s cubic-bezier(0.16, 1, 0.3, 1) ${index * 80}ms` }}>
-      <a href={product.link} target="_blank" rel="noopener noreferrer" className="block">
+      <a href={normalizeCJLink(product.link)} target="_blank" rel="noopener noreferrer" className="block">
         <div className="similar-image-wrap h-36 bg-gradient-to-br from-surface to-muted/20 border-b border-border/30 flex items-center justify-center">
           {product.image ? (
             <Image src={product.image} alt={product.title} width={400} height={144} unoptimized className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -65,7 +66,7 @@ function BoughtTogetherCard({ product, index }: { product: SimilarProduct; index
   const { ref, isInView } = useInView({ threshold: 0.1 });
   return (
     <div ref={ref} className={`bought-together-card transition-all ${isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`} style={{ transitionDelay: `${index * 80}ms` }}>
-      <a href={product.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 w-full">
+      <a href={normalizeCJLink(product.link)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 w-full">
         <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-surface to-muted/20 border border-border/50 flex items-center justify-center shrink-0 overflow-hidden">
           {product.image ? (
             <Image src={product.image} alt={product.title} width={64} height={64} unoptimized className="w-full h-full object-cover" />

@@ -41,6 +41,7 @@ function TrendingProductCard({ product, rank, onAddCompare, onToggleSave, isSave
               src={product.image}
               alt={product.name}
               fill
+              unoptimized
               className="object-cover"
             />
           ) : (

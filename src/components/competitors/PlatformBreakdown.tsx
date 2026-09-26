@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { TrendingUp, TrendingDown, Minus, ExternalLink, X, Star } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
+import { normalizeCJLink } from "@/lib/cj-url";
 import type { PlatformData, CompetitorListing } from "@/types/competitors";
 
 function MiniSparkline({ data, color }: { data: number[]; color: string }) {
@@ -30,7 +31,7 @@ function ListingModal({ platform, listings, onClose }: { platform: string; listi
         </div>
         <div className="overflow-y-auto max-h-[60vh] p-4 space-y-2">
           {listings.map((l) => (
-            <a key={l.id} href={l.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-xl bg-surface/50 border border-border/50 hover:border-accent/20 transition-all group">
+            <a key={l.id} href={normalizeCJLink(l.link)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-xl bg-surface/50 border border-border/50 hover:border-accent/20 transition-all group">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground truncate group-hover:text-accent transition-colors">{l.title}</p>
                 <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground">

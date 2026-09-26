@@ -385,7 +385,7 @@ function OrderDetailPanel({
                 <div key={i} className="glass rounded-xl p-3 flex items-start gap-3">
                   <div className="w-12 h-12 rounded-lg bg-surface border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
                     {item.imageUrl ? (
-                      <Image src={item.imageUrl} alt={item.name} width={48} height={48} className="w-full h-full object-cover" />
+                      <Image src={item.imageUrl} alt={item.name} width={48} height={48} unoptimized className="w-full h-full object-cover" />
                     ) : (
                       <Package className="h-5 w-5 text-muted-foreground/40" />
                     )}

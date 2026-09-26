@@ -48,6 +48,7 @@ import ActionItems from "@/components/competitors/ActionItems";
 import { PageErrorBoundary } from "@/components/ui/PageErrorBoundary";
 import DataUnavailable from "@/components/ui/DataUnavailable";
 import ComingSoon from "@/components/ui/ComingSoon";
+import { normalizeCJLink } from "@/lib/cj-url";
 
 interface RawMarketData {
   platforms: { platform: string; icon: string; avgPrice: number; minPrice: number; maxPrice: number; sellerCount: number; trend: string; trendPercent: number; sparkline: number[]; listings: { id: string; title: string; price: number; source: string; seller: string; sellerRating: number; sellerProducts: number; link: string; shipping: string; condition: string; daysAgo: number }[] }[];
@@ -555,7 +556,7 @@ function CompetitorsContent() {
                         {importedProduct.reviews != null && <span>{importedProduct.reviews.toLocaleString()} reviews</span>}
                       </div>
                     </div>
-                    <a href={importedProduct.link} target="_blank" rel="noopener noreferrer" className="text-[10px] text-accent hover:text-accent/80 shrink-0">View source</a>
+                    <a href={normalizeCJLink(importedProduct.link)} target="_blank" rel="noopener noreferrer" className="text-[10px] text-accent hover:text-accent/80 shrink-0">View source</a>
                   </div>
                 </div>
               )}

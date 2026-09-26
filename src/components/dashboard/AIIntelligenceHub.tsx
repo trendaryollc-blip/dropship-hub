@@ -8,6 +8,7 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
+import { normalizeCJLink } from "@/lib/cj-url";
 import { SectionDivider } from "./SectionDivider";
 import { ScoreRing } from "./ScoreRing";
 import type { AIDailyPick, AIBriefing, SmartAlert } from "@/types/dashboard";
@@ -92,7 +93,7 @@ export function AIIntelligenceHub({
                 {/* Product Image */}
                 <div className="w-40 h-40 rounded-xl overflow-hidden bg-gradient-to-br from-purple-500/15 to-pink-500/10 border border-purple-500/15 shrink-0 relative">
                   {dailyPick.image ? (
-                    <Image src={dailyPick.image} alt={dailyPick.title} fill className="object-cover" sizes="160px" />
+                    <Image src={dailyPick.image} alt={dailyPick.title} fill unoptimized className="object-cover" sizes="160px" />
                   ) : (
                     <div className="flex items-center justify-center h-full">
                       <Package className="h-12 w-12 text-purple-400/30" />
@@ -209,7 +210,7 @@ export function AIIntelligenceHub({
                 <Link href={`/calculator/profit?cost=${dailyPick.sourcePrice}&price=${dailyPick.sellPrice}`} className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-white/[0.1] text-gray-300 text-xs font-medium hover:bg-white/[0.05] transition-all">
                   <Calculator className="h-3.5 w-3.5" /> Compare
                 </Link>
-                <a href={dailyPick.sourceUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-white/[0.1] text-gray-300 text-xs font-medium hover:bg-white/[0.05] transition-all">
+                <a href={dailyPick.sourceUrl ? normalizeCJLink(dailyPick.sourceUrl) : undefined} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-white/[0.1] text-gray-300 text-xs font-medium hover:bg-white/[0.05] transition-all">
                   <ExternalLink className="h-3.5 w-3.5" /> Source
                 </a>
               </div>

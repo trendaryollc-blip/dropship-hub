@@ -22,6 +22,7 @@ import StickyProductBar from "@/components/products/StickyProductBar";
 import SectionNav from "@/components/products/SectionNav";
 import SectionSkeleton from "@/components/products/SectionSkeleton";
 import { safeFetch } from "@/lib/safe-fetch";
+import { normalizeCJLink } from "@/lib/cj-url";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { logger } from "@/lib/logger";
 import { PageErrorBoundary } from "@/components/ui/PageErrorBoundary";
@@ -59,7 +60,7 @@ const defaultSuggestedSearches = [
 ];
 
 export function buildProductUrl(link: string, source: string, title: string): string {
-  if (link && link !== "#") return link;
+  if (link && link !== "#") return normalizeCJLink(link);
   const q = encodeURIComponent(title || "products");
   switch (source) {
     case "amazon":

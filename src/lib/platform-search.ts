@@ -122,24 +122,11 @@ async function searchGoogleShoppingWithKey(apiKey: string, query: string): Promi
 
 // ── CJ Dropshipping ─────────────────────────────────────────────────────────
 
-// CJ product pages live at /product/<slug>-p-<pid>.html. A bare
-// /product-p-<pid> (no slug, no .html) is not a route and 302s to
-// cjdropshipping.com/404, so the slug segment is required. CJ resolves the
-// product by pid — the slug is only cosmetic/SEO — so slugifying the title
-// is safe even when it doesn't match CJ's own slug exactly.
-export function buildCJProductUrl(pid: string, title = ""): string {
-  const cleanPid = (pid || "").trim().replace(/[^A-Za-z0-9._-]/g, "");
-  if (!cleanPid) return "https://www.cjdropshipping.com/";
-  const slug = title
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 80);
-  return `https://www.cjdropshipping.com/product/${slug}-p-${cleanPid}.html`;
-}
+// URL builders live in ./cj-url (pure, client-safe) and are re-exported here
+// so server callers keep a single import site.
+import { buildCJProductUrl, normalizeCJLink } from "./cj-url";
+
+export { buildCJProductUrl, normalizeCJLink };
 
 async function searchCJProductsWithKey(apiKey: string, query: string): Promise<{ search_results: SearchResult[] }> {
   const accessToken = await getCJAccessToken(apiKey);

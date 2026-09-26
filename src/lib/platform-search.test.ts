@@ -10,6 +10,7 @@ import {
   searchViaScraper,
   platforms,
   buildCJProductUrl,
+  normalizeCJLink,
   type SearchResult,
 } from "./platform-search";
 
@@ -1545,5 +1546,32 @@ describe("buildCJProductUrl", () => {
 
   it("falls back to the CJ homepage when there is no pid", () => {
     expect(buildCJProductUrl("", "No Pid")).toBe("https://www.cjdropshipping.com/");
+  });
+});
+
+describe("normalizeCJLink", () => {
+  it("rewrites the legacy route-less product link to the canonical .html URL", () => {
+    expect(normalizeCJLink("https://cjdropshipping.com/product-p-2609250256581624900")).toBe(
+      "https://www.cjdropshipping.com/product/-p-2609250256581624900.html"
+    );
+  });
+
+  it("rewrites www and http legacy links and keeps guid pids intact", () => {
+    expect(normalizeCJLink("http://www.cjdropshipping.com/product-p-000B9312-456A-4D31-94BD-B083E2A198E8")).toBe(
+      "https://www.cjdropshipping.com/product/-p-000B9312-456A-4D31-94BD-B083E2A198E8.html"
+    );
+  });
+
+  it("leaves already-canonical product URLs untouched", () => {
+    const canonical = "https://www.cjdropshipping.com/product/wireless-widget-p-123.html";
+    expect(normalizeCJLink(canonical)).toBe(canonical);
+  });
+
+  it("leaves non-CJ URLs untouched", () => {
+    expect(normalizeCJLink("https://www.amazon.com/dp/B0ASIN123X")).toBe("https://www.amazon.com/dp/B0ASIN123X");
+  });
+
+  it("returns empty input unchanged", () => {
+    expect(normalizeCJLink("")).toBe("");
   });
 });

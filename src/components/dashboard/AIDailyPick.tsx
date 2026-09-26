@@ -113,6 +113,7 @@ export default function AIDailyPick({ pick }: { pick: AIDailyPickType }) {
             {showImage && (
               <Image src={pick.image} alt={pick.title}
                 fill
+                unoptimized
                 className={`object-cover group-hover:scale-105 transition-all duration-500 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
                 onLoad={() => setImgLoaded(true)} onError={() => setImgFailed(true)} loading="eager" />
             )}

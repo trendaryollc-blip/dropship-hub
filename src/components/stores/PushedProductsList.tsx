@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Package, ExternalLink } from "lucide-react";
+import { normalizeCJLink } from "@/lib/cj-url";
 
 export interface PushedProduct {
   id: string;
@@ -53,6 +54,7 @@ export default function PushedProductsList({ products }: Props) {
               alt=""
               width={56}
               height={56}
+              unoptimized
               className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
             />
           )}
@@ -74,7 +76,7 @@ export default function PushedProductsList({ products }: Props) {
             </span>
             {product.productUrl && (
               <a
-                href={product.productUrl}
+                href={normalizeCJLink(product.productUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition-colors"

@@ -83,7 +83,7 @@ export function ProductDiscovery({ trending, onAddCompare, onSaveProduct, isProd
                 {/* Image */}
                 <div className="relative h-40 bg-gradient-to-br from-purple-500/15 to-blue-500/10 overflow-hidden">
                   {product.image ? (
-                    <Image src={product.image} alt={product.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="320px" />
+                    <Image src={product.image} alt={product.name} fill unoptimized className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="320px" />
                   ) : (
                     <div className="flex items-center justify-center h-full"><Package className="h-12 w-12 text-purple-400/30" /></div>
                   )}

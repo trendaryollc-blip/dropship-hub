@@ -161,6 +161,12 @@ describe("buildProductUrl", () => {
   it("treats an empty link as a missing link", () => {
     expect(buildProductUrl("", "amazon", "Wireless Earbuds")).toBe("https://www.amazon.com/s?k=Wireless%20Earbuds");
   });
+
+  it("upgrades a stored legacy CJ link to the canonical product URL", () => {
+    expect(buildProductUrl("https://cjdropshipping.com/product-p-2609250256581624900", "cj", "Coffee Machine")).toBe(
+      "https://www.cjdropshipping.com/product/-p-2609250256581624900.html"
+    );
+  });
 });
 
 // ---------------------------------------------------------------- page behavior
@@ -251,6 +257,23 @@ describe("ProductDetailPage - # link fallback", () => {
     const ctas = screen.getAllByRole("link", { name: /view on amazon/i });
     expect(ctas.length).toBeGreaterThan(0);
     ctas.forEach((c) => expect(c).toHaveAttribute("href", "https://amazon.com/dp/B0REALLINK"));
+
+    await settle();
+  });
+
+  it("upgrades a stored legacy CJ link so the CTA no longer lands on cjdropshipping.com/404", async () => {
+    seedProduct({
+      link: "https://cjdropshipping.com/product-p-2609250256581624900",
+      source: "cj",
+    });
+    installDetailImpl();
+    render(<ProductDetailPage />);
+
+    const ctas = screen.getAllByRole("link", { name: /view on cj/i });
+    expect(ctas.length).toBeGreaterThan(0);
+    ctas.forEach((c) =>
+      expect(c).toHaveAttribute("href", "https://www.cjdropshipping.com/product/-p-2609250256581624900.html")
+    );
 
     await settle();
   });

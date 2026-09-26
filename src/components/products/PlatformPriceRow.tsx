@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown, ExternalLink, Check } from "lucide-react";
+import { normalizeCJLink } from "@/lib/cj-url";
 
 interface PlatformOffer {
   platform: string;
@@ -79,7 +80,7 @@ export default function PlatformPriceRow({
               </span>
             )}
             <a
-              href={offer.link}
+              href={normalizeCJLink(offer.link)}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
