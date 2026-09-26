@@ -100,4 +100,11 @@ describe("ReviewIntelligence", () => {
     expect(screen.getByText(/no review text available from this source/)).toBeInTheDocument();
     expect(screen.queryByText(/Reviews Trustworthiness: \d+\/100/)).not.toBeInTheDocument();
   });
+
+  it("labels estimated star ratings when ratingsEstimated is set", () => {
+    render(<ReviewIntelligence data={{ ...mockData, ratingsEstimated: true }} />);
+    expect(screen.getByText(/star ratings estimated from text/)).toBeInTheDocument();
+    expect(screen.getByText("Estimated from review text — not official star ratings")).toBeInTheDocument();
+    expect(screen.getByText(/star ratings were guessed from review text/)).toBeInTheDocument();
+  });
 });

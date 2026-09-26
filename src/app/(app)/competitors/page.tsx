@@ -51,7 +51,7 @@ import ComingSoon from "@/components/ui/ComingSoon";
 import { normalizeCJLink } from "@/lib/cj-url";
 
 interface RawMarketData {
-  platforms: { platform: string; icon: string; avgPrice: number; minPrice: number; maxPrice: number; sellerCount: number; trend: string; trendPercent: number; sparkline: number[]; listings: { id: string; title: string; price: number; source: string; seller: string; sellerRating: number; sellerProducts: number; link: string; shipping: string; condition: string; daysAgo: number }[] }[];
+  platforms: { platform: string; icon: string; avgPrice: number; minPrice: number; maxPrice: number; sellerCount: number; trend: string | null; trendPercent: number; sparkline: number[]; listings: { id: string; title: string; price: number; source: string; seller: string; sellerRating: number; sellerProducts: number; link: string; shipping: string; condition: string; daysAgo: number }[] }[];
   avgPrice: number;
   priceRange: { min: number; max: number };
   totalListings: number;
@@ -92,9 +92,17 @@ function castToMarketData(raw: RawMarketData, query: string): MarketData {
     competitionIntensity >= 60 ? "high" :
     competitionIntensity >= 35 ? "medium" : "low";
 
-  const marketMomentum: "heating" | "stable" | "cooling" =
-    raw.platforms.some((p) => p.trend === "up" && p.trendPercent > 5) ? "heating" :
-    raw.platforms.every((p) => p.trend === "stable" || p.trend === "down") ? "cooling" : "stable";
+  // Momentum only claims movement for platforms that carry a real trend —
+  // with no listing-age data anywhere it reports "unknown", not "stable".
+  const knownTrends = raw.platforms.filter(
+    (p): p is (typeof raw.platforms)[number] & { trend: "up" | "down" | "stable" } =>
+      p.trend === "up" || p.trend === "down" || p.trend === "stable"
+  );
+  const marketMomentum: "heating" | "stable" | "cooling" | "unknown" =
+    knownTrends.length === 0 ? "unknown" :
+    knownTrends.some((p) => p.trend === "up" && p.trendPercent > 5) ? "heating" :
+    knownTrends.some((p) => p.trend === "down") && knownTrends.every((p) => p.trend !== "up") ? "cooling" :
+    "stable";
 
   const priceVolatility = Math.round((priceSpread / avgPrice) * 100);
 
@@ -167,7 +175,7 @@ function castToMarketData(raw: RawMarketData, query: string): MarketData {
     priceDistribution: raw.priceDistribution.map((t) => ({ range: t.range, count: t.count, percent: t.percent, isSweetSpot: t.isSweetSpot })),
     platforms: raw.platforms.map((p) => ({
       platform: p.platform, icon: p.icon, avgPrice: p.avgPrice, minPrice: p.minPrice, maxPrice: p.maxPrice,
-      sellerCount: p.sellerCount, trend: p.trend as "up" | "down" | "stable", trendPercent: p.trendPercent,
+      sellerCount: p.sellerCount, trend: p.trend as "up" | "down" | "stable" | null, trendPercent: p.trendPercent,
       sparkline: p.sparkline,
       listings: p.listings.map((l) => ({
         id: l.id, title: l.title, price: l.price, source: l.source, seller: l.seller,

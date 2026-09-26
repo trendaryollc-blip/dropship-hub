@@ -74,14 +74,19 @@ export default function PlatformBreakdown({ platforms }: { platforms: PlatformDa
                 <span className="text-xl">{p.icon}</span>
                 <span className="font-display text-sm font-semibold text-foreground">{p.platform}</span>
               </div>
-              <div className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
-                p.trend === "up" ? "text-emerald-400 bg-emerald-400/10" :
-                p.trend === "down" ? "text-red-400 bg-red-400/10" :
-                "text-muted-foreground bg-surface"
-              }`}>
-                {p.trend === "up" ? <TrendingUp className="h-3 w-3" /> : p.trend === "down" ? <TrendingDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
-                {p.trendPercent > 0 ? "+" : ""}{p.trendPercent}%
-              </div>
+              {p.trend !== null && (
+                <div
+                  title="Avg price: listings from the last 7 days vs older listings"
+                  className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+                    p.trend === "up" ? "text-emerald-400 bg-emerald-400/10" :
+                    p.trend === "down" ? "text-red-400 bg-red-400/10" :
+                    "text-muted-foreground bg-surface"
+                  }`}
+                >
+                  {p.trend === "up" ? <TrendingUp className="h-3 w-3" /> : p.trend === "down" ? <TrendingDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                  {p.trendPercent > 0 ? "+" : ""}{p.trendPercent}%
+                </div>
+              )}
             </div>
 
             <div className="space-y-2 mb-4">
@@ -95,10 +100,12 @@ export default function PlatformBreakdown({ platforms }: { platforms: PlatformDa
               </div>
             </div>
 
-            <div className="flex items-center justify-between mb-3">
-              <MiniSparkline data={p.sparkline} color={p.trend === "up" ? "#34d399" : p.trend === "down" ? "#f87171" : "#94a3b8"} />
-              <span className="text-[10px] text-muted-foreground">7-day trend</span>
-            </div>
+            {p.sparkline.length > 1 && (
+              <div className="flex items-center justify-between mb-3">
+                <MiniSparkline data={p.sparkline} color={p.trend === "up" ? "#34d399" : p.trend === "down" ? "#f87171" : "#94a3b8"} />
+                <span className="text-[10px] text-muted-foreground">price trend</span>
+              </div>
+            )}
 
             <div className="flex flex-wrap gap-1.5">
               {p.listings.slice(0, 2).map((l) => (

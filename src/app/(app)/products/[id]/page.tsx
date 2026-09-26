@@ -459,7 +459,9 @@ function ProductDetailContent() {
       const platformsRaw = enrichmentData.platforms as { platform: string; price: number; rating: number | null; reviews: number | null; inStock: boolean | null; url: string }[];
       const platforms = platformsRaw.map((p) => ({
         ...p,
-        sparkline: p.price > 0 ? [p.price, p.price, p.price, p.price, p.price, p.price, p.price] : [],
+        // No per-platform price history is stored — an empty sparkline renders an
+        // honest dash instead of seven copies of today's price faking a trend.
+        sparkline: [],
       }));
       const cheapest = enrichmentData.cheapest as { platform: string; price: number } | null;
       const supplierMatchesRaw = (enrichmentData.supplierMatches || []) as { id: string; name: string; trustBadge: string; location: string; flag: string; price: number | null; shippingToUS: string; shippingToEU: string; reliabilityScore: number; responseTime: string }[];
@@ -477,6 +479,7 @@ function ProductDetailContent() {
         commonComplaints: (reviewData.commonComplaints as string[]) || [],
         commonPraise: (reviewData.commonPraise as string[]) || [],
         trustworthyScore: typeof reviewData.trustworthyScore === "number" ? reviewData.trustworthyScore : null,
+        ratingsEstimated: reviewData.ratingsEstimated === true,
       } : null;
 
       const realMarketIntel = marketIntelData && typeof marketIntelData.searchVolume === "string" ? {
@@ -519,7 +522,7 @@ function ProductDetailContent() {
     }
 
     return {
-      platforms: priceNum ? [{ platform: source, price: priceNum, rating: ratingNum, reviews: reviewsNum, inStock: null, url: effectiveLink, sparkline: [priceNum] }] : [],
+      platforms: priceNum ? [{ platform: source, price: priceNum, rating: ratingNum, reviews: reviewsNum, inStock: null, url: effectiveLink, sparkline: [] }] : [],
       cheapest: priceNum ? { platform: source, price: priceNum } : null,
       mostExpensive: null,
       priceSpread: 0,
@@ -533,6 +536,7 @@ function ProductDetailContent() {
         commonComplaints: (reviewData.commonComplaints as string[]) || [],
         commonPraise: (reviewData.commonPraise as string[]) || [],
         trustworthyScore: typeof reviewData.trustworthyScore === "number" ? reviewData.trustworthyScore : null,
+        ratingsEstimated: reviewData.ratingsEstimated === true,
       } : null,
       marketIntel: marketIntelData && typeof marketIntelData.searchVolume === "string" ? {
         searchVolume: marketIntelData.searchVolume as "high" | "medium" | "low",

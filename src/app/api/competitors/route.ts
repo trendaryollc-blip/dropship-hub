@@ -26,7 +26,7 @@ interface PlatformData {
   minPrice: number;
   maxPrice: number;
   sellerCount: number;
-  trend: "up" | "down" | "stable";
+  trend: "up" | "down" | "stable" | null;
   trendPercent: number;
   sparkline: number[];
   listings: CompetitorListing[];
@@ -85,28 +85,29 @@ function searchPlatform(
       const minPrice = Math.min(...prices);
       const maxPrice = Math.max(...prices);
 
-      const recentPrices = prices.slice(0, Math.min(10, prices.length));
-      const olderPrices = prices.slice(Math.min(10, prices.length));
-      const recentAvg = recentPrices.reduce((a, b) => a + b, 0) / recentPrices.length;
-      const olderAvg = olderPrices.length > 0
-        ? olderPrices.reduce((a, b) => a + b, 0) / olderPrices.length
-        : recentAvg;
+      // Trend compares avg price of listings from the last 7 days vs older ones,
+      // but only when listings actually carry an age (daysAgo). Snapshots without
+      // listing ages report trend: null — no time dimension, no trend claim.
+      const aged = results.filter((r) => r.price > 0 && typeof r.daysAgo === "number" && r.daysAgo >= 0);
+      const recentAged = aged.filter((r) => (r.daysAgo as number) <= 7).map((r) => r.price);
+      const olderAged = aged.filter((r) => (r.daysAgo as number) > 7).map((r) => r.price);
 
-      let trend: "up" | "down" | "stable" = "stable";
+      let trend: "up" | "down" | "stable" | null = null;
       let trendPercent = 0;
-      if (olderAvg > 0) {
-        const diff = ((recentAvg - olderAvg) / olderAvg) * 100;
-        trendPercent = Math.round(diff);
-        if (diff > 2) trend = "up";
-        else if (diff < -2) trend = "down";
+      if (recentAged.length >= 2 && olderAged.length >= 2) {
+        const recentAvg = recentAged.reduce((a, b) => a + b, 0) / recentAged.length;
+        const olderAvg = olderAged.reduce((a, b) => a + b, 0) / olderAged.length;
+        if (olderAvg > 0) {
+          const diff = ((recentAvg - olderAvg) / olderAvg) * 100;
+          trendPercent = Math.round(diff);
+          trend = diff > 2 ? "up" : diff < -2 ? "down" : "stable";
+        }
       }
 
-      const sparkline = Array.from({ length: 14 }, (_, i) => {
-        const start = Math.floor((i / 14) * prices.length);
-        const end = Math.floor(((i + 1) / 14) * prices.length);
-        const slice = prices.slice(start, Math.max(end, start + 1));
-        return Math.round((slice.reduce((a, b) => a + b, 0) / slice.length) * 100) / 100;
-      });
+      // There is no price time series for a single search snapshot — the old
+      // 14-point "7-day trend" sparkline was this same snapshot bucketed, so it
+      // is empty instead.
+      const sparkline: number[] = [];
 
       const sellers = new Set(results.map((r) => r.seller));
 

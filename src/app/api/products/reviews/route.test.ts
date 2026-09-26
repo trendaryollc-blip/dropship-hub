@@ -56,4 +56,28 @@ describe("POST /api/products/reviews", () => {
     expect(data.sentiment.neutral).toBeDefined();
     expect(data.sentiment.negative).toBeDefined();
   });
+
+  it("labels guessed star ratings as estimated on the Google Shopping path", async () => {
+    const html = `
+      <div>Product rating: 4.5 out of 5</div>
+      <div>Based on 1,234 reviews</div>
+      <div>review customer notes here>Great item, works perfectly and love using it daily</div>
+      <div>review customer notes here>Terrible quality, broke after one week of use</div>
+    `;
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, text: async () => html });
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const res = await POST(
+        makeReq({ source: "google_shopping", url: "https://shopping.google.com/product/1", title: "Test", rating: 0, reviews: 0 }),
+        null as any
+      );
+      const data = await res.json();
+      expect(data.averageRating).toBe(4.5);
+      expect(data.totalReviews).toBe(1234);
+      expect(data.ratingsEstimated).toBe(true);
+      expect(data.distribution.length).toBe(5);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });

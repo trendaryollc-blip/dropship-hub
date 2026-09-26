@@ -78,4 +78,21 @@ describe("PlatformBreakdown", () => {
     expect(screen.getByText("Amazon Listings")).toBeInTheDocument();
     expect(screen.getByText("Wireless Mouse A")).toBeInTheDocument();
   });
+
+  it("shows the trend badge and sparkline when trend data exists", () => {
+    render(<PlatformBreakdown platforms={mockPlatforms} />);
+    expect(screen.getByText("+12%")).toBeInTheDocument();
+    expect(screen.getByText("-5%")).toBeInTheDocument();
+    expect(screen.getAllByText("price trend").length).toBeGreaterThan(0);
+  });
+
+  it("hides trend badge and sparkline when there is no time data", () => {
+    const noTrend: PlatformData[] = mockPlatforms.map((p) => ({ ...p, trend: null, trendPercent: 0, sparkline: [] }));
+    render(<PlatformBreakdown platforms={noTrend} />);
+    expect(screen.queryByText("0%")).not.toBeInTheDocument();
+    expect(screen.queryByText("+12%")).not.toBeInTheDocument();
+    expect(screen.queryByText("price trend")).not.toBeInTheDocument();
+    // Core facts still render
+    expect(screen.getByText("$22.50")).toBeInTheDocument();
+  });
 });

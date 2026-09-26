@@ -12,7 +12,8 @@ interface ReviewData {
   topKeywords: string[];
   commonComplaints: string[];
   commonPraise: string[];
-  trustworthyScore: number;
+  trustworthyScore: number | null;
+  ratingsEstimated?: boolean;
   reviews: { author: string; rating: number; title: string; content: string; date: string; verified: boolean }[];
 }
 
@@ -205,7 +206,10 @@ async function scrapeGoogleShoppingReviews(url: string, _title: string): Promise
     if (reviews.length === 0 && totalReviews === 0) return null;
 
     const ratings = reviews.map((r) => r.rating);
-    const calculatedAvg = ratings.length > 0 ? +(ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : avgRating;
+    // Prefer the real average scraped from the page ("4.5 out of 5"); the average
+    // of keyword-guessed ratings is only a last resort, and everything derived
+    // from guesses is labeled via ratingsEstimated.
+    const calculatedAvg = avgRating > 0 ? avgRating : ratings.length > 0 ? +(ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : 0;
 
     const dist = [5, 4, 3, 2, 1].map((stars) => {
       const count = ratings.filter((r) => r === stars).length;
@@ -221,6 +225,8 @@ async function scrapeGoogleShoppingReviews(url: string, _title: string): Promise
       commonComplaints: reviews.filter((r) => r.rating <= 2).slice(0, 3).map((r) => r.content.slice(0, 80)),
       commonPraise: reviews.filter((r) => r.rating >= 4).slice(0, 3).map((r) => r.content.slice(0, 80)),
       trustworthyScore: calculateTrustScore(reviews),
+      // Star ratings here are guessed from review text — the UI must say so.
+      ratingsEstimated: true,
       reviews: reviews.slice(0, 10),
     };
   } catch {

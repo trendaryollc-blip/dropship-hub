@@ -35,7 +35,9 @@ export default function ReviewIntelligence({ data }: { data: ReviewData | null }
           <p className="text-[10px] text-muted-foreground">
             {data.trustworthyScore === null
               ? `Average ${data.averageRating} ★ from ${data.totalReviews.toLocaleString()} reviews — no review text available from this source`
-              : `Analysis of ${data.totalReviews.toLocaleString()} reviews`}
+              : data.ratingsEstimated
+                ? `Analysis of ${data.totalReviews.toLocaleString()} snippets — star ratings estimated from text`
+                : `Analysis of ${data.totalReviews.toLocaleString()} reviews`}
           </p>
         </div>
       </div>
@@ -67,6 +69,11 @@ export default function ReviewIntelligence({ data }: { data: ReviewData | null }
                 <span className="text-[10px] text-muted-foreground w-8 text-right font-medium">{d.percent}%</span>
               </div>
             ))}
+            {data.ratingsEstimated && data.distribution.length > 0 && (
+              <p className="text-[10px] text-muted-foreground/50 italic">
+                Estimated from review text — not official star ratings
+              </p>
+            )}
           </div>
         </div>
 
@@ -171,9 +178,11 @@ export default function ReviewIntelligence({ data }: { data: ReviewData | null }
               <p className="text-xs font-bold text-accent">Reviews Trustworthiness: unavailable</p>
             )}
             <p className="text-[10px] text-muted-foreground mt-0.5">
-              {data.trustworthyScore !== null
-                ? "Based on review patterns, verified purchases, and review velocity"
-                : "Not enough review data to analyze — only an average rating and count were provided"}
+              {data.trustworthyScore === null
+                ? "Not enough review data to analyze — only an average rating and count were provided"
+                : data.ratingsEstimated
+                  ? "Estimated from scraped snippets — star ratings were guessed from review text"
+                  : "Based on review patterns, verified purchases, and review velocity"}
             </p>
           </div>
         </div>

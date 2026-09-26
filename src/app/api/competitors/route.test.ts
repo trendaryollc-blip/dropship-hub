@@ -47,6 +47,41 @@ describe("POST /api/competitors", () => {
     expect(json.platforms).toBeDefined();
     expect(json.platforms.length).toBeGreaterThan(0);
     expect(json.avgPrice).toBeGreaterThan(0);
+    // Listings without an age cannot support a time trend or a sparkline series
+    for (const p of json.platforms) {
+      expect(p.sparkline).toEqual([]);
+      expect(p.trend).toBeNull();
+    }
+  });
+
+  it("computes a real trend only when listings carry ages", async () => {
+    const { searchAmazon } = await import("@/lib/platform-search");
+    (searchAmazon as any).mockResolvedValue({
+      search_results: [
+        { title: "New 1", price: 40, seller: "S1", rating: 4.5, link: "https://amazon.com/1", daysAgo: 1 },
+        { title: "New 2", price: 42, seller: "S2", rating: 4.4, link: "https://amazon.com/2", daysAgo: 2 },
+        { title: "New 3", price: 39, seller: "S3", rating: 4.6, link: "https://amazon.com/3", daysAgo: 5 },
+        { title: "New 4", price: 41, seller: "S4", rating: 4.2, link: "https://amazon.com/4", daysAgo: 7 },
+        { title: "Old 1", price: 30, seller: "S5", rating: 4.1, link: "https://amazon.com/5", daysAgo: 30 },
+        { title: "Old 2", price: 31, seller: "S6", rating: 4.0, link: "https://amazon.com/6", daysAgo: 45 },
+        { title: "Old 3", price: 29, seller: "S7", rating: 4.3, link: "https://amazon.com/7", daysAgo: 60 },
+        { title: "Old 4", price: 30, seller: "S8", rating: 4.7, link: "https://amazon.com/8", daysAgo: 90 },
+      ],
+    });
+
+    const { POST } = await import("./route");
+    const req = new Request("http://localhost/api/competitors", {
+      method: "POST",
+      body: JSON.stringify({ query: "aged listings" }),
+    });
+    const res = await POST(req as any);
+    const json = await res.json();
+
+    const amazon = json.platforms.find((p: { platform: string }) => p.platform === "amazon");
+    expect(amazon).toBeDefined();
+    expect(amazon.trend).toBe("up");
+    expect(amazon.trendPercent).toBeGreaterThan(20);
+    expect(amazon.sparkline).toEqual([]);
   });
 
   it("returns 404 when no platforms return results", async () => {

@@ -138,4 +138,27 @@ describe("generateTrackingHtml", () => {
     expect(html).toContain("</html>");
     expect(html).toContain("Track Your Order - My Store");
   });
+
+  it("omits unknown order/tracking/carrier/estimate instead of inventing them", () => {
+    const html = generateTrackingHtml({
+      ...baseConfig,
+      orderNumber: "",
+      trackingNumber: "",
+      carrier: "",
+      estimatedDelivery: "",
+    });
+    expect(html).not.toContain("Order #");
+    expect(html).not.toContain("Tracking:");
+    expect(html).not.toContain("Carrier:");
+    expect(html).not.toContain("Estimated Delivery:");
+    expect(html).toContain("Tracking details will appear here when available.");
+  });
+
+  it("still renders tracking details when provided", () => {
+    const html = generateTrackingHtml({ ...baseConfig });
+    expect(html).toContain("Tracking: TRK-1");
+    expect(html).toContain("Carrier: CJ");
+    expect(html).toContain("Estimated Delivery: Sep 25, 2026");
+    expect(html).toContain("Order #ORD-1");
+  });
 });

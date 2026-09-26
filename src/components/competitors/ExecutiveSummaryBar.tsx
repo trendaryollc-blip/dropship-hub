@@ -16,6 +16,7 @@ const momentumConfig = {
   heating: { label: "Heating Up", color: "text-red-400", bg: "bg-red-400/10", icon: Flame, desc: "Market is getting competitive fast" },
   stable: { label: "Stable", color: "text-blue-400", bg: "bg-blue-400/10", icon: Activity, desc: "Competition level is steady" },
   cooling: { label: "Cooling Down", color: "text-cyan-400", bg: "bg-cyan-400/10", icon: Snowflake, desc: "Less competition entering the market" },
+  unknown: { label: "Unknown", color: "text-muted-foreground", bg: "bg-surface", icon: Activity, desc: "Not enough listing-age data to judge direction" },
 };
 
 function IntensityBar({ score }: { score: number }) {

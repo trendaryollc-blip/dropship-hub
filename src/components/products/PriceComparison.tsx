@@ -153,7 +153,9 @@ export default function PriceComparison({ platforms, listedPrice, productTitle }
                     {p.sparkline && p.sparkline.length > 1 ? (
                       <MiniSparkline points={p.sparkline} id={p.platform} width={72} height={24} />
                     ) : (
-                      <div className="w-[72px] h-[24px] shrink-0 rounded-lg bg-surface/50 border border-border/30" />
+                      <span className="text-xs text-muted-foreground" title="No price history recorded yet">
+                        —
+                      </span>
                     )}
                   </td>
                   <td className="px-4 py-3.5 hidden lg:table-cell">

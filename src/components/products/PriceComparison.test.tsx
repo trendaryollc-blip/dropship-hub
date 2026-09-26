@@ -40,4 +40,17 @@ describe("PriceComparison", () => {
     );
     expect(screen.getByText("Price Comparison")).toBeInTheDocument();
   });
+
+  it("shows a dash for platforms without price history instead of a fake trend line", () => {
+    render(
+      <PriceComparison
+        platforms={[
+          { platform: "Amazon", price: 29.99, url: "https://amazon.com/1", inStock: true, rating: 4.5, reviews: 1200, sparkline: [] },
+          { platform: "eBay", price: 24.99, url: "https://ebay.com/1", inStock: true, rating: 4.2, reviews: 800, sparkline: [] },
+        ]}
+        listedPrice={32.99}
+      />
+    );
+    expect(screen.getAllByTitle("No price history recorded yet").length).toBe(2);
+  });
 });

@@ -17,6 +17,8 @@ export interface ReviewData {
   commonComplaints: string[];
   commonPraise: string[];
   trustworthyScore: number | null;
+  /** true when star ratings were estimated from review text, not reported by the source. */
+  ratingsEstimated?: boolean;
 }
 
 export interface MarketIntel {

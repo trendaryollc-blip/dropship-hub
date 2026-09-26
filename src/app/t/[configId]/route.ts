@@ -55,17 +55,18 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ configI
         ? (statusParam as TrackingStatus)
         : "shipped";
 
-    const orderNumber = str(searchParams.get("order")) || "ORD-PENDING";
+    const orderNumber = str(searchParams.get("order"));
     const branding: Partial<TrackingPageConfigDoc["branding"]> = config.branding || {};
     const rawLogo = branding.logoUrl || "";
     const rawSupportUrl = branding.supportUrl || "";
+    // Only the status passed in the link is real — timestamps, order confirmations
+    // and carrier events are not known here, so no events are invented.
     const events = [
-      { status: "ordered", timestamp: "", location: "Online", description: "Order confirmed" },
       {
         status: currentStatus,
         timestamp: "",
         location: "",
-        description: `Package status: ${currentStatus.replace(/_/g, " ")}`,
+        description: `Current status: ${currentStatus.replace(/_/g, " ")}`,
       },
     ];
 
@@ -74,7 +75,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ configI
     if (ownerUid) {
       void addTrackingPageView(ownerUid, {
         orderId: str(searchParams.get("orderId"), 200) || "guest",
-        orderNumber,
+        orderNumber: orderNumber || "unknown",
         customerEmail: str(searchParams.get("email"), 200) || "guest@visit",
         viewedAt: new Date().toISOString(),
         device: detectDevice(request.headers.get("user-agent") || ""),
@@ -86,10 +87,10 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ configI
     const html = generateTrackingHtml({
       storeName: branding.businessName || config.storeName || "My Store",
       orderNumber,
-      trackingNumber: str(searchParams.get("tracking")) || "Processing",
-      carrier: str(searchParams.get("carrier")) || "CJ Dropshipping",
+      trackingNumber: str(searchParams.get("tracking")),
+      carrier: str(searchParams.get("carrier")),
       currentStatus,
-      estimatedDelivery: str(searchParams.get("edd")) || "Within 7-14 business days",
+      estimatedDelivery: str(searchParams.get("edd")),
       events,
       branding: {
         primaryColor: branding.primaryColor || "#6366f1",

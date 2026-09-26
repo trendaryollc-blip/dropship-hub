@@ -19,7 +19,8 @@ export interface PlatformData {
   minPrice: number;
   maxPrice: number;
   sellerCount: number;
-  trend: "up" | "down" | "stable";
+  /** null = no listing-age data to compare — the UI shows no badge instead of a guessed trend. */
+  trend: "up" | "down" | "stable" | null;
   trendPercent: number;
   sparkline: number[];
   listings: CompetitorListing[];
@@ -125,7 +126,7 @@ export interface ExecutiveSummary {
   competitionIntensity: number;
   threatLevel: "low" | "medium" | "high" | "critical";
   keyOpportunity: string;
-  marketMomentum: "heating" | "stable" | "cooling";
+  marketMomentum: "heating" | "stable" | "cooling" | "unknown";
   totalSellers: number;
   avgRating: number;
   priceVolatility: number;

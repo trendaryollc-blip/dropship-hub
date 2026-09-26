@@ -193,10 +193,12 @@ export function generateTrackingHtml(config: {
       <p class="muted" style="font-size: 13px; margin-top: 6px;">${storeName}</p>
     </div>
     <div class="card">
-      <p class="muted" style="font-size: 13px;">Order #${orderNumber}</p>
-      <p style="font-size: 14px; margin-top: 4px;">Tracking: ${trackingNumber}</p>
-      <p style="font-size: 14px;">Carrier: ${carrier}</p>
-      <p style="font-size: 14px; margin-top: 8px;"><strong class="${config.currentStatus === "delivered" ? "delivered" : ""}">Estimated Delivery: ${estimatedDelivery}</strong></p>
+      ${orderNumber ? `<p class="muted" style="font-size: 13px;">Order #${orderNumber}</p>` : ""}
+      ${trackingNumber
+        ? `<p style="font-size: 14px; ${orderNumber ? "margin-top: 4px;" : ""}">Tracking: ${trackingNumber}</p>`
+        : `<p class="muted" style="font-size: 13px; ${orderNumber ? "margin-top: 4px;" : ""}">Tracking details will appear here when available.</p>`}
+      ${carrier ? `<p style="font-size: 14px;">Carrier: ${carrier}</p>` : ""}
+      ${estimatedDelivery ? `<p style="font-size: 14px; margin-top: 8px;"><strong class="${config.currentStatus === "delivered" ? "delivered" : ""}">Estimated Delivery: ${estimatedDelivery}</strong></p>` : ""}
     </div>
     <div class="card">
       <div class="progress">
