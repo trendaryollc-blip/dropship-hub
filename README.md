@@ -46,7 +46,7 @@ Fill in `.env.local`. Required values:
 | ------------------------------------------ | ------------------------------------------------------------------------------ |
 | `NEXT_PUBLIC_FIREBASE_*`                   | Firebase web config (client)                                                   |
 | `FIREBASE_SERVICE_ACCOUNT`                 | Firebase Admin SDK service-account JSON (server)                               |
-| `JWT_SECRET`                               | Token signing                                                                  |
+| `TRENDARYO_JWT_SECRET`                     | Optional Trendaryo store integration JWT signing                               |
 | `OWNER_UID` / `OWNER_EMAIL`                | Bootstrap the admin/owner account                                              |
 | `SERPAPI_KEYS`                             | Live product search / Google Trends (comma-separated key pool)                 |
 | One AI provider key (e.g. `GROQ_API_KEYS`) | Optional LLM features                                                          |
@@ -134,9 +134,12 @@ GitHub Actions (`.github/workflows/ci.yml`) runs lint, typecheck, `npm audit`, t
 
 ## Deployment (Vercel)
 
+Full step-by-step checklist: **[DEPLOYMENT.md](DEPLOYMENT.md)**.
+
 1. Import the repo into Vercel; configure all env vars from `.env.example`.
 2. Deploy Firestore rules/indexes (`firebase deploy --only firestore:rules,firestore:indexes`).
-3. Set the `APP_URL` and `CRON_SECRET` GitHub secrets so the daily digest workflow can reach the deployment.
+3. Set the `APP_URL` and `CRON_SECRET` GitHub secrets so the daily digest workflow can reach the
+   deployment.
 
 ## Chrome Extension
 
@@ -148,5 +151,6 @@ GitHub Actions (`.github/workflows/ci.yml`) runs lint, typecheck, `npm audit`, t
 | ------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
 | [FEATURE-CATALOG.md](FEATURE-CATALOG.md)         | Every feature in the app with functional status, testing system, completed work, and next steps |
 | [CHANGELOG.md](CHANGELOG.md)                     | What shipped and when — grouped by date from the real commit history                            |
+| [DEPLOYMENT.md](DEPLOYMENT.md)                   | Launch checklist: accounts, env vars, Stripe webhook, GitHub secrets, smoke tests               |
 | [DATA_SOURCES.md](DATA_SOURCES.md)               | Feature → data source map, key pools, honesty UI components                                     |
 | [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md) | Original build plan                                                                             |

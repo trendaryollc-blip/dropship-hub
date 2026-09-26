@@ -14,6 +14,7 @@ import {
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { logger } from "@/lib/logger";
+import { identifyUser, resetAnalytics } from "@/lib/analytics";
 
 interface AuthContextType {
   user: User | null;
@@ -55,6 +56,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(user);
       setLoading(false);
       setSessionCookie(!!user);
+      if (user) {
+        identifyUser(user.uid, {
+          email: user.email ?? undefined,
+          name: user.displayName ?? undefined,
+        });
+      } else {
+        resetAnalytics();
+      }
     });
     return unsubscribe;
   }, []);
@@ -64,11 +73,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!user) {
         setUser(null);
         setSessionCookie(false);
+        resetAnalytics();
       }
     }, (error) => {
       logger.error("Token refresh failed", { error: error instanceof Error ? error.message : String(error) });
       setUser(null);
       setSessionCookie(false);
+      resetAnalytics();
     });
     return unsubscribe;
   }, []);
