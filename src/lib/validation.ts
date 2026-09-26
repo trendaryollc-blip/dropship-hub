@@ -327,6 +327,14 @@ export const CSMessageInputSchema = z.object({
   conversationId: z.string().min(1).max(200),
 });
 
+export const CSTemplateInputSchema = z.object({
+  name: z.string().min(1).max(200),
+  category: z.enum(["order-status", "shipping", "returns", "product-info", "general"]),
+  subject: z.string().min(1).max(500).optional(),
+  body: z.string().min(1).max(10000),
+  variables: z.array(z.string().min(1).max(100)).max(20).optional(),
+});
+
 export const KnowledgeBaseInputSchema = z.object({
   category: z.enum(["product", "shipping", "returns", "faq", "policy"]),
   title: z.string().min(1).max(500),

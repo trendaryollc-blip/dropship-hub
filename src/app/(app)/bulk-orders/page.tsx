@@ -1,10 +1,9 @@
 "use client";
 
-// TODO: SECURITY REVIEW
-// - Server endpoints under `/api/fulfillment` and `/api/fulfillment/bulk` must
-//   enforce authorization, rate-limiting, and action-level permissions (who can
-//   cancel, send to supplier, or trigger refunds). Client-side confirmations
-//   are helpful but insufficient for production safety.
+// Security note: /api/fulfillment/* endpoints are wrapped in withAuth with
+// LIMITS.FULFILLMENT rate limits (per-uid). Action-level role permissions
+// (operator vs owner) are deferred until team accounts exist — today every
+// member of a workspace is the owner.
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";

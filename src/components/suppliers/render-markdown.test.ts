@@ -41,6 +41,7 @@ describe("renderMarkdown XSS hardening (AI output is untrusted)", () => {
     expect(html).toContain("<table");
     expect(html).toContain("<th");
     expect(html).toContain("<td");
+    expect(html.match(/<table/g)).toHaveLength(1);
     expect(html).not.toContain("<b>bold?</b>");
     expect(html).toContain("&lt;b&gt;bold?&lt;/b&gt;");
     expect(html).not.toContain("<img");

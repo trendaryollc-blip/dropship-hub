@@ -11,6 +11,7 @@ import { useInView } from "@/hooks/useInView";
 import { useAPI } from "@/hooks/useAPI";
 import type { Conversation, CSMessage, CSTemplate, Escalation, CSStats, SentimentResult, KnowledgeBaseEntry, EscalationRule } from "@/types/customer-service";
 import { useToast } from "@/components/ui/Toast";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 function KPICard({ label, value, prefix, suffix, icon: Icon, color, delay }: {
   label: string; value: number | null; prefix?: string; suffix?: string; icon: typeof Headphones; color: string; delay: number;
@@ -274,10 +275,10 @@ function EscalationRulesPanel({ rules, onAdd, onDelete, onToggle }: { rules: Esc
   );
 }
 
-function TemplateManager({ templates }: { templates: CSTemplate[] }) {
+function TemplateManager({ templates, onDelete }: { templates: CSTemplate[]; onDelete: (id: string) => Promise<void> }) {
   const catColors: Record<string, string> = { "order-status": "text-blue-400 bg-blue-400/10", shipping: "text-amber-400 bg-amber-400/10", returns: "text-red-400 bg-red-400/10", "product-info": "text-emerald-400 bg-emerald-400/10", general: "text-purple-400 bg-purple-400/10" };
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const { info } = useToast();
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   const handleCopy = (body: string, id: string) => {
     navigator.clipboard.writeText(body).then(() => {
@@ -301,11 +302,80 @@ function TemplateManager({ templates }: { templates: CSTemplate[] }) {
               <button onClick={() => handleCopy(t.body, t.id)} className="p-1 rounded hover:bg-surface-hover transition-colors">
                 {copiedId === t.id ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
               </button>
-              <button onClick={() => info("Template deletion coming soon")} className="p-1 rounded hover:bg-surface-hover transition-colors"><Trash2 className="h-3 w-3 text-muted-foreground" /></button>
+              <button onClick={() => setConfirmId(t.id)} className="p-1 rounded hover:bg-surface-hover transition-colors"><Trash2 className="h-3 w-3 text-muted-foreground" /></button>
             </div>
           </div>
         </div>
       ))}
+      {templates.length === 0 && (
+        <p className="text-[10px] text-muted-foreground text-center py-6">No templates yet — create one to reuse common replies.</p>
+      )}
+      <ConfirmDialog
+        open={confirmId !== null}
+        title="Delete template?"
+        description="This removes the template permanently. Copied text you already used is unaffected."
+        confirmLabel="Delete"
+        danger
+        onConfirm={async () => { if (confirmId) { await onDelete(confirmId); setConfirmId(null); } }}
+        onCancel={() => setConfirmId(null)}
+      />
+    </div>
+  );
+}
+
+function TemplateCreateForm({ onCreate, onCancel }: {
+  onCreate: (entry: { name: string; category: string; body: string }) => Promise<boolean>;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState("general");
+  const [body, setBody] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    if (!name.trim() || !body.trim() || saving) return;
+    setSaving(true);
+    const ok = await onCreate({ name: name.trim(), category, body: body.trim() });
+    if (ok) { setName(""); setCategory("general"); setBody(""); }
+    setSaving(false);
+  };
+
+  return (
+    <div className="mb-4 p-3 rounded-xl bg-surface border border-border space-y-2">
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Template name (e.g. Order tracking reply)"
+        className="w-full px-3 py-2 rounded-lg bg-background border border-border text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50"
+      />
+      <select
+        value={category}
+        onChange={(e) => setCategory(e.target.value)}
+        className="w-full px-3 py-2 rounded-lg bg-background border border-border text-xs text-foreground focus:outline-none focus:border-accent/50"
+      >
+        <option value="order-status">order-status</option>
+        <option value="shipping">shipping</option>
+        <option value="returns">returns</option>
+        <option value="product-info">product-info</option>
+        <option value="general">general</option>
+      </select>
+      <textarea
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        rows={4}
+        placeholder="Template body"
+        className="w-full px-3 py-2 rounded-lg bg-background border border-border text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 resize-y"
+      />
+      <div className="flex items-center justify-end gap-2">
+        <button onClick={onCancel} className="px-3 py-1.5 rounded-xl border border-border text-[10px] sm:text-[11px] font-semibold text-muted-foreground hover:text-foreground transition-all">Cancel</button>
+        <button
+          onClick={submit}
+          disabled={saving || !name.trim() || !body.trim()}
+          className="px-3 py-1.5 rounded-xl bg-accent text-white text-[10px] sm:text-[11px] font-semibold hover:bg-accent/80 disabled:opacity-50 transition-all"
+        >
+          {saving ? "Saving…" : "Create Template"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -313,12 +383,12 @@ function TemplateManager({ templates }: { templates: CSTemplate[] }) {
 export default function CustomerServicePage() {
   const { user } = useAuth();
   const uid = user?.uid || "";
-  const { info, error: toastError } = useToast();
+  const { error: toastError } = useToast();
 
   const { data: statsData } = useAPI<{ stats?: CSStats }>(uid ? `/api/customer-service?uid=${uid}` : null);
   const { data: convData } = useAPI<{ conversations?: Conversation[] }>(uid ? `/api/customer-service?type=conversations&uid=${uid}` : null);
   const { data: msgData, mutate: mutateMessages } = useAPI<{ messages?: CSMessage[] }>(uid ? `/api/customer-service?type=messages&uid=${uid}` : null);
-  const { data: tmplData } = useAPI<{ templates?: CSTemplate[] }>(uid ? `/api/customer-service?type=templates&uid=${uid}` : null);
+  const { data: tmplData, mutate: mutateTemplates } = useAPI<{ templates?: CSTemplate[] }>(uid ? `/api/customer-service?type=templates&uid=${uid}` : null);
   const { data: escData, mutate: mutateEscalations } = useAPI<{ escalations?: Escalation[] }>(uid ? `/api/customer-service?type=escalations&uid=${uid}` : null);
   const { data: kbData, mutate: mutateKB } = useAPI<{ entries?: KnowledgeBaseEntry[] }>(uid ? `/api/customer-service/knowledge-base?uid=${uid}` : null);
   const { data: rulesData, mutate: mutateRules } = useAPI<{ rules?: EscalationRule[] }>(uid ? `/api/customer-service/escalation-rules?uid=${uid}` : null);
@@ -334,6 +404,7 @@ export default function CustomerServicePage() {
 
   const [selectedConv, setSelectedConv] = useState("conv-1");
   const [activeTab, setActiveTab] = useState<"dashboard" | "chat" | "escalations" | "templates" | "knowledge-base" | "rules">("dashboard");
+  const [showTemplateForm, setShowTemplateForm] = useState(false);
 
   const loadMessages = async (convId: string) => {
     setSelectedConv(convId);
@@ -413,6 +484,33 @@ export default function CustomerServicePage() {
       });
       mutateRules();
     } catch (e) { console.error("[CS] Failed to update escalation rule:", e instanceof Error ? e.message : e); toastError("Failed to update escalation rule"); }
+  };
+
+  const handleAddTemplate = async (entry: { name: string; category: string; body: string }) => {
+    try {
+      const res = await fetch("/api/customer-service/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(entry),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create template");
+      mutateTemplates();
+      setShowTemplateForm(false);
+      return true;
+    } catch (e) {
+      console.error("[CS] Failed to create template:", e instanceof Error ? e.message : e);
+      toastError("Failed to create template");
+      return false;
+    }
+  };
+
+  const handleDeleteTemplate = async (id: string) => {
+    try {
+      const res = await fetch(`/api/customer-service/templates?id=${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete template");
+      mutateTemplates();
+    } catch (e) { console.error("[CS] Failed to delete template:", e instanceof Error ? e.message : e); toastError("Failed to delete template"); }
   };
 
   return (
@@ -524,11 +622,14 @@ export default function CustomerServicePage() {
             <div className="max-w-3xl mx-auto">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-display text-sm sm:text-base font-semibold text-foreground">Response Templates</h3>
-                <button onClick={() => info("Template creation coming soon")} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accent text-white text-[10px] sm:text-[11px] font-semibold hover:bg-accent/80 transition-all">
-                  <Plus className="h-3 w-3" /> New Template
+                <button onClick={() => setShowTemplateForm((v) => !v)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accent text-white text-[10px] sm:text-[11px] font-semibold hover:bg-accent/80 transition-all">
+                  <Plus className="h-3 w-3" /> {showTemplateForm ? "Close" : "New Template"}
                 </button>
               </div>
-              <TemplateManager templates={templates} />
+              {showTemplateForm && (
+                <TemplateCreateForm onCreate={handleAddTemplate} onCancel={() => setShowTemplateForm(false)} />
+              )}
+              <TemplateManager templates={templates} onDelete={handleDeleteTemplate} />
             </div>
           )}
         </>

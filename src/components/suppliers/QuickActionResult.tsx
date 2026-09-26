@@ -102,14 +102,15 @@ export function renderMarkdown(text: string) {
       continue;
     }
 
+    // Separator stays inside the open table — only a non-table line closes it.
+    if (isSeparator) continue;
+
     if (inTable) {
       inTable = false;
       tableHtml += "</tbody></table></div>";
       result.push(tableHtml);
       tableHtml = "";
     }
-
-    if (isSeparator) continue;
 
     if (line.startsWith("### ")) {
       result.push(`<h3 class="text-sm font-bold text-foreground mt-5 mb-2.5 flex items-center gap-2"><span class="w-1 h-4 rounded-full bg-accent inline-block"></span>${line.slice(4)}</h3>`);
