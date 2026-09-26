@@ -16,7 +16,7 @@ export interface ReviewData {
   topKeywords: string[];
   commonComplaints: string[];
   commonPraise: string[];
-  trustworthyScore: number;
+  trustworthyScore: number | null;
 }
 
 export interface MarketIntel {

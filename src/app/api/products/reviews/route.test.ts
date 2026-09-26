@@ -29,15 +29,16 @@ describe("POST /api/products/reviews", () => {
     expect(data).toEqual({});
   });
 
-  it("returns fallback review data when rating and count provided", async () => {
+  it("returns honest limited fallback when rating and count provided", async () => {
     const res = await POST(makeReq({ url: "", source: "unknown", title: "Test", rating: 4.5, reviews: 100 }), null as any);
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.averageRating).toBe(4.5);
     expect(data.totalReviews).toBe(100);
-    expect(data.distribution).toBeDefined();
-    expect(data.distribution.length).toBe(5);
-    expect(data.trustworthyScore).toBeDefined();
+    // No fabricated star breakdown or trust score without the actual reviews
+    expect(data.distribution).toEqual([]);
+    expect(data.trustworthyScore).toBeNull();
+    expect(data.reviews).toEqual([]);
   });
 
   it("returns fallback when only rating is provided", async () => {

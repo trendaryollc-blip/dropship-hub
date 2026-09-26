@@ -85,4 +85,19 @@ describe("ReviewIntelligence", () => {
     render(<ReviewIntelligence data={mockData} />);
     expect(screen.getByText("60%")).toBeInTheDocument();
   });
+
+  it("shows an honest note when the star breakdown is unavailable", () => {
+    render(<ReviewIntelligence data={{ ...mockData, distribution: [] }} />);
+    expect(screen.getByText(/Star breakdown unavailable/)).toBeInTheDocument();
+    expect(screen.queryByText("60%")).not.toBeInTheDocument();
+  });
+
+  it("shows unavailable trust score instead of a fabricated number", () => {
+    render(
+      <ReviewIntelligence data={{ ...mockData, trustworthyScore: null, distribution: [] }} />
+    );
+    expect(screen.getByText("Reviews Trustworthiness: unavailable")).toBeInTheDocument();
+    expect(screen.getByText(/no review text available from this source/)).toBeInTheDocument();
+    expect(screen.queryByText(/Reviews Trustworthiness: \d+\/100/)).not.toBeInTheDocument();
+  });
 });

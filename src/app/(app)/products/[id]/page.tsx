@@ -476,7 +476,7 @@ function ProductDetailContent() {
         topKeywords: (reviewData.topKeywords as string[]) || [],
         commonComplaints: (reviewData.commonComplaints as string[]) || [],
         commonPraise: (reviewData.commonPraise as string[]) || [],
-        trustworthyScore: (reviewData.trustworthyScore as number) || 0,
+        trustworthyScore: typeof reviewData.trustworthyScore === "number" ? reviewData.trustworthyScore : null,
       } : null;
 
       const realMarketIntel = marketIntelData && typeof marketIntelData.searchVolume === "string" ? {
@@ -532,7 +532,7 @@ function ProductDetailContent() {
         topKeywords: (reviewData.topKeywords as string[]) || [],
         commonComplaints: (reviewData.commonComplaints as string[]) || [],
         commonPraise: (reviewData.commonPraise as string[]) || [],
-        trustworthyScore: (reviewData.trustworthyScore as number) || 0,
+        trustworthyScore: typeof reviewData.trustworthyScore === "number" ? reviewData.trustworthyScore : null,
       } : null,
       marketIntel: marketIntelData && typeof marketIntelData.searchVolume === "string" ? {
         searchVolume: marketIntelData.searchVolume as "high" | "medium" | "low",

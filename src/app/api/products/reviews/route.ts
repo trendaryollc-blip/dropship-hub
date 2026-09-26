@@ -253,16 +253,13 @@ export const POST = withAuth(async (request: NextRequest) => {
     const fallbackCount = typeof reviewCount === "number" ? reviewCount : 0;
 
     if (fallbackRating > 0 || fallbackCount > 0) {
+      // Only the average rating and count were provided by the caller — the star
+      // breakdown and trust score cannot be known without the actual reviews, so
+      // they are returned as empty (null) instead of a fabricated distribution.
       return NextResponse.json({
         averageRating: fallbackRating,
         totalReviews: fallbackCount,
-        distribution: [
-          { stars: 5, percent: 35 },
-          { stars: 4, percent: 25 },
-          { stars: 3, percent: 20 },
-          { stars: 2, percent: 12 },
-          { stars: 1, percent: 8 },
-        ],
+        distribution: [],
         sentiment: {
           positive: ["Review data unavailable from this source"],
           neutral: [],
@@ -271,7 +268,7 @@ export const POST = withAuth(async (request: NextRequest) => {
         topKeywords: [],
         commonComplaints: [],
         commonPraise: [],
-        trustworthyScore: 50,
+        trustworthyScore: null,
         reviews: [],
       });
     }

@@ -32,7 +32,11 @@ export default function ReviewIntelligence({ data }: { data: ReviewData | null }
         </div>
         <div>
           <h3 className="font-display text-sm font-semibold text-foreground">Review Intelligence</h3>
-          <p className="text-[10px] text-muted-foreground">Analysis of {data.totalReviews.toLocaleString()} reviews</p>
+          <p className="text-[10px] text-muted-foreground">
+            {data.trustworthyScore === null
+              ? `Average ${data.averageRating} ★ from ${data.totalReviews.toLocaleString()} reviews — no review text available from this source`
+              : `Analysis of ${data.totalReviews.toLocaleString()} reviews`}
+          </p>
         </div>
       </div>
 
@@ -49,6 +53,11 @@ export default function ReviewIntelligence({ data }: { data: ReviewData | null }
             <p className="text-[10px] text-muted-foreground mt-1.5 relative z-10">{data.totalReviews.toLocaleString()} reviews</p>
           </div>
           <div className="space-y-1.5">
+            {data.distribution.length === 0 && (
+              <p className="text-[10px] text-muted-foreground/50 italic">
+                Star breakdown unavailable — source only reported an average
+              </p>
+            )}
             {data.distribution.map((d) => (
               <div key={d.stars} className="flex items-center gap-2.5">
                 <span className="text-[10px] text-muted-foreground w-6 text-right font-medium">{d.stars}★</span>
@@ -156,8 +165,16 @@ export default function ReviewIntelligence({ data }: { data: ReviewData | null }
             <ShieldCheck className="h-5 w-5 text-accent" />
           </div>
           <div className="relative z-10">
-            <p className="text-xs font-bold text-accent">Reviews Trustworthiness: {data.trustworthyScore}/100</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Based on review patterns, verified purchases, and review velocity</p>
+            {data.trustworthyScore !== null ? (
+              <p className="text-xs font-bold text-accent">Reviews Trustworthiness: {data.trustworthyScore}/100</p>
+            ) : (
+              <p className="text-xs font-bold text-accent">Reviews Trustworthiness: unavailable</p>
+            )}
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {data.trustworthyScore !== null
+                ? "Based on review patterns, verified purchases, and review velocity"
+                : "Not enough review data to analyze — only an average rating and count were provided"}
+            </p>
           </div>
         </div>
       </div>
