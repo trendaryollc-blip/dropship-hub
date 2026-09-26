@@ -7,6 +7,7 @@ import { Check, Sparkles, Loader2 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAPI } from "@/hooks/useAPI";
 import { authJson } from "@/lib/auth-headers";
+import { track } from "@/lib/analytics";
 import { BILLING_PLANS, type BillingTier } from "@/lib/billing/types";
 
 function priceLabel(priceMonthly: number, priceYearly: number, interval: "month" | "year") {
@@ -54,6 +55,7 @@ export default function PricingPage() {
       return;
     }
     setCheckoutTier(tier);
+    track("checkout_started", { tier, interval });
     try {
       const data = await authJson<{ url?: string }>("/api/billing/checkout", { tier, interval });
       if (data.url) window.location.assign(data.url);

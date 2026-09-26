@@ -147,5 +147,6 @@ GitHub Actions (`.github/workflows/ci.yml`) runs lint, typecheck, `npm audit`, t
 | Document                                         | Contents                                                                                        |
 | ------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
 | [FEATURE-CATALOG.md](FEATURE-CATALOG.md)         | Every feature in the app with functional status, testing system, completed work, and next steps |
+| [CHANGELOG.md](CHANGELOG.md)                     | What shipped and when — grouped by date from the real commit history                            |
 | [DATA_SOURCES.md](DATA_SOURCES.md)               | Feature → data source map, key pools, honesty UI components                                     |
 | [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md) | Original build plan                                                                             |

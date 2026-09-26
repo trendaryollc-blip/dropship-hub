@@ -327,6 +327,12 @@ export const CSMessageInputSchema = z.object({
   conversationId: z.string().min(1).max(200),
 });
 
+export const SubscribeInputSchema = z.object({
+  email: z.string().email().max(320),
+  source: z.string().max(100).optional(),
+  website: z.string().max(200).optional(), // honeypot — bots fill this
+});
+
 export const CSTemplateInputSchema = z.object({
   name: z.string().min(1).max(200),
   category: z.enum(["order-status", "shipping", "returns", "product-info", "general"]),

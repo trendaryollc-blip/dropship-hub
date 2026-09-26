@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { useAPI } from "@/hooks/useAPI";
 import { useToast } from "@/components/ui/Toast";
 import { authJson } from "@/lib/auth-headers";
+import { track } from "@/lib/analytics";
 import type { Subscription, BillingPlan, Invoice } from "@/lib/billing/types";
 
 type UsageMap = Record<string, { used: number; limit: number | null; percentage: number }>;
@@ -55,7 +56,10 @@ export default function BillingPage() {
     setPortalBusy(true);
     try {
       const data = await authJson<{ url?: string }>("/api/billing/portal", {});
-      if (data.url) window.location.href = data.url;
+      if (data.url) {
+        track("billing_portal_opened");
+        window.location.assign(data.url);
+      }
     } catch (e) {
       toastError(e instanceof Error ? e.message : "Could not open billing portal");
     } finally {

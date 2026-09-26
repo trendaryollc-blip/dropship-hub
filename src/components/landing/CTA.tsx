@@ -1,5 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Sparkles, Brain, Target, Flame } from "lucide-react";
+import { ArrowRight, Sparkles, Brain, Target, Flame, Check, Loader2 } from "lucide-react";
+import { track } from "@/lib/analytics";
 
 const pills = [
   { icon: Brain, label: "Daily Pick", href: "/dashboard" },
@@ -7,6 +11,80 @@ const pills = [
   { icon: Sparkles, label: "Market Intelligence", href: "/dashboard" },
   { icon: Flame, label: "Trending Scores", href: "/products" },
 ];
+
+function EmailCaptureForm() {
+  const [email, setEmail] = useState("");
+  const [honeypot, setHoneypot] = useState("");
+  const [status, setStatus] = useState<"idle" | "saving" | "done" | "error">("idle");
+  const [message, setMessage] = useState("");
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (status === "saving" || !email.trim()) return;
+    setStatus("saving");
+    try {
+      const res = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), source: "landing-cta", website: honeypot }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setStatus("done");
+        setEmail("");
+        track("email_subscribed", { source: "landing-cta" });
+      } else {
+        setStatus("error");
+        setMessage(data.error || "Could not subscribe — please try again.");
+      }
+    } catch {
+      setStatus("error");
+      setMessage("Could not subscribe — please try again.");
+    }
+  };
+
+  if (status === "done") {
+    return (
+      <p className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-400">
+        <Check className="h-4 w-4" /> You&apos;re on the list — we&apos;ll be in touch.
+      </p>
+    );
+  }
+
+  return (
+    <form onSubmit={submit} className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-md mx-auto">
+      <input
+        type="email"
+        required
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="you@email.com"
+        aria-label="Email address"
+        className="flex-1 w-full px-4 py-3 rounded-xl bg-surface/80 border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50"
+      />
+      {/* Honeypot — hidden from humans, bots fill it */}
+      <input
+        type="text"
+        value={honeypot}
+        onChange={(e) => setHoneypot(e.target.value)}
+        placeholder="Website"
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        className="hidden"
+      />
+      <button
+        type="submit"
+        disabled={status === "saving"}
+        className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold btn-accent transition-all active:scale-[0.97] disabled:opacity-60"
+      >
+        {status === "saving" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+        Notify me
+      </button>
+      {status === "error" && <p className="text-xs text-red-400 sm:absolute sm:mt-16">{message}</p>}
+    </form>
+  );
+}
 
 export default function CTA() {
   return (
@@ -56,6 +134,11 @@ export default function CTA() {
               <p className="text-sm text-muted-foreground">
                 Free forever — No credit card required
               </p>
+            </div>
+
+            <div className="mt-8 pt-8 border-t border-border/50">
+              <p className="text-xs text-muted-foreground mb-3">Not ready yet? Get product drops and growth tactics:</p>
+              <EmailCaptureForm />
             </div>
           </div>
         </div>

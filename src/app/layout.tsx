@@ -1,11 +1,36 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import ThemeProvider from "@/components/theme/ThemeProvider";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+const siteTitle = "DropShip Hub — The All-in-One Ecommerce Toolkit";
+const siteDescription =
+  "Find products, compare suppliers, calculate profits, and analyze competitors. Everything dropshippers need in one powerful platform.";
 
 export const metadata: Metadata = {
-  title: "DropShip Hub — The All-in-One Ecommerce Toolkit",
-  description:
-    "Find products, compare suppliers, calculate profits, and analyze competitors. Everything dropshippers need in one powerful platform.",
+  metadataBase: new URL(siteUrl),
+  title: siteTitle,
+  description: siteDescription,
+  applicationName: "DropShip Hub",
+  openGraph: {
+    title: siteTitle,
+    description: siteDescription,
+    url: "/",
+    siteName: "DropShip Hub",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: siteTitle,
+    description: siteDescription,
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -27,6 +52,8 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-background text-foreground antialiased">
         <ThemeProvider>{children}</ThemeProvider>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
