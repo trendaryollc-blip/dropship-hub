@@ -136,6 +136,7 @@ describe("getTierLimits", () => {
     const limits = getTierLimits("free");
     expect(limits.DEFAULT.maxRequests).toBe(60);
     expect(limits.AI_CHAT.maxRequests).toBe(30);
+    expect(limits.AI_TOOL.maxRequests).toBe(60);
     expect(limits.PLATFORM_SEARCH.maxRequests).toBe(10);
     expect(limits.AUTH.maxRequests).toBe(10);
   });
@@ -144,6 +145,7 @@ describe("getTierLimits", () => {
     const limits = getTierLimits("pro");
     expect(limits.DEFAULT.maxRequests).toBe(120);
     expect(limits.AI_CHAT.maxRequests).toBe(60);
+    expect(limits.AI_TOOL.maxRequests).toBe(120);
     expect(limits.PLATFORM_SEARCH.maxRequests).toBe(25);
     expect(limits.AUTH.maxRequests).toBe(20);
     expect(limits.WEBHOOK_OUTGOING).toBeDefined();
@@ -154,6 +156,7 @@ describe("getTierLimits", () => {
     const limits = getTierLimits("enterprise");
     expect(limits.DEFAULT.maxRequests).toBe(300);
     expect(limits.AI_CHAT.maxRequests).toBe(150);
+    expect(limits.AI_TOOL.maxRequests).toBe(300);
     expect(limits.PLATFORM_SEARCH.maxRequests).toBe(50);
     expect(limits.AUTH.maxRequests).toBe(30);
     expect(limits.WEBHOOK_OUTGOING.maxRequests).toBe(200);
@@ -181,6 +184,8 @@ describe("LIMITS", () => {
     expect(LIMITS.DEFAULT.maxRequests).toBe(60);
     expect(LIMITS.AI_CHAT.windowMs).toBe(60000);
     expect(LIMITS.AI_CHAT.maxRequests).toBe(30);
+    expect(LIMITS.AI_TOOL.windowMs).toBe(60000);
+    expect(LIMITS.AI_TOOL.maxRequests).toBe(60);
     expect(LIMITS.PLATFORM_SEARCH.windowMs).toBe(60000);
     expect(LIMITS.PLATFORM_SEARCH.maxRequests).toBe(10);
     expect(LIMITS.AUTH.windowMs).toBe(900000);

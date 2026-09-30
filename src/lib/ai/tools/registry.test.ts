@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, vi } from "vitest";
 import { z } from "zod";
 import { ToolRegistry, createTool } from "./registry";
+import { enforceToolRateLimit } from "@/lib/ai/tool-rate-limit";
 import {
   calculateProfitTool,
   calculateShippingTool,
@@ -10,6 +11,10 @@ import {
   calculateOrderProfitTool,
   calculateAggregatedProfitTool,
 } from "./financial";
+
+vi.mock("@/lib/ai/tool-rate-limit", () => ({
+  enforceToolRateLimit: vi.fn().mockResolvedValue({ allowed: true }),
+}));
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
@@ -317,6 +322,28 @@ describe("ToolRegistry", () => {
 
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
+    });
+
+    it("returns a failure result when the tool is rate limited", async () => {
+      vi.mocked(enforceToolRateLimit).mockResolvedValueOnce({
+        allowed: false,
+        error: "Daily AI limit reached: 50 calls per day on the free tier. Try again in 3h.",
+      });
+
+      const result = await ToolRegistry.executeTool("calculate_profit", {
+        productCost: 10,
+        sellingPrice: 25,
+        shippingCost: 5,
+        platformFeePercent: 10,
+        adSpendPerUnit: 2,
+        units: 1,
+      }, context);
+
+      expect(enforceToolRateLimit).toHaveBeenCalledWith("test-user", "calculate_profit");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Daily AI limit reached");
+      expect(result.summary).toContain("rate limited");
+      expect(result.data).toBeNull();
     });
   });
 });

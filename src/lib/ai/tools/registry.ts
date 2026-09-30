@@ -7,6 +7,7 @@ import type {
   ToolCategory,
   ToolSafetyLevel,
 } from "../types";
+import { enforceToolRateLimit } from "@/lib/ai/tool-rate-limit";
 
 // ─── Tool Registry ──────────────────────────────────────────────────────────
 // Central registry for all AI-executable tools. Tools are registered at
@@ -98,6 +99,15 @@ class ToolRegistryImpl {
     }
 
     try {
+      const limitDecision = await enforceToolRateLimit(context.uid, toolId);
+      if (!limitDecision.allowed) {
+        return {
+          success: false,
+          data: null,
+          summary: `Tool ${tool.name} is rate limited: ${limitDecision.error}`,
+          error: limitDecision.error,
+        };
+      }
       return await tool.execute(validation.data as Record<string, unknown>, context);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";

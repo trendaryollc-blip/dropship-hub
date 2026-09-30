@@ -125,6 +125,7 @@ export function getTierLimits(tier: UserTier): Record<string, RateLimitConfig> {
       return {
         DEFAULT: { windowMs: 60_000, maxRequests: 300 },
         AI_CHAT: { windowMs: 60_000, maxRequests: 150 },
+        AI_TOOL: { windowMs: 60_000, maxRequests: 300 },
         PLATFORM_SEARCH: { windowMs: 60_000, maxRequests: 50 },
         PRODUCT_ENRICH: { windowMs: 60_000, maxRequests: 100 },
         STORE_PUSH: { windowMs: 60_000, maxRequests: 75 },
@@ -138,6 +139,7 @@ export function getTierLimits(tier: UserTier): Record<string, RateLimitConfig> {
       return {
         DEFAULT: { windowMs: 60_000, maxRequests: 120 },
         AI_CHAT: { windowMs: 60_000, maxRequests: 60 },
+        AI_TOOL: { windowMs: 60_000, maxRequests: 120 },
         PLATFORM_SEARCH: { windowMs: 60_000, maxRequests: 25 },
         PRODUCT_ENRICH: { windowMs: 60_000, maxRequests: 50 },
         STORE_PUSH: { windowMs: 60_000, maxRequests: 30 },
@@ -238,6 +240,7 @@ export async function getRateLimitStatus(
 export const LIMITS = {
   DEFAULT: { windowMs: 60_000, maxRequests: 60 },
   AI_CHAT: { windowMs: 60_000, maxRequests: 30 },
+  AI_TOOL: { windowMs: 60_000, maxRequests: 60 },
   PLATFORM_SEARCH: { windowMs: 60_000, maxRequests: 10 },
   PRODUCT_ENRICH: { windowMs: 60_000, maxRequests: 20 },
   STORE_PUSH: { windowMs: 60_000, maxRequests: 15 },
