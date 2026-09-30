@@ -193,3 +193,26 @@ export function createMockAdminDB() {
     _docs: docs,
   };
 }
+
+export function installDocStoreTransactions(db: ReturnType<typeof createMockAdminDB>): void {
+  const docs = db._docs;
+  db.runTransaction.mockImplementation(async (fn: any) => {
+    const tx = {
+      get: async (ref: { path: string }) => {
+        const entry = docs.get(ref.path);
+        return { exists: !!entry, data: () => entry?.data ?? null };
+      },
+      update: async (ref: { path: string }, data: Record<string, unknown>) => {
+        const entry = docs.get(ref.path);
+        if (entry) entry.data = { ...entry.data, ...data };
+      },
+      set: async (ref: { path: string }, data: Record<string, unknown>) => {
+        docs.set(ref.path, { data, exists: true });
+      },
+      delete: async (ref: { path: string }) => {
+        docs.delete(ref.path);
+      },
+    };
+    return fn(tx);
+  });
+}

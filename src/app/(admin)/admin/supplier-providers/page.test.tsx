@@ -282,4 +282,67 @@ describe("Admin Supplier Providers Page", () => {
       expect(screen.getByText("Multi-site product scraping")).toBeDefined();
     });
   });
+
+  it("marks the seven placeholder providers as not connected", async () => {
+    vi.mocked(safeFetch).mockResolvedValue({ providers: mockProviders });
+    render(<AdminSupplierProvidersPage />);
+    await waitFor(() => {
+      expect(screen.getAllByText("Not connected")).toHaveLength(7);
+    });
+  });
+
+  it("disables Add Key for providers that are not connected", async () => {
+    vi.mocked(safeFetch).mockResolvedValue({ providers: mockProviders });
+    render(<AdminSupplierProvidersPage />);
+    await waitFor(() => {
+      expect(screen.getByText("Rainforest API")).toBeDefined();
+    });
+
+    const addKeyButtons = screen.getAllByText("Add Key");
+    expect(addKeyButtons).toHaveLength(12);
+    expect((addKeyButtons[0] as HTMLButtonElement).disabled).toBe(false);
+    expect((addKeyButtons[5] as HTMLButtonElement).disabled).toBe(true);
+    expect((addKeyButtons[11] as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("tests keys through the supplier provider test endpoint and refetches", async () => {
+    vi.mocked(safeFetch).mockImplementation(async (url: any) => {
+      if (url === "/api/platforms/admin/test") {
+        return { success: true, message: "ScraperAPI connection successful" };
+      }
+      return { providers: mockProviders };
+    });
+    render(<AdminSupplierProvidersPage />);
+    await waitFor(() => {
+      expect(screen.getByText("Rainforest API")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getAllByText("Keys")[0]);
+    await waitFor(() => {
+      expect(screen.getByText("Primary")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByTitle("Test key"));
+
+    await waitFor(() => {
+      const testCall = vi
+        .mocked(safeFetch)
+        .mock.calls.find((call) => call[0] === "/api/platforms/admin/test");
+      expect(testCall).toBeDefined();
+      const body = JSON.parse((testCall![1] as any).body);
+      expect(body).toMatchObject({
+        platformId: "rainforest",
+        keyId: "skey-1",
+        method: "supplier_provider",
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("ScraperAPI connection successful")).toBeDefined();
+      const supplierKeyCalls = vi
+        .mocked(safeFetch)
+        .mock.calls.filter((call) => call[0] === "/api/admin/supplier-keys");
+      expect(supplierKeyCalls.length).toBeGreaterThanOrEqual(2);
+    });
+  });
 });

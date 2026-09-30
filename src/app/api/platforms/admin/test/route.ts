@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, isOwner } from "@/lib/auth";
 import { markKeyHealthy, markKeyError } from "@/lib/platform-config";
+import { setSupplierProviderKeyResult } from "@/lib/supplier-provider-keys";
 import { safeErrorMessage } from "@/lib/api-errors";
 
 const _CHAT_EXCLUDE = /embed|tts|whisper|dall|vision|audio|realtime|moderation|image/i;
+
+const SUPPLIER_PROVIDER_METHODS: Record<string, string> = {
+  rainforest: "rainforest",
+  serpapi: "serpapi",
+  scraperapi: "scraperapi",
+  serper: "serper",
+  rapidapi: "rapidapi_walmart",
+};
+
+const SUPPLIER_PROVIDER_NOT_CONNECTED = new Set([
+  "trendsi", "veridion", "supplierio", "salehoo", "spocket", "dataforseo", "ecomsource",
+]);
 
 function _sortChatModels(ids: string[]): string[] {
   return ids
@@ -301,6 +314,20 @@ async function testPlatformKey(
         return { success: true, message: `${platformId} connection successful (${model})` };
       }
 
+      case "supplier_provider": {
+        const mappedMethod = SUPPLIER_PROVIDER_METHODS[platformId];
+        if (mappedMethod) {
+          return testPlatformKey(mappedMethod, key, platformId);
+        }
+        if (SUPPLIER_PROVIDER_NOT_CONNECTED.has(platformId)) {
+          return {
+            success: false,
+            message: `${platformId} is not connected in this build — no live API integration available`,
+          };
+        }
+        return { success: false, message: `No test method configured for supplier provider: ${platformId}` };
+      }
+
       default:
         return { success: false, message: `Unknown method: ${method}` };
     }
@@ -330,7 +357,14 @@ export async function POST(request: NextRequest) {
 
     // Update health status in Firestore if platformId and keyId are provided
     if (platformId && keyId) {
-      if (result.success) {
+      if (method === "supplier_provider") {
+        await setSupplierProviderKeyResult(
+          platformId,
+          keyId,
+          result.success,
+          typeof result.message === "string" ? result.message : ""
+        );
+      } else if (result.success) {
         await markKeyHealthy(platformId, keyId);
       } else {
         await markKeyError(platformId, keyId, result.message);

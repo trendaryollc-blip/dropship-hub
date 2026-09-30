@@ -30,18 +30,18 @@ interface ProviderData {
 }
 
 const PROVIDERS = [
-  { id: "rainforest", name: "Rainforest API", freeTier: "500 credits/mo", usedFor: "Amazon product data & search", website: "https://rainforestapi.com" },
-  { id: "serpapi", name: "SerpAPI", freeTier: "250 searches/mo", usedFor: "Google Shopping & Amazon search", website: "https://serpapi.com" },
-  { id: "scraperapi", name: "ScraperAPI", freeTier: "1,000 credits", usedFor: "Multi-site product scraping", website: "https://scraperapi.com" },
-  { id: "serper", name: "Serper.dev", freeTier: "2,500 queries/mo", usedFor: "Google Search results", website: "https://serper.dev" },
-  { id: "rapidapi", name: "RapidAPI", freeTier: "1,000 requests/mo", usedFor: "Various supplier APIs marketplace", website: "https://rapidapi.com" },
-  { id: "trendsi", name: "Trendsi", freeTier: "Free plan", usedFor: "Fashion dropshipping supplier", website: "https://trendsiapp.com" },
-  { id: "veridion", name: "Veridion", freeTier: "Free tier", usedFor: "Supplier discovery (186M+ companies)", website: "https://veridion.com" },
-  { id: "supplierio", name: "Supplier.io", freeTier: "Demo available", usedFor: "Supplier management & data", website: "https://supplier.io" },
-  { id: "salehoo", name: "SaleHoo", freeTier: "$9/mo plan", usedFor: "8,000+ vetted suppliers directory", website: "https://salehoo.com" },
-  { id: "spocket", name: "Spocket", freeTier: "Free plan", usedFor: "US/EU supplier directory", website: "https://spocket.co" },
-  { id: "dataforseo", name: "DataForSEO", freeTier: "$50 trial credit", usedFor: "SEO & product data APIs", website: "https://dataforseo.com" },
-  { id: "ecomsource", name: "EcomSource", freeTier: "10 lookups/day", usedFor: "UPC/ASIN product data API", website: "https://ecomsource.ai" },
+  { id: "rainforest", name: "Rainforest API", freeTier: "500 credits/mo", usedFor: "Amazon product data & search", website: "https://rainforestapi.com", connected: true },
+  { id: "serpapi", name: "SerpAPI", freeTier: "250 searches/mo", usedFor: "Google Shopping & Amazon search", website: "https://serpapi.com", connected: true },
+  { id: "scraperapi", name: "ScraperAPI", freeTier: "1,000 credits", usedFor: "Multi-site product scraping", website: "https://scraperapi.com", connected: true },
+  { id: "serper", name: "Serper.dev", freeTier: "2,500 queries/mo", usedFor: "Google Search results", website: "https://serper.dev", connected: true },
+  { id: "rapidapi", name: "RapidAPI", freeTier: "1,000 requests/mo", usedFor: "Various supplier APIs marketplace", website: "https://rapidapi.com", connected: true },
+  { id: "trendsi", name: "Trendsi", freeTier: "Free plan", usedFor: "Fashion dropshipping supplier", website: "https://trendsiapp.com", connected: false },
+  { id: "veridion", name: "Veridion", freeTier: "Free tier", usedFor: "Supplier discovery (186M+ companies)", website: "https://veridion.com", connected: false },
+  { id: "supplierio", name: "Supplier.io", freeTier: "Demo available", usedFor: "Supplier management & data", website: "https://supplier.io", connected: false },
+  { id: "salehoo", name: "SaleHoo", freeTier: "$9/mo plan", usedFor: "8,000+ vetted suppliers directory", website: "https://salehoo.com", connected: false },
+  { id: "spocket", name: "Spocket", freeTier: "Free plan", usedFor: "US/EU supplier directory", website: "https://spocket.co", connected: false },
+  { id: "dataforseo", name: "DataForSEO", freeTier: "$50 trial credit", usedFor: "SEO & product data APIs", website: "https://dataforseo.com", connected: false },
+  { id: "ecomsource", name: "EcomSource", freeTier: "10 lookups/day", usedFor: "UPC/ASIN product data API", website: "https://ecomsource.ai", connected: false },
 ];
 
 export default function AdminSupplierProvidersPage() {
@@ -287,6 +287,11 @@ export default function AdminSupplierProvidersPage() {
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-400/10 text-emerald-400 border border-emerald-400/20">
                           {prov.freeTier}
                         </span>
+                        {!prov.connected && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/10 text-amber-400 border border-amber-400/20">
+                            Not connected
+                          </span>
+                        )}
                         {data.keys.length > 0 && (
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-accent/10 text-accent border border-accent/20">
                             {data.keys.length} key{data.keys.length !== 1 ? "s" : ""}
@@ -302,7 +307,8 @@ export default function AdminSupplierProvidersPage() {
                       <ExternalLink className="h-3 w-3" /> Website
                     </a>
                     <button onClick={() => { setShowAddKeyFor(prov.id); setExpandedProvider(prov.id); }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-medium hover:bg-emerald-600 transition-all">
+                      disabled={!prov.connected}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-medium hover:bg-emerald-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-emerald-500">
                       <Plus className="h-3 w-3" /> Add Key
                     </button>
                     <button onClick={() => setExpandedProvider(expandedProvider === prov.id ? null : prov.id)}
@@ -322,7 +328,8 @@ export default function AdminSupplierProvidersPage() {
                       <span className="text-xs font-normal text-muted-foreground">({data.keys.length})</span>
                     </h4>
                     <button onClick={() => setShowAddKeyFor(showAddKeyFor === prov.id ? null : prov.id)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-all">
+                      disabled={!prov.connected}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
                       <Plus className="h-3 w-3" /> Add Another Key
                     </button>
                   </div>
