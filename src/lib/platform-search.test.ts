@@ -1485,7 +1485,7 @@ describe("platform-search — custom connectors and fallbacks", () => {
         </script>
       </html>
     `;
-    const ids = ["walmart", "etsy", "temu", "shein", "banggood", "dhgate", "alibaba", "wish", "ebay", "shopee", "1688", "global_sources"];
+    const ids = ["walmart", "etsy", "temu", "shein", "banggood", "dhgate", "alibaba", "wish", "ebay", "shopee", "global_sources"];
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, text: () => Promise.resolve(html) }));
     vi.mocked(getAllPlatforms).mockResolvedValue(ids.map((id) => platformWith(id)) as never[]);
 

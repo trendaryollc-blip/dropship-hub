@@ -38,10 +38,8 @@ const platformConfigs: Record<string, { name: string; searchUrl: (q: string) => 
 };
 
 async function scrapeWithScraperAPI(url: string) {
-  const res = await fetch("https://api.scraperapi.com", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ api_key: SCRAPER_API_KEY, url, render: true }),
+  const params = new URLSearchParams({ api_key: SCRAPER_API_KEY ?? "", url, render: "true" });
+  const res = await fetch(`https://api.scraperapi.com?${params}`, {
     signal: AbortSignal.timeout(30000),
   });
   if (!res.ok) throw new Error(`ScraperAPI ${res.status}`);

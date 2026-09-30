@@ -488,11 +488,6 @@ const scraperSearchConfigs: Record<string, { name: string; searchUrl: (q: string
     searchUrl: (q) => `https://shopee.com/search?keyword=${encodeURIComponent(q)}`,
     linkPattern: /href="(\/[^"]+?-i\.\d+[^"]*)"/gi,
   },
-  cn_1688: {
-    name: "1688",
-    searchUrl: (q) => `https://s.1688.com/selloffer/offer_search.htm?keywords=${encodeURIComponent(q)}`,
-    linkPattern: /(?:href="|data-href=")(\/offer\/\d+\.html[^"]*)/gi,
-  },
   global_sources: {
     name: "Global Sources",
     searchUrl: (q) => `https://www.globalsources.com/api/search-new/result?keywords=${encodeURIComponent(q)}`,
@@ -506,10 +501,8 @@ async function searchViaScraperWithKey(apiKey: string, platformId: string, query
 
   const targetUrl = config.searchUrl(query);
 
-  const res = await fetch("https://api.scraperapi.com", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ api_key: apiKey, url: targetUrl, render: true }),
+  const params = new URLSearchParams({ api_key: apiKey, url: targetUrl, render: "true" });
+  const res = await fetch(`https://api.scraperapi.com?${params}`, {
     signal: AbortSignal.timeout(30000),
   });
   if (!res.ok) {
@@ -754,7 +747,6 @@ const dedicatedSearchFns: Record<string, SearchFn> = {
   wish: (key, q) => searchViaScraperWithKey(key, "wish", q),
   ebay: (key, q) => searchViaScraperWithKey(key, "ebay", q),
   shopee: (key, q) => searchViaScraperWithKey(key, "shopee", q),
-  "1688": (key, q) => searchViaScraperWithKey(key, "cn_1688", q),
   global_sources: (key, q) => searchViaScraperWithKey(key, "global_sources", q),
 };
 
@@ -947,6 +939,7 @@ export const platforms: PlatformSearchConfig[] = [
   { id: "banggood", name: "Banggood", envKey: "SCRAPER_API_KEYS", searchFn: pooledSearch("scraperapi", (key, q) => searchViaScraperWithKey(key, "banggood", q)) },
   { id: "dhgate", name: "DHgate", envKey: "SCRAPER_API_KEYS", searchFn: pooledSearch("scraperapi", (key, q) => searchViaScraperWithKey(key, "dhgate", q)) },
   { id: "alibaba", name: "Alibaba", envKey: "SCRAPER_API_KEYS", searchFn: pooledSearch("scraperapi", (key, q) => searchViaScraperWithKey(key, "alibaba", q)) },
+  { id: "global_sources", name: "Global Sources", envKey: "SCRAPER_API_KEYS", searchFn: pooledSearch("scraperapi", (key, q) => searchViaScraperWithKey(key, "global_sources", q)) },
 ];
 
 export async function searchAllPlatforms(

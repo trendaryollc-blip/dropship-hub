@@ -83,7 +83,6 @@ const PLATFORM_WEBSITES: Record<string, string> = {
   orderchamp: "https://www.orderchamp.com",
   shopee: "https://open.shopee.com",
   ebay: "https://developer.ebay.com",
-  "1688": "https://open.1688.com",
   wish: "https://merchant.wish.com",
   zendrop: "https://app.zendrop.com",
   spocket: "https://app.spocket.co",

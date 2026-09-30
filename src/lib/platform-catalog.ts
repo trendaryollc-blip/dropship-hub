@@ -82,16 +82,6 @@ export const PLATFORM_CATALOG: CatalogPlatform[] = [
     keyUrl: "https://www.scraperapi.com/",
   },
   {
-    id: "1688",
-    name: "1688 (China Wholesale)",
-    method: "scraperapi",
-    siteKey: "cn_1688",
-    category: "Dropshipping",
-    description: "Alibaba Group's domestic Chinese wholesale marketplace.",
-    keyHint: "ScraperAPI key (scrapes 1688.com search results).",
-    keyUrl: "https://www.scraperapi.com/",
-  },
-  {
     id: "alibaba",
     name: "Alibaba",
     method: "scraperapi",

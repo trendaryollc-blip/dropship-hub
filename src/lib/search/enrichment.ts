@@ -28,7 +28,6 @@ const PLATFORM_COST_RATIOS: Record<string, number> = {
   aliexpress: 0.25,
   alibaba: 0.20,
   cj: 0.22,
-  "1688": 0.18,
   temu: 0.30,
   banggood: 0.28,
   dhgate: 0.23,
@@ -53,7 +52,6 @@ const PLATFORM_RELIABILITY: Record<string, number> = {
   banggood: 68,
   dhgate: 60,
   shein: 62,
-  "1688": 72,
 };
 
 // ── Margin Estimation ──────────────────────────────────────────────────────
@@ -75,7 +73,7 @@ export function estimateMargin(
     }
   }
 
-  const _sourcingPlatforms = ["cj", "aliexpress", "alibaba", "1688"];
+  const _sourcingPlatforms = ["cj", "aliexpress", "alibaba"];
   let bestCostRatio = 0.55;
   for (const platform of product.platforms) {
     const ratio = PLATFORM_COST_RATIOS[platform.platform];

@@ -2,6 +2,15 @@ import { z } from "zod";
 import { createTool } from "./registry";
 import { searchSuppliers, getSuppliers } from "@/lib/supplier-service";
 import {
+  searchSupplierPlatforms,
+  buildSupplierProfiles,
+  getSupplierPlatformStatuses,
+} from "@/lib/supplier-platform-search";
+import { parseSupplierQuery, scoreSupplierMatch } from "@/lib/search/supplier-query";
+import { safeErrorMessage } from "@/lib/api-errors";
+import { enforceSearchDailyLimit } from "@/lib/ai/tool-rate-limit";
+import type { SupplierProfile } from "@/types/supplier";
+import {
   getSupplierPerformanceHistory,
   getSupplierAlerts,
 } from "@/lib/data/supplier-performance";
@@ -12,21 +21,75 @@ import {
 
 // ─── Search Suppliers ───────────────────────────────────────────────────────
 
+const MAX_TOOL_SUPPLIERS = 40;
+
 export const searchSuppliersTool = createTool({
   id: "search_suppliers",
   name: "Search Suppliers",
-  description: "Search for suppliers across platforms (CJ Dropshipping, AliExpress, etc.)",
+  description:
+    "Search the supplier directory and live supplier platforms (Alibaba, DHgate, Global Sources, AliExpress, CJ Dropshipping) for suppliers matching a query",
   category: "supplier",
   safetyLevel: "safe",
   inputSchema: z.object({
     query: z.string().min(1).max(500),
   }),
-  execute: async (input) => {
-    const results = await searchSuppliers(input.query as string);
+  execute: async (input, ctx) => {
+    const query = input.query as string;
+    const issues: string[] = [];
+    const notes: string[] = [];
+    let discovered: SupplierProfile[] = [];
+    let configured: string[] = [];
+
+    try {
+      const statuses = await getSupplierPlatformStatuses();
+      configured = statuses.filter((s) => s.configured).map((s) => s.id);
+      if (configured.length > 0) {
+        const budget = await enforceSearchDailyLimit(ctx.uid);
+        if (budget.allowed) {
+          const outcome = await searchSupplierPlatforms(query, configured);
+          discovered = buildSupplierProfiles(outcome.sources, query);
+          for (const platformError of outcome.errors) {
+            issues.push(`${platformError.name}: ${platformError.error}`);
+          }
+        } else {
+          notes.push(`platform search skipped (${budget.error})`);
+        }
+      } else {
+        notes.push("platform search skipped (no supplier platform keys configured)");
+      }
+    } catch (error) {
+      issues.push(`platform search failed: ${safeErrorMessage(error, "platform search failed")}`);
+    }
+
+    let local: SupplierProfile[] = [];
+    try {
+      local = await searchSuppliers(query);
+    } catch (error) {
+      issues.push(`supplier directory search failed: ${safeErrorMessage(error, "search failed")}`);
+    }
+
+    const seen = new Set(discovered.map((d) => d.id));
+    const merged = [...discovered, ...local.filter((l) => !seen.has(l.id))];
+    const tokens = parseSupplierQuery(query);
+    const ranked = merged
+      .map((supplier) => ({ supplier, score: scoreSupplierMatch(supplier, tokens) }))
+      .sort((a, b) => b.score - a.score)
+      .map((entry) => entry.supplier)
+      .slice(0, MAX_TOOL_SUPPLIERS);
+
+    const summaryParts = [`Found ${ranked.length} suppliers for "${query}"`];
+    if (discovered.length > 0) {
+      summaryParts.push(`${discovered.length} discovered live from ${configured.length} platform(s)`);
+    }
+    summaryParts.push(...notes);
+    if (issues.length > 0) {
+      summaryParts.push(`${issues.length} issue(s): ${issues.join("; ")}`);
+    }
+
     return {
       success: true,
-      data: results,
-      summary: `Found ${results.length} suppliers for "${input.query}".`,
+      data: ranked,
+      summary: `${summaryParts.join(" — ")}.`,
     };
   },
 });

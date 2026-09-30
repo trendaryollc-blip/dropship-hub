@@ -119,10 +119,19 @@ describe("badgeConfig", () => {
     expect(badgeConfig.gold.glow).toBeDefined();
     expect(badgeConfig.silver.glow).toBeDefined();
     expect(badgeConfig.bronze.glow).toBeDefined();
+    expect(badgeConfig.unverified.glow).toBeDefined();
   });
 
-  it("all three badges exist", () => {
-    expect(Object.keys(badgeConfig)).toHaveLength(3);
+  it("has unverified badge with correct label", () => {
+    expect(badgeConfig.unverified.label).toBe("Unverified");
+  });
+
+  it("unverified badge has zinc color", () => {
+    expect(badgeConfig.unverified.color).toContain("zinc");
+  });
+
+  it("all four badges exist", () => {
+    expect(Object.keys(badgeConfig)).toHaveLength(4);
   });
 });
 

@@ -4,6 +4,7 @@ export const badgeConfig: Record<string, { label: string; color: string; border:
   gold: { label: "Gold", color: "text-amber-400 bg-amber-400/10", border: "border-amber-400/20", glow: "shadow-[0_0_12px_rgba(251,191,36,0.15)]" },
   silver: { label: "Silver", color: "text-slate-300 bg-slate-300/10", border: "border-slate-300/20", glow: "shadow-[0_0_12px_rgba(148,163,184,0.15)]" },
   bronze: { label: "Bronze", color: "text-orange-400 bg-orange-400/10", border: "border-orange-400/20", glow: "shadow-[0_0_12px_rgba(251,146,60,0.15)]" },
+  unverified: { label: "Unverified", color: "text-zinc-400 bg-zinc-400/10", border: "border-zinc-400/20", glow: "shadow-[0_0_12px_rgba(161,161,170,0.1)]" },
 };
 
 export const dataSourceConfig: Record<string, { label: string; color: string; description: string }> = {

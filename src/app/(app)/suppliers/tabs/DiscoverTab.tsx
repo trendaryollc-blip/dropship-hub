@@ -7,9 +7,11 @@ import {
   Search, Shield, MapPin, Clock, Star, Filter, Truck,
   Package, ArrowRight, RefreshCw, CheckSquare, Square, X,
   Sparkles, TrendingUp, BarChart3, MessageSquare, FileText,
-  Loader2, Target,
+  Loader2, Target, ExternalLink,
 } from "lucide-react";
 import VoiceInput from "@/components/ai/VoiceInput";
+import PlatformProgress from "@/components/products/PlatformProgress";
+import ViewToggle from "@/components/ui/ViewToggle";
 import { useInView } from "@/hooks/useInView";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import type { SupplierProfile } from "@/types/supplier";
@@ -21,8 +23,42 @@ import SupplierAISuggestions from "@/components/suppliers/SupplierAISuggestions"
 import SupplierQuickActions from "@/components/suppliers/SupplierQuickActions";
 import QuickActionResult from "@/components/suppliers/QuickActionResult";
 import { useAPI } from "@/hooks/useAPI";
+import { getAuthHeaders } from "@/lib/auth-headers";
+import { parseSupplierQuery, scoreSupplierMatch } from "@/lib/search/supplier-query";
 
 type SortBy = "rating" | "reliability" | "response" | "orders" | "price";
+
+const DEFAULT_PLATFORM_IDS = ["alibaba", "dhgate", "global_sources", "aliexpress", "cj"];
+
+const SOURCE_LABELS: Record<string, string> = {
+  alibaba: "Alibaba",
+  dhgate: "DHgate",
+  global_sources: "Global Sources",
+  aliexpress: "AliExpress",
+  cj: "CJ Dropshipping",
+  amazon: "Amazon",
+  google: "Google",
+  walmart: "Walmart",
+  other: "Other",
+};
+
+function isDiscovered(supplier: SupplierProfile): boolean {
+  return supplier.trustBadge === "unverified";
+}
+
+interface PlatformChip {
+  id: string;
+  name: string;
+  configured: boolean;
+}
+
+interface PlatformSearchState {
+  loading: boolean;
+  lastQuery: string;
+  suppliers: SupplierProfile[];
+  errors: { platform: string; name: string; error: string }[];
+  sources: { platform: string; store: string; listings: number }[];
+}
 
 function ComparisonModal({ suppliers, onClose }: { suppliers: SupplierProfile[]; onClose: () => void }) {
   if (suppliers.length === 0) return null;
@@ -162,6 +198,9 @@ function SupplierCard({
   }, []);
 
   const hasStats = supplier.stats.rating > 0 || supplier.stats.reliabilityScore > 0;
+  const discovered = isDiscovered(supplier);
+  const detailHref = discovered && supplier.sourceUrl ? supplier.sourceUrl : `/suppliers/${supplier.id}`;
+  const isExternalLink = detailHref.startsWith("http");
 
   return (
     <div className="relative">
@@ -180,7 +219,7 @@ function SupplierCard({
           {isSelected ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
         </button>
       </div>
-      <Link href={`/suppliers/${supplier.id}`}>
+      <Link href={detailHref} {...(isExternalLink ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
         <div
           ref={ref}
           className={`glass rounded-2xl border border-border p-5 hover:border-accent/20 transition-all duration-500 cursor-pointer ${
@@ -198,6 +237,11 @@ function SupplierCard({
                   <h3 className="font-display text-sm font-semibold text-foreground">{supplier.name}</h3>
                   <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-bold uppercase ${badgeConfig[supplier.trustBadge].color} ${badgeConfig[supplier.trustBadge].border}`}>{badgeConfig[supplier.trustBadge].label}</span>
                   <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-bold uppercase ${dataSourceConfig[supplier.dataSource]?.color || ""}`}>{dataSourceConfig[supplier.dataSource]?.label || supplier.dataSource}</span>
+                  {discovered && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full border font-bold uppercase bg-surface text-muted-foreground border-border">
+                      {SOURCE_LABELS[supplier.source] ?? supplier.source}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                   <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {supplier.flag} {supplier.location}</span>
@@ -260,6 +304,9 @@ function SupplierCard({
               {supplier.stats.totalProducts > 0 && (
                 <span>{supplier.stats.totalProducts.toLocaleString()} products</span>
               )}
+              {isExternalLink && (
+                <span className="flex items-center gap-1 text-accent"><ExternalLink className="h-3 w-3" /> View store</span>
+              )}
             </div>
             {onAIAction && (
               <div className="relative" ref={aiActionsRef}>
@@ -301,6 +348,92 @@ function SupplierCard({
   );
 }
 
+function SupplierGridCard({
+  supplier,
+  isSelected,
+  onToggleSelect,
+}: {
+  supplier: SupplierProfile;
+  isSelected: boolean;
+  onToggleSelect: (id: string) => void;
+}) {
+  const discovered = isDiscovered(supplier);
+  const detailHref = discovered && supplier.sourceUrl ? supplier.sourceUrl : `/suppliers/${supplier.id}`;
+  const isExternalLink = detailHref.startsWith("http");
+  const priceRange = supplier.catalog.priceRange;
+  const listings = supplier.listings ?? [];
+
+  return (
+    <div className="glass rounded-2xl border border-border p-4 flex flex-col gap-3 h-full">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent/20 to-purple-400/20 border border-border flex items-center justify-center font-display text-xs font-bold text-foreground shrink-0">
+            {supplier.name.split(" ").map((w) => w[0]).join("").slice(0, 2)}
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-display text-sm font-semibold text-foreground truncate">{supplier.name}</h3>
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-bold uppercase ${badgeConfig[supplier.trustBadge].color} ${badgeConfig[supplier.trustBadge].border}`}>{badgeConfig[supplier.trustBadge].label}</span>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-bold uppercase ${dataSourceConfig[supplier.dataSource]?.color || ""}`}>{dataSourceConfig[supplier.dataSource]?.label || supplier.dataSource}</span>
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={() => onToggleSelect(supplier.id)}
+          className={`p-1.5 rounded-lg transition-all shrink-0 ${isSelected ? "bg-accent/20 text-accent" : "bg-surface/80 text-muted-foreground hover:text-foreground"}`}
+          aria-label={isSelected ? `Remove ${supplier.name} from compare` : `Add ${supplier.name} to compare`}
+        >
+          {isSelected ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+        </button>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap text-[10px] text-muted-foreground">
+        <span className="px-1.5 py-0.5 rounded bg-surface border border-border uppercase font-bold">
+          {SOURCE_LABELS[supplier.source] ?? supplier.source}
+        </span>
+        {supplier.stats.totalProducts > 0 && <span>{supplier.stats.totalProducts} listings observed</span>}
+        {supplier.stats.rating > 0 ? (
+          <span className="flex items-center gap-1 text-amber-400">
+            <Star className="h-3 w-3 fill-current" /> {supplier.stats.rating.toFixed(1)}
+            {supplier.stats.reviews > 0 && <span className="text-muted-foreground">({supplier.stats.reviews.toLocaleString()})</span>}
+          </span>
+        ) : (
+          <span>Rating not observed</span>
+        )}
+        {priceRange.max > 0 && (
+          <span className="text-emerald-400">
+            ${priceRange.min.toFixed(2)}–${priceRange.max.toFixed(2)}
+          </span>
+        )}
+      </div>
+
+      {listings.length > 0 && (
+        <ul className="space-y-1 min-w-0">
+          {listings.slice(0, 2).map((listing) => (
+            <li key={listing.link} className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground min-w-0">
+              <span className="truncate">{listing.title}</span>
+              {listing.price !== null && <span className="shrink-0 text-foreground">${listing.price.toFixed(2)}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <p className="text-[10px] text-muted-foreground/70 mt-auto" title="This supplier was discovered by live search. Reliability metrics appear once performance data is collected.">
+        Reliability not measured yet
+      </p>
+
+      <Link
+        href={detailHref}
+        {...(isExternalLink ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+        className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-accent/10 text-accent text-xs font-semibold hover:bg-accent/20 transition-colors"
+      >
+        {isExternalLink ? "View store" : "View profile"}
+        {isExternalLink ? <ExternalLink className="h-3.5 w-3.5" /> : <ArrowRight className="h-3.5 w-3.5" />}
+      </Link>
+    </div>
+  );
+}
+
 function DiscoverContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -318,7 +451,24 @@ function DiscoverContent() {
   const { data: findData, isLoading: findLoading } = useAPI<{ suppliers?: (SupplierProfile & { relevanceScore?: number })[]; error?: string }>(findUrl);
   const { data: listData, error: apiError, isLoading: listLoading, mutate } = useAPI<{ suppliers?: SupplierProfile[]; error?: string }>(listUrl);
 
-  const suppliers = useMemo(() => (hasProductContext ? findData?.suppliers : listData?.suppliers) ?? [], [hasProductContext, findData, listData]);
+  const [platformChips, setPlatformChips] = useState<PlatformChip[]>([]);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(DEFAULT_PLATFORM_IDS);
+  const [platformSearch, setPlatformSearch] = useState<PlatformSearchState>({
+    loading: false,
+    lastQuery: "",
+    suppliers: [],
+    errors: [],
+    sources: [],
+  });
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
+  const platformSearchRef = useRef(false);
+
+  const suppliers = useMemo(() => {
+    const base = (hasProductContext ? findData?.suppliers : listData?.suppliers) ?? [];
+    if (platformSearch.suppliers.length === 0) return base;
+    const seen = new Set(base.map((s) => s.id));
+    return [...base, ...platformSearch.suppliers.filter((s) => !seen.has(s.id))];
+  }, [hasProductContext, findData, listData, platformSearch.suppliers]);
   const loading = hasProductContext ? findLoading : listLoading;
   const error = apiError ? "Failed to load suppliers" : (findData?.error || listData?.error) ?? null;
 
@@ -349,6 +499,112 @@ function DiscoverContent() {
       aiInputRef.current.focus();
     }
   }, [showAIInput]);
+
+  const runPlatformSearch = useCallback(
+    async (rawQuery: string) => {
+      const query = rawQuery.trim();
+      if (!query) return;
+      const ids = selectedPlatforms.length > 0 ? selectedPlatforms : DEFAULT_PLATFORM_IDS;
+      const cacheKey = `supplier_search_v2:${[...ids].sort().join(",")}:${query.toLowerCase()}`;
+
+      try {
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached) as PlatformSearchState & { at?: number };
+          if (typeof parsed.at === "number" && Date.now() - parsed.at < 30 * 60 * 1000) {
+            setPlatformSearch({
+              loading: false,
+              lastQuery: parsed.lastQuery,
+              suppliers: parsed.suppliers ?? [],
+              errors: parsed.errors ?? [],
+              sources: parsed.sources ?? [],
+            });
+            return;
+          }
+          sessionStorage.removeItem(cacheKey);
+        }
+      } catch {
+        // sessionStorage unavailable — skip the cache
+      }
+
+      setPlatformSearch({ loading: true, lastQuery: query, suppliers: [], errors: [], sources: [] });
+      try {
+        const res = await fetch("/api/suppliers/search-all", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...(await getAuthHeaders()) },
+          body: JSON.stringify({ query, platforms: ids }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          throw new Error(data && typeof data.error === "string" ? data.error : "Platform search failed");
+        }
+        const next: PlatformSearchState = {
+          loading: false,
+          lastQuery: query,
+          suppliers: Array.isArray(data?.suppliers) ? data.suppliers : [],
+          errors: Array.isArray(data?.platformErrors) ? data.platformErrors : [],
+          sources: Array.isArray(data?.sources) ? data.sources : [],
+        };
+        setPlatformSearch(next);
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify({ ...next, at: Date.now() }));
+        } catch {
+          // cache write failure is non-fatal
+        }
+      } catch (err) {
+        setPlatformSearch({
+          loading: false,
+          lastQuery: query,
+          suppliers: [],
+          sources: [],
+          errors: [
+            {
+              platform: "search",
+              name: "Platform search",
+              error: err instanceof Error && err.message ? err.message : "Platform search failed",
+            },
+          ],
+        });
+      }
+    },
+    [selectedPlatforms]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/suppliers/search-all", { headers: await getAuthHeaders() });
+        if (!res.ok) throw new Error("status lookup failed");
+        const data = await res.json();
+        if (cancelled || !Array.isArray(data?.platforms)) return;
+        const chips: PlatformChip[] = data.platforms.map(
+          (p: { id: string; name: string; configured?: boolean }) => ({
+            id: String(p.id),
+            name: String(p.name || p.id),
+            configured: !!p.configured,
+          })
+        );
+        if (chips.length === 0) return;
+        setPlatformChips(chips);
+        const configured = chips.filter((c) => c.configured).map((c) => c.id);
+        setSelectedPlatforms(configured.length > 0 ? configured : chips.map((c) => c.id));
+      } catch {
+        // chips stay hidden when the status endpoint is unavailable
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const initialSearchQuery = hasProductContext ? initialProduct || initialCategory : "";
+  useEffect(() => {
+    if (!initialSearchQuery || platformSearchRef.current) return;
+    if (platformChips.length === 0) return;
+    platformSearchRef.current = true;
+    void runPlatformSearch(initialSearchQuery);
+  }, [initialSearchQuery, platformChips.length, runPlatformSearch]);
 
   const toggleSelectForCompare = (id: string) => {
     setSelectedForCompare((prev) =>
@@ -387,11 +643,34 @@ function DiscoverContent() {
       .map((s) => ({ country: s.country, flag: s.flag }));
   }, [suppliers]);
 
+  const searchTokens = useMemo(() => (debouncedSearch ? parseSupplierQuery(debouncedSearch) : []), [debouncedSearch]);
+
+  const platformProgress = useMemo(() => {
+    const names = new Map(platformChips.map((c) => [c.id, c.name]));
+    return selectedPlatforms.map((id) => {
+      const name = names.get(id) ?? SOURCE_LABELS[id] ?? id;
+      if (platformSearch.loading) return { platform: id, name, status: "loading" as const };
+      const failure = platformSearch.errors.find((e) => e.platform === id);
+      if (failure) return { platform: id, name, status: "error" as const, error: failure.error };
+      const count = platformSearch.sources
+        .filter((s) => s.platform === id)
+        .reduce((sum, s) => sum + (s.listings || 0), 0);
+      if (count > 0) return { platform: id, name, status: "success" as const, resultCount: count };
+      if (platformSearch.lastQuery) return { platform: id, name, status: "error" as const, error: "No results returned" };
+      return { platform: id, name, status: "pending" as const };
+    });
+  }, [platformChips, selectedPlatforms, platformSearch]);
+
   const filtered = useMemo(() => {
     let result = [...suppliers];
-    if (debouncedSearch) {
-      const q = debouncedSearch.toLowerCase();
-      result = result.filter((s) => s.name.toLowerCase().includes(q) || s.specializations.some((c) => c.toLowerCase().includes(q)) || s.location.toLowerCase().includes(q));
+    const searchScores = new Map<string, number>();
+    if (searchTokens.length > 0) {
+      result = result.filter((s) => {
+        const score = scoreSupplierMatch(s, searchTokens);
+        if (score <= 0) return false;
+        searchScores.set(s.id, score);
+        return true;
+      });
     }
     if (filters.badges.length > 0) result = result.filter((s) => filters.badges.includes(s.trustBadge));
     if (filters.locations.length > 0) result = result.filter((s) => filters.locations.includes(s.country));
@@ -409,21 +688,21 @@ function DiscoverContent() {
     if (filters.certifications.length > 0) {
       result = result.filter((s) => filters.certifications.some((c) => (s.quality?.certifications ?? []).includes(c)));
     }
-    if (hasProductContext && sortBy === "rating" && suppliers.length > 0 && "relevanceScore" in suppliers[0]) {
-      result.sort((a, b) => ((b as SupplierProfile & { relevanceScore: number }).relevanceScore || 0) - ((a as SupplierProfile & { relevanceScore: number }).relevanceScore || 0));
-    } else {
-      result.sort((a, b) => {
-        switch (sortBy) {
-          case "reliability": return b.stats.reliabilityScore - a.stats.reliabilityScore;
-          case "response": return a.stats.responseTimeHours - b.stats.responseTimeHours;
-          case "orders": return b.stats.monthlyOrders - a.stats.monthlyOrders;
-          case "price": return b.stats.priceCompetitiveness - a.stats.priceCompetitiveness;
-          default: return b.stats.rating - a.stats.rating;
-        }
-      });
-    }
+    const tieBreak = (a: SupplierProfile, b: SupplierProfile) => {
+      if (hasProductContext && sortBy === "rating" && suppliers.length > 0 && "relevanceScore" in suppliers[0]) {
+        return ((b as SupplierProfile & { relevanceScore: number }).relevanceScore || 0) - ((a as SupplierProfile & { relevanceScore: number }).relevanceScore || 0);
+      }
+      switch (sortBy) {
+        case "reliability": return b.stats.reliabilityScore - a.stats.reliabilityScore;
+        case "response": return a.stats.responseTimeHours - b.stats.responseTimeHours;
+        case "orders": return b.stats.monthlyOrders - a.stats.monthlyOrders;
+        case "price": return b.stats.priceCompetitiveness - a.stats.priceCompetitiveness;
+        default: return b.stats.rating - a.stats.rating;
+      }
+    };
+    result.sort((a, b) => (searchScores.get(b.id) ?? 0) - (searchScores.get(a.id) ?? 0) || tieBreak(a, b));
     return result;
-  }, [filters, debouncedSearch, sortBy, suppliers, hasProductContext]);
+  }, [filters, searchTokens, sortBy, suppliers, hasProductContext]);
 
   const hasFilters = filters.badges.length > 0 || filters.locations.length > 0 || filters.minRating > 0 ||
     filters.shippingSpeed !== "" || filters.specializations.length > 0 ||
@@ -447,15 +726,12 @@ function DiscoverContent() {
     window.open(`/ai?q=${encodeURIComponent(prompt)}`, "_blank");
   }, []);
 
-  const handleAskAI = useCallback(async (naturalLanguageQuery: string) => {
-    const parsedQuery = naturalLanguageQuery
-      .replace(/reliable|fast|cheap|good|best|top/gi, "")
-      .trim()
-      .replace(/\s+/g, " ");
-    const searchQ = parsedQuery.length > 3 ? parsedQuery : naturalLanguageQuery;
-    setFilters((f) => ({ ...f, search: searchQ }));
-    window.open(`/ai?q=${encodeURIComponent(naturalLanguageQuery)}`, "_blank");
-  }, []);
+  const handleAskAI = useCallback((naturalLanguageQuery: string) => {
+    const trimmed = naturalLanguageQuery.trim();
+    if (!trimmed) return;
+    setFilters((f) => ({ ...f, search: trimmed }));
+    void runPlatformSearch(trimmed);
+  }, [runPlatformSearch]);
 
   const handleQuickAction = useCallback((actionId: string, label: string, prompt: string) => {
     setActiveQuickAction({ id: actionId, label, prompt });
@@ -497,7 +773,10 @@ function DiscoverContent() {
               type="text"
               value={filters.search}
               onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
-              onKeyDown={(e) => { if (e.key === "Escape") e.currentTarget.blur(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") e.currentTarget.blur();
+                if (e.key === "Enter" && filters.search.trim()) void runPlatformSearch(filters.search);
+              }}
               placeholder="Search suppliers by name, category, or location..."
               className="flex-1 h-12 px-2 bg-transparent text-foreground placeholder:text-muted-foreground/50 focus:outline-none text-base font-medium"
             />
@@ -511,7 +790,7 @@ function DiscoverContent() {
             )}
             <VoiceInput onTranscript={(text) => setFilters((f) => ({ ...f, search: text }))} />
             <button
-              onClick={() => { if (filters.search.trim()) { setFilters((f) => ({ ...f, search: f.search })); } }}
+              onClick={() => { if (filters.search.trim()) void runPlatformSearch(filters.search); }}
               className="flex items-center justify-center w-12 h-12 rounded-xl bg-accent text-white hover:bg-accent-hover active:scale-[0.97] transition-all shrink-0"
               aria-label="Search suppliers"
             >
@@ -520,6 +799,56 @@ function DiscoverContent() {
           </div>
         </div>
       </div>
+
+      {platformChips.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2" data-testid="platform-chips">
+          <span className="text-xs text-muted-foreground mr-1">Search platforms</span>
+          {platformChips.map((chip) => {
+            const active = selectedPlatforms.includes(chip.id);
+            return (
+              <button
+                key={chip.id}
+                type="button"
+                onClick={() =>
+                  setSelectedPlatforms((prev) =>
+                    prev.includes(chip.id) ? prev.filter((id) => id !== chip.id) : [...prev, chip.id]
+                  )
+                }
+                aria-pressed={active}
+                title={chip.configured ? `Search ${chip.name}` : `${chip.name}: no API key configured`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                  active
+                    ? "bg-accent/10 text-accent border-accent/30"
+                    : "bg-surface text-muted-foreground border-border hover:text-foreground"
+                }`}
+              >
+                {chip.name}
+                {!chip.configured && (
+                  <span className={`text-[9px] font-bold uppercase ${active ? "text-accent/70" : "text-muted-foreground/60"}`}>
+                    no key
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {platformSearch.loading && <PlatformProgress platforms={platformProgress} />}
+
+      {!platformSearch.loading && platformSearch.errors.length > 0 && (
+        <div className="flex flex-wrap gap-2" data-testid="platform-errors">
+          {platformSearch.errors.map((entry) => (
+            <span
+              key={`${entry.platform}-${entry.name}`}
+              title={entry.error}
+              className="max-w-full truncate text-[11px] px-2.5 py-1 rounded-lg border border-red-400/20 bg-red-400/10 text-red-400"
+            >
+              {entry.name}: {entry.error.length > 80 ? `${entry.error.slice(0, 80)}…` : entry.error}
+            </span>
+          ))}
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         <button
@@ -562,6 +891,7 @@ function DiscoverContent() {
         </select>
 
         <div className="hidden sm:flex items-center gap-2 ml-auto">
+          <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
           {selectedForCompare.length > 0 && (
             <button
               onClick={() => setSelectedForCompare([])}
@@ -749,9 +1079,13 @@ function DiscoverContent() {
             {filtered.length === 0 ? (
               <div className="glass rounded-2xl p-8 md:p-16 text-center">
                 <Shield className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-                <h3 className="font-display text-lg font-semibold text-foreground mb-2">No suppliers match your filters</h3>
-                <p className="text-sm text-muted-foreground mb-4">Try adjusting your search or filters</p>
-                {statsUnmeasured && (
+                <h3 className="font-display text-lg font-semibold text-foreground mb-2">
+                  {searchTokens.length > 0 ? `No suppliers match \u201C${debouncedSearch}\u201D` : "No suppliers match your filters"}
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {searchTokens.length > 0 ? "Try another category, location, or fewer keywords" : "Try adjusting your search or filters"}
+                </p>
+                {statsUnmeasured && searchTokens.length === 0 && (
                   <p className="text-[11px] text-muted-foreground/70 mb-4 max-w-md mx-auto" role="note">
                     Quality metrics (rating, shipping speed, reliability) aren&apos;t measured for the available suppliers yet — rating and speed filters can&apos;t match until measurement data exists.
                   </p>
@@ -765,6 +1099,17 @@ function DiscoverContent() {
                 >
                   Clear all filters
                 </button>
+              </div>
+            ) : viewMode === "grid" ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3" data-testid="supplier-grid">
+                {filtered.map((s) => (
+                  <SupplierGridCard
+                    key={s.id}
+                    supplier={s}
+                    isSelected={selectedForCompare.includes(s.id)}
+                    onToggleSelect={toggleSelectForCompare}
+                  />
+                ))}
               </div>
             ) : (
               <div className="space-y-3">

@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 
 const mockPush = vi.fn();
 const mockGet = vi.fn().mockReturnValue(null);
@@ -42,6 +42,7 @@ vi.mock("@/components/suppliers/supplier-shared", () => ({
     gold: { label: "Gold", color: "text-amber-400", border: "border-amber-400/20" },
     silver: { label: "Silver", color: "text-slate-300", border: "border-slate-300/20" },
     bronze: { label: "Bronze", color: "text-orange-400", border: "border-orange-400/20" },
+    unverified: { label: "Unverified", color: "text-zinc-400", border: "border-zinc-400/20" },
   },
   ScoreRing: ({ score }: any) => <div data-testid="score-ring">{score}</div>,
   dataSourceConfig: {
@@ -74,6 +75,10 @@ vi.mock("lucide-react", () => ({
   ExternalLink: (p: any) => <div data-testid="icon-external" />,
   Zap: (p: any) => <div data-testid="icon-zap" />,
   Target: (p: any) => <div data-testid="icon-target" />,
+  LayoutGrid: (p: any) => <div data-testid="icon-layout-grid" />,
+  List: (p: any) => <div data-testid="icon-list" />,
+  Check: (p: any) => <div data-testid="icon-check" />,
+  AlertCircle: (p: any) => <div data-testid="icon-alert-circle" />,
 }));
 
 import SuppliersContent from "./tabs/DiscoverTab";
@@ -108,6 +113,19 @@ describe("SuppliersPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGet.mockReturnValue(null);
+    sessionStorage.clear();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ platforms: [] }),
+      }))
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it("renders loading state", () => {
@@ -253,6 +271,45 @@ describe("SuppliersPage", () => {
     expect(screen.getByPlaceholderText(/Describe what supplier you need/)).toBeInTheDocument();
   });
 
+  it("Ask AI Enter filters suppliers on the same page without opening a new window", async () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    const toySupplier: SupplierProfile = {
+      ...mockSupplier,
+      id: "toy-world",
+      name: "Toy World Trading",
+      slug: "toy-world",
+      specializations: ["Toys", "Baby & Kids"],
+    };
+    (useAPI as any).mockReturnValue({ data: { suppliers: [mockSupplier, toySupplier] }, error: null, isLoading: false, mutate: vi.fn() });
+    render(<SuppliersContent />);
+
+    fireEvent.click(screen.getByText("Ask AI"));
+    const aiInput = screen.getByPlaceholderText(/Describe what supplier you need/);
+    fireEvent.change(aiInput, { target: { value: "find reliable suppliers for baby toys" } });
+    fireEvent.keyDown(aiInput, { key: "Enter" });
+
+    await waitFor(() => expect(screen.getByText("1 supplier found")).toBeInTheDocument(), { timeout: 2000 });
+    expect(screen.getByText("Toy World Trading")).toBeInTheDocument();
+    expect(screen.queryByText("CJ Dropshipping")).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Search suppliers by name/)).toHaveValue("find reliable suppliers for baby toys");
+    expect(openSpy).not.toHaveBeenCalled();
+
+    openSpy.mockRestore();
+  });
+
+  it("Ask AI shows an explicit empty state when nothing matches", async () => {
+    (useAPI as any).mockReturnValue({ data: { suppliers: [mockSupplier] }, error: null, isLoading: false, mutate: vi.fn() });
+    render(<SuppliersContent />);
+
+    fireEvent.click(screen.getByText("Ask AI"));
+    const aiInput = screen.getByPlaceholderText(/Describe what supplier you need/);
+    fireEvent.change(aiInput, { target: { value: "organic baby strollers" } });
+    fireEvent.keyDown(aiInput, { key: "Enter" });
+
+    await waitFor(() => expect(screen.getByText("No suppliers match \u201Corganic baby strollers\u201D")).toBeInTheDocument(), { timeout: 2000 });
+    expect(screen.getByPlaceholderText(/Search suppliers by name/)).toHaveValue("organic baby strollers");
+  });
+
   it("renders discovery section when no suppliers", () => {
     (useAPI as any).mockReturnValue({ data: { suppliers: [] }, error: null, isLoading: false, mutate: vi.fn() });
     render(<SuppliersContent />);
@@ -321,5 +378,203 @@ describe("SuppliersPage", () => {
     fireEvent.click(checkboxes[0]);
     fireEvent.click(checkboxes[1]);
     expect(screen.getByText(/Compare 2 Suppliers/)).toBeInTheDocument();
+  });
+
+  const discoveredSupplier: SupplierProfile = {
+    ...mockSupplier,
+    id: "alibaba-factory-x-store",
+    name: "Factory X Store",
+    slug: "alibaba-factory-x-store",
+    location: "Unknown",
+    country: "",
+    flag: "\u{1F310}",
+    description: "Storefront on Alibaba, surfaced by live search for baby toys.",
+    specializations: ["baby", "toys"],
+    trustBadge: "unverified",
+    dataSource: "estimated",
+    source: "alibaba",
+    sourceUrl: "https://www.alibaba.com/store/123",
+    stats: {
+      ...mockSupplier.stats,
+      reliabilityScore: 0,
+      rating: 4.6,
+      reviews: 320,
+      totalProducts: 2,
+      monthlyOrders: 0,
+      responseTimeHours: 0,
+      shippingDays: 0,
+      orderCompletionRate: 0,
+      priceCompetitiveness: 0,
+    },
+    listings: [
+      {
+        title: "Green Robot Toy Set",
+        price: 12.99,
+        image: null,
+        link: "https://www.alibaba.com/product-detail/green-robot-toy_123.html",
+      },
+    ],
+    matchedQuery: "baby toys",
+  };
+
+  function jsonResponse(body: unknown, ok = true) {
+    return { ok, status: ok ? 200 : 500, json: async () => body } as Response;
+  }
+
+  it("renders platform chips from the status endpoint and toggles selection", async () => {
+    (useAPI as any).mockReturnValue({ data: { suppliers: [mockSupplier] }, error: null, isLoading: false, mutate: vi.fn() });
+    (fetch as any).mockImplementation(async () =>
+      jsonResponse({
+        platforms: [
+          { id: "alibaba", name: "Alibaba", configured: true, method: "scraperapi", source: "env" },
+          { id: "cj", name: "CJ Dropshipping", configured: false, method: "official_api", source: "env" },
+        ],
+      })
+    );
+
+    render(<SuppliersContent />);
+    const chips = await screen.findByTestId("platform-chips");
+    expect(within(chips).getByText("Alibaba")).toBeInTheDocument();
+    expect(within(chips).getByText("CJ Dropshipping")).toBeInTheDocument();
+
+    const alibabaButton = within(chips).getByText("Alibaba").closest("button");
+    expect(alibabaButton).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(alibabaButton!);
+    expect(within(chips).getByText("Alibaba").closest("button")).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("platform search POSTs the query and renders discovered suppliers", async () => {
+    (useAPI as any).mockReturnValue({ data: { suppliers: [mockSupplier] }, error: null, isLoading: false, mutate: vi.fn() });
+    const fetchMock = vi.fn(async (url: unknown, init?: { method?: string; body?: string }) => {
+      if (init?.method === "POST") {
+        const body = JSON.parse(init.body ?? "{}");
+        expect(body.query).toBe("baby toys");
+        expect(Array.isArray(body.platforms)).toBe(true);
+        expect(body.platforms).toContain("alibaba");
+        return jsonResponse({
+          suppliers: [discoveredSupplier],
+          total: 1,
+          discoveredCount: 1,
+          keywords: ["baby", "toys"],
+          platformErrors: [],
+          sources: [{ platform: "alibaba", store: "Factory X Store", listings: 2 }],
+        });
+      }
+      return jsonResponse({
+        platforms: [{ id: "alibaba", name: "Alibaba", configured: true, method: "scraperapi", source: "env" }],
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<SuppliersContent />);
+    await screen.findByTestId("platform-chips");
+
+    const input = screen.getByPlaceholderText(/Search suppliers by name/);
+    fireEvent.change(input, { target: { value: "baby toys" } });
+    fireEvent.click(screen.getByLabelText("Search suppliers"));
+
+    await waitFor(() => expect(screen.getByText("Factory X Store")).toBeInTheDocument(), { timeout: 3000 });
+    await waitFor(() => expect(screen.getByText("1 supplier found")).toBeInTheDocument(), { timeout: 3000 });
+    expect(screen.queryByText("CJ Dropshipping")).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/suppliers/search-all",
+      expect.objectContaining({ method: "POST" })
+    );
+  });
+
+  it("shows platform progress while the search is running", async () => {
+    (useAPI as any).mockReturnValue({ data: { suppliers: [mockSupplier] }, error: null, isLoading: false, mutate: vi.fn() });
+    let resolvePost: (value: Response) => void = () => {};
+    const pending = new Promise<Response>((resolve) => {
+      resolvePost = resolve;
+    });
+    (fetch as any).mockImplementation(async (_url: unknown, init?: { method?: string }) => {
+      if (init?.method === "POST") return pending;
+      return jsonResponse({
+        platforms: [{ id: "alibaba", name: "Alibaba", configured: true, method: "scraperapi", source: "env" }],
+      });
+    });
+
+    render(<SuppliersContent />);
+    await screen.findByTestId("platform-chips");
+
+    const input = screen.getByPlaceholderText(/Search suppliers by name/);
+    fireEvent.change(input, { target: { value: "wireless earbuds" } });
+    fireEvent.click(screen.getByLabelText("Search suppliers"));
+
+    expect(await screen.findByText("Searching platforms...")).toBeInTheDocument();
+
+    resolvePost(
+      jsonResponse({
+        suppliers: [],
+        total: 0,
+        discoveredCount: 0,
+        keywords: ["wireless", "earbuds"],
+        platformErrors: [],
+        sources: [],
+      })
+    );
+    await waitFor(() => expect(screen.queryByText("Searching platforms...")).not.toBeInTheDocument(), {
+      timeout: 3000,
+    });
+  });
+
+  it("shows a per-platform error chip when a platform fails", async () => {
+    (useAPI as any).mockReturnValue({ data: { suppliers: [mockSupplier] }, error: null, isLoading: false, mutate: vi.fn() });
+    (fetch as any).mockImplementation(async (_url: unknown, init?: { method?: string }) => {
+      if (init?.method === "POST") {
+        return jsonResponse({
+          suppliers: [],
+          total: 0,
+          discoveredCount: 0,
+          keywords: ["toys"],
+          platformErrors: [
+            { platform: "alibaba", name: "Alibaba", error: "ScraperAPI is not configured. Get a key and set SCRAPER_API_KEYS." },
+          ],
+          sources: [],
+        });
+      }
+      return jsonResponse({
+        platforms: [{ id: "alibaba", name: "Alibaba", configured: false, method: "scraperapi", source: "env" }],
+      });
+    });
+
+    render(<SuppliersContent />);
+    await screen.findByTestId("platform-chips");
+
+    const input = screen.getByPlaceholderText(/Search suppliers by name/);
+    fireEvent.change(input, { target: { value: "toys" } });
+    fireEvent.click(screen.getByLabelText("Search suppliers"));
+
+    const errors = await screen.findByTestId("platform-errors", {}, { timeout: 3000 });
+    expect(within(errors).getByText(/ScraperAPI is not configured/)).toBeInTheDocument();
+  });
+
+  it("switches between list and grid views", async () => {
+    (useAPI as any).mockReturnValue({ data: { suppliers: [mockSupplier] }, error: null, isLoading: false, mutate: vi.fn() });
+    render(<SuppliersContent />);
+
+    fireEvent.click(screen.getByLabelText("Grid view"));
+    const grid = screen.getByTestId("supplier-grid");
+    expect(grid).toBeInTheDocument();
+    expect(within(grid).getAllByText("CJ Dropshipping").length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByLabelText("List view"));
+    expect(screen.queryByTestId("supplier-grid")).not.toBeInTheDocument();
+  });
+
+  it("links discovered suppliers to their external store in a new tab", async () => {
+    (useAPI as any).mockReturnValue({
+      data: { suppliers: [discoveredSupplier] },
+      error: null,
+      isLoading: false,
+      mutate: vi.fn(),
+    });
+    render(<SuppliersContent />);
+
+    const link = screen.getByText("Factory X Store").closest("a");
+    expect(link).toHaveAttribute("href", "https://www.alibaba.com/store/123");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(screen.getByText("Unverified")).toBeInTheDocument();
   });
 });

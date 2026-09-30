@@ -7,7 +7,7 @@ export interface SupplierProfile {
   flag: string;
   description: string;
   specializations: string[];
-  trustBadge: "gold" | "silver" | "bronze";
+  trustBadge: "gold" | "silver" | "bronze" | "unverified";
   dataSource: "live" | "estimated";
   stats: {
     reliabilityScore: number;
@@ -52,9 +52,20 @@ export interface SupplierProfile {
     languages: string[];
     supportHours: string;
   };
-  source: "cj" | "alibaba" | "aliexpress" | "amazon" | "google" | "walmart" | "other";
+  source: "cj" | "alibaba" | "aliexpress" | "amazon" | "google" | "walmart" | "dhgate" | "global_sources" | "other";
   sourceUrl: string | null;
   lastUpdated: string;
+  listings?: DiscoveredListing[];
+  matchedQuery?: string;
+}
+
+export interface DiscoveredListing {
+  title: string;
+  price: number | null;
+  image: string | null;
+  link: string;
+  rating?: number;
+  reviews?: number;
 }
 
 export interface SupplierSearchResult {

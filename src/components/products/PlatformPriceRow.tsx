@@ -25,7 +25,6 @@ const platformIcons: Record<string, string> = {
   cj: "\ud83d\ude9a", google_shopping: "\ud83d\udd0d", walmart: "\ud83c\udfea",
   etsy: "\ud83c\udfa8", temu: "\ud83d\udd25", shein: "\ud83d\udc57",
   banggood: "\u26a1", dhgate: "\ud83d\udd17", alibaba: "\ud83c\udf10",
-  "1688": "\ud83c\udf10",
 };
 
 export default function PlatformPriceRow({

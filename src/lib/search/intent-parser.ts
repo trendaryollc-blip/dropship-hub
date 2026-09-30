@@ -42,7 +42,6 @@ const PLATFORM_ALIASES: Record<string, string> = {
   "cj dropshipping": "cj",
   google: "google_shopping",
   "google shopping": "google_shopping",
-  "1688": "1688",
 };
 
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
@@ -223,7 +222,7 @@ export async function parseIntentWithAI(
 - priceMin: number | null
 - priceMax: number | null
 - categories: string[] (from: electronics, fashion, home, beauty, pet, fitness, toys, automotive, baby, garden)
-- platforms: string[] (from: amazon, ebay, aliexpress, walmart, etsy, cj, google_shopping, temu, shein, alibaba, banggood, dhgate, 1688)
+- platforms: string[] (from: amazon, ebay, aliexpress, walmart, etsy, cj, google_shopping, temu, shein, alibaba, banggood, dhgate)
 - sortBy: "price" | "rating" | "reviews" | "trending" | "margin" | null
 - minRating: number | null
 - minReviews: number | null

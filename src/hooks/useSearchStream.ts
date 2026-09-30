@@ -46,7 +46,6 @@ const PLATFORM_DISPLAY_NAMES: Record<string, string> = {
   banggood: "Banggood",
   dhgate: "DHgate",
   alibaba: "Alibaba",
-  "1688": "1688",
 };
 
 export { PLATFORM_DISPLAY_NAMES };

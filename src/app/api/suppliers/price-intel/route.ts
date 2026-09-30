@@ -17,6 +17,10 @@ function _calculateTotalCost(offer: SupplierOffer): number {
   return offer.unitPrice + (offer.shippingCost / Math.max(offer.moq, 1));
 }
 
+function isBadgeEligible(s: SupplierProfile): s is SupplierProfile & { trustBadge: "gold" | "silver" | "bronze" } {
+  return s.trustBadge !== "unverified";
+}
+
 function scoreOffer(offer: SupplierOffer): number {
   let score = 0;
   score += (100 - offer.totalCostPerUnit * 10) * 0.4;
@@ -26,7 +30,7 @@ function scoreOffer(offer: SupplierOffer): number {
   return Math.max(0, Math.min(100, score));
 }
 
-function buildSupplierOffer(supplier: SupplierProfile, sellingPrice?: number): SupplierOffer {
+function buildSupplierOffer(supplier: SupplierProfile & { trustBadge: "gold" | "silver" | "bronze" }, sellingPrice?: number): SupplierOffer {
   const priceMin = supplier.catalog.priceRange.min;
   const priceMax = supplier.catalog.priceRange.max;
   const unitPrice = (priceMin + priceMax) / 2;
@@ -74,7 +78,7 @@ export const GET = withAuth(async (request: NextRequest, uid: string) => {
 
   // Build offers from suppliers
   const suppliers = await getSuppliers();
-  const offers: SupplierOffer[] = suppliers.map((s) => buildSupplierOffer(s, sellingPrice));
+  const offers: SupplierOffer[] = suppliers.filter(isBadgeEligible).map((s) => buildSupplierOffer(s, sellingPrice));
   offers.sort((a, b) => scoreOffer(b) - scoreOffer(a));
 
   const bestDeal = offers.length > 0 ? offers[0].supplierId : "";
@@ -115,7 +119,7 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
 
     // Build offers
     const suppliers = await getSuppliers();
-    const offers: SupplierOffer[] = suppliers.map((s) => buildSupplierOffer(s, input.sellingPrice));
+    const offers: SupplierOffer[] = suppliers.filter(isBadgeEligible).map((s) => buildSupplierOffer(s, input.sellingPrice));
     offers.sort((a, b) => scoreOffer(b) - scoreOffer(a));
 
     const bestDeal = offers.length > 0 ? offers[0].supplierId : "";

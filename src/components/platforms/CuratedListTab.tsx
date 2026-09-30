@@ -14,7 +14,6 @@ const CURATED_WEBSITES: Record<string, string> = {
   wish: "https://merchant.wish.com",
   banggood: "https://www.banggood.com",
   dhgate: "https://www.dhgate.com",
-  "1688": "https://open.1688.com",
   alibaba: "https://open.1688.com",
   amazon: "https://developer.amazonservices.com",
   ebay: "https://developer.ebay.com",

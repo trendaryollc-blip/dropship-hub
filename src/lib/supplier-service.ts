@@ -1,5 +1,6 @@
 import { SupplierProfile } from "@/types/supplier";
 import { getCJAccessToken } from "@/lib/cj-auth";
+import { filterSuppliersByQuery } from "@/lib/search/supplier-query";
 
 async function fetchCJCategories(): Promise<string[]> {
   try {
@@ -148,12 +149,5 @@ export async function getSupplierById(id: string): Promise<SupplierProfile | nul
 
 export async function searchSuppliers(query: string): Promise<SupplierProfile[]> {
   const suppliers = await getSuppliers();
-  const q = query.toLowerCase();
-  return suppliers.filter(
-    (s) =>
-      s.name.toLowerCase().includes(q) ||
-      s.specializations.some((sp) => sp.toLowerCase().includes(q)) ||
-      s.catalog.categories.some((c) => c.toLowerCase().includes(q)) ||
-      s.location.toLowerCase().includes(q)
-  );
+  return filterSuppliersByQuery(suppliers, query);
 }
