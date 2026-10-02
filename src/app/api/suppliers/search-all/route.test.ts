@@ -8,6 +8,7 @@ vi.mock("@/lib/supplier-platform-search", () => ({
   searchSupplierPlatforms: (...args: unknown[]) => mockSearchSupplierPlatforms(...args),
   buildSupplierProfiles: (...args: unknown[]) => mockBuildSupplierProfiles(...args),
   getSupplierPlatformStatuses: (...args: unknown[]) => mockGetSupplierPlatformStatuses(...args),
+  DEFAULT_SEARCH_DEADLINE_MS: 45_000,
 }));
 
 const mockGetSuppliers = vi.fn();

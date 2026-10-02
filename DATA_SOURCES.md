@@ -48,6 +48,59 @@ On quota exhaustion the pool cools the key and the envelope UI explains how to a
 
 Full env template: `.env.example`.
 
+## Supplier discovery (Find Suppliers)
+
+Live supplier/store search fans out to five platforms in parallel through
+`src/lib/supplier-platform-search.ts`.
+
+| Platform        | How data is obtained                             | Attribution (`dataSource`)                          | Notes                                                                                                  |
+| --------------- | ------------------------------------------------ | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Alibaba         | ScraperAPI rendered page, embedded `_offer_list` | `live` when the platform payload names the supplier | Supplier identity comes from Alibaba's own payload, so it is treated as live                           |
+| Global Sources  | ScraperAPI page, Nuxt `supplierVOList` payload   | `live`                                              | Search URL is scoped to the **HK** exhibitor directory, so results are Hong Kong–listed suppliers only |
+| DHgate          | ScraperAPI raw HTML, store/listing patterns      | `estimated`                                         | Stores are inferred from link proximity, not a supplier record, so the badge stays `estimated`         |
+| AliExpress      | ScraperAPI raw HTML, listing window patterns     | `estimated`                                         | Listing storefronts are not verified supplier accounts                                                 |
+| CJ Dropshipping | CJ product search API                            | `live`                                              | Marketplace listings only; CJ is not presented as a wholesale supplier directory                       |
+
+Attribution rules that must not change:
+
+- Only Alibaba and Global Sources produce `live` supplier sources, because only those
+  platforms name the supplier inside their own payload.
+- Everything derived from link/sidebar proximity is `estimated`.
+- Reliability, order-completion and on-time-shipping metrics are never invented;
+  discovered suppliers stay `trustBadge: "unverified"` with zeroed reliability stats.
+
+Currency handling:
+
+- Listing prices keep the currency found in the page (symbol such as `US$`, `HK$`, `€`,
+  `£`, or an ISO code such as `USD`, `CNY`, `JPY`).
+- A bare `¥`/`￥` is reported **without** a currency code because it is ambiguous between
+  CNY and JPY; the platform default is never substituted for it.
+- A supplier's `catalog.priceRange` only carries a currency when every priced listing
+  agrees; mixed-currency results show the range with no currency rather than guessing.
+
+Operational behaviour:
+
+- Each request runs under a hard deadline (`DEFAULT_SEARCH_DEADLINE_MS`), with a per-fetch
+  timeout budget, and the API route declares `maxDuration = 60`.
+- Scrape results are cached for 10 minutes (Redis/Upstash when configured, otherwise
+  in-memory) and identical concurrent searches share one upstream request.
+- Failures are cached for 60 seconds so a repeat search does not re-pay the cost of a
+  slow or blocked provider; disabling the cache re-scrapes immediately.
+- Results stream to the browser as NDJSON when the client sends
+  `Accept: application/x-ndjson`; the default response stays a single JSON payload.
+- Upstream provider errors are translated into short user-facing messages; raw provider
+  bodies stay in server logs.
+
+Measured live behaviour (ScraperAPI raw HTML + JS rendering):
+
+- Global Sources, DHgate, AliExpress and CJ typically answer in 1-15s.
+- Alibaba requires JS rendering and answers in roughly 25-45s; it is intermittently
+  served an anti-bot page instead of results. When that happens the UI reports
+  "blocked the automated request" rather than blaming a layout change, and the platform
+  is simply omitted from that search while the other four still return.
+- Alibaba raw (non-rendered) HTML contains no product payload, so rendering is required;
+  a per-platform cache entry keeps a failed Alibaba attempt from slowing the next search.
+
 ## Honesty UI components
 
 | Component                     | When to use                                                                    | testid              |

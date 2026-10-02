@@ -42,7 +42,7 @@ export interface SupplierProfile {
   };
   catalog: {
     categories: string[];
-    priceRange: { min: number; max: number };
+    priceRange: { min: number; max: number; currency?: string | null };
     moq: number;
     samplesAvailable: boolean;
     samplePrice: number | null;
@@ -62,6 +62,7 @@ export interface SupplierProfile {
 export interface DiscoveredListing {
   title: string;
   price: number | null;
+  currency?: string | null;
   image: string | null;
   link: string;
   rating?: number;

@@ -18,6 +18,7 @@ import {
 } from "@/lib/supplier-provider-keys";
 import { PublicError, safeErrorMessage } from "@/lib/api-errors";
 import { createLogger } from "@/lib/logger";
+import { getFeedCache, setFeedCache, __resetFeedCacheForTests } from "@/lib/feed-cache";
 import { parseSupplierQuery, scoreSupplierMatch } from "@/lib/search/supplier-query";
 import type { SupplierProfile, DiscoveredListing } from "@/types/supplier";
 
@@ -50,6 +51,7 @@ interface SupplierScraperConfig {
   timeoutMs?: number;
   windowAfter?: number;
   contentProbe?: string;
+  defaultCurrency?: string;
 }
 
 const supplierScraperConfigs: Record<string, SupplierScraperConfig> = {
@@ -63,6 +65,7 @@ const supplierScraperConfigs: Record<string, SupplierScraperConfig> = {
     embeddedJsonMarker: "_offer_list = ",
     timeoutMs: 90000,
     contentProbe: "_offer_list",
+    defaultCurrency: "USD",
   },
   dhgate: {
     searchUrl: (q) => `https://www.dhgate.com/wholesale/search.do?searchkey=${encodeURIComponent(q)}`,
@@ -73,6 +76,7 @@ const supplierScraperConfigs: Record<string, SupplierScraperConfig> = {
     render: false,
     timeoutMs: 30000,
     windowAfter: 3000,
+    defaultCurrency: "USD",
   },
   global_sources: {
     searchUrl: (q) => `https://www.globalsources.com/exhibitors/HK/?keyword=${encodeURIComponent(q)}`,
@@ -94,6 +98,7 @@ const supplierScraperConfigs: Record<string, SupplierScraperConfig> = {
     render: false,
     timeoutMs: 30000,
     windowAfter: 2500,
+    defaultCurrency: "USD",
   },
 };
 
@@ -232,10 +237,15 @@ function extractJsonLdListings(html: string, targetUrl: string): Array<{ listing
                 ? parseFloat(offers.price)
                 : null;
         if (!product.name || !price || price <= 0) continue;
+        const currencyToken = offers.priceCurrency ?? product.priceCurrency;
+        const currency = normalizeCurrencyToken(
+          typeof currencyToken === "string" ? currencyToken : undefined
+        );
         out.push({
           listing: {
             title: String(product.name),
             price,
+            currency,
             image: product.image
               ? Array.isArray(product.image)
                 ? String(product.image[0])
@@ -270,18 +280,93 @@ const TITLE_PATTERNS = [
   String.raw`class="[^"]*title[^"]*"[^>]*>([^<]{5,120})`,
 ];
 
-const PRICE_PATTERNS: RegExp[] = [
-  /(?:US\s*)?[$¥￥€£]\s?([\d][\d,]*(?:\.\d+)?)/,
-  /[¥￥]\s*<\/span>\s*<span[^>]*>(\d+(?:\.\d+)?)/,
-  /([\d][\d.,]*[.,]\d{2})\s*(?:€|£|EUR\b)/i,
-];
+const CURRENCY_CODES = [
+  "USD",
+  "EUR",
+  "GBP",
+  "CNY",
+  "RMB",
+  "JPY",
+  "HKD",
+  "AUD",
+  "CAD",
+  "SGD",
+  "NZD",
+  "TWD",
+  "INR",
+  "KRW",
+  "BRL",
+  "RUB",
+  "CHF",
+  "MXN",
+  "AED",
+  "SAR",
+  "PLN",
+  "SEK",
+  "THB",
+  "VND",
+  "IDR",
+  "TRY",
+  "ZAR",
+  "PHP",
+  "MYR",
+  "PKR",
+  "EGP",
+  "NGN",
+  "ILS",
+  "UAH",
+] as const;
+
+const CURRENCY_CODE_ALIASES: Record<string, string> = { RMB: "CNY" };
+
+const CURRENCY_BY_SYMBOL: Record<string, string> = {
+  "US$": "USD",
+  "CA$": "CAD",
+  "C$": "CAD",
+  "AU$": "AUD",
+  "A$": "AUD",
+  "HK$": "HKD",
+  "NT$": "TWD",
+  "NZ$": "NZD",
+  "S$": "SGD",
+  "R$": "BRL",
+  $: "USD",
+  "€": "EUR",
+  "£": "GBP",
+  "₹": "INR",
+  "₩": "KRW",
+  "₽": "RUB",
+  "₺": "TRY",
+  "₪": "ILS",
+};
+
+const AMBIGUOUS_SYMBOLS = ["¥", "￥"];
+
+const SYMBOLS_BY_LENGTH = Object.keys(CURRENCY_BY_SYMBOL).sort((a, b) => b.length - a.length);
+
+const CODE_PATTERN = new RegExp(`\\b(${CURRENCY_CODES.join("|")})\\b`, "i");
+const CODE_ONLY_PATTERN = new RegExp(`^(?:${CURRENCY_CODES.join("|")})$`);
+const NUMBER_PATTERN = /\d[\d.,]*/g;
+const PRICE_CONTEXT_PATTERN = /\b(?:price|prices|cost|amount|from|only|was|now)\b/i;
+
 const IMAGE_PATTERN = String.raw`(?:src|data-src)="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)[^"]*)"`;
 const RATING_PATTERN = /(\d(?:\.\d)?)\s*(?:\/\s*5|stars?)/i;
 
+function normalizeCurrencyToken(token: string | undefined): string | null {
+  if (!token) return null;
+  const upper = token.trim().toUpperCase();
+  if (CODE_ONLY_PATTERN.test(upper)) return CURRENCY_CODE_ALIASES[upper] ?? upper;
+  return CURRENCY_BY_SYMBOL[token.trim()] ?? null;
+}
+
 function parsePriceNumber(raw: string): number | null {
   let normalized = raw.trim();
+  if (/[.,]$/.test(normalized)) return null;
+  if (!/^\d[\d.,]*$/.test(normalized)) return null;
   if (/^\d{1,3}(?:\.\d{3})+,\d{1,2}$/.test(normalized)) {
     normalized = normalized.replace(/\./g, "").replace(",", ".");
+  } else if (/^\d{1,3}(?:\.\d{3})+$/.test(normalized)) {
+    normalized = normalized.replace(/\./g, "");
   } else if (/^\d{1,3}(?:,\d{3})+(?:\.\d+)?$/.test(normalized)) {
     normalized = normalized.replace(/,/g, "");
   } else if (/^\d+,\d{1,2}$/.test(normalized)) {
@@ -290,6 +375,67 @@ function parsePriceNumber(raw: string): number | null {
   const parsed = parseFloat(normalized);
   if (!isFinite(parsed) || parsed <= 0 || parsed >= 100000) return null;
   return parsed;
+}
+
+function pricesIn(text: string): number[] {
+  const out: number[] = [];
+  NUMBER_PATTERN.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = NUMBER_PATTERN.exec(text)) !== null) {
+    const parsed = parsePriceNumber(match[0]);
+    if (parsed !== null) out.push(parsed);
+  }
+  return out;
+}
+
+function adjacentPrice(text: string, symbolIndex: number, symbolLength: number): number | null {
+  const after = /^\s*(\d[\d.,]*)/.exec(text.slice(symbolIndex + symbolLength));
+  if (after) {
+    const parsed = parsePriceNumber(after[1]);
+    if (parsed !== null) return parsed;
+  }
+  const before = /(\d[\d.,]*)\s*$/.exec(text.slice(0, symbolIndex));
+  if (before) {
+    const parsed = parsePriceNumber(before[1]);
+    if (parsed !== null) return parsed;
+  }
+  return null;
+}
+
+export function parsePriceWithCurrency(
+  raw: string,
+  defaultCurrency?: string
+): { price: number; currency: string | null } | null {
+  if (!raw) return null;
+  const text = stripTags(raw).replace(/\s+/g, " ").trim();
+  if (!text) return null;
+
+  const codeMatch = CODE_PATTERN.exec(text);
+  const declaredCurrency = codeMatch ? normalizeCurrencyToken(codeMatch[1]) : null;
+
+  for (const symbol of SYMBOLS_BY_LENGTH) {
+    const index = text.indexOf(symbol);
+    if (index < 0) continue;
+    const price = adjacentPrice(text, index, symbol.length);
+    if (price === null) continue;
+    return { price, currency: CURRENCY_BY_SYMBOL[symbol] };
+  }
+
+  for (const symbol of AMBIGUOUS_SYMBOLS) {
+    const index = text.indexOf(symbol);
+    if (index < 0) continue;
+    const price = adjacentPrice(text, index, symbol.length);
+    if (price === null) continue;
+    return { price, currency: declaredCurrency };
+  }
+
+  const fallbackCurrency = declaredCurrency ?? defaultCurrency ?? null;
+  const numbers = pricesIn(text);
+  if (numbers.length === 1) return { price: numbers[0], currency: fallbackCurrency };
+  if (numbers.length > 1 && PRICE_CONTEXT_PATTERN.test(text)) {
+    return { price: numbers[0], currency: fallbackCurrency };
+  }
+  return null;
 }
 
 function firstTitle(segment: string): string {
@@ -306,21 +452,15 @@ function firstTitle(segment: string): string {
 function extractWindowListing(
   afterSegment: string,
   beforeSegment: string,
-  link: string
+  link: string,
+  defaultCurrency?: string
 ): DiscoveredListing | null {
   const title = firstTitle(afterSegment) || firstTitle(beforeSegment);
   if (!title) return null;
 
-  let price: number | null = null;
-  for (const pattern of PRICE_PATTERNS) {
-    const match = pattern.exec(afterSegment) || pattern.exec(beforeSegment);
-    if (!match) continue;
-    const parsed = parsePriceNumber(match[1]);
-    if (parsed) {
-      price = parsed;
-      break;
-    }
-  }
+  const parsed =
+    parsePriceWithCurrency(afterSegment, defaultCurrency) ??
+    parsePriceWithCurrency(beforeSegment, defaultCurrency);
 
   const imageMatch =
     new RegExp(IMAGE_PATTERN, "i").exec(afterSegment) ||
@@ -329,7 +469,8 @@ function extractWindowListing(
 
   return {
     title,
-    price,
+    price: parsed?.price ?? null,
+    currency: parsed?.currency ?? defaultCurrency ?? null,
     image: imageMatch ? imageMatch[1] : null,
     link,
     rating: ratingMatch ? parseFloat(ratingMatch[1]) : undefined,
@@ -356,7 +497,12 @@ export function extractListingMatches(
     const afterEnd = Math.min(html.length, attrEnd + windowAfter);
     const beforeStart = Math.max(0, match.index - 600);
     const afterSegment = html.slice(attrEnd, afterEnd);
-    const listing = extractWindowListing(afterSegment, html.slice(beforeStart, match.index), link);
+    const listing = extractWindowListing(
+      afterSegment,
+      html.slice(beforeStart, match.index),
+      link,
+      config.defaultCurrency
+    );
     if (listing) {
       seen.add(link);
       let windowStoreUrl: string | undefined;
@@ -504,6 +650,11 @@ function firstPriceValue(raw: string): number | null {
   return parsePriceNumber(match[1]);
 }
 
+function embeddedCurrencyValue(raw: string): string | null {
+  const symbol = /[$¥￥€£]/.exec(raw);
+  return symbol ? normalizeCurrencyToken(symbol[0]) : null;
+}
+
 function embeddedImage(record: Record<string, unknown>): string | null {
   const main = stringField(record, "mainImage");
   if (main) return absolutize(main, "");
@@ -516,7 +667,11 @@ function embeddedImage(record: Record<string, unknown>): string | null {
   return null;
 }
 
-function embeddedToListing(card: Record<string, unknown>, targetUrl: string): DiscoveredListing | null {
+function embeddedToListing(
+  card: Record<string, unknown>,
+  targetUrl: string,
+  defaultCurrency?: string
+): DiscoveredListing | null {
   const rawTitle = stringField(card, "title");
   const productUrl = stringField(card, "productUrl");
   if (!rawTitle || !productUrl) return null;
@@ -528,6 +683,9 @@ function embeddedToListing(card: Record<string, unknown>, targetUrl: string): Di
   return {
     title,
     price: rawPrice ? firstPriceValue(rawPrice) : null,
+    currency: rawPrice
+      ? embeddedCurrencyValue(rawPrice) ?? defaultCurrency ?? null
+      : defaultCurrency ?? null,
     image: embeddedImage(card),
     link: absolutize(productUrl, targetUrl),
     rating: rating && rating > 0 && rating <= 5 ? rating : undefined,
@@ -553,7 +711,7 @@ function assembleFromEmbeddedCards(
   const loose: DiscoveredListing[] = [];
 
   for (const card of cards) {
-    const listing = embeddedToListing(card, targetUrl);
+    const listing = embeddedToListing(card, targetUrl, config.defaultCurrency);
     if (!listing) continue;
     const storeRaw = stringField(card, "supplierHomeHref") ?? stringField(card, "supplierHref");
     if (!storeRaw) {
@@ -693,6 +851,23 @@ function assembleFromNuxtSuppliers(
   return sources.slice(0, MAX_STORES);
 }
 
+const BLOCK_PAGE_PATTERNS = [
+  /_Incapsula_Resource/i,
+  /Incapsula incident ID/i,
+  /cf-browser-verification|cf_chl_opt|Just a moment/i,
+  /<title>[^<]*(?:Access Denied|Attention Required|Just a moment|captcha)/i,
+  /\/cdn-cgi\/challenge-platform/i,
+  /please (?:enable|verify) (?:cookies|javascript)/i,
+  /punish|_____tmd_____/i,
+  /robot check|are you a human|unusual traffic/i,
+  /滑动验证|请输入验证码|安全验证/,
+];
+
+function looksLikeBlockPage(html: string): boolean {
+  if (!html) return false;
+  return BLOCK_PAGE_PATTERNS.some((pattern) => pattern.test(html));
+}
+
 export function assembleSupplierSources(
   platformId: string,
   platformName: string,
@@ -740,7 +915,9 @@ export function assembleSupplierSources(
 
   if (stores.length === 0 && listingMatches.length === 0) {
     throw new PublicError(
-      `No supplier data found on ${platformName}. The site may have changed its layout or blocked the request.`
+      looksLikeBlockPage(html)
+        ? `${platformName} blocked the automated request (anti-bot page instead of search results).`
+        : `No supplier data found on ${platformName}. The site may have changed its layout or blocked the request.`
     );
   }
 
@@ -777,7 +954,9 @@ export function assembleSupplierSources(
 
 async function withSupplierKey<T>(
   platformId: string,
+  platformName: string,
   provider: ProviderId,
+  deadlineAt: number,
   fn: (key: string) => Promise<T>
 ): Promise<T> {
   let firestoreConfig: PlatformFirestoreConfig | null = null;
@@ -838,11 +1017,13 @@ async function withSupplierKey<T>(
   }
 
   for (const entry of usableKeys) {
+    if (Date.now() >= deadlineAt - 1500) throw timeoutError(platformName, deadlineAt);
     try {
       const value = await fn(entry.key);
       await recordSupplierProviderKeySuccess(provider, entry.id);
       return value;
     } catch (error) {
+      if (isTimeoutError(error)) throw error;
       if (!isQuotaError(error) && !isAuthError(error)) throw error;
       await recordSupplierProviderKeyFailure(provider, entry.id, safeErrorMessage(error, "key failed"));
     }
@@ -850,22 +1031,47 @@ async function withSupplierKey<T>(
   throw adminUnavailable();
 }
 
+function isTimeoutError(error: unknown): boolean {
+  const name = (error as { name?: string } | null)?.name;
+  return name === "TimeoutError" || name === "AbortError";
+}
+
+function timeoutError(platformName: string, deadlineAt: number, startedAt?: number): PublicError {
+  const seconds = Math.max(
+    1,
+    Math.round((deadlineAt - (startedAt ?? Date.now())) / 1000)
+  );
+  return new PublicError(`${platformName} search timed out after ${seconds}s`);
+}
+
 async function fetchSearchHtml(
+  platformName: string,
   platformId: string,
   query: string,
-  config: SupplierScraperConfig
+  config: SupplierScraperConfig,
+  deadlineAt: number
 ): Promise<{ html: string; targetUrl: string }> {
   const targetUrl = config.searchUrl(query);
-  return withSupplierKey(platformId, "scraperapi", async (key) => {
+  const startedAt = Date.now();
+  return withSupplierKey(platformId, platformName, "scraperapi", deadlineAt, async (key) => {
     const params = new URLSearchParams({
       api_key: key,
       url: targetUrl,
       render: config.render === false ? "false" : "true",
     });
     const fetchPage = async (): Promise<string> => {
-      const res = await fetch(`https://api.scraperapi.com?${params}`, {
-        signal: AbortSignal.timeout(config.timeoutMs ?? 30000),
-      });
+      const remaining = deadlineAt - Date.now();
+      if (remaining <= 1500) throw timeoutError(platformName, deadlineAt, startedAt);
+      const budget = Math.max(1500, Math.min(config.timeoutMs ?? 30000, remaining));
+      let res: Response;
+      try {
+        res = await fetch(`https://api.scraperapi.com?${params}`, {
+          signal: AbortSignal.timeout(budget),
+        });
+      } catch (error) {
+        if (isTimeoutError(error)) throw timeoutError(platformName, deadlineAt, startedAt);
+        throw error;
+      }
       if (!res.ok) {
         const body = await res.text().catch(() => "");
         const error = new PublicError(
@@ -880,7 +1086,7 @@ async function fetchSearchHtml(
       !config.contentProbe || html.includes(config.contentProbe);
 
     let html = await fetchPage();
-    if (!hasProbe(html)) {
+    if (!hasProbe(html) && deadlineAt - Date.now() > 5000) {
       logger.warn("search page missing expected content, retrying once", {
         platformId,
         probe: config.contentProbe,
@@ -904,6 +1110,7 @@ function toDiscoveredListing(result: SearchResult): DiscoveredListing {
   return {
     title: result.title,
     price: typeof result.price === "number" ? result.price : null,
+    currency: typeof result.price === "number" ? "USD" : null,
     image: result.image ?? null,
     link: result.link,
     rating: result.rating,
@@ -928,21 +1135,166 @@ async function searchCJSource(query: string): Promise<SupplierSource[]> {
   ];
 }
 
-async function searchScraperSource(meta: SupplierPlatformMeta, query: string): Promise<SupplierSource[]> {
-  const config = supplierScraperConfigs[meta.id];
-  if (!config) throw new PublicError(`No supplier scraper config for ${meta.id}`);
-  const { html, targetUrl } = await fetchSearchHtml(meta.id, query, config);
-  return assembleSupplierSources(meta.id, meta.name, html, targetUrl);
+const SCRAPE_CACHE_NAMESPACE = "supplier-platform-search";
+const SCRAPE_CACHE_TTL_SECONDS = 600;
+const SCRAPE_FAILURE_CACHE_TTL_SECONDS = 60;
+const inFlightScrapes = new Map<string, Promise<SupplierSource[]>>();
+
+interface CachedScrapeFailure {
+  failed: true;
+  message: string;
 }
 
-async function searchPlatform(meta: SupplierPlatformMeta, query: string): Promise<SupplierSource[]> {
-  if (meta.id === "cj") return searchCJSource(query);
-  return searchScraperSource(meta, query);
+function cacheKeyFor(platformId: string, query: string): string {
+  return `${platformId}:${query.trim().toLowerCase().replace(/\s+/g, " ")}`;
 }
+
+export function __resetSupplierSearchCacheForTests(): void {
+  inFlightScrapes.clear();
+  __resetFeedCacheForTests();
+}
+
+async function searchScraperSource(
+  meta: SupplierPlatformMeta,
+  query: string,
+  deadlineAt: number
+): Promise<SupplierSource[]> {
+  const config = supplierScraperConfigs[meta.id];
+  if (!config) throw new PublicError(`No supplier scraper config for ${meta.id}`);
+  const { html, targetUrl } = await fetchSearchHtml(meta.name, meta.id, query, config, deadlineAt);
+  const sources = assembleSupplierSources(meta.id, meta.name, html, targetUrl);
+  const listings = sources.reduce((sum, source) => sum + source.listings.length, 0);
+  const priced = sources.reduce(
+    (sum, source) => sum + source.listings.filter((listing) => listing.price !== null).length,
+    0
+  );
+  if (listings === 0 || priced === 0) {
+    logger.warn("supplier parse yield low — markup may have changed", {
+      platformId: meta.id,
+      stores: sources.length,
+      listings,
+      priced,
+      htmlLength: html.length,
+    });
+  }
+  return sources;
+}
+
+async function searchPlatformCached(
+  meta: SupplierPlatformMeta,
+  query: string,
+  deadlineAt: number,
+  useCache: boolean
+): Promise<SupplierSource[]> {
+  const cacheKey = cacheKeyFor(meta.id, query);
+  if (useCache) {
+    const cached = await getFeedCache<SupplierSource[] | CachedScrapeFailure>(
+      SCRAPE_CACHE_NAMESPACE,
+      cacheKey,
+      SCRAPE_CACHE_TTL_SECONDS
+    );
+    if (Array.isArray(cached) && cached.length > 0) return cached;
+    const cachedFailure = cached as CachedScrapeFailure | null;
+    if (cachedFailure && cachedFailure.failed === true) {
+      throw new PublicError(cachedFailure.message);
+    }
+  }
+
+  const existing = inFlightScrapes.get(cacheKey);
+  if (existing) return existing;
+
+  const run = (
+    meta.id === "cj" ? searchCJSource(query) : searchScraperSource(meta, query, deadlineAt)
+  )
+    .then(async (sources) => {
+      if (useCache && sources.length > 0) {
+        await setFeedCache(SCRAPE_CACHE_NAMESPACE, cacheKey, sources, SCRAPE_CACHE_TTL_SECONDS);
+      }
+      return sources;
+    })
+    .catch(async (error: unknown) => {
+      if (useCache && shouldCacheFailure(error)) {
+        await setFeedCache(
+          SCRAPE_CACHE_NAMESPACE,
+          cacheKey,
+          { failed: true, message: userFacingPlatformError(error, meta.name) },
+          SCRAPE_FAILURE_CACHE_TTL_SECONDS
+        );
+      }
+      throw error;
+    })
+    .finally(() => {
+      inFlightScrapes.delete(cacheKey);
+    });
+
+  inFlightScrapes.set(cacheKey, run);
+  return run;
+}
+
+function shouldCacheFailure(error: unknown): boolean {
+  if (error instanceof ConfigMissingError) return false;
+  if (isTimeoutError(error)) return true;
+  return isQuotaError(error) || isAuthError(error) || error instanceof PublicError;
+}
+
+const UPSTREAM_STATUS_PATTERN = /ScraperAPI\s+(\d{3})/i;
+
+export function userFacingPlatformError(error: unknown, platformName: string): string {
+  const raw = safeErrorMessage(error, `${platformName} search failed`);
+  const looksLikeMarkup = /<[a-z!/][\s\S]*>|&(?:[a-z]{2,6}|#\d{2,5});/i.test(raw);
+
+  if (isTimeoutError(error)) return `${platformName} search timed out`;
+
+  const errorStatus = (error as { status?: number; statusCode?: number } | null) ?? {};
+  const statusMatch = UPSTREAM_STATUS_PATTERN.exec(raw);
+  const status = errorStatus.status ?? errorStatus.statusCode ?? (statusMatch ? Number(statusMatch[1]) : undefined);
+
+  if (typeof status === "number" && !Number.isNaN(status)) {
+    if (status === 401 || status === 403) {
+      return `${platformName} provider key needs attention (upstream ${status})`;
+    }
+    if (status === 429) {
+      return `${platformName} hit an upstream rate limit — try again shortly`;
+    }
+    if (status >= 500) {
+      return `${platformName} is temporarily blocking automated requests (upstream ${status})`;
+    }
+  }
+
+  if (error instanceof PublicError) {
+    if (looksLikeMarkup) return `${platformName} rejected the request — try again shortly`;
+    return raw.length > 200 ? `${platformName} search failed` : raw;
+  }
+
+  if (isQuotaError(error)) {
+    return `${platformName} provider quota is exhausted — add or refresh provider keys`;
+  }
+  if (error instanceof ConfigMissingError) {
+    return `${platformName} is not configured — add a provider key in Admin → Supplier Provider Keys`;
+  }
+  if (looksLikeMarkup || raw.length > 200) return `${platformName} search failed (upstream error)`;
+  return raw;
+}
+
+export interface SupplierPlatformEvent {
+  platform: string;
+  name: string;
+  sources: SupplierSource[];
+  error?: string;
+}
+
+export interface SupplierSearchOptions {
+  deadlineMs?: number;
+  useCache?: boolean;
+  onPlatformComplete?: (event: SupplierPlatformEvent) => void | Promise<void>;
+}
+
+export const DEFAULT_SEARCH_DEADLINE_MS = 55_000;
 
 export async function searchSupplierPlatforms(
   query: string,
-  platformIds?: string[]
+  platformIds?: string[],
+  options: SupplierSearchOptions = {}
 ): Promise<SupplierSearchOutcome> {
   const keywords = parseSupplierQuery(query);
   const ids =
@@ -950,26 +1302,75 @@ export async function searchSupplierPlatforms(
       ? new Set(platformIds)
       : new Set(SUPPLIER_PLATFORMS.map((p) => p.id));
   const selected = SUPPLIER_PLATFORMS.filter((p) => ids.has(p.id));
+  const deadlineAt = Date.now() + Math.max(1000, options.deadlineMs ?? DEFAULT_SEARCH_DEADLINE_MS);
+  const useCache = options.useCache !== false;
 
-  const settled = await Promise.allSettled(selected.map((meta) => searchPlatform(meta, query)));
+  const emit = (event: SupplierPlatformEvent): void => {
+    const hook = options.onPlatformComplete;
+    if (!hook) return;
+    void Promise.resolve()
+      .then(() => hook(event))
+      .catch((error: unknown) => {
+        logger.warn("supplier platform progress callback failed", {
+          platformId: event.platform,
+          error: safeErrorMessage(error, "failed"),
+        });
+      });
+  };
+
+  const tasks = selected.map((meta) => ({
+    meta,
+    promise: searchPlatformCached(meta, query, deadlineAt, useCache).then(
+      (sources): { sources: SupplierSource[]; error?: string } => {
+        if (sources.length > 0) {
+          emit({ platform: meta.id, name: meta.name, sources });
+          return { sources };
+        }
+        logger.warn("supplier platform produced no usable data", {
+          platformId: meta.id,
+          error: "empty result",
+        });
+        const message = `${meta.name} returned no stores or listings`;
+        emit({ platform: meta.id, name: meta.name, sources: [], error: message });
+        return { sources: [], error: message };
+      },
+      (reason: unknown): { sources: SupplierSource[]; error?: string } => {
+        logger.warn("supplier platform produced no usable data", {
+          platformId: meta.id,
+          error: safeErrorMessage(reason, "failed"),
+        });
+        const message = userFacingPlatformError(reason, meta.name);
+        emit({ platform: meta.id, name: meta.name, sources: [], error: message });
+        return { sources: [], error: message };
+      }
+    ),
+  }));
+
+  const settled = await Promise.allSettled(tasks.map((task) => task.promise));
 
   const sources: SupplierSource[] = [];
   const errors: SupplierPlatformError[] = [];
 
-  settled.forEach((result, index) => {
-    const meta = selected[index];
+  for (const [index, task] of tasks.entries()) {
+    const result = settled[index];
     if (result.status === "fulfilled") {
-      if (result.value.length === 0) {
-        errors.push({ platform: meta.id, name: meta.name, error: "No results returned" });
-      } else {
-        sources.push(...result.value);
+      if (result.value.error) {
+        errors.push({
+          platform: task.meta.id,
+          name: task.meta.name,
+          error: result.value.error,
+        });
+        continue;
       }
-    } else {
-      const message = safeErrorMessage(result.reason, `${meta.name} search failed`);
-      logger.warn("supplier platform search failed", { platform: meta.id, error: message });
-      errors.push({ platform: meta.id, name: meta.name, error: message });
+      sources.push(...result.value.sources);
+      continue;
     }
-  });
+    errors.push({
+      platform: task.meta.id,
+      name: task.meta.name,
+      error: userFacingPlatformError(result.reason, task.meta.name),
+    });
+  }
 
   return { sources, errors, keywords };
 }
@@ -984,12 +1385,21 @@ function slugify(value: string): string {
   );
 }
 
-function priceRangeOf(listings: DiscoveredListing[]): { min: number; max: number } {
-  const prices = listings
-    .map((l) => l.price)
-    .filter((p): p is number => typeof p === "number" && p > 0);
-  if (prices.length === 0) return { min: 0, max: 0 };
-  return { min: Math.min(...prices), max: Math.max(...prices) };
+function priceRangeOf(listings: DiscoveredListing[]): {
+  min: number;
+  max: number;
+  currency: string | null;
+} {
+  const priced = listings.filter(
+    (l): l is DiscoveredListing & { price: number } => typeof l.price === "number" && l.price > 0
+  );
+  if (priced.length === 0) return { min: 0, max: 0, currency: null };
+  const currencies = new Set(priced.map((l) => l.currency ?? null));
+  return {
+    min: Math.min(...priced.map((l) => l.price)),
+    max: Math.max(...priced.map((l) => l.price)),
+    currency: currencies.size === 1 ? [...currencies][0] : null,
+  };
 }
 
 function observedRating(listings: DiscoveredListing[]): { rating: number; reviews: number } {

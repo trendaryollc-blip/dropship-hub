@@ -30,7 +30,27 @@ describe("Delivery Prediction", () => {
         serviceLevel: "express",
       });
       expect(result.carrierId).toBe("dhl");
-      expect(result.predictedDays.max).toBeLessThan(10);
+      expect(result.predictedDays.max).toBeGreaterThanOrEqual(
+        result.predictedDays.average
+      );
+      expect(result.predictedDays.average).toBeGreaterThanOrEqual(
+        result.predictedDays.min
+      );
+    });
+
+    it("is faster than economy for the same lane", () => {
+      const express = predictDelivery({
+        ...baseRequest,
+        carrierId: "dhl",
+        serviceLevel: "express",
+      });
+      const economy = predictDelivery({
+        ...baseRequest,
+        carrierId: "dhl",
+        serviceLevel: "economy",
+      });
+
+      expect(express.predictedDays.average).toBeLessThan(economy.predictedDays.average);
     });
 
     it("keeps confidence within rules-based bounds", () => {

@@ -8,6 +8,7 @@ import {
   sourceToSupplierProfile,
   getSupplierPlatformStatuses,
   SUPPLIER_PLATFORMS,
+  __resetSupplierSearchCacheForTests,
 } from "./supplier-platform-search";
 import { __resetPoolStateForTests } from "@/lib/api-keys/pool";
 import { PublicError } from "@/lib/api-errors";
@@ -367,7 +368,7 @@ describe("sourceToSupplierProfile", () => {
 
   it("derives price range and observed listing ratings from listings", () => {
     const profile = sourceToSupplierProfile(source, "baby toys");
-    expect(profile.catalog.priceRange).toEqual({ min: 9.5, max: 12.99 });
+    expect(profile.catalog.priceRange).toEqual({ min: 9.5, max: 12.99, currency: "USD" });
     expect(profile.stats.rating).toBe(4.6);
   });
 });
@@ -410,6 +411,7 @@ describe("searchSupplierPlatforms", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     __resetPoolStateForTests();
+    __resetSupplierSearchCacheForTests();
     process.env.SCRAPER_API_KEYS = "test-scraper-key";
     mockGetPlatform.mockResolvedValue(null);
   });
@@ -577,6 +579,7 @@ describe("admin supplier provider key fallback", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     __resetPoolStateForTests();
+    __resetSupplierSearchCacheForTests();
     delete process.env.SCRAPER_API_KEYS;
     delete process.env.CJ_API_KEYS;
     mockGetPlatform.mockResolvedValue(null);

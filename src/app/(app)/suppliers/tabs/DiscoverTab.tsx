@@ -42,6 +42,23 @@ const SOURCE_LABELS: Record<string, string> = {
   other: "Other",
 };
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: "$",
+  EUR: "€",
+  GBP: "£",
+  CNY: "¥",
+  JPY: "¥",
+};
+
+function formatMoney(value: number, currency?: string | null): string {
+  const code = currency ? currency.toUpperCase() : null;
+  const symbol = code ? CURRENCY_SYMBOLS[code] : undefined;
+  const amount = value.toFixed(2);
+  if (symbol) return `${symbol}${amount}`;
+  if (code) return `${amount} ${code}`;
+  return amount;
+}
+
 function isDiscovered(supplier: SupplierProfile): boolean {
   return supplier.trustBadge === "unverified";
 }
@@ -58,6 +75,25 @@ interface PlatformSearchState {
   suppliers: SupplierProfile[];
   errors: { platform: string; name: string; error: string }[];
   sources: { platform: string; store: string; listings: number }[];
+  pendingPlatforms: string[];
+}
+
+interface StreamPlatformChunk {
+  type: "platform";
+  platform: string;
+  name: string;
+  sources: number;
+  listings: number;
+  suppliers: SupplierProfile[];
+  error: string | null;
+}
+
+interface StreamDoneChunk {
+  type: "done";
+  suppliers: SupplierProfile[];
+  platformErrors: { platform: string; name: string; error: string }[];
+  sources: { platform: string; store: string; listings: number }[];
+  keywords?: string[];
 }
 
 function ComparisonModal({ suppliers, onClose }: { suppliers: SupplierProfile[]; onClose: () => void }) {
@@ -402,7 +438,8 @@ function SupplierGridCard({
         )}
         {priceRange.max > 0 && (
           <span className="text-emerald-400">
-            ${priceRange.min.toFixed(2)}–${priceRange.max.toFixed(2)}
+            {formatMoney(priceRange.min, priceRange.currency)}–
+            {formatMoney(priceRange.max, priceRange.currency)}
           </span>
         )}
       </div>
@@ -412,7 +449,11 @@ function SupplierGridCard({
           {listings.slice(0, 2).map((listing) => (
             <li key={listing.link} className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground min-w-0">
               <span className="truncate">{listing.title}</span>
-              {listing.price !== null && <span className="shrink-0 text-foreground">${listing.price.toFixed(2)}</span>}
+              {listing.price !== null && (
+                <span className="shrink-0 text-foreground">
+                  {formatMoney(listing.price, listing.currency)}
+                </span>
+              )}
             </li>
           ))}
         </ul>
@@ -459,6 +500,7 @@ function DiscoverContent() {
     suppliers: [],
     errors: [],
     sources: [],
+    pendingPlatforms: [],
   });
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const platformSearchRef = useRef(false);
@@ -518,6 +560,7 @@ function DiscoverContent() {
               suppliers: parsed.suppliers ?? [],
               errors: parsed.errors ?? [],
               sources: parsed.sources ?? [],
+              pendingPlatforms: [],
             });
             return;
           }
@@ -527,13 +570,117 @@ function DiscoverContent() {
         // sessionStorage unavailable — skip the cache
       }
 
-      setPlatformSearch({ loading: true, lastQuery: query, suppliers: [], errors: [], sources: [] });
+      setPlatformSearch({
+        loading: true,
+        lastQuery: query,
+        suppliers: [],
+        errors: [],
+        sources: [],
+        pendingPlatforms: ids,
+      });
+
+      const applyStreamError = (message: string) => {
+        setPlatformSearch({
+          loading: false,
+          lastQuery: query,
+          suppliers: [],
+          sources: [],
+          pendingPlatforms: [],
+          errors: [{ platform: "search", name: "Platform search", error: message }],
+        });
+      };
+
       try {
         const res = await fetch("/api/suppliers/search-all", {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...(await getAuthHeaders()) },
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/x-ndjson",
+            ...(await getAuthHeaders()),
+          },
           body: JSON.stringify({ query, platforms: ids }),
         });
+
+        const reader = res.body && typeof res.body.getReader === "function" ? res.body.getReader() : null;
+        const decoder = new TextDecoder();
+        const accumulated: SupplierProfile[] = [];
+        const errors: { platform: string; name: string; error: string }[] = [];
+        let settled = false;
+
+        const consume = (chunk: StreamPlatformChunk | StreamDoneChunk | { type: "error"; error: string }) => {
+          if (chunk.type === "platform") {
+            for (const supplier of chunk.suppliers ?? []) {
+              if (!accumulated.some((existing) => existing.id === supplier.id)) {
+                accumulated.push(supplier);
+              }
+            }
+            if (chunk.error) {
+              errors.push({ platform: chunk.platform, name: chunk.name, error: chunk.error });
+            }
+            setPlatformSearch((prev) => ({
+              ...prev,
+              suppliers: [...accumulated],
+              errors: [...errors],
+              pendingPlatforms: prev.pendingPlatforms.filter((id) => id !== chunk.platform),
+            }));
+            return;
+          }
+          if (chunk.type === "error") {
+            throw new Error(chunk.error);
+          }
+          const next: PlatformSearchState = {
+            loading: false,
+            lastQuery: query,
+            suppliers: Array.isArray(chunk.suppliers) ? chunk.suppliers : [],
+            errors: Array.isArray(chunk.platformErrors) ? chunk.platformErrors : [],
+            sources: Array.isArray(chunk.sources) ? chunk.sources : [],
+            pendingPlatforms: [],
+          };
+          settled = true;
+          setPlatformSearch(next);
+          try {
+            sessionStorage.setItem(cacheKey, JSON.stringify({ ...next, at: Date.now() }));
+          } catch {
+            // cache write failure is non-fatal
+          }
+        };
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => null);
+          throw new Error(
+            data && typeof data.error === "string" ? data.error : "Platform search failed"
+          );
+        }
+
+        if (reader) {
+          let buffer = "";
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() ?? "";
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed) continue;
+              consume(JSON.parse(trimmed) as StreamPlatformChunk | StreamDoneChunk);
+            }
+          }
+          const tail = buffer.trim();
+          if (tail) consume(JSON.parse(tail) as StreamPlatformChunk | StreamDoneChunk);
+          if (!settled) {
+            setPlatformSearch({
+              loading: false,
+              lastQuery: query,
+              suppliers: accumulated,
+              errors,
+              sources: [],
+              pendingPlatforms: [],
+            });
+          }
+          return;
+        }
+
         const data = await res.json().catch(() => null);
         if (!res.ok) {
           throw new Error(data && typeof data.error === "string" ? data.error : "Platform search failed");
@@ -544,6 +691,7 @@ function DiscoverContent() {
           suppliers: Array.isArray(data?.suppliers) ? data.suppliers : [],
           errors: Array.isArray(data?.platformErrors) ? data.platformErrors : [],
           sources: Array.isArray(data?.sources) ? data.sources : [],
+          pendingPlatforms: [],
         };
         setPlatformSearch(next);
         try {
@@ -552,19 +700,9 @@ function DiscoverContent() {
           // cache write failure is non-fatal
         }
       } catch (err) {
-        setPlatformSearch({
-          loading: false,
-          lastQuery: query,
-          suppliers: [],
-          sources: [],
-          errors: [
-            {
-              platform: "search",
-              name: "Platform search",
-              error: err instanceof Error && err.message ? err.message : "Platform search failed",
-            },
-          ],
-        });
+        applyStreamError(
+          err instanceof Error && err.message ? err.message : "Platform search failed"
+        );
       }
     },
     [selectedPlatforms]
@@ -649,7 +787,8 @@ function DiscoverContent() {
     const names = new Map(platformChips.map((c) => [c.id, c.name]));
     return selectedPlatforms.map((id) => {
       const name = names.get(id) ?? SOURCE_LABELS[id] ?? id;
-      if (platformSearch.loading) return { platform: id, name, status: "loading" as const };
+      const pending = platformSearch.pendingPlatforms.includes(id);
+      if (pending) return { platform: id, name, status: "loading" as const };
       const failure = platformSearch.errors.find((e) => e.platform === id);
       if (failure) return { platform: id, name, status: "error" as const, error: failure.error };
       const count = platformSearch.sources
@@ -834,9 +973,11 @@ function DiscoverContent() {
         </div>
       )}
 
-      {platformSearch.loading && <PlatformProgress platforms={platformProgress} />}
+      {(platformSearch.loading || platformSearch.pendingPlatforms.length > 0) && (
+        <PlatformProgress platforms={platformProgress} />
+      )}
 
-      {!platformSearch.loading && platformSearch.errors.length > 0 && (
+      {!platformSearch.loading && platformSearch.pendingPlatforms.length === 0 && platformSearch.errors.length > 0 && (
         <div className="flex flex-wrap gap-2" data-testid="platform-errors">
           {platformSearch.errors.map((entry) => (
             <span

@@ -254,15 +254,23 @@ describe("/api/search/suggestions", () => {
     it("falls back to default seasonal suggestions when Firestore fails", async () => {
       mockGetAdminDB.mockRejectedValue(new Error("Firestore unavailable"));
 
-      const { GET } = await import("./route");
-      const req = makeGetRequest("http://localhost/api/search/suggestions?q=jacket");
-      const res = await GET(req);
-      const data = await res.json();
+      // Pin the clock to a month whose seasonal defaults contain "jacket"
+      // (January and September) so the assertion is not calendar-dependent.
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-09-15T12:00:00.000Z"));
 
-      expect(data.suggestions).toBeDefined();
-      const texts = data.suggestions.map((s: { text: string }) => s.text);
-      // "jacket" appears in multiple seasonal months (January, September)
-      expect(texts.some((t: string) => t.includes("jacket"))).toBe(true);
+      try {
+        const { GET } = await import("./route");
+        const req = makeGetRequest("http://localhost/api/search/suggestions?q=jacket");
+        const res = await GET(req);
+        const data = await res.json();
+
+        expect(data.suggestions).toBeDefined();
+        const texts = data.suggestions.map((s: { text: string }) => s.text);
+        expect(texts.some((t: string) => t.includes("jacket"))).toBe(true);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it("deduplicates suggestions", async () => {

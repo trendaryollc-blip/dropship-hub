@@ -38,3 +38,7 @@ export async function setFeedCache<T>(
   await setCache<T>(namespace, value, ttlSeconds, key);
   memCache.set(memKey(namespace, key), { value, expiresAt: Date.now() + ttlSeconds * 1000 });
 }
+
+export function __resetFeedCacheForTests(): void {
+  memCache.clear();
+}
