@@ -22,10 +22,15 @@ vi.mock("@/lib/cj-auth", () => ({
   getCJAccessToken: vi.fn(),
 }));
 
+vi.mock("@/lib/email/smart-sender", () => ({
+  smartSendEmail: vi.fn(),
+}));
+
 import { GET, POST, PUT, DELETE } from "./route";
 import {
   getSupplierMessages, addSupplierMessage, markMessageRead, deleteSupplierMessage,
 } from "@/lib/data/srm";
+import { smartSendEmail } from "@/lib/email/smart-sender";
 
 function makeReq(body?: any, method = "POST", url = "http://localhost/api/srm/messages") {
   return {
@@ -82,6 +87,41 @@ describe("POST /api/srm/messages", () => {
     const res = await POST(makeReq({ supplierId: "s1" }));
     const json = await res.json();
     expect(json.error).toContain("Missing required fields");
+  });
+
+  it("delivers via email when supplierEmail is provided", async () => {
+    (addSupplierMessage as any).mockResolvedValue("msg-new-2");
+    (smartSendEmail as any).mockResolvedValue({ success: true, provider: "resend", messageId: "m1" });
+
+    const res = await POST(makeReq({
+      supplierId: "s1",
+      supplierName: "Acme",
+      subject: "Question",
+      body: "What is the lead time?",
+      supplierEmail: "supplier@example.com",
+    }));
+
+    const json = await res.json();
+    expect(json.success).toBe(true);
+    expect(json.status).toBe("sent");
+    expect(smartSendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "supplier@example.com" }));
+  });
+
+  it("marks failed when email delivery fails", async () => {
+    (addSupplierMessage as any).mockResolvedValue("msg-new-3");
+    (smartSendEmail as any).mockResolvedValue({ success: false, provider: "resend", error: "No email provider configured" });
+
+    const res = await POST(makeReq({
+      supplierId: "s1",
+      supplierName: "Acme",
+      subject: "Question",
+      body: "Hello",
+      supplierEmail: "supplier@example.com",
+    }));
+
+    const json = await res.json();
+    expect(json.success).toBe(true);
+    expect(json.status).toBe("failed");
   });
 });
 

@@ -104,6 +104,21 @@ describe("calculateTrendVelocity", () => {
     });
   });
 
+  it("uses normalized search-interest history without treating it as absolute volume", () => {
+    const result = calculateTrendVelocity({
+      ...baseInput,
+      currentSearchVolume: 0,
+      historicalSearchVolumes: [],
+      currentSearchInterestIndex: 80,
+      historicalSearchInterest: [10, 20, 40, 80],
+      historicalSellerCounts: [],
+      historicalPrices: [],
+    });
+
+    expect(result.weeklyGrowthRates).toEqual([25, 25, 25]);
+    expect(result.phase).toBe("emerging");
+  });
+
   it("returns score between 0 and 100", () => {
     const result = calculateTrendVelocity(baseInput);
     expect(result.score).toBeGreaterThanOrEqual(0);

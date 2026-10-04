@@ -10,9 +10,12 @@ import { INVENTORY_DISPLAY_LIMIT } from "@/components/stores/constants";
 
 interface InventorySyncPanelProps {
   inventory: StoreInventoryItem[];
+  onSynced?: () => void;
 }
 
-export default function InventorySyncPanel({ inventory }: InventorySyncPanelProps) {
+const SYNC_ALL_CAP = 25;
+
+export default function InventorySyncPanel({ inventory, onSynced }: InventorySyncPanelProps) {
   const { success, error: toastError } = useToast();
   const [syncing, setSyncing] = useState<string | null>(null);
   const [syncingAll, setSyncingAll] = useState(false);
@@ -41,20 +44,22 @@ export default function InventorySyncPanel({ inventory }: InventorySyncPanelProp
     try {
       await syncItem(item);
       success(`Synced "${item.title}" stock to other stores`);
+      onSynced?.();
     } catch { toastError("Failed to sync inventory"); }
     setSyncing(null);
   };
 
   const handleSyncAll = async () => {
     if (!inventory.length) return;
+    const targets = inventory.slice(0, SYNC_ALL_CAP);
     setSyncingAll(true);
-    setSyncProgress({ current: 0, total: inventory.length });
+    setSyncProgress({ current: 0, total: targets.length });
     let synced = 0;
     let failed = 0;
 
-    for (let i = 0; i < inventory.length; i++) {
-      const item = inventory[i];
-      setSyncProgress({ current: i + 1, total: inventory.length });
+    for (let i = 0; i < targets.length; i++) {
+      const item = targets[i];
+      setSyncProgress({ current: i + 1, total: targets.length });
       if (!item.stores.length) { failed++; continue; }
       try {
         await syncItem(item);
@@ -64,7 +69,8 @@ export default function InventorySyncPanel({ inventory }: InventorySyncPanelProp
 
     setSyncProgress(null);
     setSyncingAll(false);
-    success(`Synced ${synced} items${failed > 0 ? `, ${failed} failed` : ""}`);
+    success(`Synced ${synced} items${failed > 0 ? `, ${failed} failed` : ""}${inventory.length > SYNC_ALL_CAP ? ` (capped at ${SYNC_ALL_CAP} of ${inventory.length})` : ""}`);
+    onSynced?.();
   };
 
   return (

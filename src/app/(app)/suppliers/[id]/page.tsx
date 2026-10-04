@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   ArrowLeft, Shield, Star, MapPin, Clock, Truck, Package,
   CheckCircle2, AlertTriangle, TrendingUp, Award, Mail, Globe,
-  MessageSquare, BarChart3, GitCompare, Sparkles,
+  MessageSquare, BarChart3, GitCompare, Sparkles, Wrench,
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { SupplierProfile } from "@/types/supplier";
@@ -16,6 +16,9 @@ import SupplierPerformanceTab from "@/components/suppliers/SupplierPerformanceTa
 import SupplierScorecardTab from "@/components/suppliers/SupplierScorecardTab";
 import SupplierSRMTab from "@/components/suppliers/SupplierSRMTab";
 import SupplierAITab from "@/components/suppliers/SupplierAITab";
+import CommunityReviews from "@/components/suppliers/CommunityReviews";
+import SampleOrderPanel from "@/components/suppliers/SampleOrderPanel";
+import SupplierChatPanel from "@/components/suppliers/SupplierChatPanel";
 import DueDiligencePanel from "@/components/suppliers/DueDiligencePanel";
 
 function StarRating({ rating, size = 16 }: { rating: number; size?: number }) {
@@ -47,7 +50,7 @@ function ProgressBar({ value, max = 100 }: { value: number; max?: number }) {
   );
 }
 
-type TabId = "overview" | "performance" | "scorecard" | "srm" | "ai";
+type TabId = "overview" | "performance" | "scorecard" | "srm" | "ai" | "tools";
 
 const TABS: { id: TabId; label: string; icon: typeof Shield }[] = [
   { id: "overview", label: "Overview", icon: Globe },
@@ -55,6 +58,7 @@ const TABS: { id: TabId; label: string; icon: typeof Shield }[] = [
   { id: "scorecard", label: "Scorecard", icon: Award },
   { id: "srm", label: "SRM", icon: GitCompare },
   { id: "ai", label: "AI Assistant", icon: Sparkles },
+  { id: "tools", label: "Tools", icon: Wrench },
 ];
 
 function SupplierDetailContent({ id }: { id: string }) {
@@ -227,6 +231,13 @@ function SupplierDetailContent({ id }: { id: string }) {
         )}
         {activeTab === "ai" && (
           <SupplierAITab supplierId={supplier.id} supplierName={supplier.name} />
+        )}
+        {activeTab === "tools" && (
+          <div className="space-y-4">
+            <CommunityReviews supplierId={supplier.id} />
+            <SampleOrderPanel />
+            <SupplierChatPanel />
+          </div>
         )}
       </div>
 

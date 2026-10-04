@@ -6,6 +6,7 @@ import { analyzeKeyword, getTrendingKeywords } from "@/lib/data-sources/aggregat
 import { addTrendPrediction } from "@/lib/data/trend-predictor";
 import type { TrendPlatform } from "@/types/trend-predictor";
 import { safeErrorMessage, PublicError } from "@/lib/api-errors";
+import { logger } from "@/lib/logger";
 
 export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
@@ -26,21 +27,28 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
       timeframe
     );
 
-    await addTrendPrediction(uid, {
-      productIdea: result.prediction.productIdea,
-      category: result.prediction.category,
-      trendScore: result.prediction.trendScore,
-      confidence: result.prediction.confidence,
-      direction: result.prediction.direction,
-      predictedPeak: result.prediction.predictedPeak,
-      timeToPeak: result.prediction.timeToPeak,
-      saturationRisk: result.prediction.saturationRisk,
-      competitionLevel: result.prediction.competitionLevel,
-      reasoning: result.prediction.reasoning,
-      relatedKeywords: result.prediction.relatedKeywords,
-      suggestedPlatforms: result.prediction.suggestedPlatforms,
-      estimatedMargin: result.prediction.estimatedMargin,
-    });
+    try {
+      await addTrendPrediction(uid, {
+        productIdea: result.prediction.productIdea,
+        category: result.prediction.category,
+        trendScore: result.prediction.trendScore,
+        confidence: result.prediction.confidence,
+        direction: result.prediction.direction,
+        predictedPeak: result.prediction.predictedPeak,
+        timeToPeak: result.prediction.timeToPeak,
+        saturationRisk: result.prediction.saturationRisk,
+        competitionLevel: result.prediction.competitionLevel,
+        reasoning: result.prediction.reasoning,
+        relatedKeywords: result.prediction.relatedKeywords,
+        suggestedPlatforms: result.prediction.suggestedPlatforms,
+        estimatedMargin: result.prediction.estimatedMargin,
+      });
+    } catch (error) {
+      logger.warn("Trend analysis succeeded but prediction history could not be saved", {
+        uid,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
 
     return NextResponse.json({
       signals: result.signals,
@@ -56,6 +64,10 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
     if (error instanceof PublicError) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
+    logger.error("Trend analysis request failed", {
+      uid,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       { error: "Failed to analyze trend", details: safeErrorMessage(error, "Unknown error") },
       { status: 500 }

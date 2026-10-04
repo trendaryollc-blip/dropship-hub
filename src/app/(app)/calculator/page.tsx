@@ -3,14 +3,14 @@
 import { Calculator } from "lucide-react";
 import {
   DollarSign, Percent, Target, Truck, Globe, FileSearch,
-  TrendingUp, RotateCcw, Package, BarChart3,
+  TrendingUp, RotateCcw, Package, BarChart3, Megaphone, Store,
 } from "lucide-react";
 import { calculatorCategories } from "@/components/calculator/calculatorhub/hub-data";
 import CalculatorCard from "@/components/calculator/CalculatorCard";
 
 const iconMap: Record<string, typeof DollarSign> = {
   DollarSign, Percent, Target, Truck, Globe, FileSearch,
-  TrendingUp, RotateCcw, Package, BarChart3,
+  TrendingUp, RotateCcw, Package, BarChart3, Megaphone, Store,
 };
 
 export default function CalculatorHubPage() {

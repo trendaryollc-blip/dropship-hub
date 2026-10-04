@@ -32,13 +32,26 @@ export default function BulkActionsBar({
   const [pushingStore, setPushingStore] = useState<string | null>(null);
   const [pushResult, setPushResult] = useState<{ success: boolean; message: string } | null>(null);
 
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
+    if (!user) return {};
+    try {
+      const token = await user.getIdToken();
+      return { Authorization: `Bearer ${token}` };
+    } catch {
+      return {};
+    }
+  }, [user]);
+
   const fetchStores = useCallback(async () => {
     if (!user) return;
     try {
-      const data = await safeFetch<{ connections?: ConnectedStore[] }>(`/api/store/connections?uid=${user.uid}`);
+      const authHeaders = await getAuthHeaders();
+      const data = await safeFetch<{ connections?: ConnectedStore[] }>(`/api/store/connections`, {
+        headers: { ...authHeaders },
+      });
       setStores((data.connections || []).filter((s) => s.status === "connected"));
     } catch { /* ignore */ }
-  }, [user]);
+  }, [user, getAuthHeaders]);
 
   const handleExportCSV = async () => {
     setExporting(true);
@@ -72,13 +85,14 @@ export default function BulkActionsBar({
     let successCount = 0;
     let failCount = 0;
 
+    const authHeaders = await getAuthHeaders();
+
     for (const product of selectedProducts) {
       try {
         const data = await safeFetch<{ success?: boolean }>(`/api/store/push`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({
-            uid: user.uid,
             storeId: store.id,
             productTitle: product.title,
             productImage: product.image || "",

@@ -555,12 +555,30 @@ export default function AIPage() {
   };
 
   // ─── Conversation History ────────────────────────────────────────
+  const historyMessagesRef = useRef<Message[]>([]);
   useEffect(() => {
     if (!user?.uid) return;
-    fetchWithAuth<{ conversations: ConversationSummary[] }>("/api/ai/history", {
+    fetchWithAuth<{ messages: { id: string; role: "user" | "assistant"; content: string; provider?: string; timestamp: string }[] }>("/api/ai/history", {
       method: "GET",
     }).then((data) => {
-      if (data?.conversations) setConversations(data.conversations);
+      const msgs = (data?.messages ?? []).map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        provider: m.provider,
+        timestamp: new Date(m.timestamp),
+      }));
+      historyMessagesRef.current = msgs;
+      if (msgs.length > 0) {
+        const firstUser = msgs.find((m) => m.role === "user");
+        setConversations([{
+          id: "current",
+          title: firstUser ? firstUser.content.slice(0, 40) : "Previous session",
+          lastMessage: msgs[msgs.length - 1].content.slice(0, 80),
+          timestamp: msgs[msgs.length - 1].timestamp,
+          messageCount: msgs.length,
+        }]);
+      }
     }).catch(() => {});
   }, [user?.uid, fetchWithAuth]);
 
@@ -1117,7 +1135,8 @@ export default function AIPage() {
                     key={conv.id}
                     onClick={() => {
                       setActiveConversation(conv.id);
-                      setHasStarted(true);
+                      setMessages(historyMessagesRef.current);
+                      setHasStarted(historyMessagesRef.current.length > 0);
                       setShowHistory(false);
                     }}
                     className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors ${

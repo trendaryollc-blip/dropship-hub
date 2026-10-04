@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor, within } from "@testing-library/rea
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
 const mockMutate = vi.fn();
+const searchParamsState = vi.hoisted(() => ({ current: new URLSearchParams() }));
 
 const mockProduct = {
   id: "p1",
@@ -63,6 +64,7 @@ function defaultUseAPIMock(url: string) {
 
 const mockUseAPI = vi.fn((url: string) => defaultUseAPIMock(url));
 vi.mock("@/hooks/useAPI", () => ({ useAPI: (url: string) => mockUseAPI(url) }));
+vi.mock("next/navigation", () => ({ useSearchParams: () => searchParamsState.current }));
 
 vi.mock("@/components/auth/AuthProvider", () => ({
   useAuth: () => ({ user: { uid: "u1" } }),
@@ -84,6 +86,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockUseAPI.mockReset().mockImplementation((url: string) => defaultUseAPIMock(url));
   mockAuthJson.mockResolvedValue({});
+  searchParamsState.current = new URLSearchParams();
 });
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -140,6 +143,24 @@ describe("ProductLifecyclePage", () => {
     });
     expect(mockToast.success).toHaveBeenCalledWith("Product added to lifecycle");
     await waitFor(() => expect(screen.queryByText("Add Product to Lifecycle")).toBeNull());
+  });
+
+  it("opens a prefilled lifecycle add form for product context and retains its product ID", async () => {
+    searchParamsState.current = new URLSearchParams("productId=amazon-123&productTitle=Wireless+Headphones&productImage=https%3A%2F%2Fexample.com%2Fheadphones.jpg&category=Electronics");
+    render(<ProductLifecyclePage />);
+    expect(screen.getByText("Add Product to Lifecycle")).toBeTruthy();
+    expect(screen.getByPlaceholderText("e.g. Smart Fitness Band")).toHaveValue("Wireless Headphones");
+    expect(screen.getByPlaceholderText("e.g. Electronics")).toHaveValue("Electronics");
+    expect(screen.getAllByPlaceholderText("https://...")[0]).toHaveValue("https://example.com/headphones.jpg");
+
+    fireEvent.submit(screen.getByPlaceholderText("e.g. Smart Fitness Band").closest("form") as HTMLFormElement);
+    await waitFor(() => {
+      expect(mockAuthJson).toHaveBeenCalledWith(
+        "/api/products/lifecycle",
+        expect.objectContaining({ productId: "amazon-123", productTitle: "Wireless Headphones" }),
+        "POST"
+      );
+    });
   });
 
   it("keeps the add modal open with input when the API fails", async () => {

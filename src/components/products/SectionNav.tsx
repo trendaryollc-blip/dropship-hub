@@ -1,16 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { TrendingUp, Calculator, BarChart3, MessageSquare, Truck, Lightbulb, Package, Search } from "lucide-react";
+import { Eye, ShieldCheck, TrendingUp, BarChart3, MessageSquare, Truck, Calculator, FileText, Package, Search } from "lucide-react";
 
 const sections = [
-  { id: "price-comparison", label: "Price", icon: TrendingUp },
-  { id: "calculator", label: "Calculator", icon: Calculator },
-  { id: "market-intel", label: "Intelligence", icon: BarChart3 },
+  { id: "overview", label: "Overview", icon: Eye },
+  { id: "image-matches", label: "Verify", icon: ShieldCheck },
+  { id: "market-intel", label: "Market", icon: TrendingUp },
+  { id: "price-comparison", label: "Prices", icon: BarChart3 },
   { id: "reviews", label: "Reviews", icon: MessageSquare },
   { id: "suppliers", label: "Suppliers", icon: Truck },
-  { id: "listings", label: "Listings", icon: Lightbulb },
-  { id: "similar", label: "Similar", icon: Package },
+  { id: "calculator", label: "Profit", icon: Calculator },
+  { id: "listings", label: "Listing", icon: FileText },
+  { id: "similar", label: "Alternatives", icon: Package },
   { id: "searches", label: "Searches", icon: Search },
 ];
 

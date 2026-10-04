@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Share2,
   Loader2,
@@ -139,6 +140,7 @@ function DataState({
 }
 
 export default function SocialContentPage() {
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<"generate" | "ugc" | "ideas" | "library" | "calendar">("generate");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SocialContent | null>(null);
@@ -171,9 +173,9 @@ export default function SocialContentPage() {
   } = useAPI<{ entries: ContentCalendarEntry[] }>("/api/social-content?type=calendar");
 
   // Form state
-  const [productTitle, setProductTitle] = useState("");
+  const [productTitle, setProductTitle] = useState(() => searchParams.get("productTitle") || "");
   const [productDescription, setProductDescription] = useState("");
-  const [productImage, setProductImage] = useState("");
+  const [productImage, setProductImage] = useState(() => searchParams.get("productImage") || "");
   const [platform, setPlatform] = useState<SocialPlatform>("tiktok");
   const [contentType, setContentType] = useState<ContentType>("hook");
   const [tone, setTone] = useState<ContentTone>("urgent");

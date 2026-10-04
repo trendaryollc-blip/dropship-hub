@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import {
-  TrendingUp, TrendingDown, Minus, Search, Plus, Trash2, Loader2, Flame, Zap, Eye,
+  TrendingUp, TrendingDown, Minus, Search, Plus, Trash2, Loader2, Flame, Zap, Eye, AlertCircle, Image as ImageIcon,
   Download, RefreshCw, Clock,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -39,6 +40,13 @@ interface TrendingItem {
   volume: number;
 }
 
+interface TrendImageMatch {
+  title: string;
+  platform: string;
+  url: string;
+  matchType: "exact" | "visual";
+}
+
 const DIRECTION_ICONS = { rising: TrendingUp, peaking: Flame, stable: Minus, declining: TrendingDown } as Record<string, typeof TrendingUp>;
 const DIRECTION_COLORS = { rising: "text-emerald-400", peaking: "text-amber-400", stable: "text-blue-400", declining: "text-red-400" } as Record<string, string>;
 const STATUS_COLORS = { emerging: "bg-purple-400/10 text-purple-400", rising: "bg-emerald-400/10 text-emerald-400", hot: "bg-red-400/10 text-red-400", peaking: "bg-amber-400/10 text-amber-400", saturated: "bg-gray-400/10 text-gray-400" };
@@ -46,6 +54,7 @@ const STATUS_COLORS = { emerging: "bg-purple-400/10 text-purple-400", rising: "b
 type Tab = "dashboard" | "analyze" | "predictions" | "watchlist" | "compare" | "bulk";
 
 export default function TrendsPage() {
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const uid = user?.uid || "";
   const { success: toastSuccess, error: toastError } = useToast();
@@ -62,11 +71,16 @@ export default function TrendsPage() {
   const predictions = predictionsData?.predictions || [];
   const watchlist = watchlistData?.entries || [];
 
-  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
-  const [searchKeyword, setSearchKeyword] = useState("");
-  const [searchCategory, setSearchCategory] = useState("");
+  const [activeTab, setActiveTab] = useState<Tab>(() => searchParams.get("keyword") ? "analyze" : "dashboard");
+  const [searchKeyword, setSearchKeyword] = useState(() => searchParams.get("keyword") || "");
+  const [searchCategory, setSearchCategory] = useState(() => searchParams.get("category") || "");
+  const [imageUrl, setImageUrl] = useState(() => searchParams.get("imageUrl") || "");
+  const [imageMatches, setImageMatches] = useState<TrendImageMatch[]>([]);
+  const [imageSearching, setImageSearching] = useState(false);
+  const [imageSearchError, setImageSearchError] = useState<string | null>(null);
   const [searchTimeframe, setSearchTimeframe] = useState<"7d" | "30d" | "90d">("30d");
   const [analyzing, setAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<TrendAnalysisResponse | null>(null);
   const [selectedPrediction, setSelectedPrediction] = useState<TrendPrediction | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -81,6 +95,7 @@ export default function TrendsPage() {
     const kw = keywordOverride?.trim() || searchKeyword.trim();
     if (!kw) return;
     setAnalyzing(true);
+    setAnalysisError(null);
     try {
       const data = await authJson<TrendAnalysisResponse>("/api/ai/trends", {
         keyword: kw,
@@ -90,10 +105,33 @@ export default function TrendsPage() {
       setAnalysisResult(data);
       mutatePredictions();
     } catch (e) {
-      console.error("[Trends] Error:", e instanceof Error ? e.message : e);
-      toastError(e instanceof Error ? e.message : "Trend analysis failed");
+      const message = e instanceof Error ? e.message : "Trend analysis failed";
+      console.error("[Trends] Error:", message);
+      setAnalysisError(message);
+      toastError(message);
     } finally {
       setAnalyzing(false);
+    }
+  };
+
+  const handleSearchByImage = async () => {
+    const sourceImage = imageUrl.trim();
+    if (!sourceImage || imageSearching) return;
+    setImageSearching(true);
+    setImageSearchError(null);
+    setImageMatches([]);
+    try {
+      const data = await authJson<{ matches?: TrendImageMatch[] }>("/api/products/match-image", {
+        imageUrl: sourceImage,
+      });
+      const matches = (Array.isArray(data.matches) ? data.matches : [])
+        .filter((match) => typeof match.title === "string" && match.title.trim());
+      setImageMatches(matches);
+      if (matches.length === 0) setImageSearchError("No marketplace product matches were found for this image.");
+    } catch (error) {
+      setImageSearchError(error instanceof Error ? error.message : "Image search failed. Please try again.");
+    } finally {
+      setImageSearching(false);
     }
   };
 
@@ -371,6 +409,46 @@ export default function TrendsPage() {
                 className="flex-1 px-3 py-2 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/40"
               />
             </div>
+            <div className="space-y-2">
+              <label htmlFor="trend-image-url" className="block text-xs font-medium text-muted-foreground">Find product matches by image</label>
+              <div className="flex gap-2">
+                <input
+                  id="trend-image-url"
+                  type="url"
+                  value={imageUrl}
+                  onChange={(event) => setImageUrl(event.target.value)}
+                  placeholder="Paste a public product image URL"
+                  className="min-w-0 flex-1 px-3 py-2 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/40"
+                />
+                <button
+                  type="button"
+                  onClick={handleSearchByImage}
+                  disabled={!imageUrl.trim() || imageSearching}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:border-accent/30 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {imageSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
+                  {imageSearching ? "Searching" : "Search image"}
+                </button>
+              </div>
+              {imageSearchError && <p role="alert" className="text-xs text-amber-400">{imageSearchError}</p>}
+              {imageMatches.length > 0 && (
+                <div className="space-y-1 rounded-xl border border-border p-2" aria-label="Image product matches">
+                  <p className="px-1 text-[10px] text-muted-foreground">Select a marketplace match to use as the trend keyword:</p>
+                  {imageMatches.slice(0, 5).map((match) => (
+                    <button
+                      key={`${match.platform}-${match.url}`}
+                      type="button"
+                      aria-label={`Use ${match.platform} image match: ${match.title}`}
+                      onClick={() => setSearchKeyword(match.title)}
+                      className={`flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition-colors ${searchKeyword === match.title ? "bg-accent/10 text-accent" : "text-foreground hover:bg-surface"}`}
+                    >
+                      <span className="min-w-0 truncate">{match.title}</span>
+                      <span className="shrink-0 text-[9px] text-muted-foreground">{match.platform} · {match.matchType}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="flex gap-2">
               {(["7d", "30d", "90d"] as const).map((tf) => (
                 <button
@@ -385,13 +463,27 @@ export default function TrendsPage() {
               ))}
             </div>
             <button
-               onClick={() => handleAnalyze()}
+              onClick={() => handleAnalyze()}
               disabled={analyzing || !searchKeyword.trim()}
               className="w-full py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent/80 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
             >
               {analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
               {analyzing ? "Analyzing..." : "Analyze Trend"}
             </button>
+            {analysisError && (
+              <div role="alert" className="flex items-start gap-2 rounded-xl border border-amber-400/20 bg-amber-400/5 p-3">
+                <AlertCircle className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-foreground">Trend analysis could not complete</p>
+                  <p className="text-xs text-muted-foreground">{analysisError}</p>
+                  {/no live trend data|not configured|not connected/i.test(analysisError) && (
+                    <p className="text-xs text-muted-foreground">
+                      Connect a live source in the deployment environment, such as SerpAPI (<code>SERPAPI_KEYS</code>) or Keepa (<code>KEEPA_API_KEYS</code>). Reddit is also checked automatically when available.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-4">

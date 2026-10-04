@@ -1,0 +1,512 @@
+DROPSHIPHUB — PAGE WALKTHROUGH GUIDE
+====================================================
+
+This document explains how to use the four main work surfaces of the app:
+
+  1. Dashboard          (/dashboard)
+  2. Find Products      (/products)
+  3. Find Suppliers     (/suppliers)
+  4. Product Detail     (/products/[id])
+
+Each section describes WHAT the feature does, WHY it exists, and the exact
+click-by-click workflow to get value from it.
+
+--------------------------------------------------------------------------------
+1. DASHBOARD  (/dashboard)
+--------------------------------------------------------------------------------
+The dashboard is your daily command center. It loads live data from your
+connected stores (Firestore) and the product discovery feed (CJ-backed),
+refreshes roughly every 60 seconds, and degrades gracefully: if a source
+fails you will see a banner like "showing the last available data" instead
+of fake zeros. If everything fails, you get a real error card with a
+"Try Again" button.
+
+TOP OF PAGE
+
+- "Customize" button (eye icon, top right):
+  Opens a panel listing every dashboard section with a checkbox:
+    Command Center, Revenue & Profit, Insights, Product Discovery,
+    Supplier Network, Order Operations, Market Intelligence,
+    Store Operations, Growth Tools.
+  Uncheck sections you do not want; they are hidden on this device only.
+  "Show all sections" (reset icon) brings everything back. Preferences are
+  stored in localStorage. A "{n} hidden" badge tells you how many are off.
+
+- Status banners (amber, under the customize row):
+    - "Couldn't reach the live data feed — showing the last successful data"
+      + Retry button: the app is offline-ish; your numbers are the last
+      good fetch, not live.
+    - "Store data / product feed unavailable" variants: one upstream
+      (Firestore or the CJ discovery feed) failed. Retry to re-pull.
+
+SECTION: COMMAND CENTER (HeroCommandCenter)
+
+- Greeting header with your name, time-aware greeting, and a
+  "{n} saved" bookmark chip that jumps to /saved.
+- Business Health Score ring (0-100): green >= 80 "Running strong",
+  amber >= 60 "Needs attention", red "Critical". Hover or tap it for an
+  explanation of what feeds the score (stores, revenue, orders, product
+  activity). If the score is under 80 you get a "Connect Store" link.
+- SmartSearchBar: a command-style search input. Type a product or topic,
+  use quick-action chips, voice input, or a suggestion link. It routes you
+  into product search or the AI assistant.
+- Quick Actions grid, four tiles:
+    Find Products -> /products (badge shows trending count)
+    Suppliers     -> /suppliers (badge shows online supplier count)
+    Calculator    -> /calculator
+    AI Tools      -> /ai
+
+SECTION: REVENUE & PROFIT (RevenueProfitHub)
+
+- Status badges: "{n} stores", "{n} suppliers", "{n} pending",
+  and a pulsing "Your data" badge (totals come from your Firestore).
+- KPI cards: Revenue (with growth % chip), Orders, Avg Order Value.
+- "Revenue Overview" bar chart: hover bars for $ values per date;
+  first/middle/last date labels on the axis; empty state "No revenue data
+  yet". "Full Report" link -> /revenue.
+- "Profit Tracker" card: Profit per Order, Margin % progress bar
+  (hover for the profit-margin explanation tooltip), AOV, Total Profit,
+  Total Revenue, Total Orders. "View Tracker" -> /profit-tracker.
+Workflow: scan the trend and margin first; if margin is low, jump to the
+Profit Tracker.
+
+SECTION: INSIGHTS (AIIntelligenceHub)
+
+- AI Daily Pick card: today's scored top product with:
+    - ScoreRing score, category/platform chips, "Expires {date}",
+      yesterday's result ("Yesterday: won/lost"), risk chip.
+    - "Source Price", "Est. sell price" (rule: ~2.5x source + $4.99),
+      "Est. margin", "Orders/mo" estimate.
+    - "Why we scored this" checklist, "Earnings Preview"
+      (profit/order, orders/mo, est. monthly revenue),
+      saturation bar.
+    - Actions: "Start Selling" -> /products, "Compare" ->
+      /calculator/profit prefilled, "Source" -> the CJ listing.
+- Market Briefing card: Opps/Risks/Trends tiles, sentiment %, up to two
+  insight lines, last-scan date, "Full Insights" -> /ai.
+- Smart Alerts card: unread count, "Mark all read", up to 4 alerts;
+  click one to mark it read and go to its action link (default
+  /monitoring). "View All Alerts" -> /monitoring.
+
+SECTION: PRODUCT DISCOVERY
+
+- "Trending Products" carousel with left/right arrows (320px steps);
+  "View All" -> /products.
+- Each trending card: platform chip, trend chip (+x% vs category average),
+  sparkline, price, Est. Margin, Est. score (a heuristic badge, not a
+  guarantee), est. demand/competition chips, "competitors" list,
+  "whyTrending" line.
+- Per-card actions:
+    "+"        -> add to the quick compare tray (max 4, no duplicates)
+    "Save"     -> toggle bookmark (localStorage + account sync)
+    "View Product" -> opens /products/{id} for that product
+- Shortcut tiles beneath: Saved -> /saved, Validation ->
+  /product-validation, Listings -> /product-listings, Lifecycle ->
+  /product-lifecycle.
+
+QUICK COMPARE BAR (floating, bottom)
+
+- Appears once you add products via the "+" button on discovery cards.
+- Shows up to 4 items with thumbnail, name, price, margin; hover an X to
+  remove; dashed "+ Add product" tile -> /products when fewer than 4.
+- "Compare" button (needs 2+) -> /products?compare=... for the full
+  comparison view. Trash icon clears all.
+
+SECTION: SUPPLIER NETWORK
+
+- "Network Status" card: total suppliers, Online/Busy/Offline counts,
+  "All Suppliers" -> /suppliers, "SRM" -> /srm.
+- "Top Suppliers" card: up to 4 rows with trust badge, status dot,
+  location, response time ("n/a" when unwired), rating, completion rate.
+  A row links to /suppliers. "Performance" -> /supplier-performance.
+
+SECTION: ORDER OPERATIONS
+
+- "Fulfillment Pipeline" card: four stage bars (Pending, Processing,
+  Shipped, Delivered) with counts, link "View Pipeline" -> /fulfillment,
+  and a Recent Orders list (customer, product, amount, status, time).
+- "Pipeline Revenue" card: total revenue, total profit, margin %.
+- Quick Actions: Bulk Orders, Returns, Order Router, Shipping Optimizer.
+
+SECTION: MARKET INTELLIGENCE
+
+- "Market Heatmap" card: "{n} overheating / trending up / cooling"
+  chips, up to 8 category tiles colored by heat, estimated margin per
+  category, trend arrow. "Full Map" -> /products.
+- "Market Pulse" card: price rows with ±% vs category average and
+  sparkline. "Price vs category average" tooltips.
+- Competitive Tools: Competitor Analysis, Price War Tracker, Reports.
+
+SECTION: STORE OPERATIONS
+
+- Four link cards: My Stores (/store), Multi-Store (/multi-store),
+  Monitoring (/monitoring), Store Health (/health). The first shows how
+  many stores are connected.
+
+SECTION: GROWTH & TOOLS
+
+- Six tiles: Daily Missions (/missions), Calculator (/calculator),
+  Trend Predictor (/trends), Customer Service (/customer-service),
+  Ad ROI (/ad-roi), Daily Digest (/digest).
+
+FOOTER
+
+- Market Ticker bar: horizontally scrollable price/platform rows;
+  no sparkline by design.
+
+--------------------------------------------------------------------------------
+2. FIND PRODUCTS  (/products)
+--------------------------------------------------------------------------------
+Two modes: discovery (you have not searched yet) and results (you have).
+
+SEARCHHEADER (top)
+
+- Search box: type a full natural-language query, e.g. "wireless earbuds
+  under $15 with high margin". The app parses it into filters.
+- Platform chips: choose which marketplaces to search (Amazon, eBay,
+  Walmart, Temu, Shein, Etsy, AliExpress, etc.). "Search All Platforms"
+  toggles them on.
+- Recent searches dropdown: re-run or clear past queries.
+- Filters button: opens the FilterPanel (drawer on mobile).
+- Ask AI input: type "Help me find winning products" style prompts that
+  hand off to the AI assistant.
+- Voice button: dictate your search.
+- Visual search button (camera): upload a photo of a product (JPG/PNG/WebP,
+  <= 10 MB) and the app identifies it and searches for it. Requires
+  sign-in; errors if the file is wrong type/too big or unidentifiable.
+
+DISCOVERY SECTIONS (before you search)
+
+- PersonalizedRecommendations: recommendations based on your history
+  (signed-in users).
+- AICollections: AI-curated sets of products.
+- TrendingSection: hot products right now.
+- NichesSection: profitable niches worth exploring.
+- CategoriesSection: browse by category.
+- HowItWorksSection: short explanation of the search-and-validate flow.
+
+SEARCH RESULTS
+
+- ResultsHeader: "{n} results", sort dropdown (relevance, price, margin,
+  etc.), grid/list view toggle, filter button with active-filter count.
+- PlatformProgress: live per-platform loading/error/success while
+  streaming results. If a platform key is missing or a scrape fails, it
+  lists it under "platform errors".
+- "Incomplete results" warning if some platforms failed — you may not be
+  seeing everything.
+- QuickActionChips (after a search with results): one-tap prompts such as
+  Validate, Find Suppliers, Generate Listings, Analyze Competitors,
+  Find Similar, Calculate Profit, Compare, Create Alert, Ask AI.
+- Each product card (EnrichedProductCard or ListItemCard):
+    - Image, title (2-line clamp), source platform chip, price.
+    - Heuristic badges clearly marked "est.": Golden Score ring, trend
+      chip, saturation badge, est. margin. Treat them as starting
+      hypotheses, not measurements.
+    - Save/like toggle.
+    - Select checkbox for bulk actions and compare.
+    - Per-card AI Actions menu: Analyze, Find Suppliers, Generate
+      Listing, Validate.
+    - "Push to Store" (if a store is connected).
+    - "Order Sample" opens the sample-order modal.
+- Compare: select up to 4 cards -> "Compare" -> /products?compare=...
+  view with side-by-side table.
+- Search Alerts: "Create Alert" (from the AI chips or the alert modal)
+  for the current query with a type — new product, price drop, or any
+  change — and it notifies you when new matches appear.
+- Empty states:
+    - No products found: "Try a different search query or enable more
+      platforms" + Ask-AI fallback + suggestion chips.
+    - "No products match your filters": Clear all filters.
+- Back-to-top floating button after scrolling ~500px.
+
+HOW TO USE IT WELL (typical workflow)
+
+1. Start on discovery: skim Trending, Niches, Categories, AICollections.
+2. Search a niche with natural language; use voice/image search if you
+   have a product photo or idea.
+3. Narrow with Filters (brand, price, rating, margin, competition,
+   trend, platform), then sort.
+4. Read a card's est. badges, save interesting ones, add notes.
+5. Quick Actions: Validate, Find Suppliers, Generate Listing, Analyze
+   Competitors, Calculate Profit, Compare, Create Alert.
+6. Select 2-4 products for the Compare view.
+7. Click a product card to open its Product Detail page.
+
+--------------------------------------------------------------------------------
+3. FIND SUPPLIERS  (/suppliers)  — "Supplier Intelligence"
+--------------------------------------------------------------------------------
+Tabbed page, three tabs: Discover, Intel, SRM. Tab state is in the URL
+(?tab=discover|intel|srm).
+
+DISCOVER TAB
+
+- Product context banner: when you arrive from a product page (query
+  params product/category/source/price), you get "Finding suppliers for
+  <product>" with chips, and results are ranked against that product.
+  "Clear context" resets.
+- Search bar: "Search suppliers by name, category, or location...";
+  debounced, Enter runs the search, X clears, Esc blurs, mic button
+  for voice.
+- Platform chips: toggle which supplier platforms to query (Alibaba,
+  DHgate, Global Sources, AliExpress, CJ, Amazon, Google, Walmart,
+  Other). A "no key" badge means that platform is not configured.
+- Ask AI toggle: natural-language supplier search panel; it runs a
+  keyword search across your supplier catalog (disclaimer shown).
+- Filters button (badge = active count): opens SupplierFilterPanel —
+  trust badge (gold/silver/bronze), location chips, min rating, shipping
+  speed, specialization chips, price competitiveness, certifications,
+  and active-filter chips with X-to-remove.
+- Sort: Top Rated, Most Reliable, Fastest Response, Most Orders,
+  Best Price. View toggle grid/list.
+- Results: SupplierCard (list) or SupplierGridCard — avatar, trust
+  badge, source chip, location/flag, response time, shipping days,
+  specialization chips (+N), reliability ScoreRing, star rating, price
+  competitiveness bar, orders/mo, MOQ, free-shipping threshold,
+  AI actions menu (Analyze Supplier, Find Their Products, Start
+  Negotiation, Check Performance, Request Sample), "View store" hint,
+  Target (focus) button, compare checkbox (max 4).
+- Compare: with 2+ selected, a bottom "Compare N Suppliers" bar opens
+  a ComparisonModal table — rating, reliability, response, shipping,
+  completion, dispute rate, monthly orders, quality, communication,
+  price competitiveness, with best-in-emerald and "Best" tags, plus
+  "View Details" links. "AI Deep Compare" opens /ai?q= with a
+  comparison prompt.
+- Focus (Target): pins a banner with the focused supplier's summary and
+  a "View Full Profile" button.
+- SupplierQuickActions row (when you have results): Analyze Suppliers,
+  Find Their Products, Start Negotiation, Compare Pricing, Request
+  Samples, Deep Performance Check — each produces a card above the list
+  with a rendered answer, Copy button, Retry, and "Open in AI" link.
+- When zero results: SupplierAISuggestions (matched from your product
+  portfolio, rules-based) and Smart Supplier Collections (Top
+  Performers, Fast Shippers, Budget Friendly, New & Rising, Verified
+  Gold, Free Shipping).
+
+INTEL TAB
+
+- Overview: supplier score cards (status pill, reliability counter,
+  refund rate, avg shipping, complaints, stock reliability, trend
+  arrows) and a reliability-trend line chart per supplier ("No snapshot
+  data available yet" when empty).
+- Alerts: severity-coded cards (quality degradation, shipping delay,
+  stock low, refund spike, communication issue) with metric
+  previous -> current and % change.
+- Comparison: a sortable supplier table (reliability, refund rate,
+  shipping days, complaints, stock reliability, price score, orders)
+  with the best value highlighted.
+
+SRM TAB (Supplier Relationship Management)
+
+- KPI cards: Supplier Score, Active Negotiations, Unread Messages,
+  Auto-Switch Rules.
+- Scorecards: per-supplier letter grade (A+-F), overall score bar,
+  trend, last-evaluated date, expandable criteria (Speed, Quality,
+  Communication, Price, Reliability with weights) and a 14-point
+  score-history sparkline.
+- Messages: sent/incoming chips, type (inquiry/negotiation/order issue/
+  quality/general), status (sent/read/error), CJ ID when available.
+  Compose via the "Compose Message" button.
+- Negotiations: status chip (active/accepted/rejected/expired/
+  counter-offered), Initial -> Current -> Target price, progress bar,
+  expandable round-by-round thread (You vs Supplier bubbles), inline
+  add-round form, Accept/Reject actions.
+- Auto-Switch: rules like "if metric < threshold, then alert / auto-
+  switch / notify"; add form (supplier, metric, threshold, action),
+  delete rules, switch history log (from -> to, reason, trigger type).
+
+SUPPLIER DETAIL PAGE  (/suppliers/[id])
+
+- Hero: avatar, name, trust badge, source chip, location, rating,
+  reliability ring (or "not measured").
+- CTAs: "Visit Supplier" (external), "Browse Products" (CJ only),
+  "Contact Supplier" (slide-over form; posts to /api/suppliers/contact;
+  outbound delivery is not wired yet).
+- Quick stats: Rating, Reliability, Response, Completion, Disputes,
+  Orders/mo (— when unmeasured).
+- Sticky tabs: Overview, Performance, Scorecard, SRM, AI Assistant.
+    - Overview: Due Diligence panel (generate a report -> risk level
+      verdict Recommended/Use Caution/Avoid, red flags, strengths,
+      history analysis, best-for/avoid-for), About, Shipping &
+      Fulfillment, Quality & Trust, Product Catalog, Communication.
+    - Performance: status badge, 4 metric cards with trend arrows,
+      stock reliability bar, trend charts with % change.
+    - Scorecard: big grade letter, trend, 5-axis radar chart,
+      per-criteria score bars with weights, score history.
+    - SRM: Negotiations (bubbles), Messages (inline composer, status
+      chips), Auto-Switch (rule toggles, trigger count, fallback).
+    - AI Assistant: contextual to this supplier; quick tiles (Analyze,
+      Find Products, Draft Negotiation, Deep Check, Request Samples,
+      Compare Pricing), chat transcript, Enter-to-send.
+
+HOW TO USE IT WELL
+
+1. From a product page, click "Find Suppliers" — you land with product
+   context pre-filled.
+2. Pick your platforms; watch PlatformProgress while results stream in.
+3. Filter (trust, rating, shipping, specialization, price), sort, switch
+   grid/list.
+4. Focus a supplier, then compare 2-4 with the comparison modal.
+5. Run a Quick Action (Analyze/Negotiate/Samples) to get an AI read.
+6. Open the supplier detail page for Due Diligence, Performance,
+   Scorecard, and SRM history.
+7. Use Intel tab to monitor trends/alerts; use SRM tab to run
+   negotiations, log messages, and set auto-switch rules.
+
+--------------------------------------------------------------------------------
+4. PRODUCT DETAIL  (/products/[id])
+--------------------------------------------------------------------------------
+Data is bootstrapped from sessionStorage ("selectedProduct") or from URL
+query params (t, p, img, link, src, r, rev, cat, tags) — so links from
+the dashboard/discovery/search are shareable and re-runnable. It fires
+background calls to enrich images, reviews, market intel, and listing
+suggestions. If there is no product and no title param, you get
+"Product not found" with a "Back to Search" link.
+
+HERO SHOWCASE
+
+- Image gallery: main image (click for lightbox with prev/next, arrows,
+  Escape to close, thumbnail strip, counter "n / N"); spinner while
+  extra images load; empty state shows a package icon.
+- Source platform tag (colored pill), product title, category badge,
+  up to 4 tags, product ID (barcode-style monospace).
+- Price hero: "Listed Price" big number (only when price > 0).
+- Quick stats: rating pill, reviews pill, "Risk: n/100" badge
+  (green <= 30, amber <= 60, red above), source pill.
+- Rating badge with stars, count, and a "Top Rated" shield when
+  rating >= 4.5.
+- Primary CTA: "View on {platform}" when the real link exists;
+  otherwise "Open {platform} store" or "Search {platform} for this
+  product", with a gray note that the direct link is unavailable.
+
+PRODUCTACTIONBAR (desktop toolbar / mobile bottom bar)
+
+- Save (heart): syncs to your saved products (local + account, cap 500).
+- Compare: scrolls to the price-comparison section.
+- Suppliers: /suppliers pre-filtered for this product.
+- Order Sample (green): modal form — name, phone, address, city, state,
+  zip, country — posts to /api/orders/sample; success view "Order
+  Placed!" auto-closes.
+- Start Selling (blue): modal listing your connected stores; pick one,
+  "Push to Store & Start Selling" posts to /api/orders/start-selling;
+  empty state links to /store to connect one.
+- Monitor (amber): adds this product to price monitoring; turns green
+  "Monitoring" once done.
+- Validate (amber): opens /product-validation pre-filled with this
+  product in a new tab.
+- Platform external link.
+- Analyze (desktop): scrolls to the calculator section.
+
+NEXT STEPS grid
+
+- Find Suppliers, Calculate Profit, Check Competitors, Validate Product
+  — each pre-fills its target page with this product's data.
+
+SECTIONS (scroll nav on the right, mobile tab bar; active highlight)
+
+1. Price Comparison (#price-comparison)
+   - No/single platform: shows the listed price and a "Use Calculator"
+     link.
+   - Multi-platform table: Lowest price + Savings header; columns
+     Platform, Price, Rating, Trend (sparkline or "no history" em-dash),
+     Stock (In/Out/Unknown dot), Savings vs listed. Cheapest row is
+     "Best Deal", highest-rated non-cheapest is "Most Trusted".
+
+2. Profit Calculator (#calculator)
+   - Presets: Amazon FBA (15% fee, $3.5 ship, $5 ads), Shopify
+     Dropship (0%, $5, $8), eBay Resell (13%, $4, $2).
+   - Inputs: Source Price, Selling Price, Platform Fee %, Shipping,
+     Ad Spend per sale.
+   - Results: Net Profit, ROI %, Break Even units, Profit Margin bar
+     with label ("Excellent" >= 30, "Good" >= 15, "Low — optimize").
+   - "Open Full Calculator" keeps your numbers via query params.
+
+3. Market Intelligence (#market-intel)
+   - Trend direction tile, search-interest index (0-100) bar, seasonality
+     + best time to sell, competition level + price-war risk,
+     "Can You Compete?" callout, risk ScoreRing with factor pills.
+   - Every tile is labeled as an estimate, not a market measurement.
+
+4. Review Intelligence (#reviews)
+   - Rating hero (avg stars, count), 1-5 star distribution bars
+     (labeled when estimated), sentiment cards (positive/neutral/
+     negative with quote snippets), top keywords, common praise and
+     complaints lists, trustworthiness banner (n/100).
+
+5. Best Supplier Matches (#suppliers)
+   - Ranked shortlist (gold/silver/bronze) with name, trust badge,
+     location, price, shipping days, response time, reliability ring.
+   - "View All" -> /suppliers filtered to this product.
+
+6. Listing Optimization (#listings)
+   - Suggested title, description, tags (each with copy button),
+     suggested price range, platform-specific tip card.
+
+7. Similar Products (#similar)
+   - Grid of similar items (image, title, price, platform, rating) and
+     "Frequently Bought Together" list; each opens the external listing
+     or the normalized product URL.
+
+8. Related Searches (#searches)
+   - Tag-derived query pills that link to /products?q=...
+
+STICKYPRODUCTBAR
+
+- After you scroll past the hero, a compact bar slides in with thumbnail,
+  title, price, rating, reviews, and the same CTA label as the hero
+  ("View on {platform}" etc.).
+
+--------------------------------------------------------------------------------
+CROSS-CUTTING NOTES (what is NOT there / honesty guardrails)
+--------------------------------------------------------------------------------
+
+- Many numbers are explicitly labeled "est." or "heuristic" because the
+  underlying APIs (CJ shipping, price history, Google Trends) are not
+  wired end-to-end. Treat them as directional.
+- The product detail page has no dedicated share button; share by
+  copying the URL (it re-hydrates from query params).
+- Supplier chat/sample-order widgets, health monitor, seasonal calendar,
+  price-intel table, radar compare, niche discovery, and community
+  reviews components exist in code but are not mounted on a page yet.
+- /platforms redirects to /admin/platforms; it is not linked from the
+  main nav.
+- If any section fails to load (network, API key missing), each section
+  shows an amber warning card with its own "Retry" button — nothing is
+  silently zero-filled.
+
+--------------------------------------------------------------------------------
+ADDENDUM — NEWLY WIRED (previously unwired/dead, now functional)
+--------------------------------------------------------------------------------
+
+- Supplier Contact ("Contact Supplier" slide-over): now actually delivers.
+  Enter the supplier's email in the new "Supplier's Email (for delivery)"
+  field (or store contactEmail on the supplier record); the inquiry is
+  emailed via the configured provider (Resend, SendGrid fallback) and the
+  success screen tells you whether it was Sent, Logged, or Failed.
+- SRM Messages: outbound messages are sent via the CJ message API for
+  CJ suppliers; for any other supplier, pass supplierEmail and the
+  message is emailed. Status (sent/failed/logged) is stored per message.
+- SRM Negotiations: new rounds and new negotiations are emailed to the
+  supplier when supplierEmail is supplied.
+- Suppliers page has a 4th tab, "Tools": Health (monitor + alerts),
+  Smart Match (4-step wizard), Seasonal (calendar), Price Intel
+  (ranked offers + margin bar), Radar (spider compare), Niches
+  (opportunity discovery).
+- Supplier detail page has a 6th tab, "Tools": Community Reviews,
+  Sample Orders, Supplier Chat.
+- Product detail Trend column: every view records a same-day-deduped
+  per-platform price snapshot (users/{uid}/productPriceViews);
+  /api/products/price-history serves it; the Trend cells render real
+  sparklines once 2+ points exist, and a "Price history" button opens
+  the PriceHistoryChart modal (trend %, low/avg/high).
+- /platforms is now a real page: selling channels with live Connected/
+  Not connected status from your store connections, sourcing platforms,
+  and a search-all-platforms shortcut — no more admin redirect.
+- Find Products discovery: returning visitors see SmartFeed (Recommended
+  for You + Recent Searches with re-run and clear-history).
+- BulkActionsBar is mounted on results: multi-select cards via the card
+  checkbox, then Export CSV or Bulk Push to Store (real authenticated
+  store fetch + push with per-product success/fail counts).
+- BulkActionsBar auth fixed: Firebase Bearer token is now sent on the
+  connections fetch and every bulk push (previously would 401).
+
+END OF GUIDE

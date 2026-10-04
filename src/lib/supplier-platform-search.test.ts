@@ -389,21 +389,50 @@ describe("buildSupplierProfiles", () => {
     };
     const profiles = buildSupplierProfiles([cjSource, storeSource], "factory robot toys");
     expect(profiles[0].name).toBe("Factory X Store");
-    expect(profiles).toHaveLength(2);
+    expect(profiles).toHaveLength(1);
   });
 
-  it("returns profiles for every source even when nothing matches the query", () => {
-    const cjSource = {
+  it("drops suppliers without matching product listings and keeps matching listings only", () => {
+    const matchingSource = {
+      platformId: "cj",
+      platformName: "CJ Dropshipping",
+      storeName: "Wireless Tech Store",
+      storeUrl: "https://www.cjdropshipping.com/store",
+      listingCount: 2,
+      listings: [
+        { title: "Wireless Bluetooth Earbuds", price: 12, image: null, link: "https://example.com/earbuds" },
+        { title: "Protective Phone Case", price: 4, image: null, link: "https://example.com/case" },
+      ],
+      dataSource: "live" as const,
+    };
+    const unrelatedSource = {
+      ...matchingSource,
+      storeName: "Phone Accessories Store",
+      listings: [
+        { title: "Protective Phone Case", price: 4, image: null, link: "https://example.com/other-case" },
+      ],
+    };
+    const profiles = buildSupplierProfiles([matchingSource, unrelatedSource], "wireless bluetooth earbuds");
+
+    expect(profiles).toHaveLength(1);
+    expect(profiles[0].listings).toHaveLength(1);
+    expect(profiles[0].listings?.[0].title).toBe("Wireless Bluetooth Earbuds");
+  });
+
+  it("returns no profiles when no listing matches the requested product", () => {
+    const unrelatedSource = {
       platformId: "cj",
       platformName: "CJ Dropshipping",
       storeName: "CJ Dropshipping",
       storeUrl: "https://www.cjdropshipping.com",
       listingCount: 1,
-      listings: [],
+      listings: [
+        { title: "Protective Phone Case", price: 4, image: null, link: "https://example.com/case" },
+      ],
       dataSource: "live" as const,
     };
-    const profiles = buildSupplierProfiles([cjSource], "zzzz unrelated query");
-    expect(profiles).toHaveLength(1);
+    const profiles = buildSupplierProfiles([unrelatedSource], "zzzz unrelated query");
+    expect(profiles).toHaveLength(0);
   });
 });
 

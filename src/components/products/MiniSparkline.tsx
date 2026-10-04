@@ -14,10 +14,22 @@ export default function MiniSparkline({ points, color = "#3b82f6", id = "spark",
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  if (!mounted) return <div className="shrink-0" style={{ width: width || 120, height: height || 32 }} />;
-
   const w = width || 120;
   const h = height || 32;
+
+  if (!mounted) return <div className="shrink-0" style={{ width: w, height: h }} />;
+
+  // Fewer than 2 points cannot form a series — a one-point path divides by
+  // zero (NaN `d`, which browsers drop) and an empty one draws nothing.
+  if (points.length < 2) {
+    const y = points.length === 1 ? h / 2 : h - 1;
+    return (
+      <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} className="shrink-0" preserveAspectRatio="none">
+        <path d={`M 0 ${y} L ${w} ${y}`} fill="none" stroke={color} strokeWidth="1.5" strokeDasharray="4 4" strokeLinecap="round" opacity="0.5" />
+      </svg>
+    );
+  }
+
   const max = Math.max(...points);
   const min = Math.min(...points);
   const range = max - min || 1;

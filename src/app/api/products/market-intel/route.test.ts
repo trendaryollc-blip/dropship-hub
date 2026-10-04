@@ -105,4 +105,93 @@ describe("POST /api/products/market-intel", () => {
     expect(data.canCompete).toBeDefined();
     expect(typeof data.canCompete).toBe("string");
   });
+
+  it("falls back to a shorter keyword query when Trends has no data for the full title", async () => {
+    const trendQueries: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("engine=google_trends")) {
+          const q = new URL(url).searchParams.get("q") || "";
+          trendQueries.push(q);
+          if (q !== "leather belt") {
+            return new Response(
+              JSON.stringify({ error: "Google Trends hasn't returned any results for this query." }),
+              { status: 200 }
+            );
+          }
+          return new Response(
+            JSON.stringify({
+              interest_over_time: {
+                timeline_data: [40, 50, 60].map((v) => ({ values: [{ extracted_value: v }] })),
+              },
+            }),
+            { status: 200 }
+          );
+        }
+        return new Response(JSON.stringify({ shopping_results: [{ extracted_price: 20 }] }), { status: 200 });
+      })
+    );
+
+    const res = await POST(makeReq({ title: "Retro Genuine Leather Belt Women S 30" }), null as any);
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(trendQueries.length).toBeGreaterThan(1);
+    expect(data.interestIndex).toBe(50);
+    expect(data.trendSparkline).toEqual([40, 50, 60]);
+  });
+
+  it("queries Trends only once when the first query already returns a usable signal", async () => {
+    const trendQueries: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("engine=google_trends")) {
+          trendQueries.push(new URL(url).searchParams.get("q") || "");
+          return new Response(
+            JSON.stringify({
+              interest_over_time: {
+                timeline_data: TREND_VALUES.map((v) => ({ values: [{ extracted_value: v }] })),
+              },
+            }),
+            { status: 200 }
+          );
+        }
+        return new Response(JSON.stringify({ shopping_results: [{ extracted_price: 20 }] }), { status: 200 });
+      })
+    );
+
+    const res = await POST(makeReq({ title: "Wireless Earbuds" }), null as any);
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(trendQueries).toHaveLength(1);
+    expect(data.interestIndex).toBe(40);
+    expect(data.trendSparkline).toEqual(TREND_VALUES);
+  });
+
+  it("does not report fake trend numbers when every Trends query comes back empty", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("engine=google_trends")) {
+          return new Response(JSON.stringify({ error: "Google Trends hasn't returned any results for this query." }), {
+            status: 200,
+          });
+        }
+        return new Response(JSON.stringify({ shopping_results: [{ extracted_price: 20 }] }), { status: 200 });
+      })
+    );
+
+    const res = await POST(makeReq({ title: "Retro Genuine Leather Belt" }), null as any);
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.interestIndex).toBe(0);
+    expect(data.trendSparkline).toEqual([]);
+  });
 });

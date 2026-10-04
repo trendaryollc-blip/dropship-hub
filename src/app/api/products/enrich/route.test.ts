@@ -53,6 +53,7 @@ describe("POST /api/products/enrich", () => {
     expect(data.cheapest).toBeDefined();
     expect(data.mostExpensive).toBeDefined();
     expect(data.priceSpread).toBeGreaterThanOrEqual(0);
+    expect(data.platforms[0].title).toBe("Amazon Item");
   });
 
   it("returns only real platform results without mock padding", async () => {

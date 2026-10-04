@@ -9,9 +9,17 @@ vi.mock("@/lib/auth", () => ({
 // The URL-safety layer resolves allowlisted hostnames to guard against DNS
 // rebinding. Mock it so tests never touch the real network.
 const dnsLookupMock = vi.fn().mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
+const mockGetCJAccessToken = vi.hoisted(() => vi.fn());
+const mockWithKeyPool = vi.hoisted(() => vi.fn());
 vi.mock("node:dns/promises", () => ({
   default: { lookup: dnsLookupMock },
   lookup: dnsLookupMock,
+}));
+vi.mock("@/lib/cj-auth", () => ({
+  getCJAccessToken: (...args: unknown[]) => mockGetCJAccessToken(...args),
+}));
+vi.mock("@/lib/api-keys/pool", () => ({
+  withKeyPool: (...args: unknown[]) => mockWithKeyPool(...args),
 }));
 
 const mockFetch = vi.fn();
@@ -22,6 +30,8 @@ describe("Product Images API Route", () => {
     vi.clearAllMocks();
     process.env.RAINFOREST_API_KEY = "test-rf-key";
     process.env.SCRAPER_API_KEY = "test-scraper-key";
+    mockGetCJAccessToken.mockResolvedValue("test-cj-token");
+    mockWithKeyPool.mockImplementation((_provider: string, fn: (key: string) => Promise<unknown>) => fn("test-serpapi-key"));
   });
 
   it("POST returns empty images when no url or asin provided", async () => {
@@ -44,6 +54,65 @@ describe("Product Images API Route", () => {
     const body = await res.json();
     expect(body.images).toBeDefined();
     expect(Array.isArray(body.images)).toBe(true);
+  });
+
+  it("fetches the complete CJ image set through the native product detail API", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: {
+          productImage: "https://cdn.cj.example/main.jpg",
+          productImageSet: [
+            { url: "https://cdn.cj.example/main.jpg" },
+            { url: "https://cdn.cj.example/side.jpg" },
+            { productImage: "https://cdn.cj.example/back.jpg" },
+          ],
+        },
+      }),
+    });
+    const { POST } = await import("./route");
+    const res = await POST({ json: async () => ({
+      url: "https://www.cjdropshipping.com/product/jade-p-2609250256581624900.html",
+      source: "cj",
+    }) } as any);
+    const body = await res.json();
+
+    expect(body.images).toEqual([
+      "https://cdn.cj.example/main.jpg",
+      "https://cdn.cj.example/side.jpg",
+      "https://cdn.cj.example/back.jpg",
+    ]);
+    expect(mockGetCJAccessToken).toHaveBeenCalled();
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("pid=2609250256581624900"),
+      expect.objectContaining({ headers: expect.objectContaining({ "CJ-Access-Token": "test-cj-token" }) })
+    );
+  });
+
+  it("fetches the complete AliExpress image set through SerpAPI product details", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        product: {
+          image: "https://ae.example/main.jpg",
+          images: ["https://ae.example/main.jpg", "https://ae.example/side.jpg", "https://ae.example/back.jpg"],
+        },
+      }),
+    });
+    const { POST } = await import("./route");
+    const res = await POST({ json: async () => ({
+      url: "https://www.aliexpress.com/item/1005001234567890.html",
+      source: "aliexpress",
+    }) } as any);
+    const body = await res.json();
+
+    expect(body.images).toEqual([
+      "https://ae.example/main.jpg",
+      "https://ae.example/side.jpg",
+      "https://ae.example/back.jpg",
+    ]);
+    expect(mockWithKeyPool).toHaveBeenCalledWith("serpapi", expect.any(Function));
+    expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining("product_id=1005001234567890"), expect.anything());
   });
 
   it("POST returns empty images when unable to fetch for non-amazon", async () => {

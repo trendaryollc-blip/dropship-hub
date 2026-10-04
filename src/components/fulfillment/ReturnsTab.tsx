@@ -24,21 +24,36 @@ export default function ReturnsTab({ orders }: ReturnsTabProps) {
   const [statusFilter, setStatusFilter] = useState<ReturnStatus | "all">("all");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    if (!user) return {};
+    try {
+      const token = await user.getIdToken();
+      return { Authorization: `Bearer ${token}` };
+    } catch {
+      return {};
+    }
+  };
 
   const fetchReturns = async () => {
     if (!user) return;
     setLoading(true);
+    setError(null);
     try {
-      const params = new URLSearchParams({ uid: user.uid });
+      const authHeaders = await getAuthHeaders();
+      const params = new URLSearchParams();
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (search) params.set("search", search);
 
       const data = await safeFetch<{ returns?: ReturnRequest[]; counts?: Record<string, number> }>(
-        `/api/fulfillment/returns?${params.toString()}`
+        `/api/fulfillment/returns${params.toString() ? `?${params.toString()}` : ""}`,
+        { headers: { ...authHeaders } }
       );
       if (data?.returns) setReturns(data.returns);
       if (data?.counts) setCounts(data.counts);
-    } catch {
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load returns");
       setReturns([]);
     }
     setLoading(false);
@@ -52,10 +67,11 @@ export default function ReturnsTab({ orders }: ReturnsTabProps) {
     if (!user) return;
     setActionLoading(returnId);
     try {
+      const authHeaders = await getAuthHeaders();
       await safeFetch(`/api/fulfillment/returns/${returnId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uid: user.uid, ...updateData }),
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify(updateData),
       });
       await fetchReturns();
     } finally {
@@ -67,10 +83,11 @@ export default function ReturnsTab({ orders }: ReturnsTabProps) {
     if (!user) return;
     setActionLoading(returnId);
     try {
+      const authHeaders = await getAuthHeaders();
       await safeFetch(`/api/fulfillment/returns/${returnId}/refund`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uid: user.uid, ...data }),
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify(data),
       });
       await fetchReturns();
     } finally {
@@ -82,10 +99,11 @@ export default function ReturnsTab({ orders }: ReturnsTabProps) {
     if (!user) return;
     setActionLoading("create");
     try {
+      const authHeaders = await getAuthHeaders();
       await safeFetch("/api/fulfillment/returns", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uid: user.uid, ...data }),
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify(data),
       });
       setShowCreateModal(false);
       await fetchReturns();
@@ -167,6 +185,12 @@ export default function ReturnsTab({ orders }: ReturnsTabProps) {
       </div>
 
       {/* Returns List */}
+      {error && (
+        <div className="mb-4 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-xs">
+          <span className="flex-1">{error}</span>
+          <button onClick={fetchReturns} className="font-semibold underline underline-offset-2 hover:text-red-200">Retry</button>
+        </div>
+      )}
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 text-accent animate-spin" />

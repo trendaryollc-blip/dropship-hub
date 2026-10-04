@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Megaphone, TrendingUp, Zap, ChevronDown, ChevronUp } from "lucide-react";
-import { safeFetch } from "@/lib/safe-fetch";
+import { authJson } from "@/lib/auth-headers";
 
 interface CampaignAnalysis {
   name: string;
@@ -38,11 +38,7 @@ export default function AdCampaignAdvisor({ uid }: { uid: string }) {
   const analyze = async () => {
     setLoading(true);
     try {
-      const json = await safeFetch<AdAdvisorResult>("/api/ai/ads", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uid }),
-      });
+      const json = await authJson<AdAdvisorResult>("/api/ai/ads", { uid });
       setData(json);
     } catch (e) { console.warn("[AdCampaignAdvisor] Error:", e instanceof Error ? e.message : e); }
     setLoading(false);

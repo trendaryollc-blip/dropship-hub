@@ -147,7 +147,7 @@ export default function SimilarProducts({ category, title, currentPrice }: { cat
         </div>
         <div>
           <h3 className="font-display text-sm font-semibold text-foreground">Similar & Related Products</h3>
-          <p className="text-[10px] text-muted-foreground">Explore more in this category</p>
+          <p className="text-[10px] text-muted-foreground">Matched to this product&apos;s title &amp; features</p>
         </div>
       </div>
 
@@ -181,7 +181,7 @@ export default function SimilarProducts({ category, title, currentPrice }: { cat
         )}
 
         {!loading && !error && similar.length === 0 && boughtTogether.length === 0 && (
-          <SectionEmpty icon={Package} title="No similar products found for this category" description="Try browsing related categories" iconColor="text-pink-400" />
+          <SectionEmpty icon={Package} title="No similar products found for this product" description="Try browsing related searches below" iconColor="text-pink-400" />
         )}
 
         {error && !loading && similar.length === 0 && boughtTogether.length === 0 && (

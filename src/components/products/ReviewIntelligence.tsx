@@ -18,7 +18,7 @@ export default function ReviewIntelligence({ data }: { data: ReviewData | null }
             <p className="text-[10px] text-muted-foreground">Analysis of reviews</p>
           </div>
         </div>
-        <SectionEmpty icon={MessageSquare} title="Review data unavailable" description="Could not fetch reviews for this product" iconColor="text-muted-foreground/20" />
+        <SectionEmpty icon={MessageSquare} title="Review data unavailable" description="This platform did not provide review details for this listing." iconColor="text-muted-foreground/20" />
       </div>
     );
   }

@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
 const mockMutate = vi.fn();
+const searchParamsState = vi.hoisted(() => ({ current: new URLSearchParams() }));
 const mockReview = {
   id: "r1", productId: "p1", productTitle: "Earbuds", source: "aliexpress",
   author: "John D.", rating: 5, title: "Amazing", content: "Great product", images: [],
@@ -44,6 +45,7 @@ function defaultUseAPIMock(url: string) {
 const mockUseAPI = vi.fn(defaultUseAPIMock);
 
 vi.mock("@/hooks/useAPI", () => ({ useAPI: (url: string) => mockUseAPI(url) }));
+vi.mock("next/navigation", () => ({ useSearchParams: () => searchParamsState.current }));
 
 const mockToast = { success: vi.fn(), error: vi.fn() };
 vi.mock("@/components/ui/Toast", () => ({ useToast: () => mockToast }));
@@ -64,6 +66,7 @@ import ReviewsPage from "./ReviewsPage";
 beforeEach(() => {
   vi.clearAllMocks();
   mockUseAPI.mockReset().mockImplementation(defaultUseAPIMock);
+  searchParamsState.current = new URLSearchParams();
 });
 
 describe("ReviewsPage", () => {
@@ -77,6 +80,15 @@ describe("ReviewsPage", () => {
     expect(screen.getByText("Total Reviews")).toBeTruthy();
     expect(screen.getByText("4.5★")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Import Reviews" })).toBeTruthy();
+  });
+
+  it("prefills the selected product, URL, and supported review source", () => {
+    searchParamsState.current = new URLSearchParams("productTitle=Wireless+Headphones&productUrl=https%3A%2F%2Famazon.com%2Fdp%2FASIN123456&source=amazon");
+    render(<ReviewsPage />);
+    expect(screen.getByLabelText("Product Name *")).toHaveValue("Wireless Headphones");
+    expect(screen.getByLabelText("Product URL *")).toHaveValue("https://amazon.com/dp/ASIN123456");
+    expect(screen.getByRole("button", { name: "Import from Amazon" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Import Reviews" })).toBeEnabled();
   });
 
   it("disables import button without product name", () => {

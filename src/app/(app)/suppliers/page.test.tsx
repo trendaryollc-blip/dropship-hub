@@ -482,6 +482,38 @@ describe("SuppliersPage", () => {
     );
   });
 
+  it("uses product-matched platform results instead of the generic directory", async () => {
+    mockGet.mockImplementation((key: string) => key === "product" ? "Green Robot Toy Set" : null);
+    (useAPI as any).mockReturnValue({ data: { suppliers: [mockSupplier] }, error: null, isLoading: false, mutate: vi.fn() });
+    const productMatch = {
+      ...discoveredSupplier,
+      specializations: ["green", "robot", "toy", "set"],
+      listings: [
+        { title: "Green Robot Toy Set", price: 12.99, image: null, link: "https://www.alibaba.com/product-detail/green-robot-toy_123.html" },
+      ],
+    };
+    vi.stubGlobal("fetch", vi.fn(async (_url: unknown, init?: { method?: string }) => {
+      if (init?.method === "POST") {
+        return jsonResponse({
+          suppliers: [productMatch],
+          total: 1,
+          platformErrors: [],
+          sources: [{ platform: "alibaba", store: "Factory X Store", listings: 1 }],
+        });
+      }
+      return jsonResponse({
+        platforms: [{ id: "alibaba", name: "Alibaba", configured: true }],
+      });
+    }));
+
+    render(<SuppliersContent />);
+
+    expect(await screen.findByText("Factory X Store")).toBeInTheDocument();
+    expect(screen.getAllByText("Green Robot Toy Set").length).toBeGreaterThan(1);
+    expect(screen.queryByText("CJ Dropshipping")).not.toBeInTheDocument();
+    expect(useAPI).toHaveBeenCalledWith(null);
+  });
+
   it("shows platform progress while the search is running", async () => {
     (useAPI as any).mockReturnValue({ data: { suppliers: [mockSupplier] }, error: null, isLoading: false, mutate: vi.fn() });
     let resolvePost: (value: Response) => void = () => {};

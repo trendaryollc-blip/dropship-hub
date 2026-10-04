@@ -1,43 +1,52 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { assertSafeUrl, fetchValidatedHtml } from "@/lib/safe-url";
+import { getCJAccessToken } from "@/lib/cj-auth";
+import { withKeyPool } from "@/lib/api-keys/pool";
 
 const RAINFOREST_API_KEY = process.env.RAINFOREST_API_KEY;
 const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY;
 
 function extractImageUrls(data: Record<string, unknown>): string[] {
-  const product = (data.product || data) as Record<string, unknown>;
-  const primary = String(product.image || product.mainImage || "");
+  const envelope = data.data && typeof data.data === "object"
+    ? data.data as Record<string, unknown>
+    : data;
+  const product = (envelope.product || envelope) as Record<string, unknown>;
+  const primary = String(product.image || product.mainImage || product.productImage || product.productImageUrl || "");
   const results: string[] = [];
 
   if (primary && primary.startsWith("http")) results.push(primary);
 
-  const imagesField = product.images || product.imagesAll || product.allImages;
+  const imagesField = product.images || product.imagesAll || product.allImages || product.productImageSet || product.imageList;
   if (Array.isArray(imagesField)) {
     for (const img of imagesField) {
       if (typeof img === "string" && img.startsWith("http")) {
         results.push(img);
       } else if (typeof img === "object" && img !== null) {
         const o = img as Record<string, unknown>;
-        const url = String(o.link || o.url || o.large || o.high_res || o.hi_res || o.largeUrl || "");
+        const url = String(o.link || o.url || o.large || o.high_res || o.hi_res || o.largeUrl || o.productImage || o.imageUrl || o.originalImage || "");
         if (url && url.startsWith("http")) results.push(url);
       }
     }
   }
 
-  const variantImages = product.variant_images || product.additionalImages;
+  const variantImages = product.variant_images || product.additionalImages || product.variantImageList;
   if (Array.isArray(variantImages)) {
     for (const img of variantImages) {
       if (typeof img === "string" && img.startsWith("http")) results.push(img);
       else if (typeof img === "object" && img !== null) {
         const o = img as Record<string, unknown>;
-        const url = String(o.link || o.url || o.large || "");
+        const url = String(o.link || o.url || o.large || o.productImage || o.imageUrl || "");
         if (url && url.startsWith("http")) results.push(url);
       }
     }
   }
 
   return [...new Set(results)].filter((u) => u && !u.includes("sprite") && !u.includes("pixel"));
+}
+
+function mergeImageUrls(...sets: string[][]): string[] {
+  return [...new Set(sets.flat().filter((url) => typeof url === "string" && url.startsWith("http")))];
 }
 
 async function fetchViaRainforestByUrl(url: string): Promise<string[]> {
@@ -304,54 +313,88 @@ function extractAsin(url: string): string {
   return "";
 }
 
+function extractCJProductId(url: string): string {
+  const match = url.match(/(?:-p-|product-p-)([A-Za-z0-9._-]+?)(?:\.html)?(?:[?#]|$)/i);
+  return match?.[1]?.replace(/\.html$/i, "") || "";
+}
+
+function extractAliExpressProductId(url: string): string {
+  return url.match(/\/item\/(\d+)(?:\.html)?/i)?.[1] || "";
+}
+
+async function fetchViaCJProductId(productId: string): Promise<string[]> {
+  if (!productId) return [];
+  try {
+    const accessToken = await getCJAccessToken();
+    const response = await fetch(
+      `https://developers.cjdropshipping.com/api2.0/v1/product/query?pid=${encodeURIComponent(productId)}`,
+      {
+        method: "GET",
+        headers: { "CJ-Access-Token": accessToken, "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(15000),
+      }
+    );
+    if (!response.ok) return [];
+    return extractImageUrls(await response.json() as Record<string, unknown>);
+  } catch {
+    return [];
+  }
+}
+
+async function fetchViaAliExpressProductId(productId: string): Promise<string[]> {
+  if (!productId) return [];
+  try {
+    const data = await withKeyPool("serpapi", async (apiKey) => {
+      const params = new URLSearchParams({
+        engine: "aliexpress_product",
+        product_id: productId,
+        api_key: apiKey,
+      });
+      const response = await fetch(`https://serpapi.com/search.json?${params}`, {
+        signal: AbortSignal.timeout(20000),
+      });
+      if (!response.ok) return null;
+      return response.json() as Promise<Record<string, unknown>>;
+    });
+    return data ? extractImageUrls(data) : [];
+  } catch {
+    return [];
+  }
+}
+
 export const POST = withAuth(async (request: NextRequest, _uid: string) => {
   try {
     const { asin, url, source } = await request.json();
+
+    let sourceImages: string[] = [];
 
     if (source === "amazon") {
       const extractedAsin = asin || (url ? extractAsin(url) : "");
 
       if (extractedAsin) {
-        const images = await fetchViaRainforestByAsin(extractedAsin);
-        if (images.length > 0) {
-          return NextResponse.json({ images });
-        }
+        sourceImages = await fetchViaRainforestByAsin(extractedAsin);
       }
 
-      if (url) {
-        const images = await fetchViaRainforestByUrl(url);
-        if (images.length > 0) {
-          return NextResponse.json({ images });
-        }
-      }
-
-      // Amazon fallback: try ScraperAPI then direct fetch
-      if (url) {
-        const images = await scrapeViaScraperAPI(url);
-        if (images.length > 0) {
-          return NextResponse.json({ images });
-        }
-        const directImages = await scrapeDirect(url);
-        if (directImages.length > 0) {
-          return NextResponse.json({ images: directImages });
-        }
-      }
+      if (sourceImages.length <= 1 && url) sourceImages = mergeImageUrls(sourceImages, await fetchViaRainforestByUrl(url));
+    } else if (source === "cj" || source === "cjdropshipping") {
+      const productId = url ? extractCJProductId(url) : "";
+      sourceImages = await fetchViaCJProductId(productId);
+    } else if (source === "aliexpress") {
+      const productId = url ? extractAliExpressProductId(url) : "";
+      sourceImages = await fetchViaAliExpressProductId(productId);
     }
 
-    // ALL other platforms: try ScraperAPI (renders JS), then direct fetch
-    if (url) {
+    // Native product APIs can omit some gallery variants; use rendered HTML
+    // and then validated direct fetch as a supplement when at most one image
+    // was returned. Other platforms use these same guarded fallback paths.
+    if (url && sourceImages.length <= 1) {
       const scraperImages = await scrapeViaScraperAPI(url);
-      if (scraperImages.length > 0) {
-        return NextResponse.json({ images: scraperImages });
-      }
+      sourceImages = mergeImageUrls(sourceImages, scraperImages);
 
-      const directImages = await scrapeDirect(url);
-      if (directImages.length > 0) {
-        return NextResponse.json({ images: directImages });
-      }
+      if (sourceImages.length <= 1) sourceImages = mergeImageUrls(sourceImages, await scrapeDirect(url));
     }
 
-    return NextResponse.json({ images: [] });
+    return NextResponse.json({ images: sourceImages });
   } catch {
     return NextResponse.json({ images: [], error: "Failed to fetch product images" }, { status: 500 });
   }

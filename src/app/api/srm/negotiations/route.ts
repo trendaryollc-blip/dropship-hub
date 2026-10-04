@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { getNegotiations, addNegotiation, updateNegotiation } from "@/lib/data/srm";
 import { safeErrorMessage } from "@/lib/api-errors";
+import { smartSendEmail } from "@/lib/email/smart-sender";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -50,6 +51,15 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
         status: "active",
       });
 
+      if (typeof body.supplierEmail === "string" && body.supplierEmail.trim()) {
+        await smartSendEmail({
+          to: body.supplierEmail.trim(),
+          subject: `[DropShipHub] Negotiation update: ${negotiation.productTitle}`,
+          html: `<p>New offer from ${(round.initiator || "us") === "us" ? "us" : "supplier"}: <b>$${round.price}</b></p><p>${String(round.message || "").replace(/\n/g, "<br/>")}</p>`,
+          tags: [{ name: "negotiationId", value: negotiationId ?? "" }],
+        });
+      }
+
       return NextResponse.json({ success: true });
     }
 
@@ -95,6 +105,15 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
+
+    if (typeof body.supplierEmail === "string" && body.supplierEmail.trim()) {
+      await smartSendEmail({
+        to: body.supplierEmail.trim(),
+        subject: `[DropShipHub] New negotiation: ${productTitle}`,
+        html: `<p>Opening offer: <b>$${initialPrice}</b> (target $${targetPrice}).</p><p>${String(notes || "").replace(/\n/g, "<br/>")}</p>`,
+        tags: [{ name: "negotiationId", value: negotiationId ?? "" }],
+      });
+    }
 
     return NextResponse.json({ success: true, id: negotiationId });
   } catch (error) {

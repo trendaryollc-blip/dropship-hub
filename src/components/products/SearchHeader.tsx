@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Search, X, Loader2, Clock, Sparkles, TrendingUp, Globe,
-  Zap, Lightbulb,
+  Zap, Lightbulb, SlidersHorizontal,
 } from "lucide-react";
 import VoiceInput from "@/components/ai/VoiceInput";
 import VisualSearchButton from "@/components/products/VisualSearchButton";
@@ -141,7 +141,7 @@ export default function SearchHeader({
           {/* Glow effect on focus */}
           <div className={`absolute -inset-1 rounded-3xl bg-gradient-to-r from-accent/20 via-accent/10 to-accent/20 blur-2xl transition-opacity duration-700 ${isFocused ? "opacity-100" : "opacity-0"}`} />
           
-          <div className="relative glass rounded-3xl p-4 sm:p-6 desk:p-8 border border-border/30">
+          <div className="relative glass rounded-3xl p-4 sm:p-6 md:p-8 border border-border/30">
             {/* Tip inside hero */}
             <div className="flex items-center justify-center gap-2 mb-4 pb-4 border-b border-border/20">
               <Lightbulb className="h-3.5 w-3.5 text-accent/40 shrink-0" />
@@ -221,9 +221,26 @@ export default function SearchHeader({
 
               {/* Search All Platforms button */}
               <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mt-3 px-1">
-                <div className="flex items-center gap-2">
-                  <Globe className="h-3.5 w-3.5 text-muted-foreground/50" />
-                  <span className="text-xs text-muted-foreground/50">Search across all platforms</span>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-3.5 w-3.5 text-muted-foreground/50" />
+                    <span className="text-xs text-muted-foreground/50">Search across all platforms</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowFilters(!showFilters)}
+                    aria-expanded={showFilters}
+                    aria-controls="products-filters"
+                    title="Show or hide filters"
+                    className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1.5 rounded-lg border transition-colors ${
+                      showFilters
+                        ? "bg-accent/10 text-accent border-accent/30"
+                        : "border-border/50 text-muted-foreground hover:text-foreground hover:border-accent/30"
+                    }`}
+                  >
+                    <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
+                    Filters
+                  </button>
                 </div>
                 <button
                   onClick={() => { setShowDropdown(false); onSearch(platforms.map(p => p.id)); }}
@@ -308,7 +325,7 @@ export default function SearchHeader({
                           : "bg-surface/30 border-border/30 text-muted-foreground hover:text-foreground hover:bg-surface/50 hover:border-border/50"
                       }`}
                     >
-                      <span className="text-sm">{platformIcons[p.id]}</span>
+                      <span className="text-sm" aria-hidden="true">{platformIcons[p.id]}</span>
                       <span>{platformLabels[p.id] || p.name}</span>
                     </button>
                   );

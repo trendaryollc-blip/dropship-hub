@@ -24,9 +24,56 @@ interface MarketIntel {
   riskFactors: { label: string; level: "safe" | "caution" | "avoid" }[];
 }
 
-async function fetchGoogleTrends(
-  query: string
-): Promise<{ interestIndex: number; direction: "rising" | "stable" | "declining"; sparkline: number[] } | null> {
+interface TrendSeries {
+  interestIndex: number;
+  avg: number;
+  direction: "rising" | "stable" | "declining";
+  sparkline: number[];
+}
+
+/** Function words that carry no search meaning. */
+const TREND_STOPWORDS = new Set([
+  "a", "an", "the", "and", "or", "of", "in", "on", "for", "with", "to", "by", "from", "at", "is", "are", "vs",
+]);
+
+/**
+ * Marketing/adjective filler — dropped when building the shorter fallback
+ * queries ("Wholesale Retro Genuine Leather Belt Women" → "leather belt women").
+ */
+const TREND_FILLER = new Set([
+  "wholesale", "retro", "genuine", "vintage", "classic", "modern", "designer", "luxury", "premium", "high",
+  "quality", "cheap", "discount", "hot", "new", "best", "top", "cute", "stylish", "fashion", "fashionable",
+  "original", "professional", "super", "ultra", "free", "shipping", "pack", "set", "pcs", "pc", "small",
+  "large", "big", "mini", "heavy", "duty",
+]);
+
+const TRENDS_BUDGET_MS = 30000;
+const TRENDS_PER_QUERY_MS = 15000;
+/** Below this interest index the result is noise — keep trying shorter queries. */
+const TRENDS_MIN_SIGNAL = 10;
+
+/**
+ * Google Trends returns "no results" for long product titles, so build a
+ * short keyword chain from the filler-stripped core, specific → generic
+ * ("Wholesale Retro Genuine Leather Belt Women's..." → "leather belt women").
+ */
+function buildTrendQueries(title: string): string[] {
+  const words = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 1 && !TREND_STOPWORDS.has(w) && !/^\d+$/.test(w));
+
+  const core = words.filter((w) => !TREND_FILLER.has(w));
+  const pool = core.length >= 2 ? core : words;
+  const candidates = [4, 3, 2]
+    .map((n) => pool.slice(0, n).join(" "))
+    .filter((q, i, all) => q.length > 0 && all.indexOf(q) === i);
+
+  return candidates.length > 0 ? candidates : [title.slice(0, 40)];
+}
+
+async function fetchGoogleTrends(query: string, timeoutMs: number): Promise<TrendSeries | null> {
   return withKeyPool("serpapi", async (apiKey) => {
     const params = new URLSearchParams({
       engine: "google_trends",
@@ -37,7 +84,7 @@ async function fetchGoogleTrends(
     });
 
     const res = await fetch(`https://serpapi.com/search?${params}`, {
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) {
       const body = await res.text().catch(() => "");
@@ -45,8 +92,10 @@ async function fetchGoogleTrends(
     }
 
     const data = await res.json();
-    const timelineData = data.interest_over_time?.timeline_data || [];
+    // SerpAPI answers 200 with `{error}` when Trends has no data for the query.
+    if (data.error) return null;
 
+    const timelineData = data.interest_over_time?.timeline_data || [];
     if (timelineData.length === 0) return null;
 
     const values = timelineData.map((d: { values: { extracted_value: number }[] }) => d.values?.[0]?.extracted_value || 0);
@@ -60,8 +109,33 @@ async function fetchGoogleTrends(
 
     const sparkline = values.slice(-14).map((v: number) => Math.round(v));
 
-    return { interestIndex: Math.round(avg), direction, sparkline };
+    return { interestIndex: Math.round(avg), avg, direction, sparkline };
   });
+}
+
+/**
+ * Walk the query chain (specific → generic) within a time budget and keep the
+ * strongest series, so the charts get real points instead of an empty feed.
+ */
+async function fetchGoogleTrendsForTitle(title: string): Promise<TrendSeries | null> {
+  const deadline = Date.now() + TRENDS_BUDGET_MS;
+  let best: TrendSeries | null = null;
+  let lastError: unknown = null;
+
+  for (const query of buildTrendQueries(title)) {
+    const remaining = deadline - Date.now();
+    if (remaining < 2000) break;
+    try {
+      const series = await fetchGoogleTrends(query, Math.min(TRENDS_PER_QUERY_MS, remaining));
+      if (series && (!best || series.avg > best.avg)) best = series;
+      if (best && best.avg >= TRENDS_MIN_SIGNAL) break;
+    } catch (e) {
+      lastError = e;
+    }
+  }
+
+  if (!best && lastError) throw lastError;
+  return best;
 }
 
 async function fetchSerpShoppingData(
@@ -76,7 +150,7 @@ async function fetchSerpShoppingData(
     });
 
     const res = await fetch(`https://serpapi.com/search?${params}`, {
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(30000),
     });
     if (!res.ok) {
       const body = await res.text().catch(() => "");
@@ -256,7 +330,7 @@ export const POST = withAuth(async (request: NextRequest) => {
     const reviewsNum = typeof reviews === "number" ? reviews : 100;
 
     const [trendSettled, shoppingSettled] = await Promise.allSettled([
-      fetchGoogleTrends(query),
+      fetchGoogleTrendsForTitle(title),
       fetchSerpShoppingData(query),
     ]);
 

@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
 const mockMutate = vi.fn();
+const searchParamsState = vi.hoisted(() => ({ current: new URLSearchParams() }));
 function defaultUseAPIMock(url: string) {
   if (url.includes("type=stats")) {
     return {
@@ -47,6 +48,7 @@ function defaultUseAPIMock(url: string) {
 const mockUseAPI = vi.fn(defaultUseAPIMock);
 
 vi.mock("@/hooks/useAPI", () => ({ useAPI: (url: string) => mockUseAPI(url) }));
+vi.mock("next/navigation", () => ({ useSearchParams: () => searchParamsState.current }));
 
 const mockToast = { success: vi.fn(), error: vi.fn() };
 vi.mock("@/components/ui/Toast", () => ({ useToast: () => mockToast }));
@@ -61,6 +63,7 @@ import SocialContentPage from "./SocialContentPage";
 beforeEach(() => {
   vi.clearAllMocks();
   mockUseAPI.mockReset().mockImplementation(defaultUseAPIMock);
+  searchParamsState.current = new URLSearchParams();
 });
 
 describe("SocialContentPage", () => {
@@ -72,6 +75,14 @@ describe("SocialContentPage", () => {
     for (const tab of ["Generate", "UGC Scripts", "Content Ideas", "Library", "Calendar"]) {
       expect(screen.getByRole("button", { name: tab })).toBeTruthy();
     }
+  });
+
+  it("prefills product name and image from product context", () => {
+    searchParamsState.current = new URLSearchParams("productTitle=Wireless+Headphones&productImage=https%3A%2F%2Fexample.com%2Fheadphones.jpg");
+    render(<SocialContentPage />);
+    expect(screen.getByLabelText("Product Name *")).toHaveValue("Wireless Headphones");
+    fireEvent.click(screen.getByRole("button", { name: "UGC Scripts" }));
+    expect(screen.getByLabelText("Product Image URL")).toHaveValue("https://example.com/headphones.jpg");
   });
 
   it("shows loading state while library is loading", () => {

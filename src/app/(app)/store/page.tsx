@@ -26,11 +26,12 @@ export default function StorePage() {
   const { user } = useAuth();
   const { success, error: toastError } = useToast();
   const uid = user?.uid || "";
-  const { data: connData, mutate: refetchConnections } = useAPI<{ connections?: ConnectedStore[] }>(uid ? `/api/store/connections?uid=${uid}` : null, { refreshInterval: SWR_REFRESH_INTERVALS.connections });
-  const { data: pushData } = useAPI<{ products?: PushedProduct[] }>(uid ? `/api/store/push?uid=${uid}` : null, { refreshInterval: SWR_REFRESH_INTERVALS.connections });
+  const { data: connData, error: connError, mutate: refetchConnections } = useAPI<{ connections?: ConnectedStore[] }>(uid ? `/api/store/connections?uid=${uid}` : null, { refreshInterval: SWR_REFRESH_INTERVALS.connections });
+  const { data: pushData, error: pushError } = useAPI<{ products?: PushedProduct[] }>(uid ? `/api/store/push?uid=${uid}` : null, { refreshInterval: SWR_REFRESH_INTERVALS.connections });
   const connections = connData?.connections || [];
   const pushedProducts = pushData?.products || [];
-  const loading = !user || (!connData && !pushData);
+  const loadError = connError || pushError;
+  const loading = !user || (!connData && !pushData && !loadError);
   const [syncing, setSyncing] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"stores" | "products" | "automation" | "alerts">("stores");
   const [disconnectTarget, setDisconnectTarget] = useState<string | null>(null);
@@ -41,12 +42,24 @@ export default function StorePage() {
 
   const handleReorder = useCallback((reordered: ConnectedStore[]) => {
     setReorderedConnections(reordered);
+    try {
+      localStorage.setItem("store-order", JSON.stringify(reordered.map((s) => s.id)));
+    } catch { /* ignore */ }
   }, []);
 
-  // Reset reorder when connections change from server
+  // Re-apply a saved order (localStorage) whenever connections refresh.
   useEffect(() => {
-    setReorderedConnections(null);
-  }, [connData]);
+    if (!connections.length) return;
+    try {
+      const savedOrder = JSON.parse(localStorage.getItem("store-order") ?? "[]") as string[];
+      if (savedOrder.length > 0) {
+        const byId = new Map(connections.map((s) => [s.id, s]));
+        const ordered = savedOrder.map((id) => byId.get(id)).filter((s): s is ConnectedStore => !!s);
+        const rest = connections.filter((s) => !savedOrder.includes(s.id));
+        setReorderedConnections([...ordered, ...rest]);
+      }
+    } catch { /* ignore */ }
+  }, [connData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDisconnect = (storeId: string) => { setDisconnectTarget(storeId); };
 
@@ -69,7 +82,11 @@ export default function StorePage() {
   };
 
   const handleSync = async (store: ConnectedStore) => {
-    if (!user || store.platform !== "trendaryo") return;
+    if (!user) return;
+    if (store.platform !== "trendaryo") {
+      toastError(`Direct sync is only available for Trendaryo stores. ${store.name} syncs via its own webhook connection.`);
+      return;
+    }
     setSyncing(store.id);
     try {
       const token = await user.getIdToken();
@@ -89,6 +106,15 @@ export default function StorePage() {
 
   if (loading) {
     return <StorePageSkeleton />;
+  }
+
+  if (loadError) {
+    return (
+      <div className="max-w-7xl mx-auto py-24 text-center">
+        <p className="text-sm text-red-400 mb-3">Failed to load your stores. Check your connection and try again.</p>
+        <button onClick={() => { refetchConnections(); }} className="px-4 py-2 rounded-xl bg-accent/10 border border-accent/20 text-accent text-sm font-semibold hover:bg-accent/20 transition-all">Retry</button>
+      </div>
+    );
   }
 
   return (

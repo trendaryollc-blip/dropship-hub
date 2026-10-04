@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Zap, CheckCircle2, ArrowUpRight, Target, Shield, DollarSign,
   BarChart3, Package, RotateCcw, ExternalLink, TrendingUp,
@@ -145,75 +145,62 @@ export default function HealthPage() {
   const [mounted, setMounted] = useState(false);
   const healthData = useHealthData();
 
-  const autoDetectedCategories = useMemo(() => {
-    if (healthData.loading) return categories;
-
-    return categories.map((cat) => {
-      const newItems = cat.items.map((item) => {
-        let autoDetected = false;
-        let done = item.done;
-
-        switch (cat.id) {
-          case "product":
-            if (item.label === "Search for trending products" && healthData.searchHistoryCount > 0) {
-              done = true;
-              autoDetected = true;
+  // Auto-detect: when health data first resolves, mark usage-qualified items
+  // done and persist that state, so displayed state and stored state agree.
+  const autoAppliedRef = useRef(false);
+  useEffect(() => {
+    if (healthData.loading || autoAppliedRef.current || !mounted) return;
+    autoAppliedRef.current = true;
+    setCategories((prev) => {
+      const next = prev.map((cat) => ({
+        ...cat,
+        items: cat.items.map((item) => {
+          if (item.done) return item;
+          const q = (() => {
+            switch (cat.id) {
+              case "product":
+                return (
+                  (item.label === "Search for trending products" && healthData.searchHistoryCount > 0) ||
+                  (item.label === "Analyze product profit margins" && healthData.calcHistoryCount > 0) ||
+                  (item.label === "Check competition levels" && healthData.competitorSearchCount > 0) ||
+                  (item.label === "Verify supplier availability" && healthData.savedProductCount > 0)
+                );
+              case "supplier":
+                return (
+                  (item.label === "Find 3+ reliable suppliers" && healthData.supplierFavoriteCount >= 3) ||
+                  (item.label === "Set up backup suppliers" && healthData.supplierFavoriteCount >= 2)
+                );
+              case "financial":
+                return (
+                  (item.label === "Calculate break-even point" && healthData.calcHistoryCount > 0) ||
+                  (item.label === "Set up profit tracking" && healthData.revenueEntryCount > 0) ||
+                  (item.label === "Analyze cost breakdown" && healthData.costProfileCount > 0)
+                );
+              case "market":
+                return (
+                  (item.label === "Analyze top competitors" && healthData.competitorSearchCount > 0) ||
+                  (item.label === "Track pricing trends" && healthData.watchlistCount > 0)
+                );
+              default:
+                return false;
             }
-            if (item.label === "Analyze product profit margins" && healthData.calcHistoryCount > 0) {
-              done = true;
-              autoDetected = true;
-            }
-            if (item.label === "Check competition levels" && healthData.competitorSearchCount > 0) {
-              done = true;
-              autoDetected = true;
-            }
-            if (item.label === "Verify supplier availability" && healthData.savedProductCount > 0) {
-              done = true;
-              autoDetected = true;
-            }
-            break;
-          case "supplier":
-            if (item.label === "Find 3+ reliable suppliers" && healthData.supplierFavoriteCount >= 3) {
-              done = true;
-              autoDetected = true;
-            }
-            if (item.label === "Set up backup suppliers" && healthData.supplierFavoriteCount >= 2) {
-              done = true;
-              autoDetected = true;
-            }
-            break;
-          case "financial":
-            if (item.label === "Calculate break-even point" && healthData.calcHistoryCount > 0) {
-              done = true;
-              autoDetected = true;
-            }
-            if (item.label === "Set up profit tracking" && healthData.revenueEntryCount > 0) {
-              done = true;
-              autoDetected = true;
-            }
-            if (item.label === "Analyze cost breakdown" && healthData.costProfileCount > 0) {
-              done = true;
-              autoDetected = true;
-            }
-            break;
-          case "market":
-            if (item.label === "Analyze top competitors" && healthData.competitorSearchCount > 0) {
-              done = true;
-              autoDetected = true;
-            }
-            if (item.label === "Track pricing trends" && healthData.watchlistCount > 0) {
-              done = true;
-              autoDetected = true;
-            }
-            break;
-        }
-
-        return { ...item, done, autoDetected };
+          })();
+          return q ? { ...item, done: true, autoDetected: true } : item;
+        }),
+      }));
+      const stateToSave: Record<string, boolean[]> = {};
+      next.forEach((cat) => {
+        stateToSave[cat.id] = cat.items.map((item) => item.done);
       });
-
-      return { ...cat, items: newItems };
+      saveStateLocal(stateToSave);
+      if (user) saveStateFirestore(user.uid, stateToSave);
+      return next;
     });
-  }, [categories, healthData]);
+  }, [healthData, user, mounted]);
+
+  const autoDetectedCategories = useMemo(() => {
+    return categories;
+  }, [categories]);
 
   useEffect(() => {
     async function hydrate() {
@@ -265,21 +252,51 @@ export default function HealthPage() {
   }, [user]);
 
   const resetAll = useCallback(() => {
+    autoAppliedRef.current = true; // don't re-mark auto items after a reset
     setCategories((prev) =>
       prev.map((cat) => ({
         ...cat,
-        items: cat.items.map((item) => ({ ...item, done: false })),
+        items: cat.items.map((item) => ({ ...item, done: false, autoDetected: false })),
       }))
     );
-    localStorage.removeItem(STORAGE_KEY);
+    const cleared: Record<string, boolean[]> = {};
+    defaultCategories.forEach((cat) => {
+      cleared[cat.id] = cat.items.map(() => false);
+    });
+    saveStateLocal(cleared);
     if (user) {
-      saveStateFirestore(user.uid, {});
+      saveStateFirestore(user.uid, cleared);
     }
   }, [user]);
 
   const handleApplyPreset = useCallback((_presetId: string, _focusCategory: string) => {
+    // Mark the preset's tasks done wherever their labels match a checklist
+    // item, then scroll to the checklist so the user sees progress.
+    const PRESET_TASKS: Record<string, string[]> = {
+      beginner: ["Search for trending products", "Analyze product profit margins", "Find 3+ reliable suppliers", "Calculate break-even point"],
+      intermediate: ["Set up backup suppliers", "Set up profit tracking", "Analyze top competitors", "Plan ad budget allocation"],
+      advanced: ["Verify supplier trust badges", "Analyze cost breakdown", "Identify market gaps", "Connect your first store"],
+    };
+    const tasks = PRESET_TASKS[_presetId] ?? [];
+    setCategories((prev) => {
+      const next = prev.map((cat) => ({
+        ...cat,
+        items: cat.items.map((item) =>
+          tasks.some((t) => t.toLowerCase() === item.label.toLowerCase())
+            ? { ...item, done: true }
+            : item
+        ),
+      }));
+      const stateToSave: Record<string, boolean[]> = {};
+      next.forEach((cat) => {
+        stateToSave[cat.id] = cat.items.map((item) => item.done);
+      });
+      saveStateLocal(stateToSave);
+      if (user) saveStateFirestore(user.uid, stateToSave);
+      return next;
+    });
     document.getElementById("health-checklist")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
+  }, [user]);
 
   const handleAskAI = useCallback((prompt: string) => {
     window.open(`/ai?q=${encodeURIComponent(prompt)}`, "_blank");

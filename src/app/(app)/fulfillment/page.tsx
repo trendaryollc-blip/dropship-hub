@@ -73,6 +73,11 @@ export default function FulfillmentPage() {
   const [storeFilter, setStoreFilter] = useState("all");
   const [showSettings, setShowSettings] = useState(false);
   const [dismissedOnboarding, setDismissedOnboarding] = useState(false);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("fulfillment-onboarding-dismissed") === "1") setDismissedOnboarding(true);
+    } catch { /* ignore */ }
+  }, []);
   const [error, setError] = useState<string | null>(null);
   const [managementTab, setManagementTab] = useState<"settings" | "audit" | "rules" | "templates" | "returns" | "bulk_ops" | "dashboards" | "notifications" | "notes">("settings");
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
@@ -192,7 +197,7 @@ export default function FulfillmentPage() {
         });
       }
       await mutateOrders();
-    } catch (err) { logger.error("Failed to perform action", { error: err instanceof Error ? err.message : String(err) }); setError("Failed to load data. Please try again."); }
+    } catch (err) { logger.error("Failed to perform action", { error: err instanceof Error ? err.message : String(err) }); setError("The action failed. Please try again."); }
     setActionLoading(null);
   }, [user, mutateOrders]);
 
@@ -207,7 +212,7 @@ export default function FulfillmentPage() {
       setSettings(newSettings);
       mutateSettings();
       setShowSettings(false);
-    } catch (err) { logger.error("Failed to save settings", { error: err instanceof Error ? err.message : String(err) }); setError("Failed to load data. Please try again."); }
+    } catch (err) { logger.error("Failed to save settings", { error: err instanceof Error ? err.message : String(err) }); setError("Failed to save settings. Please try again."); }
   };
 
   useEffect(() => {
@@ -306,15 +311,26 @@ export default function FulfillmentPage() {
           break;
         }
         case "optimize-routing": {
-          result = "Routing is not automated yet — review pending orders manually.";
+          const pending = orders.filter((o) => o.status === "pending" || o.status === "in_progress");
+          const bySupplier = new Map<string, number>();
+          for (const o of pending) {
+            const key = o.assignedSupplier || o.storePlatform || "unassigned";
+            bySupplier.set(key, (bySupplier.get(key) ?? 0) + 1);
+          }
+          if (pending.length === 0) {
+            result = "No pending orders to route.";
+          } else {
+            const top = [...bySupplier.entries()].sort((a, b) => b[1] - a[1])[0];
+            result = `${pending.length} pending orders. Largest queue: ${top[0]} (${top[1]}). Route new orders toward your fastest supplier and enable bulk auto-process once thresholds look good.`;
+          }
           break;
         }
         case "bulk-tracking-sync": {
-          const res = await authFetch<{ success?: boolean; synced?: number }>(
+          const res = await authFetch<{ success?: boolean; synced?: number; message?: string }>(
             "/api/fulfillment/sync-tracking",
             { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ uid: user.uid, bulk: true }) }
           );
-          result = `${res?.synced || 0} orders already have tracking`;
+          result = res?.message || `${res?.synced ?? 0} shipped orders have tracking`;
           break;
         }
         case "analyze-profitability": {
@@ -347,7 +363,7 @@ export default function FulfillmentPage() {
     <div className="max-w-5xl mx-auto space-y-6 pb-24">
       {error && (<div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-red-400 text-sm flex items-center gap-2"><AlertCircle className="h-4 w-4 shrink-0" />{error}<button onClick={() => { setError(null); mutateOrders(); mutateSettings(); mutateStores(); }} className="ml-auto text-xs underline">Retry</button></div>)}
       {!dismissedOnboarding && !hasOrders && (
-        <OnboardingBanner onDismiss={() => setDismissedOnboarding(true)} />
+        <OnboardingBanner onDismiss={() => { setDismissedOnboarding(true); try { localStorage.setItem("fulfillment-onboarding-dismissed", "1"); } catch { /* ignore */ } }} />
       )}
 
       <div className="flex items-start justify-between">
@@ -564,7 +580,7 @@ export default function FulfillmentPage() {
             <option value="all">All Stores</option>
             {connectedStores.length > 0 ? (
               connectedStores.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
+                <option key={s.id} value={s.platform ?? s.id}>{s.name}</option>
               ))
             ) : (
               <option value="all" disabled>No stores connected</option>
@@ -608,7 +624,7 @@ export default function FulfillmentPage() {
                     body: JSON.stringify({ uid: user.uid }),
                   });
                   mutateOrders();
-                    } catch (err) { logger.error("Failed to sync orders", { error: err instanceof Error ? err.message : String(err) }); setError("Failed to load data. Please try again."); }
+                    } catch (err) { logger.error("Failed to sync orders", { error: err instanceof Error ? err.message : String(err) }); setError("Failed to sync orders. Please try again."); }
                     setSyncing(false);
                   }}
                   disabled={syncing}
@@ -658,7 +674,7 @@ export default function FulfillmentPage() {
                         body: JSON.stringify({ uid: user.uid }),
                       });
                       mutateOrders();
-                    } catch (err) { logger.error("Failed to sync orders", { error: err instanceof Error ? err.message : String(err) }); setError("Failed to load data. Please try again."); }
+                    } catch (err) { logger.error("Failed to sync orders", { error: err instanceof Error ? err.message : String(err) }); setError("Failed to sync orders. Please try again."); }
                     setSyncing(false);
                   }}
                   className="flex items-center gap-2 px-4 py-2.5 bg-surface border border-white/10 text-foreground rounded-xl text-xs font-medium hover:bg-surface/80 transition-all"

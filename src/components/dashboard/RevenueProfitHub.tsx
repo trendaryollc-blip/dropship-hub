@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { SectionDivider } from "./SectionDivider";
+import { MetricHelp } from "./MetricHelp";
 
 export function RevenueProfitHub({ stats, chartData, storesConnected, suppliersActive, pendingOrders, marginPct }: {
   stats: { revenue: number; growth: number; orders: number; avgOrder: number; profit: number };
@@ -56,7 +57,7 @@ export function RevenueProfitHub({ stats, chartData, storesConnected, suppliersA
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:gap-4 lg:grid-cols-3 gap-3 mb-4">
         {[
           { icon: DollarSign, label: "Revenue", value: revenue, prefix: "$", change: growth, color: "emerald" },
           { icon: ShoppingCart, label: "Orders", value: orders, color: "blue" },
@@ -77,8 +78,8 @@ export function RevenueProfitHub({ stats, chartData, storesConnected, suppliersA
                   </span>
                 )}
               </div>
-              <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">{kpi.label}</p>
-              <p className="font-display text-xl font-bold text-white">{kpi.prefix}{kpiValue.toLocaleString()}</p>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5 truncate">{kpi.label}</p>
+              <p className="font-display text-lg sm:text-xl font-bold text-white truncate">{kpi.prefix}{kpiValue.toLocaleString()}</p>
             </div>
           );
         })}
@@ -129,6 +130,7 @@ export function RevenueProfitHub({ stats, chartData, storesConnected, suppliersA
           <div className="flex items-center gap-2 mb-4">
             <TrendingUp className="h-4 w-4 text-emerald-400" />
             <span className="text-sm font-semibold text-white">Profit Tracker</span>
+            <MetricHelp label="profit margin" text="Total profit divided by total revenue from your Firestore orders. 0% with no revenue means no data yet — not a loss." />
           </div>
           <div className="text-center mb-4">
             <p className="font-display text-3xl font-bold text-emerald-400">${profitPerOrder.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>

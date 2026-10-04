@@ -19,6 +19,7 @@ import ValidationExportButton from "./ValidationExportButton";
 import RiskSummaryBar from "./RiskSummaryBar";
 import { useAPI } from "@/hooks/useAPI";
 import type { ProductValidationResult } from "@/types/product-validation";
+import type { SupplierProfile } from "@/types/supplier";
 
 interface ValidationDoc {
   id: string;
@@ -28,21 +29,17 @@ interface ValidationDoc {
   createdAt: { toDate: () => Date };
 }
 
-interface SupplierMatch {
-  id: string;
-  name: string;
-  trustBadge: string;
-  location: string;
-  flag: string;
-  relevanceScore: number;
-  stats: { reliabilityScore: number; rating: number; shippingDays: number; responseTime: string; refundRate: number };
-  yearsInBusiness?: number;
-  certifications?: string[];
-  catalog?: { categories: string[]; priceRange: { min: number; max: number } };
-}
+type TabId = "core" | "product" | "supply" | "risk";
+
+const TABS: { id: TabId; label: string; icon: React.ElementType; color: string }[] = [
+  { id: "core", label: "Core Data", icon: BarChart3, color: "text-blue-400" },
+  { id: "product", label: "Product Details", icon: ShieldCheck, color: "text-emerald-400" },
+  { id: "supply", label: "Supply Chain", icon: Truck, color: "text-amber-400" },
+  { id: "risk", label: "Risk & Market", icon: AlertOctagon, color: "text-red-400" },
+];
 
 interface EnrichmentData {
-  platforms: { platform: string; price: number; rating: number | null; reviews: number | null; url: string; brand?: string }[];
+  platforms: { platform: string; title?: string; price: number; rating: number | null; reviews: number | null; url: string; brand?: string }[];
   cheapest: { platform: string; price: number } | null;
   mostExpensive: { platform: string; price: number } | null;
   priceSpread: number;
@@ -52,7 +49,9 @@ interface EnrichmentData {
 }
 
 interface MarketIntelData {
-  searchVolume: number;
+  searchVolume: number | string;
+  interestIndex?: number;
+  trendSparkline?: number[];
   trendDirection: string;
   competitionLevel: string;
   estimatedSellers: number;
@@ -74,8 +73,11 @@ interface FormData {
   productTitle: string;
   productImage: string;
   productUrl: string;
+  source: string;
   searchVolume: string;
   historicalVolumes: string;
+  searchInterestIndex: string;
+  historicalInterestIndex: string;
   sellerCount: string;
   historicalSellers: string;
   currentPrice: string;
@@ -141,8 +143,9 @@ interface FormData {
 }
 
 const defaultForm: FormData = {
-  productTitle: "", productImage: "", productUrl: "",
+  productTitle: "", productImage: "", productUrl: "", source: "",
   searchVolume: "", historicalVolumes: "",
+  searchInterestIndex: "", historicalInterestIndex: "",
   sellerCount: "", historicalSellers: "",
   currentPrice: "", historicalPrices: "",
   topSellerShare: "", avgRating: "", avgReviews: "",
@@ -172,27 +175,18 @@ function parseList(s: string): number[] {
 function Input({ label, value, onChange, placeholder, type = "text", disabled }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; disabled?: boolean }) {
   return (
     <div>
-      <label className="text-[10px] text-muted-foreground mb-1 block">{label}</label>
+      <label className="text-[9px] text-muted-foreground mb-0.5 block">{label}</label>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         disabled={disabled}
-        className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-accent/30 focus:border-accent/30 transition-all disabled:opacity-50"
+        className="w-full px-2.5 py-1.5 rounded-lg bg-surface border border-border text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-accent/30 focus:border-accent/30 transition-all disabled:opacity-50"
       />
     </div>
   );
 }
-
-type TabId = "core" | "product" | "supply" | "risk";
-
-const TABS: { id: TabId; label: string; icon: React.ElementType; color: string }[] = [
-  { id: "core", label: "Core Data", icon: BarChart3, color: "text-blue-400" },
-  { id: "product", label: "Product Details", icon: ShieldCheck, color: "text-emerald-400" },
-  { id: "supply", label: "Supply Chain", icon: Truck, color: "text-amber-400" },
-  { id: "risk", label: "Risk & Market", icon: AlertOctagon, color: "text-red-400" },
-];
 
 export default function ProductValidationPage() {
   const searchParams = useSearchParams();
@@ -200,22 +194,34 @@ export default function ProductValidationPage() {
   const [form, setForm] = useState<FormData>(() => {
     const initial = { ...defaultForm };
     const get = (key: string) => searchParams.get(key);
+    if (get("source")) initial.source = get("source")!;
     if (get("productTitle")) initial.productTitle = get("productTitle")!;
-    if (get("currentPrice")) { initial.currentPrice = get("currentPrice")!; initial.sellingPrice = get("currentPrice")!; }
+    if (get("currentPrice")) initial.currentPrice = get("currentPrice")!;
+    if (get("productCost")) initial.productCost = get("productCost")!;
+    else if (get("currentPrice")) initial.productCost = get("currentPrice")!;
+    if (get("estimatedSellingPrice")) initial.sellingPrice = get("estimatedSellingPrice")!;
+    else if (get("currentPrice")) initial.sellingPrice = get("currentPrice")!;
     if (get("productImage")) initial.productImage = get("productImage")!;
     if (get("productUrl")) initial.productUrl = get("productUrl")!;
     if (get("category")) initial.category = get("category")!;
-    if (get("brand")) initial.brand = get("brand")!;
-    if (get("rating")) { initial.avgRating = get("rating")!; initial.reviewScore = get("rating")!; }
-    if (get("reviews")) { initial.avgReviews = get("reviews")!; initial.reviewCount = get("reviews")!; }
+    if (get("brand")) {
+      initial.brand = get("brand")!;
+      initial.isBranded = true;
+    }
+    if (get("rating")) initial.reviewScore = get("rating")!;
+    if (get("reviews")) initial.reviewCount = get("reviews")!;
+    if (get("sellerRating")) initial.avgRating = get("sellerRating")!;
+    if (get("sellerReviews")) initial.avgReviews = get("sellerReviews")!;
+    if (get("searchVolume")) initial.searchVolume = get("searchVolume")!;
+    if (get("historicalVolumes")) initial.historicalVolumes = get("historicalVolumes")!;
+    if (get("historicalPrices")) initial.historicalPrices = get("historicalPrices")!;
+    if (get("searchInterestIndex")) initial.searchInterestIndex = get("searchInterestIndex")!;
+    if (get("historicalInterestIndex")) initial.historicalInterestIndex = get("historicalInterestIndex")!;
+    if (get("supplierName")) initial.supplierName = get("supplierName")!;
+    if (get("supplierReliability")) initial.supplierReliability = get("supplierReliability")!;
+    if (get("shippingSpeed")) initial.shippingSpeed = get("shippingSpeed")!;
     if (get("bestPrice")) initial.priceMin = get("bestPrice")!;
     if (get("competitorCount")) initial.sellerCount = get("competitorCount")!;
-    if (get("trendPhase")) {
-      const phase = get("trendPhase")!;
-      if (phase === "emerging" || phase === "growth") initial.competitionLevel = "low";
-      else if (phase === "mature") initial.competitionLevel = "high";
-      else if (phase === "declining") initial.competitionLevel = "very-high";
-    }
     if (get("saturationLevel")) {
       const sat = get("saturationLevel")!;
       if (sat === "unsaturated" || sat === "low") initial.competitionLevel = "low";
@@ -238,14 +244,14 @@ export default function ProductValidationPage() {
             const reviews = platforms.filter((p: { reviews?: number }) => p.reviews != null && p.reviews > 0).map((p: { reviews: number }) => p.reviews);
             if (reviews.length > 0) initial.avgReviews = String(Math.round(reviews.reduce((a: number, b: number) => a + b, 0) / reviews.length));
             if (platforms.length >= 2) {
-              initial.comp1Name = platforms[0].platform || "";
+              initial.comp1Name = platforms[0].title || platforms[0].platform || "";
               initial.comp1Price = String(platforms[0].price || "");
               initial.comp1Rating = String(platforms[0].rating || "");
               initial.comp1Reviews = String(platforms[0].reviews || "");
               initial.comp1Platform = platforms[0].platform || "";
             }
             if (platforms.length >= 3) {
-              initial.comp2Name = platforms[1].platform || "";
+              initial.comp2Name = platforms[1].title || platforms[1].platform || "";
               initial.comp2Price = String(platforms[1].price || "");
               initial.comp2Rating = String(platforms[1].rating || "");
               initial.comp2Reviews = String(platforms[1].reviews || "");
@@ -272,11 +278,14 @@ export default function ProductValidationPage() {
   // Single ref to prevent all auto-fetches from re-running (handles StrictMode + remounts)
   const autoFetchDone = useRef(false);
   // Store initial form values captured at mount (for API calls, not affected by auto-fill)
-  const initialFormRef = useRef<{ title: string; price: number; category: string; url: string; rating?: number; reviews?: number } | null>(null);
+  const initialFormRef = useRef<{ title: string; price: number; category: string; url: string; source: string; rating?: number; reviews?: number } | null>(null);
 
   const hasProductContext = searchParams.get("productTitle") || searchParams.get("currentPrice");
 
-  const update = useCallback((key: keyof FormData, value: string | boolean) => setForm((prev) => ({ ...prev, [key]: value })), []);
+  const update = useCallback((key: keyof FormData, value: string | boolean) => {
+    autoFilledFields.current.add(key);
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }, []);
 
   // Helper: only set a form field if it hasn't been manually edited
   const autoSet = useCallback((key: keyof FormData, value: string | boolean, setFormFn: React.Dispatch<React.SetStateAction<FormData>>) => {
@@ -290,6 +299,9 @@ export default function ProductValidationPage() {
     if (autoFetchDone.current) return;
     if (!form.productTitle || form.productTitle.length < 3) return;
     autoFetchDone.current = true;
+    if (searchParams.get("rating") !== null) autoFilledFields.current.add("reviewScore");
+    if (searchParams.get("reviews") !== null) autoFilledFields.current.add("reviewCount");
+    if (searchParams.get("brand") !== null) autoFilledFields.current.add("brand");
 
     // Capture initial values for API calls (these won't change as auto-fill runs)
     initialFormRef.current = {
@@ -297,6 +309,7 @@ export default function ProductValidationPage() {
       price: parseFloat(form.currentPrice) || 0,
       category: form.category,
       url: form.productUrl,
+      source: form.source,
       rating: parseFloat(form.avgRating) || undefined,
       reviews: parseFloat(form.avgReviews) || undefined,
     };
@@ -343,7 +356,13 @@ export default function ProductValidationPage() {
           }, 15000);
           if (!res.ok) throw new Error("Failed");
           const data = await res.json();
-          const suppliers: SupplierMatch[] = data.suppliers || [];
+          // /api/suppliers/find returns SupplierProfile objects with a relevanceScore.
+          type FoundSupplier = SupplierProfile & {
+            relevanceScore?: number;
+            yearsInBusiness?: number;
+            certifications?: string[];
+          };
+          const suppliers: FoundSupplier[] = data.suppliers || [];
           if (suppliers.length > 0) {
             const top = suppliers[0];
             autoSet("supplierName", top.name, setForm);
@@ -354,11 +373,27 @@ export default function ProductValidationPage() {
               if (top.stats.shippingDays > 0) {
                 autoSet("shippingSpeed", String(top.stats.shippingDays), setForm);
               }
+              if (top.stats.orderCompletionRate && top.stats.orderCompletionRate > 0) {
+                autoSet("fulfillmentRate", String(top.stats.orderCompletionRate), setForm);
+              }
+              if (top.stats.communicationScore && top.stats.communicationScore > 0) {
+                autoSet("communicationScore", String(top.stats.communicationScore), setForm);
+              }
             }
-            if (top.yearsInBusiness) autoSet("yearsInBusiness", String(top.yearsInBusiness), setForm);
-            if (top.certifications && top.certifications.length > 0) {
-              autoSet("certifications", top.certifications.join(", "), setForm);
+            const yearsInBusiness = top.yearsInBusiness ?? (top.stats.yearEstablished
+              ? Math.max(0, new Date().getFullYear() - top.stats.yearEstablished)
+              : undefined);
+            if (yearsInBusiness) autoSet("yearsInBusiness", String(yearsInBusiness), setForm);
+            const certifications = top.certifications || top.quality?.certifications;
+            if (certifications && certifications.length > 0) {
+              autoSet("certifications", certifications.join(", "), setForm);
             }
+            if (top.sourceUrl) autoSet("supplierUrl", top.sourceUrl, setForm);
+            if (top.shipping?.methods && top.shipping.methods.length > 0) {
+              autoSet("shippingMethods", top.shipping.methods.join(", "), setForm);
+            }
+            if (top.catalog?.moq) autoSet("moq", String(top.catalog.moq), setForm);
+            if (typeof top.catalog?.samplesAvailable === "boolean") autoSet("sampleAvailable", top.catalog.samplesAvailable, setForm);
           }
           setAutoFetchStatus((s) => ({ ...s, suppliers: "done" }));
         } catch (e) {
@@ -374,7 +409,7 @@ export default function ProductValidationPage() {
           const res = await withTimeout("/api/products/enrich", {
             method: "POST",
             headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-            body: JSON.stringify({ title: init.title, source: init.category, price: init.price }),
+            body: JSON.stringify({ title: init.title, source: init.source, price: init.price }),
           }, 20000);
           if (!res.ok) throw new Error("Failed");
           const data: EnrichmentData = await res.json();
@@ -404,14 +439,14 @@ export default function ProductValidationPage() {
 
             const sorted = [...data.platforms].sort((a, b) => (b.reviews ?? 0) - (a.reviews ?? 0));
             if (sorted.length >= 1) {
-              autoSet("comp1Name", sorted[0].platform, setForm);
+              autoSet("comp1Name", sorted[0].title || sorted[0].platform, setForm);
               autoSet("comp1Price", String(sorted[0].price), setForm);
               autoSet("comp1Rating", sorted[0].rating != null ? String(sorted[0].rating) : "", setForm);
               autoSet("comp1Reviews", sorted[0].reviews != null ? String(sorted[0].reviews) : "", setForm);
               autoSet("comp1Platform", sorted[0].platform, setForm);
             }
             if (sorted.length >= 2) {
-              autoSet("comp2Name", sorted[1].platform, setForm);
+              autoSet("comp2Name", sorted[1].title || sorted[1].platform, setForm);
               autoSet("comp2Price", String(sorted[1].price), setForm);
               autoSet("comp2Rating", sorted[1].rating != null ? String(sorted[1].rating) : "", setForm);
               autoSet("comp2Reviews", sorted[1].reviews != null ? String(sorted[1].reviews) : "", setForm);
@@ -433,28 +468,8 @@ export default function ProductValidationPage() {
             const brands = data.platforms.map((p) => p.brand).filter((b): b is string => !!b && b.length > 0);
             if (brands.length > 0) {
               autoSet("brand", brands[0], setForm);
+              autoSet("isBranded", true, setForm);
             }
-          }
-
-          // Product Details: derive materials from category only (never certifications — regulatory claims)
-          const catLower = init.category.toLowerCase();
-          const titleLower = init.title.toLowerCase();
-          const isElectronics = /electron|led|light|bluetooth|wireless|charg|power|battery|cable|speaker|headphone|earb/i.test(catLower + " " + titleLower);
-          const isToys = /toy|game|puzzle|doll|action/i.test(catLower + " " + titleLower);
-          const isFashion = /cloth|fashion|shirt|dress|shoe|bag|jewel|watch/i.test(catLower + " " + titleLower);
-          const isBeauty = /beauty|skin|hair|makeup|cream|serum/i.test(catLower + " " + titleLower);
-          const isHome = /home|kitchen|furniture|decor|garden|bed|bath/i.test(catLower + " " + titleLower);
-
-          if (isElectronics) {
-            autoSet("materials", "plastic, metal, silicone", setForm);
-          } else if (isToys) {
-            autoSet("materials", "plastic, ABS", setForm);
-          } else if (isFashion) {
-            autoSet("materials", "cotton, polyester", setForm);
-          } else if (isBeauty) {
-            autoSet("materials", "natural extracts", setForm);
-          } else if (isHome) {
-            autoSet("materials", "stainless steel, silicone", setForm);
           }
 
           setAutoFetchStatus((s) => ({ ...s, enrichment: "done" }));
@@ -484,8 +499,14 @@ export default function ProductValidationPage() {
           const metaLive = !metaStatus || metaStatus === "live";
 
           if (metaLive) {
-            if (data.estimatedSellers) autoSet("sellerCount", String(data.estimatedSellers), setForm);
+            if (typeof data.estimatedSellers === "number") autoSet("sellerCount", String(data.estimatedSellers), setForm);
             if (data.avgSellerRating) autoSet("avgRating", String(data.avgSellerRating), setForm);
+            if (typeof data.interestIndex === "number") {
+              autoSet("searchInterestIndex", String(data.interestIndex), setForm);
+            }
+            if (Array.isArray(data.trendSparkline) && data.trendSparkline.length > 0) {
+              autoSet("historicalInterestIndex", data.trendSparkline.join(", "), setForm);
+            }
             if (data.competitionLevel) {
               const levelMap: Record<string, FormData["competitionLevel"]> = {
                 low: "low", medium: "medium", high: "high", "very-high": "very-high",
@@ -537,6 +558,10 @@ export default function ProductValidationPage() {
           trendVelocity: {
             currentSearchVolume: parseFloat(form.searchVolume) || 0,
             historicalSearchVolumes: parseList(form.historicalVolumes),
+            currentSearchInterestIndex: form.searchInterestIndex.trim()
+              ? parseFloat(form.searchInterestIndex)
+              : undefined,
+            historicalSearchInterest: parseList(form.historicalInterestIndex),
             currentSellerCount: parseFloat(form.sellerCount) || 0,
             historicalSellerCounts: parseList(form.historicalSellers),
             currentPrice: parseFloat(form.currentPrice) || 0,
@@ -577,7 +602,7 @@ export default function ProductValidationPage() {
             returnRate: parseFloat(form.returnRate) || 0,
             competitionLevel: form.competitionLevel,
           },
-          productAuthenticity: form.brand || form.materials || form.certifications ? {
+          productAuthenticity: {
             productTitle: form.productTitle,
             productUrl: form.productUrl,
             productImage: form.productImage,
@@ -586,7 +611,7 @@ export default function ProductValidationPage() {
             certifications: form.certifications.split(",").map(s => s.trim()).filter(Boolean),
             pricePoint: parseFloat(form.currentPrice) || 0,
             category: form.category,
-          } : undefined,
+          },
           supplierValidation: form.supplierName ? {
             supplierName: form.supplierName,
             supplierUrl: form.supplierUrl,
@@ -698,9 +723,9 @@ export default function ProductValidationPage() {
       </div>
 
       {/* Quick Validate Bar */}
-      <div className="glass rounded-2xl p-4 border border-accent/10">
+      <div className="glass rounded-2xl p-3 border border-accent/10">
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
-          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
             <div className="lg:col-span-2">
               <label className="text-[10px] text-muted-foreground mb-1 block">Product Title *</label>
               <input
@@ -731,19 +756,6 @@ export default function ProductValidationPage() {
                 className="w-full px-3 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-accent/30 focus:border-accent/30 transition-all"
               />
             </div>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={handleValidate}
-              disabled={loading || !form.productTitle.trim()}
-              className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-accent hover:bg-accent-hover text-white font-semibold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-            >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-              {loading ? "Analyzing..." : "Validate"}
-            </button>
-            <button onClick={handleReset} className="px-3 py-2.5 rounded-xl bg-surface border border-border text-muted-foreground hover:text-foreground transition-colors" title="Reset">
-              <RotateCcw className="h-4 w-4" />
-            </button>
           </div>
         </div>
 
@@ -805,7 +817,7 @@ export default function ProductValidationPage() {
           <div className="mt-3 flex items-center gap-2 p-2 rounded-xl bg-emerald-400/5 border border-emerald-400/10">
             <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
             <p className="text-[11px] text-emerald-400">
-              Data auto-filled from {completedFetches} source{completedFetches > 1 ? "s" : ""} — review & click Validate
+              Data auto-filled from {completedFetches} source{completedFetches > 1 ? "s" : ""}
             </p>
             <button
               onClick={() => {
@@ -822,9 +834,8 @@ export default function ProductValidationPage() {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left: Tabbed Form */}
-        <div className="lg:col-span-1 space-y-4">
+      <div className="space-y-4">
+        <div className="space-y-3">
           {/* Tab Navigation */}
           <div className="flex gap-1 p-1 rounded-xl bg-surface/50 border border-border">
             {TABS.map((tab) => {
@@ -847,117 +858,190 @@ export default function ProductValidationPage() {
             })}
           </div>
 
+          <div className="sticky top-16 z-30 -mx-1" role="group" aria-label="Validation actions">
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background/95 px-3 py-2.5 shadow-lg shadow-black/10 backdrop-blur-xl sm:px-4">
+              <div className="min-w-0">
+                <p className="truncate text-xs font-medium text-foreground">
+                  {form.productTitle.trim() || "Product details required"}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {anyLoading ? "Fetching product data..." : hasProductContext && completedFetches > 0 ? `${completedFetches} data sources ready` : "Validation results appear below"}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  aria-label="Reset form"
+                  title="Reset form"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleValidate}
+                  disabled={loading || anyLoading || !form.productTitle.trim()}
+                  className="flex min-h-9 items-center justify-center gap-2 rounded-lg bg-accent px-4 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:cursor-not-allowed disabled:opacity-50 sm:px-5"
+                >
+                  {loading || anyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                  {loading ? "Analyzing..." : anyLoading ? "Loading..." : "Validate"}
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Tab Content */}
-          <div className="glass rounded-2xl p-4 border border-border min-h-[400px]">
+          <div className="min-w-0">
             {activeTab === "core" && (
               <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="h-7 w-7 rounded-lg bg-blue-400/10 flex items-center justify-center">
-                    <BarChart3 className="h-3.5 w-3.5 text-blue-400" />
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-400/10">
+                    <BarChart3 className="h-4 w-4 text-blue-400" />
                   </div>
                   <div>
                     <h3 className="text-sm font-semibold text-foreground">Core Metrics</h3>
-                    <p className="text-[10px] text-muted-foreground">Essential data for validation</p>
+                    <p className="text-xs text-muted-foreground">Demand, competition, and unit economics</p>
                   </div>
                 </div>
 
-                <Input label="Product Image URL" value={form.productImage} onChange={(v) => update("productImage", v)} placeholder="https://..." />
-                <Input label="Product URL" value={form.productUrl} onChange={(v) => update("productUrl", v)} placeholder="https://..." />
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 items-start gap-2">
+                  <div className="min-w-0 space-y-2">
+                    <section className="rounded-xl border border-border bg-surface/35 p-2.5 space-y-2">
+                      <div>
+                        <h4 className="text-xs font-semibold text-foreground">Product Source</h4>
+                        <p className="text-[10px] text-muted-foreground">Listing details and reference links</p>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2">
+                        <Input label="Product Image URL" value={form.productImage} onChange={(v) => update("productImage", v)} placeholder="https://..." />
+                        <Input label="Product URL" value={form.productUrl} onChange={(v) => update("productUrl", v)} placeholder="https://..." />
+                      </div>
+                    </section>
 
-                <div className="border-t border-border pt-3">
-                  <p className="text-[10px] text-muted-foreground font-semibold mb-2 uppercase tracking-wider">Trend Data</p>
-                  <Input label="Search Volume" value={form.searchVolume} onChange={(v) => update("searchVolume", v)} type="number" />
-                  <Input label="Historical Volumes" value={form.historicalVolumes} onChange={(v) => update("historicalVolumes", v)} placeholder="10k,15k,22k..." />
-                  <Input label="Seller Count" value={form.sellerCount} onChange={(v) => update("sellerCount", v)} type="number" />
-                  <Input label="Historical Sellers" value={form.historicalSellers} onChange={(v) => update("historicalSellers", v)} placeholder="10,15,20..." />
-                </div>
-
-                <div className="border-t border-border pt-3">
-                  <p className="text-[10px] text-muted-foreground font-semibold mb-2 uppercase tracking-wider">Saturation Data</p>
-                  <Input label="Top Seller Market Share %" value={form.topSellerShare} onChange={(v) => update("topSellerShare", v)} type="number" />
-                  <Input label="Avg Seller Rating" value={form.avgRating} onChange={(v) => update("avgRating", v)} type="number" />
-                  <Input label="Avg Seller Reviews" value={form.avgReviews} onChange={(v) => update("avgReviews", v)} type="number" />
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input label="Price Min" value={form.priceMin} onChange={(v) => update("priceMin", v)} type="number" />
-                    <Input label="Price Max" value={form.priceMax} onChange={(v) => update("priceMax", v)} type="number" />
+                    <section className="rounded-xl border border-border bg-surface/35 p-2.5 space-y-2">
+                      <div>
+                        <h4 className="text-xs font-semibold text-foreground">Market Saturation</h4>
+                        <p className="text-[10px] text-muted-foreground">Seller strength and price landscape</p>
+                      </div>
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-1.5">
+                        <Input label="Top Seller Market Share %" value={form.topSellerShare} onChange={(v) => update("topSellerShare", v)} type="number" />
+                        <Input label="Avg Seller Rating" value={form.avgRating} onChange={(v) => update("avgRating", v)} type="number" />
+                        <Input label="Avg Seller Reviews" value={form.avgReviews} onChange={(v) => update("avgReviews", v)} type="number" />
+                        <Input label="Price Min" value={form.priceMin} onChange={(v) => update("priceMin", v)} type="number" />
+                        <Input label="Price Max" value={form.priceMax} onChange={(v) => update("priceMax", v)} type="number" />
+                      </div>
+                    </section>
                   </div>
-                </div>
 
-                <div className="border-t border-border pt-3">
-                  <p className="text-[10px] text-muted-foreground font-semibold mb-2 uppercase tracking-wider">Profit Data</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input label="Product Cost" value={form.productCost} onChange={(v) => update("productCost", v)} type="number" />
-                    <Input label="Selling Price" value={form.sellingPrice} onChange={(v) => update("sellingPrice", v)} type="number" />
-                  </div>
-                  <Input label="Shipping Cost" value={form.shippingCost} onChange={(v) => update("shippingCost", v)} type="number" />
-                  <Input label="Platform Fee %" value={form.platformFee} onChange={(v) => update("platformFee", v)} type="number" />
-                  <Input label="Ad Cost Per Click" value={form.adCostPerClick} onChange={(v) => update("adCostPerClick", v)} type="number" />
-                  <Input label="Conversion Rate %" value={form.conversionRate} onChange={(v) => update("conversionRate", v)} type="number" />
-                  <Input label="Return Rate %" value={form.returnRate} onChange={(v) => update("returnRate", v)} type="number" />
-                  <Input label="Monthly Ad Budget" value={form.monthlyBudget} onChange={(v) => update("monthlyBudget", v)} type="number" />
-                  <Input label="Est. Monthly Sales" value={form.monthlySales} onChange={(v) => update("monthlySales", v)} type="number" />
-                </div>
+                  <section className="min-w-0 rounded-xl border border-border bg-surface/35 p-2.5 space-y-2 xl:col-span-3">
+                    <div>
+                      <h4 className="text-xs font-semibold text-foreground">Demand & Trend</h4>
+                      <p className="text-[10px] text-muted-foreground">Search interest and historical movement</p>
+                    </div>
+                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-1.5">
+                      <Input label="Search Volume" value={form.searchVolume} onChange={(v) => update("searchVolume", v)} type="number" />
+                      <Input label="Search Interest Index (0-100)" value={form.searchInterestIndex} onChange={(v) => update("searchInterestIndex", v)} type="number" />
+                      <Input label="Historical Volumes" value={form.historicalVolumes} onChange={(v) => update("historicalVolumes", v)} placeholder="10k, 15k, 22k..." />
+                      <Input label="Historical Interest Index" value={form.historicalInterestIndex} onChange={(v) => update("historicalInterestIndex", v)} placeholder="12, 18, 24, 31..." />
+                      <Input label="Historical Prices" value={form.historicalPrices} onChange={(v) => update("historicalPrices", v)} placeholder="34.99, 32.99, 30.99..." />
+                      <Input label="Seller Count" value={form.sellerCount} onChange={(v) => update("sellerCount", v)} type="number" />
+                      <Input label="Historical Sellers" value={form.historicalSellers} onChange={(v) => update("historicalSellers", v)} placeholder="10, 15, 20..." />
+                    </div>
+                  </section>
 
-                <div className="border-t border-border pt-3">
-                  <p className="text-[10px] text-muted-foreground font-semibold mb-2 uppercase tracking-wider">Seasonal Data</p>
-                  <Input label="Monthly Search Volumes (12)" value={form.monthlySearchVolumes} onChange={(v) => update("monthlySearchVolumes", v)} />
-                  <Input label="Monthly Sales Data (12)" value={form.monthlySalesData} onChange={(v) => update("monthlySalesData", v)} />
-                  <Input label="Monthly Revenue (12)" value={form.monthlyRevenue} onChange={(v) => update("monthlyRevenue", v)} />
-                </div>
+                  <section className="min-w-0 rounded-xl border border-border bg-surface/35 p-2.5 space-y-2 md:col-span-2">
+                    <div>
+                      <h4 className="text-xs font-semibold text-foreground">Profit Model</h4>
+                      <p className="text-[10px] text-muted-foreground">Estimate costs, acquisition, and sales performance</p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-1.5">
+                      <Input label="Product Cost" value={form.productCost} onChange={(v) => update("productCost", v)} type="number" />
+                      <Input label="Estimated Selling Price" value={form.sellingPrice} onChange={(v) => update("sellingPrice", v)} type="number" />
+                      <Input label="Shipping Cost" value={form.shippingCost} onChange={(v) => update("shippingCost", v)} type="number" />
+                      <Input label="Platform Fee %" value={form.platformFee} onChange={(v) => update("platformFee", v)} type="number" />
+                      <Input label="Ad Cost Per Click" value={form.adCostPerClick} onChange={(v) => update("adCostPerClick", v)} type="number" />
+                      <Input label="Conversion Rate %" value={form.conversionRate} onChange={(v) => update("conversionRate", v)} type="number" />
+                      <Input label="Return Rate %" value={form.returnRate} onChange={(v) => update("returnRate", v)} type="number" />
+                      <Input label="Monthly Ad Budget" value={form.monthlyBudget} onChange={(v) => update("monthlyBudget", v)} type="number" />
+                      <Input label="Est. Monthly Sales" value={form.monthlySales} onChange={(v) => update("monthlySales", v)} type="number" />
+                    </div>
+                  </section>
 
-                <div className="border-t border-border pt-3">
-                  <p className="text-[10px] text-muted-foreground font-semibold mb-2 uppercase tracking-wider">Additional Criteria</p>
-                  <Input label="Review Score (0-5)" value={form.reviewScore} onChange={(v) => update("reviewScore", v)} type="number" />
-                  <Input label="Review Count" value={form.reviewCount} onChange={(v) => update("reviewCount", v)} type="number" />
-                  <Input label="Supplier Reliability (0-100)" value={form.supplierReliability} onChange={(v) => update("supplierReliability", v)} type="number" />
-                  <Input label="Shipping Speed (days)" value={form.shippingSpeed} onChange={(v) => update("shippingSpeed", v)} type="number" />
-                  <div>
-                    <label className="text-[10px] text-muted-foreground mb-1 block">Competition Level</label>
-                    <select
-                      value={form.competitionLevel}
-                      onChange={(e) => update("competitionLevel", e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30"
-                    >
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                      <option value="very-high">Very High</option>
-                    </select>
-                  </div>
+                  <section className="min-w-0 rounded-xl border border-border bg-surface/35 p-2.5 space-y-2">
+                    <div>
+                      <h4 className="text-xs font-semibold text-foreground">Seasonal Data</h4>
+                      <p className="text-[10px] text-muted-foreground">12-month history, comma separated</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Input label="Monthly Search Volumes" value={form.monthlySearchVolumes} onChange={(v) => update("monthlySearchVolumes", v)} placeholder="Jan, Feb, ... Dec" />
+                      <Input label="Monthly Sales Data" value={form.monthlySalesData} onChange={(v) => update("monthlySalesData", v)} placeholder="Jan, Feb, ... Dec" />
+                      <Input label="Monthly Revenue" value={form.monthlyRevenue} onChange={(v) => update("monthlyRevenue", v)} placeholder="Jan, Feb, ... Dec" />
+                    </div>
+                  </section>
+
+                  <section className="min-w-0 rounded-xl border border-border bg-surface/35 p-2.5 space-y-2">
+                    <div>
+                      <h4 className="text-xs font-semibold text-foreground">Additional Signals</h4>
+                      <p className="text-[10px] text-muted-foreground">Reviews and supplier performance</p>
+                    </div>
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-1.5">
+                      <Input label="Review Score (0-5)" value={form.reviewScore} onChange={(v) => update("reviewScore", v)} type="number" />
+                      <Input label="Review Count" value={form.reviewCount} onChange={(v) => update("reviewCount", v)} type="number" />
+                      <Input label="Supplier Reliability (0-100)" value={form.supplierReliability} onChange={(v) => update("supplierReliability", v)} type="number" />
+                      <Input label="Shipping Speed (days)" value={form.shippingSpeed} onChange={(v) => update("shippingSpeed", v)} type="number" />
+                      <div>
+                        <label className="text-[10px] text-muted-foreground mb-1 block">Competition Level</label>
+                        <select
+                          value={form.competitionLevel}
+                          onChange={(e) => update("competitionLevel", e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent/30"
+                        >
+                          <option value="low">Low</option>
+                          <option value="medium">Medium</option>
+                          <option value="high">High</option>
+                          <option value="very-high">Very High</option>
+                        </select>
+                      </div>
+                    </div>
+                  </section>
                 </div>
               </div>
             )}
 
             {activeTab === "product" && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="h-7 w-7 rounded-lg bg-emerald-400/10 flex items-center justify-center">
-                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-2">
+                <section className="xl:col-span-3 rounded-xl border border-border bg-surface/35 p-3">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-400/10">
+                      <ShieldCheck className="h-4 w-4 text-emerald-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">Product Authenticity</h3>
+                      <p className="text-xs text-muted-foreground">Verify product identity and specifications</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground">Product Authenticity</h3>
-                    <p className="text-[10px] text-muted-foreground">Verify product legitimacy</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+                    <Input label="Brand" value={form.brand} onChange={(v) => update("brand", v)} placeholder="e.g. Sony, Nike, Generic" />
+                    <Input label="Materials (comma-separated)" value={form.materials} onChange={(v) => update("materials", v)} placeholder="e.g. plastic, metal, silicone" />
+                    <Input label="Certifications (comma-separated)" value={form.certifications} onChange={(v) => update("certifications", v)} placeholder="e.g. CE, FCC, UL" />
                   </div>
-                </div>
-                <Input label="Brand" value={form.brand} onChange={(v) => update("brand", v)} placeholder="e.g. Sony, Nike, Generic" />
-                <Input label="Materials (comma-sep)" value={form.materials} onChange={(v) => update("materials", v)} placeholder="e.g. plastic, metal, silicone" />
-                <Input label="Certifications (comma-sep)" value={form.certifications} onChange={(v) => update("certifications", v)} placeholder="e.g. CE, FCC, UL" />
+                </section>
               </div>
             )}
 
             {activeTab === "supply" && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="h-7 w-7 rounded-lg bg-amber-400/10 flex items-center justify-center">
-                    <Truck className="h-3.5 w-3.5 text-amber-400" />
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
+                <div className="xl:col-span-2 flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-400/10">
+                    <Truck className="h-4 w-4 text-amber-400" />
                   </div>
                   <div>
                     <h3 className="text-sm font-semibold text-foreground">Supplier & Competition</h3>
-                    <p className="text-[10px] text-muted-foreground">Supply chain analysis</p>
+                    <p className="text-xs text-muted-foreground">Supplier quality and market benchmarks</p>
                   </div>
                 </div>
 
-                <div className="border-b border-border pb-3">
+                <section className="min-w-0 rounded-xl border border-border bg-surface/35 p-3 space-y-2">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Supplier Details</p>
                     {autoFetchStatus.suppliers === "loading" && <Loader2 className="h-3 w-3 text-accent animate-spin" />}
@@ -977,9 +1061,9 @@ export default function ProductValidationPage() {
                     <input type="checkbox" checked={form.sampleAvailable} onChange={(e) => update("sampleAvailable", e.target.checked)} className="rounded" />
                     <label className="text-[10px] text-muted-foreground">Sample Available</label>
                   </div>
-                </div>
+                </section>
 
-                <div>
+                <section className="min-w-0 rounded-xl border border-border bg-surface/35 p-3 space-y-2">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Competition</p>
                     {autoFetchStatus.enrichment === "loading" && <Loader2 className="h-3 w-3 text-accent animate-spin" />}
@@ -987,7 +1071,7 @@ export default function ProductValidationPage() {
                   </div>
                   <Input label="Average Market Price" value={form.avgMarketPrice} onChange={(v) => update("avgMarketPrice", v)} type="number" />
 
-                  <div className="mt-2 p-2.5 rounded-xl bg-surface/30">
+                  <div className="border-t border-border pt-3">
                     <p className="text-[10px] text-muted-foreground font-semibold mb-2">Competitor 1</p>
                     <Input label="Name" value={form.comp1Name} onChange={(v) => update("comp1Name", v)} placeholder="Competitor name" />
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -997,7 +1081,7 @@ export default function ProductValidationPage() {
                     </div>
                   </div>
 
-                  <div className="mt-2 p-2.5 rounded-xl bg-surface/30">
+                  <div className="border-t border-border pt-3">
                     <p className="text-[10px] text-muted-foreground font-semibold mb-2">Competitor 2</p>
                     <Input label="Name" value={form.comp2Name} onChange={(v) => update("comp2Name", v)} placeholder="Competitor name" />
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -1006,24 +1090,24 @@ export default function ProductValidationPage() {
                       <Input label="Reviews" value={form.comp2Reviews} onChange={(v) => update("comp2Reviews", v)} type="number" />
                     </div>
                   </div>
-                </div>
+                </section>
               </div>
             )}
 
             {activeTab === "risk" && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="h-7 w-7 rounded-lg bg-red-400/10 flex items-center justify-center">
-                    <AlertOctagon className="h-3.5 w-3.5 text-red-400" />
+              <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-2">
+                <div className="md:col-span-2 2xl:col-span-3 flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-400/10">
+                    <AlertOctagon className="h-4 w-4 text-red-400" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-foreground">Risk & Market Intel</h3>
-                    <p className="text-[10px] text-muted-foreground">Compliance & market data</p>
+                    <h3 className="text-sm font-semibold text-foreground">Risk & Market Intelligence</h3>
+                    <p className="text-xs text-muted-foreground">Shipping profile, demand, and customer fit</p>
                   </div>
                 </div>
 
-                <div className="border-b border-border pb-3">
-                  <p className="text-[10px] text-muted-foreground font-semibold mb-2 uppercase tracking-wider">Shipping & Compliance</p>
+                <section className="min-w-0 rounded-xl border border-border bg-surface/35 p-3 space-y-2">
+                  <p className="text-xs font-semibold text-foreground">Shipping & Compliance</p>
                   <Input label="Target Markets (comma-sep)" value={form.targetMarkets} onChange={(v) => update("targetMarkets", v)} placeholder="US,UK,CA" />
                   <Input label="Shipping Methods (comma-sep)" value={form.shippingMethods} onChange={(v) => update("shippingMethods", v)} placeholder="standard,express" />
                   <Input label="Weight (lbs)" value={form.weight} onChange={(v) => update("weight", v)} type="number" />
@@ -1042,30 +1126,30 @@ export default function ProductValidationPage() {
                       <label className="text-[10px] text-muted-foreground">Has Variants</label>
                     </div>
                   </div>
-                </div>
+                </section>
 
-                <div>
+                <section className="min-w-0 rounded-xl border border-border bg-surface/35 p-3 space-y-2">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Market Intelligence</p>
+                    <p className="text-xs font-semibold text-foreground">Market Intelligence</p>
                     {autoFetchStatus.marketIntel === "loading" && <Loader2 className="h-3 w-3 text-accent animate-spin" />}
                     {autoFetchStatus.marketIntel === "done" && <span className="text-[9px] text-emerald-400">Auto-filled</span>}
                   </div>
                   <Input label="Target Audience" value={form.targetAudience} onChange={(v) => update("targetAudience", v)} placeholder="e.g. 25-44, fitness enthusiasts" />
                   <Input label="Monthly Sales Estimate" value={form.monthlySalesEstimate} onChange={(v) => update("monthlySalesEstimate", v)} type="number" />
-                </div>
+                </section>
 
-                <div>
-                  <p className="text-[10px] text-muted-foreground font-semibold mb-2 uppercase tracking-wider">Bundle & Upsell</p>
+                <section className="min-w-0 rounded-xl border border-border bg-surface/35 p-3 space-y-2">
+                  <p className="text-xs font-semibold text-foreground">Bundle & Upsell</p>
                   <Input label="Average Order Value" value={form.avgOrderValue} onChange={(v) => update("avgOrderValue", v)} type="number" />
                   <Input label="Customer Segment" value={form.customerSegment} onChange={(v) => update("customerSegment", v)} placeholder="e.g. general, premium, budget" />
-                </div>
+                </section>
               </div>
             )}
           </div>
         </div>
 
         {/* Right: Results */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="space-y-4">
           {error && (
             <div className="glass rounded-2xl p-4 border border-red-400/20 bg-red-400/5">
               <p className="text-sm text-red-400">{error}</p>
@@ -1093,15 +1177,18 @@ export default function ProductValidationPage() {
           )}
 
           {!loading && !result && (
-            <div className="glass rounded-2xl p-12 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-4">
-                <Sparkles className="h-8 w-8 text-accent/40" />
-              </div>
-              <h3 className="font-display text-lg font-semibold text-foreground mb-2">Ready to Validate</h3>
-              <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-                Enter your product details and click &quot;Validate&quot; to get a comprehensive analysis across trend, profit, risk, and market dimensions.
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-lg mx-auto">
+            <div className="glass rounded-xl border border-border p-5">
+              <div className="flex flex-col gap-5 xl:flex-row xl:items-center">
+                <div className="flex items-center gap-3 xl:w-72 xl:shrink-0">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-accent/10">
+                    <Sparkles className="h-5 w-5 text-accent/70" />
+                  </div>
+                  <div>
+                    <h3 className="font-display text-base font-semibold text-foreground">Ready to Validate</h3>
+                    <p className="text-xs text-muted-foreground">Results appear here after analysis.</p>
+                  </div>
+                </div>
+                <div className="grid flex-1 grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 xl:grid-cols-6">
                 {[
                   { icon: TrendingUp, label: "Trend Velocity", color: "text-emerald-400" },
                   { icon: DollarSign, label: "Profit Potential", color: "text-amber-400" },
@@ -1112,12 +1199,13 @@ export default function ProductValidationPage() {
                 ].map((item) => {
                   const Icon = item.icon;
                   return (
-                    <div key={item.label} className="flex items-center gap-2 p-2.5 rounded-xl bg-surface/30 border border-border">
-                      <Icon className={`h-4 w-4 ${item.color}`} />
-                      <span className="text-[10px] text-muted-foreground">{item.label}</span>
+                    <div key={item.label} className="flex min-w-0 items-center gap-2 border-l border-border pl-3 first:border-l-0 first:pl-0">
+                      <Icon className={`h-4 w-4 shrink-0 ${item.color}`} />
+                      <span className="text-[11px] leading-4 text-muted-foreground">{item.label}</span>
                     </div>
                   );
                 })}
+                </div>
               </div>
             </div>
           )}

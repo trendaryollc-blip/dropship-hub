@@ -19,7 +19,9 @@ export default function SupplierContactSlideOver({ isOpen, onClose, supplierId, 
     subject: "",
     message: "",
     quantity: "",
+    contactEmail: "",
   });
+  const [deliveryStatus, setDeliveryStatus] = useState<"sent" | "logged" | "failed" | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -123,6 +125,7 @@ export default function SupplierContactSlideOver({ isOpen, onClose, supplierId, 
           quantity: formData.quantity,
           subject: formData.subject,
           message: formData.message,
+          contactEmail: formData.contactEmail || undefined,
         }),
       });
 
@@ -132,6 +135,7 @@ export default function SupplierContactSlideOver({ isOpen, onClose, supplierId, 
         throw new Error(data.error || "Failed to send inquiry");
       }
 
+      setDeliveryStatus(data.delivery ?? "logged");
       setSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred");
@@ -142,7 +146,8 @@ export default function SupplierContactSlideOver({ isOpen, onClose, supplierId, 
 
   const handleClose = () => {
     setSubmitted(false);
-    setFormData({ name: "", email: "", company: "", subject: "", message: "", quantity: "" });
+    setFormData({ name: "", email: "", company: "", subject: "", message: "", quantity: "", contactEmail: "" });
+    setDeliveryStatus(null);
     setError(null);
     setIsMinimized(false);
     onClose();
@@ -210,9 +215,15 @@ export default function SupplierContactSlideOver({ isOpen, onClose, supplierId, 
             {submitted ? (
               <div className="text-center py-12">
                 <CheckCircle2 className="h-14 w-14 text-emerald-400 mx-auto mb-4" />
-                <h4 className="text-lg font-semibold text-white mb-2">Inquiry Logged</h4>
+                <h4 className="text-lg font-semibold text-white mb-2">
+                  {deliveryStatus === "sent" ? "Inquiry Sent" : deliveryStatus === "failed" ? "Saved, Delivery Failed" : "Inquiry Logged"}
+                </h4>
                 <p className="text-sm text-neutral-400 mb-6 max-w-xs mx-auto">
-                  Your inquiry for {supplierName} is saved to your records. Outbound delivery to the supplier is not wired yet — copy the message and email them using the contact details on their page.
+                  {deliveryStatus === "sent"
+                    ? `Your inquiry for ${supplierName} was emailed to the supplier.`
+                    : deliveryStatus === "failed"
+                      ? `Your inquiry for ${supplierName} was saved but the email could not be delivered. Check Settings → Email provider.`
+                      : `Your inquiry for ${supplierName} is saved to your records. Add a supplier contact email to deliver it in the future.`}
                 </p>
                 <button
                   onClick={handleClose}
@@ -276,6 +287,17 @@ export default function SupplierContactSlideOver({ isOpen, onClose, supplierId, 
                       placeholder="e.g., 100-500 units/month"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] text-neutral-400 mb-1.5 font-medium">Supplier's Email (for delivery)</label>
+                  <input
+                    type="email"
+                    value={formData.contactEmail}
+                    onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.06] text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all"
+                    placeholder="supplier@example.com (optional)"
+                  />
                 </div>
 
                 <div>

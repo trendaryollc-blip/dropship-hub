@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
 const mockMutate = vi.fn();
+const mockSearchParams = vi.hoisted(() => vi.fn(() => new URLSearchParams()));
 
 const mockRule = {
   id: "r1", productTitle: "Wireless Earbuds", myPrice: 29.99, cost: 12, floorPrice: 15,
@@ -29,6 +30,7 @@ function defaultUseAPIMock(url: string) {
 
 const mockUseAPI = vi.fn(defaultUseAPIMock);
 vi.mock("@/hooks/useAPI", () => ({ useAPI: (url: string) => mockUseAPI(url) }));
+vi.mock("next/navigation", () => ({ useSearchParams: () => mockSearchParams() }));
 
 vi.mock("@/components/auth/AuthProvider", () => ({
   useAuth: () => ({ user: { uid: "u1" } }),
@@ -51,6 +53,7 @@ import PriceWarPage from "./page";
 beforeEach(() => {
   vi.clearAllMocks();
   mockUseAPI.mockReset().mockImplementation(defaultUseAPIMock);
+  mockSearchParams.mockReturnValue(new URLSearchParams());
 });
 
 describe("PriceWarPage", () => {
@@ -66,6 +69,16 @@ describe("PriceWarPage", () => {
     render(<PriceWarPage />);
     expect(screen.getAllByText("60%").length).toBeGreaterThan(0); // avg margin maintained
     expect(screen.getByText("1/1")).toBeTruthy(); // active/total
+  });
+
+  it("opens a product-prefilled rule form without creating the rule automatically", () => {
+    mockSearchParams.mockReturnValue(new URLSearchParams("productTitle=Wireless+Headphones&myPrice=65.98&cost=29.99&platforms=amazon&productImage=https%3A%2F%2Fexample.com%2Fheadphones.jpg&productUrl=https%3A%2F%2Famazon.com%2Fdp%2FASIN123456"));
+    render(<PriceWarPage />);
+    expect(screen.getByPlaceholderText("Product title")).toHaveValue("Wireless Headphones");
+    expect(screen.getByPlaceholderText("My price ($)")).toHaveValue(65.98);
+    expect(screen.getByPlaceholderText("Cost ($)")).toHaveValue(29.99);
+    expect(screen.getByPlaceholderText("Platforms (comma separated, e.g. amazon, ebay)")).toHaveValue("amazon");
+    expect(mockAuthJson).not.toHaveBeenCalled();
   });
 
   it("shows empty state when no rules exist", () => {

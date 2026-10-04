@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   ShieldCheck,
   Search,
@@ -40,23 +41,28 @@ interface Props {
 }
 
 export default function ComplianceCheckForm({ onSubmit, onBatchSubmit, loading }: Props) {
+  const searchParams = useSearchParams();
   const [expanded, setExpanded] = useState(true);
   const [mode, setMode] = useState<"single" | "batch">("single");
-  const [form, setForm] = useState<ComplianceCheckInput>({
-    productTitle: "",
+  const [form, setForm] = useState<ComplianceCheckInput>(() => {
+    const productImage = searchParams.get("productImage") || "";
+    const sellingPrice = Number.parseFloat(searchParams.get("sellingPrice") || "");
+    return {
+    productTitle: searchParams.get("productTitle") || "",
     productDescription: "",
     brand: "",
-    category: "",
+    category: searchParams.get("category") || "",
     materials: [],
     targetMarkets: ["US"],
-    sellingPrice: 0,
-    productImages: [],
+    sellingPrice: Number.isFinite(sellingPrice) ? sellingPrice : 0,
+    productImages: productImage ? [productImage] : [],
     supplierUrl: "",
-    productUrl: "",
-    productImage: "",
+    productUrl: searchParams.get("productUrl") || "",
+    productImage,
     checkTypes: ["trademark", "dmca", "restricted_item", "ad_policy", "image_originality", "brand_registry", "patent", "export_control"],
     beforeAfterClaims: "",
     healthClaims: [],
+    };
   });
 
   const [materialInput, setMaterialInput] = useState("");

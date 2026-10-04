@@ -85,6 +85,14 @@ describe("StickyProductBar", () => {
     expect(link).toHaveAttribute("target", "_blank");
   });
 
+  it("uses the provided linkLabel when the link is a search fallback", () => {
+    render(<StickyProductBar {...defaultProps} linkLabel="Search amazon for this product" />);
+    showBar();
+    const link = screen.getByRole("link", { name: /Search amazon for this product/i });
+    expect(link).toHaveAttribute("href", "https://amazon.com/product/123");
+    expect(screen.queryByText(/View on Amazon/i)).not.toBeInTheDocument();
+  });
+
   it("renders the product image when provided", () => {
     const { container } = render(<StickyProductBar {...defaultProps} />);
     showBar();

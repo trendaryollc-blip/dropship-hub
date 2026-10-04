@@ -2,7 +2,7 @@
 
 import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Shield, Search, BarChart3, Handshake } from "lucide-react";
+import { Shield, Search, BarChart3, Handshake, Wrench } from "lucide-react";
 import dynamic from "next/dynamic";
 
 const DiscoverTab = dynamic(() => import("./tabs/DiscoverTab"), {
@@ -29,12 +29,21 @@ const SRMTab = dynamic(() => import("./tabs/SRMTab"), {
   ),
 });
 
-type TabId = "discover" | "intel" | "srm";
+const ToolsTab = dynamic(() => import("./tabs/ToolsTab"), {
+  loading: () => (
+    <div className="flex items-center justify-center py-20">
+      <div className="h-8 w-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+    </div>
+  ),
+});
+
+type TabId = "discover" | "intel" | "srm" | "tools";
 
 const tabs = [
   { id: "discover" as TabId, label: "Discover", icon: Search },
   { id: "intel" as TabId, label: "Intel", icon: BarChart3 },
   { id: "srm" as TabId, label: "SRM", icon: Handshake },
+  { id: "tools" as TabId, label: "Tools", icon: Wrench },
 ];
 
 function SuppliersPageContent() {
@@ -87,6 +96,7 @@ function SuppliersPageContent() {
       {validTab === "discover" && <DiscoverTab />}
       {validTab === "intel" && <IntelTab />}
       {validTab === "srm" && <SRMTab />}
+      {validTab === "tools" && <ToolsTab />}
     </div>
   );
 }

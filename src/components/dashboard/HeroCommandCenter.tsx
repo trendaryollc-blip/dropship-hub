@@ -93,8 +93,17 @@ export function HeroCommandCenter({
                   className="relative group cursor-pointer"
                   onMouseEnter={() => setShowHealthTip(true)}
                   onMouseLeave={() => setShowHealthTip(false)}
+                  onFocus={() => setShowHealthTip(true)}
+                  onBlur={() => setShowHealthTip(false)}
                 >
-                  <svg viewBox="0 0 100 100" className="w-20 h-20 md:w-24 md:h-24 drop-shadow-lg transition-transform duration-300 group-hover:scale-105">
+                  <button
+                    type="button"
+                    aria-label={`Business health score ${healthScore} out of 100: ${healthLabel}. Activate for details.`}
+                    aria-expanded={showHealthTip}
+                    onClick={() => setShowHealthTip((v) => !v)}
+                    className="rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/60"
+                  >
+                  <svg viewBox="0 0 100 100" className="w-20 h-20 md:w-24 md:h-24 drop-shadow-lg transition-transform duration-300 group-hover:scale-105" role="img" aria-hidden="true">
                     <defs>
                       <linearGradient id="healthGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                         <stop offset="0%" stopColor={healthColor} stopOpacity="0.2" />
@@ -106,17 +115,18 @@ export function HeroCommandCenter({
                       strokeDasharray={2 * Math.PI * 42} strokeDashoffset={2 * Math.PI * 42 * (1 - (healthScore ?? 0) / 100)}
                       className="transition-all duration-1500 ease-out -rotate-90" />
                   </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                     <span className="font-display text-xl md:text-2xl font-bold text-white">{healthScore}</span>
                     <span className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: healthColor }}>{healthLabel}</span>
                   </div>
+                  </button>
 
                   {/* Tooltip */}
                   {showHealthTip && (
-                    <div className="absolute right-0 top-full mt-3 w-64 p-3 rounded-xl bg-gray-900/95 border border-white/[0.1] shadow-2xl backdrop-blur-xl z-50 animate-in fade-in slide-in-from-top-2">
+                    <div role="tooltip" className="absolute right-0 top-full mt-3 w-64 p-3 rounded-xl bg-gray-900/95 border border-white/[0.1] shadow-2xl backdrop-blur-xl z-50 animate-in fade-in slide-in-from-top-2">
                       <p className="text-xs text-gray-300 leading-relaxed">{healthTip}</p>
                       {healthCta && (
-                        <Link href="/settings" className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-cyan-400 hover:text-cyan-300 transition-colors">
+                        <Link href="/settings" className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-cyan-400 hover:text-cyan-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 rounded">
                           {healthCta} <ArrowUpRight className="h-3 w-3" />
                         </Link>
                       )}

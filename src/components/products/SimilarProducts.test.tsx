@@ -27,7 +27,7 @@ describe("SimilarProducts", () => {
   it("shows empty state when no results", async () => {
     render(<SimilarProducts category="Electronics" title="Headphones" />);
     await waitFor(() => {
-      expect(screen.getByText("No similar products found for this category")).toBeInTheDocument();
+      expect(screen.getByText("No similar products found for this product")).toBeInTheDocument();
     });
   });
 

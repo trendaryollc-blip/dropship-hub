@@ -7,6 +7,14 @@ vi.mock("@/lib/safe-fetch", () => ({
   safeFetch: vi.fn(() => Promise.resolve({})),
 }));
 
+vi.mock("@/components/auth/AuthProvider", () => ({
+  useAuth: () => ({ user: { uid: "u1", getIdToken: vi.fn(async () => "tok") } }),
+}));
+
+vi.mock("@/lib/auth-headers", () => ({
+  getAuthHeaders: vi.fn(async () => ({})),
+}));
+
 const defaultProps = {
   orderCounts: { pending: 3, in_progress: 2, shipped: 1, completed: 10 },
   totalOrders: 16,

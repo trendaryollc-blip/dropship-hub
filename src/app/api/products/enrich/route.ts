@@ -7,6 +7,7 @@ import { safeErrorMessage } from "@/lib/api-errors";
 
 interface PlatformPrice {
   platform: string;
+  title: string;
   price: number;
   rating: number | null;
   reviews: number | null;
@@ -20,9 +21,22 @@ interface EnrichmentResult {
   cheapest: PlatformPrice | null;
   mostExpensive: PlatformPrice | null;
   priceSpread: number;
-  supplierMatches: { id: string; name: string; trustBadge: string; location: string; flag: string; price: number | null; shippingToUS: string; shippingToEU: string; reliabilityScore: number; responseTime: string }[];
+  // trustBadge/shipping are null when the source has no measured value — the UI
+  // hides those fields instead of rendering an invented range or tier.
+  supplierMatches: { id: string; name: string; trustBadge: "gold" | "silver" | "bronze" | null; location: string; flag: string; price: number | null; shippingToUS: string | null; shippingToEU: string | null; reliabilityScore: number; responseTime: string }[];
   sourcesUsed: string[];
   coverage: { queried: number; succeeded: number; uniquePlatforms: number };
+}
+
+const TRUST_BADGES = new Set(["gold", "silver", "bronze"]);
+
+function measuredTrustBadge(value: string): "gold" | "silver" | "bronze" | null {
+  const normalized = value.toLowerCase();
+  return TRUST_BADGES.has(normalized) ? (normalized as "gold" | "silver" | "bronze") : null;
+}
+
+function measuredDays(days: number): string | null {
+  return days > 0 ? `${days} days` : null;
 }
 
 async function searchPlatformSafely(
@@ -34,6 +48,7 @@ async function searchPlatformSafely(
     const data = await searchFn(query);
     return (data.search_results || []).slice(0, 1).map((item) => ({
       platform: platformName,
+      title: item.title,
       price: item.price || 0,
       rating: typeof item.rating === "number" ? item.rating : null,
       reviews: typeof item.reviews === "number" ? item.reviews : null,
@@ -81,6 +96,7 @@ export const POST = withAuth(async (request: NextRequest) => {
     if (basePrice > 0 && !allPrices.some((p) => p.platform === source)) {
       allPrices.unshift({
         platform: source || "Original",
+        title: query,
         price: basePrice,
         rating: null,
         reviews: null,
@@ -111,12 +127,12 @@ export const POST = withAuth(async (request: NextRequest) => {
       supplierMatches = suppliers.slice(0, 3).map((s) => ({
           id: s.id,
           name: s.name,
-          trustBadge: s.trustBadge,
+          trustBadge: measuredTrustBadge(s.trustBadge),
           location: s.location,
           flag: s.flag,
           price: null,
-          shippingToUS: `${s.stats.shippingDays}-${s.stats.shippingDays + 5} days`,
-          shippingToEU: `${s.stats.shippingDaysEU}-${s.stats.shippingDaysEU + 5} days`,
+          shippingToUS: measuredDays(s.stats.shippingDays),
+          shippingToEU: measuredDays(s.stats.shippingDaysEU),
           reliabilityScore: s.stats.reliabilityScore,
           responseTime: s.stats.responseTime,
         }));

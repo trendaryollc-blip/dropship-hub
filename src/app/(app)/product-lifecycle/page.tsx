@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Activity, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2,
   Zap, ArrowRight, Search, Rocket, Sunset, Plus, X, Trash2,
@@ -68,18 +69,20 @@ function TrendIcon({ trend }: { trend: "rising" | "stable" | "declining" | null 
 
 // ─── Add Product Modal ──────────────────────────────────────────
 
-function AddProductModal({ open, onClose, onAdd }: {
+function AddProductModal({ open, onClose, onAdd, initialProduct }: {
   open: boolean;
   onClose: () => void;
-  onAdd: (data: { productTitle: string; productImage: string; category: string; currentStage: LifecycleStage; supplierUrl: string; storeUrl: string; notes: string }) => Promise<boolean>;
+  onAdd: (data: { productId: string; productTitle: string; productImage: string; category: string; currentStage: LifecycleStage; supplierUrl: string; storeUrl: string; notes: string }) => Promise<boolean>;
+  initialProduct: { productId: string; productTitle: string; productImage: string; category: string };
 }) {
-  const [title, setTitle] = useState("");
-  const [image, setImage] = useState("");
-  const [category, setCategory] = useState("");
+  const [title, setTitle] = useState(initialProduct.productTitle);
+  const [image, setImage] = useState(initialProduct.productImage);
+  const [category, setCategory] = useState(initialProduct.category);
   const [stage, setStage] = useState<LifecycleStage>("discovery");
   const [supplierUrl, setSupplierUrl] = useState("");
   const [storeUrl, setStoreUrl] = useState("");
   const [notes, setNotes] = useState("");
+  const [productId, setProductId] = useState(initialProduct.productId);
   const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -97,7 +100,7 @@ function AddProductModal({ open, onClose, onAdd }: {
   }, [open, onClose]);
 
   const reset = () => {
-    setTitle(""); setImage(""); setCategory(""); setStage("discovery"); setSupplierUrl(""); setStoreUrl(""); setNotes("");
+    setProductId(""); setTitle(""); setImage(""); setCategory(""); setStage("discovery"); setSupplierUrl(""); setStoreUrl(""); setNotes("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -105,7 +108,7 @@ function AddProductModal({ open, onClose, onAdd }: {
     if (!title.trim() || submitting) return;
     setSubmitting(true);
     // Only close on success — a failed save keeps the form so input isn't lost.
-    const ok = await onAdd({ productTitle: title.trim(), productImage: image.trim(), category: category.trim(), currentStage: stage, supplierUrl: supplierUrl.trim(), storeUrl: storeUrl.trim(), notes: notes.trim() });
+    const ok = await onAdd({ productId, productTitle: title.trim(), productImage: image.trim(), category: category.trim(), currentStage: stage, supplierUrl: supplierUrl.trim(), storeUrl: storeUrl.trim(), notes: notes.trim() });
     setSubmitting(false);
     if (ok) {
       reset();
@@ -718,6 +721,7 @@ function StagePipeline({ distribution }: { distribution: { stage: LifecycleStage
 // ─── Main Page ──────────────────────────────────────────────────
 
 export default function ProductLifecyclePage() {
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const { success, error: showError } = useToast();
   const uid = user?.uid || "";
@@ -737,7 +741,13 @@ export default function ProductLifecyclePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [showAddModal, setShowAddModal] = useState(false);
+  const initialProduct = {
+    productId: searchParams.get("productId") || "",
+    productTitle: searchParams.get("productTitle") || "",
+    productImage: searchParams.get("productImage") || "",
+    category: searchParams.get("category") || "",
+  };
+  const [showAddModal, setShowAddModal] = useState(Boolean(initialProduct.productTitle));
   const [selectedProduct, setSelectedProduct] = useState<ProductLifecycle | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -780,10 +790,10 @@ export default function ProductLifecyclePage() {
     return { totalRevenue, totalProfit, totalOrders, avgMargin, totalProducts: active.length };
   }, [products]);
 
-  const handleAddProduct = useCallback(async (data: { productTitle: string; productImage: string; category: string; currentStage: LifecycleStage; supplierUrl: string; storeUrl: string; notes: string }): Promise<boolean> => {
+  const handleAddProduct = useCallback(async (data: { productId: string; productTitle: string; productImage: string; category: string; currentStage: LifecycleStage; supplierUrl: string; storeUrl: string; notes: string }): Promise<boolean> => {
     try {
       await authJson("/api/products/lifecycle", {
-        productId: `prod_${Date.now()}`,
+        productId: data.productId || `prod_${Date.now()}`,
         productTitle: data.productTitle,
         productImage: data.productImage,
         category: data.category,
@@ -1095,7 +1105,7 @@ export default function ProductLifecyclePage() {
       )}
 
       {/* Modals */}
-      <AddProductModal open={showAddModal} onClose={() => setShowAddModal(false)} onAdd={handleAddProduct} />
+      <AddProductModal open={showAddModal} onClose={() => setShowAddModal(false)} onAdd={handleAddProduct} initialProduct={initialProduct} />
       <ProductDetailModal
         product={selectedProduct}
         open={showDetailModal}

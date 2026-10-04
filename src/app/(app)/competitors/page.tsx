@@ -43,7 +43,6 @@ import CompetitorAIResults, { type AIResult } from "@/components/competitors/Com
 import ExecutiveSummaryBar from "@/components/competitors/ExecutiveSummaryBar";
 import GapAnalysis from "@/components/competitors/GapAnalysis";
 import SWOTAnalysis from "@/components/competitors/SWOTAnalysis";
-import AdMarketingIntel from "@/components/competitors/AdMarketingIntel";
 import ActionItems from "@/components/competitors/ActionItems";
 import { PageErrorBoundary } from "@/components/ui/PageErrorBoundary";
 import DataUnavailable from "@/components/ui/DataUnavailable";
@@ -152,16 +151,33 @@ function castToMarketData(raw: RawMarketData, query: string): MarketData {
       : `Focus on their weakest product categories where they have fewer listings.`,
   }));
 
-  const gapAnalysis: import("@/types/competitors").GapItem[] = [];
+  // Gap analysis derived from live listing data: platforms with few sellers
+  // and a wide price spread are the exploitable gaps in this market.
+  const gapAnalysis: import("@/types/competitors").GapItem[] = raw.platforms
+    .map((p) => {
+      const competitionLevel: "low" | "medium" | "high" =
+        p.sellerCount < 5 ? "low" : p.sellerCount < 20 ? "medium" : "high";
+      const spread = p.maxPrice - p.minPrice;
+      return {
+        type: "price" as const,
+        title: `${p.platform} price spread $${p.minPrice.toFixed(2)}–$${p.maxPrice.toFixed(2)}`,
+        description: `${p.platform} shows ${p.sellerCount} sellers across a $${spread.toFixed(2)} spread — ${p.sellerCount < 5 ? "thin competition you can enter" : "watch for consolidation"}.`,
+        demandScore: Math.min(100, Math.round((p.sellerCount / Math.max(totalSellers, 1)) * 100 + (spread / Math.max(avgPrice, 1)) * 50)),
+        competitionLevel,
+        estimatedValue: `$${(spread * Math.max(p.sellerCount, 1)).toFixed(0)} addressable spread`,
+        actionLabel: p.sellerCount < 5 ? "Enter this market" : "Monitor",
+      };
+    })
+    .filter((g) => g.demandScore > 0)
+    .sort((a, b) => b.demandScore - a.demandScore)
+    .slice(0, 5);
 
-  const adIntel: import("@/types/competitors").CompetitorAdIntel[] = [];
-
+  const topOpp = raw.opportunities[0];
   const actionItems = [
-    { id: "1", priority: "critical" as const, category: "pricing" as const, title: "Adjust pricing to competitive zone", description: `Market avg is $${raw.avgPrice.toFixed(2)} (range $${raw.priceRange.min.toFixed(2)}–$${raw.priceRange.max.toFixed(2)}). Compare against your landed cost before repricing.`, impact: "Price competitiveness", effort: "easy" as const, estimatedGain: "", relatedCompetitor: raw.topSellers[0]?.name },
-    { id: "2", priority: "high" as const, category: "listing" as const, title: "Optimize product listings", description: "Add better photos, detailed descriptions, and SEO-optimized titles to outperform competitors.", impact: "Listing quality", effort: "medium" as const, estimatedGain: "" },
-    { id: "3", priority: "medium" as const, category: "product" as const, title: "Create product bundles", description: "Bundle main product with accessories to increase AOV and differentiate from single-item sellers.", impact: "Higher average order value", effort: "medium" as const, estimatedGain: "" },
-    { id: "4", priority: "medium" as const, category: "sourcing" as const, title: "Find better supplier", description: "Negotiate lower costs or find faster shipping suppliers to improve margins and delivery times.", impact: "Margins & delivery", effort: "hard" as const, estimatedGain: "" },
-    { id: "5", priority: "low" as const, category: "listing" as const, title: "Add video content", description: "Create product demo videos — many competitors only use static images.", impact: "Engagement", effort: "hard" as const, estimatedGain: "" },
+    { id: "1", priority: "critical" as const, category: "pricing" as const, title: "Price inside the market band", description: `Market avg is $${raw.avgPrice.toFixed(2)} (range $${raw.priceRange.min.toFixed(2)}–$${raw.priceRange.max.toFixed(2)}), median $${median.toFixed(2)}. Position at or below median before undercutting further — compare against your real landed cost.`, impact: "Price competitiveness", effort: "easy" as const, estimatedGain: topOpp?.potentialMargin ? `~$${topOpp.potentialMargin.toFixed(2)} margin` : "", relatedCompetitor: raw.topSellers[0]?.name },
+    { id: "2", priority: "high" as const, category: "listing" as const, title: "Outrank the top seller", description: raw.topSellers[0] ? `${raw.topSellers[0].name} runs ${raw.topSellers[0].totalProducts.toLocaleString()} products at $${raw.topSellers[0].price.toFixed(2)} avg, rating ${raw.topSellers[0].rating}/5. ${raw.topSellers[0].isDropshipper ? "They are a dropshipper — compete on shipping speed and listing quality." : "Compete on differentiation, not volume."}` : "No dominant seller detected — opportunity to own the category.", impact: "Share of voice", effort: "medium" as const, estimatedGain: "" },
+    { id: "3", priority: "medium" as const, category: "product" as const, title: "Attack the price gap", description: topOpp ? `${topOpp.title}: ${topOpp.description}` : `No single gap stands out in the current snapshot — ${totalSellers} sellers across ${raw.platforms.length} platforms.`, impact: "New revenue", effort: "medium" as const, estimatedGain: topOpp?.potentialMargin ? `~$${topOpp.potentialMargin.toFixed(2)} potential margin` : "" },
+    { id: "4", priority: "medium" as const, category: "sourcing" as const, title: "Source to the market floor", description: `Lowest observed price is $${raw.priceRange.min.toFixed(2)}. If your landed cost cannot beat that, the floor is a red flag; negotiate down or pass.`, impact: "Margin floor", effort: "hard" as const, estimatedGain: "" },
   ];
 
   return {
@@ -194,16 +210,41 @@ function castToMarketData(raw: RawMarketData, query: string): MarketData {
       count: o.count, potentialMargin: o.potentialMargin, actionLabel: o.actionLabel,
     })),
     pricingOptions: raw.pricingOptions.map((o, i) => ({
-      label: o.label, icon: o.icon, price: o.price, margin: o.margin, description: "",
-      tradeoff: o.competition, isRecommended: false, color: (["blue", "emerald", "purple"] as const)[i % 3],
+      label: o.label, icon: o.icon, price: o.price, margin: o.margin, description: o.recommendation,
+      tradeoff: o.competition, isRecommended: i === 0, color: (["blue", "emerald", "purple"] as const)[i % 3],
       competition: o.competition, recommendation: o.recommendation,
     })),
-    priceHistory: (raw.priceHistory ?? []).map((h) => ({ date: h.date, avg: h.price, min: h.price, max: h.price })),
+    priceHistory: (() => {
+      // Real per-day listing prices — min/max/avg of the day's observed
+      // listing prices, volume = listings observed that day.
+      const byDay = new Map<number, number[]>();
+      for (const p of raw.platforms) {
+        for (const l of p.listings) {
+          if (!l.daysAgo || l.daysAgo < 0 || l.price <= 0) continue;
+          const bucket = byDay.get(l.daysAgo) ?? [];
+          bucket.push(l.price);
+          byDay.set(l.daysAgo, bucket);
+        }
+      }
+      const days = [...byDay.keys()].sort((a, b) => b - a);
+      if (days.length > 1) {
+        return days.map((d) => {
+          const prices = byDay.get(d)!;
+          return {
+            date: new Date(Date.now() - d * 86400000).toISOString().split("T")[0],
+            avg: prices.reduce((s, x) => s + x, 0) / prices.length,
+            min: Math.min(...prices),
+            max: Math.max(...prices),
+            volume: prices.length,
+          };
+        });
+      }
+      return (raw.priceHistory ?? []).map((h) => ({ date: h.date, avg: h.price, min: h.price, max: h.price, volume: h.volume ?? 0 }));
+    })(),
     insights: raw.insights,
     executiveSummary,
     competitorSWOT,
     gapAnalysis,
-    adIntel,
     actionItems,
   };
 }
@@ -633,9 +674,6 @@ function CompetitorsContent() {
                   whereToSet: "Add provider keys in Settings → API Keys",
                 }}
               />
-              {marketData.adIntel && marketData.adIntel.length > 0 && (
-                <AdMarketingIntel intel={marketData.adIntel} />
-              )}
               <InsightsPanel insights={marketData.insights} />
             </div>
           )}

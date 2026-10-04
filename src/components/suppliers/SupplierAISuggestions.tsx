@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Sparkles, ArrowRight, Loader2, RefreshCw } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { authJson } from "@/lib/auth-headers";
 import { safeFetch } from "@/lib/safe-fetch";
 import { ScoreRing } from "./supplier-shared";
 
@@ -28,12 +29,26 @@ export default function SupplierAISuggestions() {
     if (!user) return;
     setLoading(true);
     try {
-      const data = await safeFetch<{ suggestions?: SupplierSuggestion[] }>(
-        `/api/ai/suggestions?uid=${user.uid}&type=suppliers&limit=4`
+      const data = await authJson<{ suggestions?: any[] }>(
+        `/api/ai/suggestions?type=suppliers&limit=4`,
+        undefined,
+        "GET"
       );
       if (data.suggestions && data.suggestions.length > 0) {
-        setSuggestions(data.suggestions);
-        setHasLoaded(true);
+        const mapped = data.suggestions
+          .map((s: any) => ({
+            id: s.id || Math.random().toString(36),
+            name: s.name || s.title || "Supplier",
+            reason: s.reason || s.description || s.action || "",
+            reliabilityScore: typeof s.reliabilityScore === "number" ? s.reliabilityScore : 0,
+            matchScore: typeof s.matchScore === "number" ? s.matchScore : 0,
+            badge: (s.badge === "gold" || s.badge === "silver" || s.badge === "bronze") ? s.badge : "bronze",
+          }))
+          .filter((s: any) => s.name);
+        if (mapped.length > 0) {
+          setSuggestions(mapped);
+          setHasLoaded(true);
+        }
       }
     } catch {
       // Silently fail

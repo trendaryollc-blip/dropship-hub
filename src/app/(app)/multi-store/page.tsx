@@ -42,11 +42,11 @@ export default function MultiStorePage() {
   const [performancePeriod, setPerformancePeriod] = useState<"7d" | "30d" | "90d">("30d");
   const [aiLoading, setAiLoading] = useState<string | null>(null);
 
-  const { data: connData, mutate: refetchConnections } = useAPI<{ connections?: ConnectedStore[] }>(uid ? `/api/store/connections?uid=${uid}` : null, { refreshInterval: SWR_REFRESH_INTERVALS.connections });
-  const { data: orderData } = useAPI<{ orders?: UnifiedOrder[] }>(uid ? `/api/multi-store/orders?uid=${uid}` : null, { refreshInterval: SWR_REFRESH_INTERVALS.orders });
-  const { data: invData } = useAPI<{ inventory?: StoreInventoryItem[] }>(uid ? `/api/multi-store/inventory?uid=${uid}` : null, { refreshInterval: SWR_REFRESH_INTERVALS.inventory });
+  const { data: connData, error: connError, mutate: refetchConnections } = useAPI<{ connections?: ConnectedStore[] }>(uid ? `/api/store/connections?uid=${uid}` : null, { refreshInterval: SWR_REFRESH_INTERVALS.connections });
+  const { data: orderData, error: orderError, mutate: refetchOrders } = useAPI<{ orders?: UnifiedOrder[] }>(uid ? `/api/multi-store/orders?uid=${uid}` : null, { refreshInterval: SWR_REFRESH_INTERVALS.orders });
+  const { data: invData, error: invError, mutate: refetchInventory } = useAPI<{ inventory?: StoreInventoryItem[] }>(uid ? `/api/multi-store/inventory?uid=${uid}` : null, { refreshInterval: SWR_REFRESH_INTERVALS.inventory });
   const { data: perfData, mutate: refetchPerf } = useAPI<{ performances?: StorePerformance[] }>(uid ? `/api/multi-store/performance?uid=${uid}&period=${performancePeriod}` : null, { refreshInterval: SWR_REFRESH_INTERVALS.performance });
-  const { data: pushData } = useAPI<{ jobs?: BulkPushJob[] }>(uid ? `/api/multi-store/bulk-push?uid=${uid}` : null, { refreshInterval: SWR_REFRESH_INTERVALS.connections });
+  const { data: pushData, mutate: refetchPushJobs } = useAPI<{ jobs?: BulkPushJob[] }>(uid ? `/api/multi-store/bulk-push?uid=${uid}` : null, { refreshInterval: SWR_REFRESH_INTERVALS.connections });
   const { data: pushedData } = useAPI<{ products?: PushedProduct[] }>(uid ? `/api/store/push?uid=${uid}` : null, { refreshInterval: SWR_REFRESH_INTERVALS.connections });
 
   const stores = useMemo(() => connData?.connections || [], [connData]);
@@ -55,7 +55,8 @@ export default function MultiStorePage() {
   const performances = useMemo(() => perfData?.performances || [], [perfData]);
   const bulkJobs = useMemo(() => pushData?.jobs || [], [pushData]);
   const pushedProducts = useMemo(() => pushedData?.products || [], [pushedData]);
-  const loading = !user || (!connData && !orderData);
+  const loadError = connError || orderError || invError;
+  const loading = !user || (!connData && !orderData && !loadError);
 
   const filteredOrders = useMemo(() => {
     const result = orders.filter((o) => {
@@ -236,6 +237,15 @@ export default function MultiStorePage() {
     return <MultiStorePageSkeleton />;
   }
 
+  if (loadError) {
+    return (
+      <div className="max-w-7xl mx-auto py-24 text-center">
+        <p className="text-sm text-red-400 mb-3">Failed to load multi-store data. Check your connection and try again.</p>
+        <button onClick={() => { refetchConnections(); refetchOrders(); refetchInventory(); }} className="px-4 py-2 rounded-xl bg-accent/10 border border-accent/20 text-accent text-sm font-semibold hover:bg-accent/20 transition-all">Retry</button>
+      </div>
+    );
+  }
+
   if (stores.length === 0) {
     return (
       <PageErrorBoundary>
@@ -345,7 +355,7 @@ export default function MultiStorePage() {
           ) : (
             <div className="space-y-2">
               {paginatedOrders.map((order, i) => (
-                <UnifiedOrderRow key={order.id} order={order} delay={i * 50} onOrderUpdated={() => refetchConnections()} />
+                <UnifiedOrderRow key={order.id} order={order} delay={i * 50} onOrderUpdated={() => { refetchOrders(); }} />
               ))}
             </div>
           )}
@@ -361,7 +371,7 @@ export default function MultiStorePage() {
       )}
 
       {activeTab === "inventory" && (
-        <InventorySyncPanel inventory={inventory} />
+        <InventorySyncPanel inventory={inventory} onSynced={() => { refetchInventory(); }} />
       )}
 
       {activeTab === "performance" && (
@@ -402,7 +412,7 @@ export default function MultiStorePage() {
 
       {activeTab === "bulk-push" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <BulkPushPanel stores={stores} pushedProducts={pushedProducts} onPushComplete={() => refetchConnections()} />
+          <BulkPushPanel stores={stores} pushedProducts={pushedProducts} onPushComplete={() => { refetchPushJobs(); }} />
           <div className="glass rounded-2xl p-4 sm:p-5">
             <h3 className="font-display text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
               <Zap className="h-4 w-4 text-accent" /> Recent Push Jobs

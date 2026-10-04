@@ -328,9 +328,28 @@ function SupplierCard({
               <ArrowRight className="h-4 w-4 text-muted-foreground hidden sm:block" />
             </div>
           </div>
+          {supplier.listings && supplier.listings.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-border/50">
+              <p className="text-[10px] font-semibold text-muted-foreground mb-1">Matching products</p>
+              <ul className="space-y-1">
+                {supplier.listings.slice(0, 2).map((listing) => (
+                  <li key={listing.link} className="flex items-center justify-between gap-3 text-[11px]">
+                    <span className="truncate text-foreground/80">{listing.title}</span>
+                    {listing.price !== null && (
+                      <span className="shrink-0 text-emerald-400">{formatMoney(listing.price, listing.currency)}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
             <div className="flex items-center gap-4 text-[10px] text-muted-foreground flex-wrap">
-              <span><Package className="h-3 w-3 inline mr-1" />{supplier.specializations.slice(0, 2).join(", ")}</span>
+              {supplier.specializations.length > 0 ? (
+                <span><Package className="h-3 w-3 inline mr-1" />{supplier.specializations.slice(0, 2).join(", ")}</span>
+              ) : (
+                <span>Catalog text unavailable</span>
+              )}
               {supplier.stats.monthlyOrders > 0 && (
                 <span>{supplier.stats.monthlyOrders.toLocaleString()} orders/mo</span>
               )}
@@ -478,18 +497,15 @@ function SupplierGridCard({
 function DiscoverContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const initialQueryParam = searchParams.get("q") || "";
   const initialProduct = searchParams.get("product") || "";
   const initialCategory = searchParams.get("category") || "";
   const initialSource = searchParams.get("source") || "";
   const initialPrice = searchParams.get("price") ? parseFloat(searchParams.get("price")!) : 0;
   const hasProductContext = !!initialProduct;
 
-  const findUrl = hasProductContext
-    ? `/api/suppliers/find?product=${encodeURIComponent(initialProduct)}&category=${encodeURIComponent(initialCategory)}&source=${encodeURIComponent(initialSource)}&price=${initialPrice || ""}`
-    : null;
   const listUrl = !hasProductContext ? "/api/suppliers" : null;
 
-  const { data: findData, isLoading: findLoading } = useAPI<{ suppliers?: (SupplierProfile & { relevanceScore?: number })[]; error?: string }>(findUrl);
   const { data: listData, error: apiError, isLoading: listLoading, mutate } = useAPI<{ suppliers?: SupplierProfile[]; error?: string }>(listUrl);
 
   const [platformChips, setPlatformChips] = useState<PlatformChip[]>([]);
@@ -506,16 +522,20 @@ function DiscoverContent() {
   const platformSearchRef = useRef(false);
 
   const suppliers = useMemo(() => {
-    const base = (hasProductContext ? findData?.suppliers : listData?.suppliers) ?? [];
-    if (platformSearch.suppliers.length === 0) return base;
-    const seen = new Set(base.map((s) => s.id));
-    return [...base, ...platformSearch.suppliers.filter((s) => !seen.has(s.id))];
-  }, [hasProductContext, findData, listData, platformSearch.suppliers]);
-  const loading = hasProductContext ? findLoading : listLoading;
-  const error = apiError ? "Failed to load suppliers" : (findData?.error || listData?.error) ?? null;
+    const base = hasProductContext ? [] : listData?.suppliers ?? [];
+    if (hasProductContext || platformSearch.suppliers.length === 0) {
+      return hasProductContext ? platformSearch.suppliers : base;
+    }
+    const seen = new Set(base.map((supplier) => supplier.id));
+    return [...base, ...platformSearch.suppliers.filter((supplier) => !seen.has(supplier.id))];
+  }, [hasProductContext, listData, platformSearch.suppliers]);
+  const loading = hasProductContext
+    ? platformSearch.loading || (platformChips.length > 0 && !platformSearch.lastQuery)
+    : listLoading;
+  const error = hasProductContext ? null : apiError ? "Failed to load suppliers" : listData?.error ?? null;
 
   const [filters, setFilters] = useState<SupplierFilters>({
-    search: initialProduct || initialCategory,
+    search: initialProduct || initialCategory || initialQueryParam,
     badges: [],
     locations: [],
     minRating: 0,
@@ -736,7 +756,14 @@ function DiscoverContent() {
     };
   }, []);
 
-  const initialSearchQuery = hasProductContext ? initialProduct || initialCategory : "";
+  const initialSearchQuery = hasProductContext
+    ? initialProduct || initialCategory
+    : initialQueryParam;
+  useEffect(() => {
+    if (initialQueryParam && !filters.search) {
+      setFilters((f) => ({ ...f, search: initialQueryParam }));
+    }
+  }, [initialQueryParam]);
   useEffect(() => {
     if (!initialSearchQuery || platformSearchRef.current) return;
     if (platformChips.length === 0) return;
@@ -783,6 +810,17 @@ function DiscoverContent() {
 
   const searchTokens = useMemo(() => (debouncedSearch ? parseSupplierQuery(debouncedSearch) : []), [debouncedSearch]);
 
+  // Typing is not a search. While the box holds text that has not been sent to
+  // the platforms yet, re-rank the results we already have but never hide any —
+  // discovered suppliers carry no measured text, so filtering them away on
+  // every keystroke emptied the list mid-search.
+  const searchIsPending = useMemo(() => {
+    const typed = debouncedSearch.trim().toLowerCase();
+    if (!typed) return false;
+    return typed !== platformSearch.lastQuery.trim().toLowerCase();
+  }, [debouncedSearch, platformSearch.lastQuery]);
+  const textFilterActive = searchTokens.length > 0 && !searchIsPending;
+
   const platformProgress = useMemo(() => {
     const names = new Map(platformChips.map((c) => [c.id, c.name]));
     return selectedPlatforms.map((id) => {
@@ -806,7 +844,9 @@ function DiscoverContent() {
     if (searchTokens.length > 0) {
       result = result.filter((s) => {
         const score = scoreSupplierMatch(s, searchTokens);
-        if (score <= 0) return false;
+        // Keep zero-score suppliers while the typed query is still pending —
+        // drop them once it matches what the platforms actually searched for.
+        if (score <= 0) return !textFilterActive;
         searchScores.set(s.id, score);
         return true;
       });
@@ -841,7 +881,7 @@ function DiscoverContent() {
     };
     result.sort((a, b) => (searchScores.get(b.id) ?? 0) - (searchScores.get(a.id) ?? 0) || tieBreak(a, b));
     return result;
-  }, [filters, searchTokens, sortBy, suppliers, hasProductContext]);
+  }, [filters, searchTokens, sortBy, suppliers, hasProductContext, textFilterActive]);
 
   const hasFilters = filters.badges.length > 0 || filters.locations.length > 0 || filters.minRating > 0 ||
     filters.shippingSpeed !== "" || filters.specializations.length > 0 ||
@@ -1221,10 +1261,18 @@ function DiscoverContent() {
               <div className="glass rounded-2xl p-8 md:p-16 text-center">
                 <Shield className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
                 <h3 className="font-display text-lg font-semibold text-foreground mb-2">
-                  {searchTokens.length > 0 ? `No suppliers match \u201C${debouncedSearch}\u201D` : "No suppliers match your filters"}
+                  {hasProductContext
+                    ? `No suppliers found with matching listings for \u201C${initialProduct}\u201D`
+                    : searchTokens.length > 0
+                      ? `No suppliers match \u201C${debouncedSearch}\u201D`
+                      : "No suppliers match your filters"}
                 </h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  {searchTokens.length > 0 ? "Try another category, location, or fewer keywords" : "Try adjusting your search or filters"}
+                  {hasProductContext
+                    ? "Try another supplier platform or search with a shorter product title"
+                    : searchTokens.length > 0
+                      ? "Try another category, location, or fewer keywords"
+                      : "Try adjusting your search or filters"}
                 </p>
                 {statsUnmeasured && searchTokens.length === 0 && (
                   <p className="text-[11px] text-muted-foreground/70 mb-4 max-w-md mx-auto" role="note">

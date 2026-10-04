@@ -1,9 +1,10 @@
 "use client";
 
-import { BarChart3, Package, LayoutGrid, List, ArrowUpDown } from "lucide-react";
+import { BarChart3, Package, LayoutGrid, List, ArrowUpDown, SlidersHorizontal } from "lucide-react";
 
 export default function ResultsHeader({
   resultCount, platformCount, sortBy, setSortBy, viewMode, setViewMode,
+  showFilters, onToggleFilters, activeFilterCount,
 }: {
   resultCount: number;
   platformCount: number;
@@ -11,6 +12,9 @@ export default function ResultsHeader({
   setSortBy: (v: "relevance" | "price-asc" | "price-desc" | "rating" | "reviews" | "margin" | "golden") => void;
   viewMode: "grid" | "list";
   setViewMode: (v: "grid" | "list") => void;
+  showFilters?: boolean;
+  onToggleFilters?: () => void;
+  activeFilterCount?: number;
 }) {
   return (
     <div className="glass rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
@@ -31,6 +35,23 @@ export default function ResultsHeader({
       </div>
 
       <div className="flex items-center gap-2">
+        {onToggleFilters && (
+          <button
+            onClick={onToggleFilters}
+            aria-expanded={showFilters ?? false}
+            aria-label={`Toggle filters${activeFilterCount ? `, ${activeFilterCount} active` : ""}`}
+            title="Show or hide result filters"
+            className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-2.5 rounded-lg border transition-colors min-h-[36px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ${showFilters || (activeFilterCount ?? 0) > 0 ? "bg-accent/10 text-accent border-accent/30" : "bg-surface border-border text-muted-foreground hover:text-foreground"}`}
+          >
+            <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+            <span className="hidden sm:inline">Filters</span>
+            {(activeFilterCount ?? 0) > 0 && (
+              <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold px-1 bg-accent text-white">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+        )}
         <div className="flex items-center gap-1.5">
           <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
           <label htmlFor="results-sort" className="sr-only">Sort results</label>

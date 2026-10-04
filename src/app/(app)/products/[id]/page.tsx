@@ -6,11 +6,13 @@ import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft, ExternalLink, Star, ShoppingCart, Package,
   Shield, Clock, ChevronLeft, ChevronRight, Images, Barcode, Layers,
-  Search, Truck, DollarSign, BarChart3, AlertTriangle, RefreshCw, ShieldCheck,
+  Search, BarChart3, AlertTriangle, RefreshCw, ArrowUpRight,
+  Activity, Calculator, DollarSign, FileText, Share2, ShieldCheck, Swords, TrendingUp, Truck,
 } from "lucide-react";
 import Image from "next/image";
 import { useInView } from "@/hooks/useInView";
 import PriceComparison from "@/components/products/PriceComparison";
+import CrossPlatformImageMatches from "@/components/products/CrossPlatformImageMatches";
 import ProfitCalculator from "@/components/products/ProfitCalculator";
 import MarketIntelligence from "@/components/products/MarketIntelligence";
 import ReviewIntelligence from "@/components/products/ReviewIntelligence";
@@ -19,6 +21,8 @@ import ListingOptimization from "@/components/products/ListingOptimization";
 import SimilarProducts from "@/components/products/SimilarProducts";
 import ProductActionBar from "@/components/products/ProductActionBar";
 import StickyProductBar from "@/components/products/StickyProductBar";
+import PriceHistoryChart from "@/components/products/PriceHistoryChart";
+import { productPriceKey, seriesForPlatform, type ProductPricePoint } from "@/lib/products/price-key";
 import SectionNav from "@/components/products/SectionNav";
 import SectionSkeleton from "@/components/products/SectionSkeleton";
 import { safeFetch } from "@/lib/safe-fetch";
@@ -229,6 +233,8 @@ function ProductDetailContent() {
   const [retryReview, setRetryReview] = useState(0);
   const [retryMarketIntel, setRetryMarketIntel] = useState(0);
   const [retryListing, setRetryListing] = useState(0);
+  const [priceHistory, setPriceHistory] = useState<ProductPricePoint[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const title = product?.title || searchParams.get("t") || "Product";
   const price = product?.price != null ? String(product.price) : searchParams.get("p");
@@ -236,6 +242,28 @@ function ProductDetailContent() {
   const link = product?.link || searchParams.get("link") || "#";
   const source = product?.source || searchParams.get("src") || "amazon";
   const effectiveLink = buildProductUrl(link, source, title);
+  // Honest CTA labeling: when the original product link is missing ("#"), the
+  // CTA opens a platform search (or a store homepage for CJ/Temu) instead of
+  // the exact listing — so the label must not imply a direct product link.
+  const platformName = source.replace("_", " ");
+  const missingProductLink = !link || link === "#";
+  const fallbackKind: "search" | "homepage" | null = !missingProductLink
+    ? null
+    : source === "cj" || source === "temu"
+      ? "homepage"
+      : "search";
+  const ctaLabel =
+    fallbackKind === "search"
+      ? `Search ${platformName} for this product`
+      : fallbackKind === "homepage"
+        ? `Open ${platformName} store`
+        : `View on ${platformName}`;
+  const ctaFallbackNote =
+    fallbackKind === "search"
+      ? `Direct product link unavailable — opens ${platformName} search results instead of the exact listing.`
+      : fallbackKind === "homepage"
+        ? `Direct product link unavailable — opens the ${platformName} homepage instead of the exact listing.`
+        : null;
   const rating = product?.rating != null ? String(product.rating) : searchParams.get("r");
   const reviews = product?.reviews != null ? String(product.reviews) : searchParams.get("rev");
   const category = product?.category || "General";
@@ -270,8 +298,7 @@ function ProductDetailContent() {
   }, [user]);
 
   useEffect(() => {
-    // Only fetch from API if we have 0 or 1 stored images — never overwrite a good multi-image array
-    if (fetchedImages.length > 0 || storedImages.length > 1 || !source) return;
+    if (fetchedImages.length > 0 || !source) return;
 
     const extractAsin = (url: string): string => {
       const patterns = [
@@ -303,8 +330,9 @@ function ProductDetailContent() {
           headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({ asin: extractedAsin, url: link, source }),
         });
-        if (!cancelled && data.images && data.images.length > storedImages.length) {
-          setFetchedImages(data.images);
+        if (!cancelled && Array.isArray(data.images) && data.images.length > 0) {
+          const mergedImages = [...new Set([...storedImages, ...data.images])];
+          if (mergedImages.length > storedImages.length) setFetchedImages(mergedImages);
         }
       } catch (err) {
         logger.error("Failed to fetch product images", { error: err instanceof Error ? err.message : String(err) });
@@ -372,7 +400,8 @@ function ProductDetailContent() {
         if (data.averageRating !== undefined) {
           setReviewData(data);
         } else {
-          setReviewError(true);
+          setReviewData(null);
+          setReviewError(false);
         }
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") return;
@@ -454,14 +483,57 @@ function ProductDetailContent() {
     return () => controller.abort();
   }, [title, category, priceNum, source, getAuthHeaders, retryListing]);
 
+  // Record today's price snapshot and load the recorded series, so the
+  // Trend column shows real recorded history instead of an empty dash.
+  const historyKey = useMemo(
+    () => (title && title !== "Product" ? productPriceKey(title, category) : ""),
+    [title, category]
+  );
+
+  useEffect(() => {
+    if (!historyKey || !user) return;
+    const controller = new AbortController();
+    const syncHistory = async () => {
+      try {
+        const authHeaders = await getAuthHeaders();
+        const prices: Record<string, number> = {};
+        if (priceNum && priceNum > 0) prices[source] = priceNum;
+        const platformsRaw = (enrichmentData?.platforms as { platform: string; price: number }[] | undefined) || [];
+        for (const p of platformsRaw) {
+          if (p && typeof p.price === "number" && p.price > 0) prices[p.platform] = p.price;
+        }
+        if (Object.keys(prices).length > 0) {
+          await safeFetch("/api/products/price-history", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...authHeaders },
+            body: JSON.stringify({ key: historyKey, title, prices }),
+            signal: controller.signal,
+          });
+        }
+        const data = await safeFetch<{ history?: ProductPricePoint[] }>(
+          `/api/products/price-history?key=${encodeURIComponent(historyKey)}`,
+          { headers: { ...authHeaders }, signal: controller.signal }
+        );
+        if (!controller.signal.aborted && Array.isArray(data.history)) {
+          setPriceHistory(data.history);
+        }
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        logger.error("Failed to sync price history", { error: e instanceof Error ? e.message : e });
+      }
+    };
+    syncHistory();
+    return () => controller.abort();
+  }, [historyKey, title, source, priceNum, enrichmentData, user, getAuthHeaders]);
+
   const enriched = useMemo(() => {
     if (enrichmentData?.platforms) {
       const platformsRaw = enrichmentData.platforms as { platform: string; price: number; rating: number | null; reviews: number | null; inStock: boolean | null; url: string }[];
       const platforms = platformsRaw.map((p) => ({
         ...p,
-        // No per-platform price history is stored — an empty sparkline renders an
-        // honest dash instead of seven copies of today's price faking a trend.
-        sparkline: [],
+        // Real recorded per-platform history (may be empty for a newly
+        // viewed product — the table renders an honest dash then).
+        sparkline: seriesForPlatform(priceHistory, p.platform).map((s) => s.price),
       }));
       const cheapest = enrichmentData.cheapest as { platform: string; price: number } | null;
       const supplierMatchesRaw = (enrichmentData.supplierMatches || []) as { id: string; name: string; trustBadge: string; location: string; flag: string; price: number | null; shippingToUS: string; shippingToEU: string; reliabilityScore: number; responseTime: string }[];
@@ -563,7 +635,222 @@ function ProductDetailContent() {
       } : null,
       supplierMatches: [],
     };
-  }, [enrichmentData, reviewData, marketIntelData, listingData, source, priceNum, ratingNum, reviewsNum, effectiveLink]);
+  }, [enrichmentData, reviewData, marketIntelData, listingData, source, priceNum, ratingNum, reviewsNum, effectiveLink, priceHistory]);
+
+  // Longest recorded per-platform series, for the price-history modal.
+  const historySeries = useMemo(() => {
+    let best: { date: string; price: number }[] = [];
+    let bestPlatform = "";
+    for (const p of enriched.platforms as { platform: string }[]) {
+      const s = seriesForPlatform(priceHistory, p.platform);
+      if (s.length > best.length) {
+        best = s;
+        bestPlatform = p.platform;
+      }
+    }
+    return { series: best, platform: bestPlatform };
+  }, [enriched.platforms, priceHistory]);
+
+  const supplierParams = new URLSearchParams({ product: title, category, source });
+  if (priceNum !== null) supplierParams.set("price", String(priceNum));
+
+  const validationParams = new URLSearchParams({ productTitle: title });
+  if (priceNum !== null) {
+    validationParams.set("currentPrice", String(priceNum));
+    validationParams.set("productCost", String(priceNum));
+    validationParams.set("estimatedSellingPrice", String(Number((priceNum * 2.2).toFixed(2))));
+  }
+  if (source) validationParams.set("source", source);
+  if (image) validationParams.set("productImage", image);
+  if (link && link !== "#") validationParams.set("productUrl", link);
+  if (category) validationParams.set("category", category);
+  const validationRating = typeof reviewData?.averageRating === "number" ? reviewData.averageRating : ratingNum;
+  const validationReviewCount = typeof reviewData?.totalReviews === "number" ? reviewData.totalReviews : reviewsNum;
+  if (validationRating !== null) validationParams.set("rating", String(validationRating));
+  if (validationReviewCount !== null) validationParams.set("reviews", String(validationReviewCount));
+  const historicalSourcePrices = seriesForPlatform(priceHistory, source)
+    .slice(-12)
+    .map(({ price: historicalPrice }) => historicalPrice);
+  if (historicalSourcePrices.length > 0) {
+    validationParams.set("historicalPrices", historicalSourcePrices.join(","));
+  }
+  const validationPlatforms = Array.isArray(enrichmentData?.platforms)
+    ? (enrichmentData.platforms as { platform: string; title?: string; price: number; rating: number | null; reviews: number | null }[])
+      .filter((platform) => typeof platform.price === "number" && platform.price > 0)
+      .slice(0, 5)
+      .map(({ platform, title: platformTitle, price, rating: platformRating, reviews: platformReviews }) => ({
+        platform,
+        title: platformTitle,
+        price,
+        rating: platformRating,
+        reviews: platformReviews,
+      }))
+    : [];
+  if (validationPlatforms.length > 0) validationParams.set("platformPrices", JSON.stringify(validationPlatforms));
+  const bestPlatformPrice = (enrichmentData?.cheapest as { price?: number } | null)?.price;
+  if (typeof bestPlatformPrice === "number" && bestPlatformPrice > 0) {
+    validationParams.set("bestPrice", String(bestPlatformPrice));
+  }
+  if (typeof marketIntelData?.estimatedSellers === "number") {
+    validationParams.set("competitorCount", String(marketIntelData.estimatedSellers));
+  }
+  if (typeof marketIntelData?.avgSellerRating === "number") {
+    validationParams.set("sellerRating", String(marketIntelData.avgSellerRating));
+  }
+  if (typeof marketIntelData?.interestIndex === "number") {
+    validationParams.set("searchInterestIndex", String(marketIntelData.interestIndex));
+  }
+  if (Array.isArray(marketIntelData?.trendSparkline)) {
+    validationParams.set("historicalInterestIndex", marketIntelData.trendSparkline.join(","));
+  }
+  const marketCompetition = marketIntelData?.competitionLevel;
+  const saturationLevelByCompetition: Record<string, string> = {
+    low: "low",
+    medium: "moderate",
+    high: "saturated",
+    "very-high": "hyper-saturated",
+  };
+  if (typeof marketCompetition === "string" && saturationLevelByCompetition[marketCompetition]) {
+    validationParams.set("saturationLevel", saturationLevelByCompetition[marketCompetition]);
+  }
+  const enrichedPlatforms = enrichmentData?.platforms as { brand?: string }[] | undefined;
+  const detectedBrand = enrichedPlatforms?.find((platform) => platform.brand)?.brand;
+  if (detectedBrand) validationParams.set("brand", detectedBrand);
+  const matchedSuppliers = enrichmentData?.supplierMatches as { name?: string; reliabilityScore?: number }[] | undefined;
+  const matchedSupplier = matchedSuppliers?.[0];
+  if (matchedSupplier?.name) validationParams.set("supplierName", matchedSupplier.name);
+  if (typeof matchedSupplier?.reliabilityScore === "number" && matchedSupplier.reliabilityScore > 0) {
+    validationParams.set("supplierReliability", String(matchedSupplier.reliabilityScore));
+  }
+
+  const listingParams = new URLSearchParams({ title });
+  if (priceNum !== null) listingParams.set("price", String(priceNum));
+  if (category) listingParams.set("category", category);
+  if (["amazon", "shopify", "etsy", "ebay", "walmart"].includes(source)) {
+    listingParams.set("platform", source);
+  }
+
+  const calculatorParams = new URLSearchParams();
+  if (priceNum !== null) {
+    calculatorParams.set("cost", String(priceNum));
+    calculatorParams.set("price", String(Number((priceNum * 2.2).toFixed(2))));
+  }
+
+  const contentParams = new URLSearchParams({ productTitle: title });
+  if (image) contentParams.set("productImage", image);
+
+  const reviewParams = new URLSearchParams({ productTitle: title });
+  if (link && link !== "#") reviewParams.set("productUrl", link);
+  if (["aliexpress", "cj", "amazon", "ebay"].includes(source)) reviewParams.set("source", source);
+
+  const complianceParams = new URLSearchParams({ productTitle: title });
+  if (product?.category) complianceParams.set("category", product.category);
+  if (priceNum !== null) complianceParams.set("sellingPrice", String(priceNum));
+  if (link && link !== "#") complianceParams.set("productUrl", link);
+  if (image) complianceParams.set("productImage", image);
+
+  const priceWarParams = new URLSearchParams({ productTitle: title, platforms: source });
+  if (priceNum !== null) {
+    priceWarParams.set("cost", String(priceNum));
+    priceWarParams.set("myPrice", String(Number((priceNum * 2.2).toFixed(2))));
+  }
+  if (image) priceWarParams.set("productImage", image);
+  if (link && link !== "#") priceWarParams.set("productUrl", link);
+
+  const trendParams = new URLSearchParams({ keyword: title });
+  if (product?.category) trendParams.set("category", product.category);
+  if (image) trendParams.set("imageUrl", image);
+
+  const lifecycleParams = new URLSearchParams({ productTitle: title });
+  lifecycleParams.set("productId", product?.id || product?.productId || productId);
+  if (image) lifecycleParams.set("productImage", image);
+  if (product?.category) lifecycleParams.set("category", product.category);
+
+  const productContext = {
+    id: product?.id || productId,
+    title,
+    price: priceNum,
+    image: image || null,
+    link: effectiveLink,
+    source,
+    rating: ratingNum ?? undefined,
+    reviews: reviewsNum ?? undefined,
+  };
+  const contextualLinks = [
+    {
+      href: `/suppliers?${supplierParams.toString()}`,
+      label: "Find suppliers",
+      description: "Search suppliers for this product and category",
+      icon: Truck,
+    },
+    {
+      href: `/competitors?q=${encodeURIComponent(title)}`,
+      label: "Analyze competitors",
+      description: "Compare this product across the market",
+      icon: Swords,
+      onClick: () => {
+        try {
+          sessionStorage.setItem("competitorProduct", JSON.stringify(productContext));
+        } catch {
+          // The query URL still launches a title-based competitor search.
+        }
+      },
+    },
+    ...(priceNum !== null ? [{
+      href: `/calculator/profit?${calculatorParams.toString()}`,
+      label: "Model profitability",
+      description: "Start with source price and an estimated 2.2x retail price",
+      icon: Calculator,
+    }] : []),
+    {
+      href: `/product-validation?${validationParams.toString()}`,
+      label: "Validate product",
+      description: "Run product, market, and supplier checks",
+      icon: ShieldCheck,
+    },
+    {
+      href: `/product-listings?${listingParams.toString()}`,
+      label: "Create a listing",
+      description: "Start an optimized listing with product details",
+      icon: FileText,
+    },
+    {
+      href: `/reviews?${reviewParams.toString()}`,
+      label: "Import reviews",
+      description: "Prepare a review import for this product",
+      icon: Star,
+    },
+    {
+      href: `/social-content?${contentParams.toString()}`,
+      label: "Create social content",
+      description: "Generate product-specific social content",
+      icon: Share2,
+    },
+    {
+      href: `/compliance?${complianceParams.toString()}`,
+      label: "Check compliance",
+      description: "Check this product before listing it",
+      icon: ShieldCheck,
+    },
+    {
+      href: `/price-war?${priceWarParams.toString()}`,
+      label: "Set a price rule",
+      description: "Prepare a competitor pricing rule for this product",
+      icon: DollarSign,
+    },
+    {
+      href: `/trends?${trendParams.toString()}`,
+      label: "Analyze product trend",
+      description: "Analyze market trends for this product",
+      icon: TrendingUp,
+    },
+    {
+      href: `/product-lifecycle?${lifecycleParams.toString()}`,
+      label: "Track lifecycle",
+      description: "Add this product to lifecycle tracking",
+      icon: Activity,
+    },
+  ];
 
   if (hasNoData) {
     return (
@@ -596,6 +883,7 @@ function ProductDetailContent() {
         reviews={reviewsNum}
         source={source}
         link={effectiveLink}
+        linkLabel={ctaLabel}
         heroRef={heroRef}
       />
 
@@ -608,7 +896,7 @@ function ProductDetailContent() {
       </Link>
 
       {/* === SECTION 1: HERO SHOWCASE === */}
-      <div ref={heroRef} className={`hero-glow transition-all duration-700 ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+      <div id="overview" ref={heroRef} className={`hero-glow scroll-mt-24 transition-all duration-700 ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8">
           {/* Image column */}
           <div className="space-y-3">
@@ -721,8 +1009,11 @@ function ProductDetailContent() {
             {/* CTA Button */}
             <div className="flex flex-col sm:flex-row gap-3 pt-1">
               <a href={effectiveLink} target="_blank" rel="noopener noreferrer" className="btn-hero-cta flex items-center justify-center gap-2">
-                <ShoppingCart className="h-4 w-4" /> View on {source.replace("_", " ")} <ExternalLink className="h-3.5 w-3.5" />
+                <ShoppingCart className="h-4 w-4" /> {ctaLabel} <ExternalLink className="h-3.5 w-3.5" />
               </a>
+              {ctaFallbackNote && (
+                <p className="self-center text-[11px] text-muted-foreground/70">{ctaFallbackNote}</p>
+              )}
             </div>
           </div>
         </div>
@@ -731,89 +1022,48 @@ function ProductDetailContent() {
       {/* Action Bar */}
       <ProductActionBar platform={source} platformUrl={effectiveLink} productTitle={title} category={category} id={product?.id} price={priceNum} image={image} images={displayImages} rating={ratingNum} reviews={reviewsNum} />
 
-      {/* Next Steps */}
-      <div className="glass rounded-2xl p-4 border border-border">
-        <h3 className="font-display text-xs font-semibold text-muted-foreground mb-3">Next Steps</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-          <Link href={`/suppliers?product=${encodeURIComponent(title)}&category=${encodeURIComponent(category || "")}&source=${encodeURIComponent(source)}&price=${priceNum || ""}`} className="flex items-center gap-2 p-3 rounded-xl bg-surface/50 border border-border hover:border-accent/20 hover:bg-surface-hover transition-all group">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-400/10 shrink-0">
-              <Truck className="h-3.5 w-3.5 text-amber-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-foreground group-hover:text-accent transition-colors truncate">Find Suppliers</p>
-              <p className="text-[10px] text-muted-foreground">Source this product</p>
-            </div>
-          </Link>
-          <Link href={`/calculator?cost=${priceNum || 8}&price=${priceNum ? priceNum * 2.2 : 34.99}&title=${encodeURIComponent(title)}`} className="flex items-center gap-2 p-3 rounded-xl bg-surface/50 border border-border hover:border-accent/20 hover:bg-surface-hover transition-all group">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-400/10 shrink-0">
-              <DollarSign className="h-3.5 w-3.5 text-emerald-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-foreground group-hover:text-accent transition-colors truncate">Calculate Profit</p>
-              <p className="text-[10px] text-muted-foreground">Estimate margins</p>
-            </div>
-          </Link>
-          <Link href={`/competitors?q=${encodeURIComponent(title)}`} className="flex items-center gap-2 p-3 rounded-xl bg-surface/50 border border-border hover:border-accent/20 hover:bg-surface-hover transition-all group">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-400/10 shrink-0">
-              <BarChart3 className="h-3.5 w-3.5 text-purple-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-foreground group-hover:text-accent transition-colors truncate">Check Competitors</p>
-              <p className="text-[10px] text-muted-foreground">Analyze the market</p>
-            </div>
-          </Link>
-          <button
-            onClick={() => {
-              const params = new URLSearchParams();
-              params.set("productTitle", title);
-              if (priceNum != null) params.set("currentPrice", String(priceNum));
-              if (image) params.set("productImage", image);
-              if (link) params.set("productUrl", link);
-              if (category) params.set("category", category);
-              if (ratingNum != null) params.set("rating", String(ratingNum));
-              if (reviewsNum != null) params.set("reviews", String(reviewsNum));
-              window.open(`/product-validation?${params.toString()}`, "_blank");
-            }}
-            className="flex items-center gap-2 p-3 rounded-xl bg-surface/50 border border-border hover:border-amber-400/20 hover:bg-surface-hover transition-all group cursor-pointer text-left"
-          >
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-400/10 shrink-0">
-              <ShieldCheck className="h-3.5 w-3.5 text-amber-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-foreground group-hover:text-amber-400 transition-colors truncate">Validate Product</p>
-              <p className="text-[10px] text-muted-foreground">Full validation report</p>
-            </div>
-          </button>
-        </div>
-      </div>
-
-      {/* === SECTION 2: PRICE COMPARISON === */}
-      <section id="price-comparison" className="section-group">
-        <p className="section-label mb-2">Pricing</p>
-        {loadingEnrichment && <SectionSkeleton rows={2} />}
-        {enrichmentError && !loadingEnrichment && (
-          <div className="glass rounded-2xl p-4 border border-border flex items-center gap-3">
-            <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
-            <p className="text-xs text-muted-foreground flex-1">Failed to load price data</p>
-            <button onClick={() => { setEnrichmentError(false); setLoadingEnrichment(true); setRetryEnrichment((c) => c + 1); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition-colors">
-              <RefreshCw className="h-3 w-3" /> Retry
-            </button>
+      <section aria-labelledby="product-tools-heading" className="border-y border-border/70 py-5">
+        <div className="flex flex-wrap items-end justify-between gap-2 mb-3">
+          <div>
+            <p className="section-label mb-1">Continue researching</p>
+            <h2 id="product-tools-heading" className="font-display text-base font-semibold text-foreground">Explore this product</h2>
           </div>
-        )}
-        {!loadingEnrichment && !enrichmentError && (
-          <PriceComparison platforms={enriched.platforms} listedPrice={priceNum || 0} productTitle={title} />
-        )}
+          <span className="text-xs text-muted-foreground truncate max-w-full sm:max-w-[45%]" title={title}>{title}</span>
+        </div>
+        <nav aria-label="Product-specific tools" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          {contextualLinks.map(({ href, label, description, icon: Icon, onClick }) => (
+            <Link
+              key={label}
+              href={href}
+              onClick={onClick}
+              className="group flex min-w-0 items-center gap-3 rounded-lg border border-border bg-surface/50 p-3 transition-colors hover:border-accent/30 hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                <Icon className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-1 text-sm font-medium text-foreground">
+                  {label}<ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden="true" />
+                </span>
+                <span className="mt-0.5 block text-xs leading-4 text-muted-foreground">{description}</span>
+              </span>
+            </Link>
+          ))}
+        </nav>
       </section>
 
-      {/* === SECTION 3: PROFIT CALCULATOR === */}
-      <section id="calculator" className="section-group">
-        <p className="section-label mb-2">Financials</p>
-        <ProfitCalculator sourcePrice={enriched.cheapest?.price || priceNum || 0} sellPrice={priceNum ? priceNum * 2.2 : 0} productTitle={title} />
+      <section id="image-matches" className="section-group scroll-mt-24">
+        <p className="section-label mb-2">Verify this product</p>
+        <CrossPlatformImageMatches imageUrl={image || displayImages[0] || null} source={source} />
       </section>
 
-      {/* === SECTION 4: MARKET INTELLIGENCE === */}
-      <section id="market-intel" className="section-group">
-        <p className="section-label mb-2">Intelligence</p>
+      <section id="market-intel" className="section-group scroll-mt-24">
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <p className="section-label">Market opportunity</p>
+          <Link href={`/competitors?q=${encodeURIComponent(title)}`} className="inline-flex items-center gap-1.5 text-xs text-accent hover:text-accent/80 transition-colors">
+            <BarChart3 className="h-3.5 w-3.5" /> Competitor analysis
+          </Link>
+        </div>
         {loadingMarketIntel && <SectionSkeleton rows={4} />}
         {marketIntelError && !loadingMarketIntel && (
           <div className="intel-card p-4 flex items-center gap-3">
@@ -829,9 +1079,37 @@ function ProductDetailContent() {
         )}
       </section>
 
-      {/* === SECTION 5: REVIEW INTELLIGENCE === */}
-      <section id="reviews" className="section-group">
-        <p className="section-label mb-2">Social Proof</p>
+      <section id="price-comparison" className="section-group scroll-mt-24">
+        <div className="flex items-center justify-between mb-2">
+          <p className="section-label">Cross-platform pricing</p>
+          {historySeries.series.length > 1 && (
+            <button
+              type="button"
+              onClick={() => setHistoryOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition-colors border border-accent/15"
+            >
+              <BarChart3 className="h-3 w-3" /> Price history ({historySeries.series.length} pts{historySeries.platform ? ` · ${historySeries.platform}` : ""})
+            </button>
+          )}
+        </div>
+        {loadingEnrichment && <SectionSkeleton rows={2} />}
+        {enrichmentError && !loadingEnrichment && (
+          <div className="glass rounded-2xl p-4 border border-border flex items-center gap-3">
+            <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
+            <p className="text-xs text-muted-foreground flex-1">Failed to load price data</p>
+            <button onClick={() => { setEnrichmentError(false); setLoadingEnrichment(true); setRetryEnrichment((c) => c + 1); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition-colors">
+              <RefreshCw className="h-3 w-3" /> Retry
+            </button>
+          </div>
+        )}
+        {!loadingEnrichment && !enrichmentError && (
+          <PriceComparison platforms={enriched.platforms} listedPrice={priceNum || 0} productTitle={title} />
+        )}
+        <PriceHistoryChart data={historySeries.series} title={`${title}${historySeries.platform ? ` — ${historySeries.platform}` : ""}`} isOpen={historyOpen} onClose={() => setHistoryOpen(false)} />
+      </section>
+
+      <section id="reviews" className="section-group scroll-mt-24">
+        <p className="section-label mb-2">Customer feedback</p>
         {loadingReview && <SectionSkeleton rows={3} />}
         {reviewError && !loadingReview && (
           <div className="review-card p-4 flex items-center gap-3">
@@ -847,15 +1125,18 @@ function ProductDetailContent() {
         )}
       </section>
 
-      {/* === SECTION 6: SOURCING RECOMMENDATIONS === */}
-      <section id="suppliers" className="section-group">
+      <section id="suppliers" className="section-group scroll-mt-24">
         <p className="section-label mb-2">Sourcing</p>
         <SupplierMatchSection suppliers={enriched.supplierMatches} productTitle={title} category={category} />
       </section>
 
-      {/* === SECTION 7: LISTING OPTIMIZATION === */}
-      <section id="listings" className="section-group">
-        <p className="section-label mb-2">Optimization</p>
+      <section id="calculator" className="section-group scroll-mt-24">
+        <p className="section-label mb-2">Profitability</p>
+        <ProfitCalculator sourcePrice={enriched.cheapest?.price || priceNum || 0} sellPrice={priceNum ? priceNum * 2.2 : 0} productTitle={title} />
+      </section>
+
+      <section id="listings" className="section-group scroll-mt-24">
+        <p className="section-label mb-2">Prepare your listing</p>
         {loadingListing && <SectionSkeleton rows={3} />}
         {listingError && !loadingListing && (
           <div className="listing-card p-4 flex items-center gap-3">
@@ -871,14 +1152,12 @@ function ProductDetailContent() {
         )}
       </section>
 
-      {/* === SECTION 8: SIMILAR & RELATED PRODUCTS === */}
-      <section id="similar" className="section-group">
-        <p className="section-label mb-2">Discovery</p>
+      <section id="similar" className="section-group scroll-mt-24">
+        <p className="section-label mb-2">Explore alternatives</p>
         <SimilarProducts category={category} title={title} currentPrice={priceNum || undefined} />
       </section>
 
-      {/* === SECTION 9: SUGGESTED SEARCHES === */}
-      <div id="searches" className="relative rounded-2xl p-5 border border-border/50 bg-surface/30">
+      <div id="searches" className="relative scroll-mt-24 rounded-2xl p-5 border border-border/50 bg-surface/30">
         <h3 className="font-display text-xs font-semibold text-muted-foreground mb-3 flex items-center gap-2">
           <Clock className="h-3.5 w-3.5" /> Related Searches
         </h3>

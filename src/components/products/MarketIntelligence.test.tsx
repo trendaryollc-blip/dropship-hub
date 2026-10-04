@@ -97,4 +97,17 @@ describe("MarketIntelligence", () => {
     render(<MarketIntelligence data={null} />);
     expect(screen.getByText("Market intelligence unavailable")).toBeInTheDocument();
   });
+
+  it("shows an honest no-data state instead of a blank chart when the trend series is missing", () => {
+    render(<MarketIntelligence data={{ ...mockData, trendSparkline: [], interestIndex: 0 }} />);
+    expect(screen.getByText("No live Google Trends series for this query")).toBeInTheDocument();
+    expect(screen.getByText("Live interest index unavailable for this product")).toBeInTheDocument();
+    expect(screen.queryByText("0/100")).not.toBeInTheDocument();
+  });
+
+  it("renders the sparkline when a trend series exists", () => {
+    render(<MarketIntelligence data={mockData} />);
+    expect(screen.getByText("45/100")).toBeInTheDocument();
+    expect(screen.queryByText(/No live Google Trends series/)).not.toBeInTheDocument();
+  });
 });

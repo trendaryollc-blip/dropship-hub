@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
 const mockMutate = vi.fn();
+const searchParamsState = vi.hoisted(() => ({ current: new URLSearchParams() }));
 
 const mockReport = {
   id: "", productTitle: "Test Product", productImage: "", productUrl: "", category: "electronics",
@@ -31,6 +32,7 @@ function defaultUseAPIMock(url: string) {
 
 const mockUseAPI = vi.fn(defaultUseAPIMock);
 vi.mock("@/hooks/useAPI", () => ({ useAPI: (url: string) => mockUseAPI(url) }));
+vi.mock("next/navigation", () => ({ useSearchParams: () => searchParamsState.current }));
 
 const mockToast = { success: vi.fn(), error: vi.fn() };
 vi.mock("@/components/ui/Toast", () => ({ useToast: () => mockToast }));
@@ -47,6 +49,7 @@ import CompliancePage from "./CompliancePage";
 beforeEach(() => {
   vi.clearAllMocks();
   mockUseAPI.mockReset().mockImplementation(defaultUseAPIMock);
+  searchParamsState.current = new URLSearchParams();
 });
 
 afterEach(() => {
@@ -97,6 +100,23 @@ describe("CompliancePage", () => {
   it("renders the check form on the New Check tab", () => {
     render(<CompliancePage />);
     expect(screen.getByText("New Check")).toBeTruthy();
+  });
+
+  it("prefills a single-product compliance check from URL context", () => {
+    searchParamsState.current = new URLSearchParams("productTitle=Wireless+Headphones&sellingPrice=29.99&productUrl=https%3A%2F%2Famazon.com%2Fdp%2FASIN123456&productImage=https%3A%2F%2Fexample.com%2Fheadphones.jpg");
+    mockAuthJson.mockResolvedValue({ report: mockReport });
+    render(<CompliancePage />);
+    expect(screen.getByPlaceholderText("e.g. Wireless Bluetooth Earbuds with Noise Cancelling")).toHaveValue("Wireless Headphones");
+    expect(screen.getByPlaceholderText("0.00")).toHaveValue(29.99);
+    expect(screen.getByText("https://example.com/headphones.jpg")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Run Compliance Check" }));
+    expect(mockAuthJson).toHaveBeenCalledWith("/api/compliance", expect.objectContaining({
+      productTitle: "Wireless Headphones",
+      sellingPrice: 29.99,
+      productUrl: "https://amazon.com/dp/ASIN123456",
+      productImage: "https://example.com/headphones.jpg",
+      productImages: ["https://example.com/headphones.jpg"],
+    }));
   });
 
   it("disables export buttons when history is empty", () => {

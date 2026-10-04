@@ -13,9 +13,12 @@ interface StickyProductBarProps {
   source: string;
   link: string;
   heroRef: React.RefObject<HTMLDivElement | null>;
+  /** Overrides the default "View on {source}" label — used when the link is a
+   *  search/homepage fallback rather than the exact product listing. */
+  linkLabel?: string;
 }
 
-export default function StickyProductBar({ title, price, image, rating, reviews, source, link, heroRef }: StickyProductBarProps) {
+export default function StickyProductBar({ title, price, image, rating, reviews, source, link, heroRef, linkLabel }: StickyProductBarProps) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -67,7 +70,7 @@ export default function StickyProductBar({ title, price, image, rating, reviews,
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-medium hover:bg-accent-hover transition-colors shrink-0"
           >
             <ShoppingCart className="h-3 w-3" />
-            <span className="hidden sm:inline">View on {source.replace("_", " ")}</span>
+            <span className="hidden sm:inline">{linkLabel ?? `View on ${source.replace("_", " ")}`}</span>
             <ExternalLink className="h-2.5 w-2.5" />
           </a>
         </div>

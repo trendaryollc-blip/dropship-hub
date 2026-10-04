@@ -4,6 +4,7 @@ import { LIMITS } from "@/lib/rate-limit";
 import { getSupplierMessages, addSupplierMessage, markMessageRead, deleteSupplierMessage } from "@/lib/data/srm";
 import { getCJAccessToken } from "@/lib/cj-auth";
 import { safeErrorMessage } from "@/lib/api-errors";
+import { smartSendEmail } from "@/lib/email/smart-sender";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -23,7 +24,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
 export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
     const body = await req.json();
-    const { supplierId, supplierName, subject, body: messageBody, messageType, relatedOrderId } = body;
+    const { supplierId, supplierName, subject, body: messageBody, messageType, relatedOrderId, supplierEmail } = body;
 
     if (!supplierId || !supplierName || !subject || !messageBody) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -52,6 +53,18 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
       } catch {
         status = "failed";
       }
+    }
+
+    // If CJ send isn't applicable or failed, and a supplier email was
+    // provided, deliver via the configured email provider.
+    if (status !== "sent" && typeof supplierEmail === "string" && supplierEmail.trim()) {
+      const send = await smartSendEmail({
+        to: supplierEmail.trim(),
+        subject: `[DropShipHub SRM] ${subject}`,
+        html: `<p><b>Supplier:</b> ${supplierName}</p><p><b>Type:</b> ${messageType || "general"}</p><p>${String(messageBody).replace(/\n/g, "<br/>")}</p>`,
+        tags: [{ name: "supplierId", value: supplierId }],
+      });
+      status = send.success ? "sent" : "failed";
     }
 
     const messageId = await addSupplierMessage(uid, {

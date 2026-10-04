@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Star,
   Download,
@@ -95,10 +96,14 @@ const JOB_STATUS_BADGES: Record<string, string> = {
 };
 
 export default function ReviewsPage() {
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
-  const [productTitle, setProductTitle] = useState("");
-  const [productUrl, setProductUrl] = useState("");
-  const [source, setSource] = useState<ReviewSource>("aliexpress");
+  const [productTitle, setProductTitle] = useState(() => searchParams.get("productTitle") || "");
+  const [productUrl, setProductUrl] = useState(() => searchParams.get("productUrl") || "");
+  const [source, setSource] = useState<ReviewSource>(() => {
+    const requestedSource = searchParams.get("source");
+    return SOURCES.some(({ id }) => id === requestedSource) ? requestedSource as ReviewSource : "aliexpress";
+  });
   const [maxReviewsInput, setMaxReviewsInput] = useState("10");
   const [csvText, setCsvText] = useState("");
   const [csvFileName, setCsvFileName] = useState<string | null>(null);

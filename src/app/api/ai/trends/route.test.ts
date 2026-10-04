@@ -71,7 +71,7 @@ describe("POST /api/ai/trends", () => {
 
   it("returns trend prediction for valid keyword", async () => {
     const { POST } = await import("./route");
-    const req = { json: vi.fn().mockResolvedValue({ keyword: "wireless earbuds" }) } as any;
+    const req = { json: vi.fn().mockResolvedValue({ keyword: "wireless earbuds" }) } as never;
     const res = await POST(req);
     const body = await res.json();
 
@@ -97,6 +97,19 @@ describe("POST /api/ai/trends", () => {
 
     expect(body.provider).toBe("multi-source-aggregator");
     expect(typeof body.analysisTime).toBe("number");
+  });
+
+  it("returns successful analysis when saving prediction history fails", async () => {
+    const { POST } = await import("./route");
+    const { addTrendPrediction } = await import("@/lib/data/trend-predictor");
+    vi.mocked(addTrendPrediction).mockRejectedValueOnce(new Error("Firestore unavailable"));
+    const req = { json: vi.fn().mockResolvedValue({ keyword: "wireless earbuds" }) } as never;
+
+    const res = await POST(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.prediction.productIdea).toBe("Test Product");
   });
 });
 

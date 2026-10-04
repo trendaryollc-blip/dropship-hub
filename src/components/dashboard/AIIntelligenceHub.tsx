@@ -89,9 +89,9 @@ export function AIIntelligenceHub({
               </div>
 
               {/* Image + Details Row */}
-              <div className="flex gap-5 mb-5">
+              <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 mb-5">
                 {/* Product Image */}
-                <div className="w-40 h-40 rounded-xl overflow-hidden bg-gradient-to-br from-purple-500/15 to-pink-500/10 border border-purple-500/15 shrink-0 relative">
+                <div className="w-full sm:w-40 h-48 sm:h-40 rounded-xl overflow-hidden bg-gradient-to-br from-purple-500/15 to-pink-500/10 border border-purple-500/15 shrink-0 relative">
                   {dailyPick.image ? (
                     <Image src={dailyPick.image} alt={dailyPick.title} fill unoptimized className="object-cover" sizes="160px" />
                   ) : (

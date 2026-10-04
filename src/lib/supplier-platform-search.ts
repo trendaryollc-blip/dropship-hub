@@ -1414,10 +1414,38 @@ function observedRating(listings: DiscoveredListing[]): { rating: number; review
   return { rating: Math.round(avg * 10) / 10, reviews: reviews.length > 0 ? Math.max(...reviews) : 0 };
 }
 
+const CATALOG_STOP_WORDS = new Set([
+  "the", "and", "for", "with", "from", "your", "you", "new", "hot", "sale",
+  "free", "best", "high", "quality", "hot", "newest", "cheap", "wholesale",
+  "pcs", "pack", "set", "sets", "size", "color", "colour", "style", "type",
+  "product", "item", "items", "goods", "shipping", "stock", "order",
+]);
+
+/**
+ * Categories observed in the store's actual listing titles.
+ *
+ * Never derived from the search query — seeding specializations with query
+ * tokens makes every discovered supplier match every query (scoreSupplierMatch
+ * reads those fields), which is how bogus "relevance" scores appeared.
+ */
+function catalogTermsFromListings(listings: DiscoveredListing[], limit: number): string[] {
+  const counts = new Map<string, number>();
+  for (const listing of listings) {
+    const words = listing.title
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((word) => word.length >= 3 && !CATALOG_STOP_WORDS.has(word));
+    for (const word of new Set(words)) counts.set(word, (counts.get(word) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, limit)
+    .map(([word]) => word);
+}
+
 export function sourceToSupplierProfile(source: SupplierSource, query: string): SupplierProfile {
-  const tokens = parseSupplierQuery(query);
   const { rating, reviews } = observedRating(source.listings);
-  const categories = tokens.length > 0 ? tokens : [source.platformName];
+  const categories = catalogTermsFromListings(source.listings, 15);
   const description =
     `${source.storeName} is a storefront on ${source.platformName}, ` +
     `surfaced by a live search for "${query}". ` +
@@ -1487,13 +1515,32 @@ export function sourceToSupplierProfile(source: SupplierSource, query: string): 
 
 export function buildSupplierProfiles(sources: SupplierSource[], query: string): SupplierProfile[] {
   const tokens = parseSupplierQuery(query);
-  return sources
+  const matchingSources = sources
+    .map((source) => {
+      const listings = source.listings.filter((listing) => listingMatchesQuery(listing.title, tokens));
+      return { ...source, listings, listingCount: listings.length };
+    })
+    .filter((source) => tokens.length === 0 || source.listings.length > 0);
+
+  return matchingSources
     .map((source) => sourceToSupplierProfile(source, query))
     .map((profile) => ({ profile, score: scoreSupplierMatch(profile, tokens) }))
     .sort(
       (a, b) => b.score - a.score || b.profile.stats.totalProducts - a.profile.stats.totalProducts
     )
     .map((entry) => entry.profile);
+}
+
+function listingMatchesQuery(title: string, tokens: string[]): boolean {
+  if (tokens.length === 0) return true;
+  const normalizedTitle = title.toLowerCase().replace(/[^a-z0-9]+/g, " ");
+  const matchedTokens = tokens.filter((token) => {
+    const singular = token.endsWith("s") ? token.slice(0, -1) : token;
+    const plural = token.endsWith("s") ? token : `${token}s`;
+    return normalizedTitle.includes(token) || normalizedTitle.includes(singular) || normalizedTitle.includes(plural);
+  });
+  const requiredMatches = Math.min(tokens.length, Math.max(1, Math.ceil(tokens.length / 2)));
+  return matchedTokens.length >= requiredMatches;
 }
 
 export interface SupplierPlatformStatus {

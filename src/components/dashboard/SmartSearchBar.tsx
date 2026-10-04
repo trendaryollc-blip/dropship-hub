@@ -140,14 +140,14 @@ export function SmartSearchBar() {
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto">
-      <form onSubmit={handleSubmit} className="relative group">
+    <div className="w-full max-w-3xl mx-auto" role="search" aria-label="Dashboard search">
+      <form onSubmit={handleSubmit} className="relative group" role="search">
         {/* Glow backdrop on focus */}
-        <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-[var(--accent)]/20 via-[var(--gradient-mid)]/20 to-[var(--accent-warm)]/20 opacity-0 group-focus-within:opacity-100 blur-xl transition-opacity duration-500 pointer-events-none" />
+        <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-[var(--accent)]/20 via-[var(--gradient-mid)]/20 to-[var(--accent-warm)]/20 opacity-0 group-focus-within:opacity-100 blur-xl transition-opacity duration-500 pointer-events-none" aria-hidden="true" />
 
         <div className="relative flex items-center gap-2 p-2 rounded-2xl bg-white/[0.06] border border-white/[0.1] focus-within:border-[var(--accent)]/50 focus-within:bg-white/[0.08] transition-all duration-500 search-bar-container">
           {/* Search icon with pulse on focus */}
-          <div className="pl-3 flex items-center">
+          <div className="pl-3 flex items-center" aria-hidden="true">
             <div className="relative">
               <Search className="h-5 w-5 text-gray-500 group-focus-within:text-[var(--accent)] transition-colors duration-300" />
               <div className="absolute inset-0 bg-[var(--accent)]/20 rounded-full blur-md opacity-0 group-focus-within:opacity-100 transition-opacity duration-300" />
@@ -157,15 +157,21 @@ export function SmartSearchBar() {
           <input
             ref={inputRef}
             type="text"
+            role="combobox"
+            aria-expanded={showSuggestions}
+            aria-controls="dashboard-search-suggestions"
+            aria-label="Search winning products, suppliers, or tools. Press Control K to focus."
+            autoComplete="off"
+            spellCheck={false}
             value={query}
             onChange={(e) => { setQuery(e.target.value); setShowSuggestions(false); }}
             onFocus={() => !query && setShowSuggestions(true)}
             placeholder="Search winning products, find suppliers, calculate margins..."
-            className="flex-1 bg-transparent text-sm md:text-base text-white placeholder-gray-500 outline-none py-2.5"
+            className="flex-1 bg-transparent text-sm md:text-base text-white placeholder-gray-500 outline-none py-2.5 min-w-0"
           />
 
           {/* Keyboard shortcut badge */}
-          <div className="hidden md:flex items-center gap-1 mr-1 opacity-40 group-focus-within:opacity-0 transition-opacity">
+          <div className="hidden md:flex items-center gap-1 mr-1 opacity-40 group-focus-within:opacity-0 transition-opacity" aria-hidden="true" title="Press Ctrl+K or Cmd+K to focus search">
             <kbd className="px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/[0.08] text-[10px] font-mono text-gray-500">Ctrl</kbd>
             <kbd className="px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/[0.08] text-[10px] font-mono text-gray-500">K</kbd>
           </div>
@@ -174,39 +180,47 @@ export function SmartSearchBar() {
           <button
             type="button"
             onClick={isListening ? stopVoice : startVoice}
-            className={`p-2.5 rounded-xl transition-all duration-300 ${isListening ? "bg-red-500/20 text-red-400 animate-pulse shadow-lg shadow-red-500/20" : "text-gray-500 hover:text-white hover:bg-white/[0.08] hover:shadow-md"}`}
+            aria-label={isListening ? "Stop voice input" : "Search by voice"}
+            aria-pressed={isListening}
+            title={isListening ? "Stop voice input" : "Search by voice"}
+            className={`p-2.5 rounded-xl transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/60 ${isListening ? "bg-red-500/20 text-red-400 animate-pulse shadow-lg shadow-red-500/20" : "text-gray-500 hover:text-white hover:bg-white/[0.08] hover:shadow-md"}`}
           >
-            <Mic className="h-4 w-4" />
+            <Mic className="h-4 w-4" aria-hidden="true" />
           </button>
 
           {/* Divider */}
-          <div className="w-px h-6 bg-white/[0.08]" />
+          <div className="w-px h-6 bg-white/[0.08]" aria-hidden="true" />
 
           {/* Submit button */}
           <button
             type="submit"
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-warm)] text-white text-sm font-semibold hover:brightness-110 transition-all duration-300 active:scale-[0.97] shadow-lg shadow-[var(--accent)]/25 hover:shadow-[var(--accent)]/40 flex items-center gap-2"
+            aria-label="Run search"
+            className="px-4 sm:px-5 py-2.5 rounded-xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-warm)] text-white text-sm font-semibold hover:brightness-110 transition-all duration-300 active:scale-[0.97] shadow-lg shadow-[var(--accent)]/25 hover:shadow-[var(--accent)]/40 flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 shrink-0"
           >
             <span>Go</span>
-            <kbd className="hidden md:inline-flex items-center px-1.5 py-0.5 rounded bg-white/10 text-[10px] font-mono">&#x23CE;</kbd>
+            <kbd className="hidden md:inline-flex items-center px-1.5 py-0.5 rounded bg-white/10 text-[10px] font-mono" aria-hidden="true">&#x23CE;</kbd>
           </button>
         </div>
       </form>
 
       {/* Suggestions panel */}
       {showSuggestions && (
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 space-y-3" id="dashboard-search-suggestions" role="listbox" aria-label="Search suggestions">
           {/* Recent Searches */}
           {recentSearches.length > 0 && (
-            <div className="flex flex-wrap gap-2 justify-center">
-              <span className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold self-center mr-1">Recent</span>
+            <div className="flex flex-wrap gap-2 justify-center" role="group" aria-label="Recent searches">
+              <span className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold self-center mr-1" aria-hidden="true">Recent</span>
               {recentSearches.map((entry) => (
                 <button
                   key={entry.id}
+                  type="button"
+                  role="option"
+                  aria-selected="false"
+                  aria-label={`Repeat recent search: ${entry.query}`}
                   onClick={() => { setQuery(entry.query); setShowSuggestions(false); router.push(`/products?q=${encodeURIComponent(entry.query)}`); }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.05] text-[11px] text-gray-500 hover:bg-white/[0.07] hover:text-gray-300 hover:border-white/[0.1] transition-all duration-300"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.05] text-[11px] text-gray-500 hover:bg-white/[0.07] hover:text-gray-300 hover:border-white/[0.1] transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/60"
                 >
-                  <Clock className="h-3 w-3" />
+                  <Clock className="h-3 w-3" aria-hidden="true" />
                   {entry.query}
                 </button>
               ))}
@@ -214,21 +228,27 @@ export function SmartSearchBar() {
           )}
 
           {/* Suggested Commands */}
-          <div className="flex flex-wrap gap-2 justify-center">
+          <div className="flex flex-wrap gap-2 justify-center" role="group" aria-label="Suggested searches">
             {visibleChips.map((cmd) => (
               <button
                 key={cmd.label}
+                type="button"
+                role="option"
+                aria-selected="false"
+                aria-label={`Search suggestion: ${cmd.label}`}
                 onClick={() => handleSuggestionClick(cmd.action)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.08] text-xs text-gray-400 hover:bg-white/[0.08] hover:text-white hover:border-white/[0.15] hover:shadow-lg transition-all duration-300 group/chip"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.08] text-xs text-gray-400 hover:bg-white/[0.08] hover:text-white hover:border-white/[0.15] hover:shadow-lg transition-all duration-300 group/chip focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/60"
               >
-                <cmd.icon className="h-3.5 w-3.5 group-hover/chip:scale-110 transition-transform" />
+                <cmd.icon className="h-3.5 w-3.5 group-hover/chip:scale-110 transition-transform" aria-hidden="true" />
                 {cmd.label}
               </button>
             ))}
             {suggestedCommands.length > 4 && (
               <button
+                type="button"
                 onClick={() => setShowAllChips(!showAllChips)}
-                className="flex items-center gap-1 px-3 py-2 rounded-full text-[11px] text-gray-600 hover:text-gray-400 transition-colors"
+                aria-expanded={showAllChips}
+                className="flex items-center gap-1 px-3 py-2 rounded-full text-[11px] text-gray-600 hover:text-gray-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/60"
               >
                 {showAllChips ? "Show less" : `+${suggestedCommands.length - 4} more`}
               </button>

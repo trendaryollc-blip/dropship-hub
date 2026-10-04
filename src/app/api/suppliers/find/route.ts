@@ -36,17 +36,31 @@ export const GET = withAuth(async (request: NextRequest) => {
       const categoryLower = category.toLowerCase();
 
       // Category/specialization match (highest weight)
-      for (const spec of supplier.specializations) {
-        const specLower = spec.toLowerCase();
-        if (productLower.includes(specLower) || specLower.includes(productLower)) score += 30;
-        if (categoryLower && (categoryLower.includes(specLower) || specLower.includes(categoryLower))) score += 25;
+      if (productLower && productLower.length > 0) {
+        for (const spec of supplier.specializations) {
+          const specLower = spec.toLowerCase();
+          if (specLower && (productLower.includes(specLower) || specLower.includes(productLower))) score += 30;
+        }
+      }
+      if (categoryLower && categoryLower.length > 0) {
+        for (const spec of supplier.specializations) {
+          const specLower = spec.toLowerCase();
+          if (specLower && (categoryLower.includes(specLower) || specLower.includes(categoryLower))) score += 25;
+        }
       }
 
       // Catalog category match
-      for (const cat of supplier.catalog.categories) {
-        const catLower = cat.toLowerCase();
-        if (productLower.includes(catLower) || catLower.includes(productLower)) score += 20;
-        if (categoryLower && (categoryLower.includes(catLower) || catLower.includes(categoryLower))) score += 15;
+      if (productLower && productLower.length > 0) {
+        for (const cat of supplier.catalog.categories) {
+          const catLower = cat.toLowerCase();
+          if (catLower && (productLower.includes(catLower) || catLower.includes(productLower))) score += 20;
+        }
+      }
+      if (categoryLower && categoryLower.length > 0) {
+        for (const cat of supplier.catalog.categories) {
+          const catLower = cat.toLowerCase();
+          if (catLower && (categoryLower.includes(catLower) || catLower.includes(categoryLower))) score += 15;
+        }
       }
 
       // Price range compatibility
@@ -71,8 +85,14 @@ export const GET = withAuth(async (request: NextRequest) => {
     // Sort by score descending
     scored.sort((a, b) => b.score - a.score);
 
-    // Return all suppliers but with relevance scores
-    const results = scored.map(({ supplier, score }) => ({
+    // Require a minimum match threshold if a product/category was specified.
+    // Otherwise, return empty to avoid picking arbitrary suppliers.
+    const hasQuery = Boolean(product.trim() || category.trim());
+    const threshold = hasQuery ? 10 : 0;
+    const filtered = scored.filter(({ score }) => score >= threshold);
+
+    // Return filtered suppliers with relevance scores
+    const results = filtered.map(({ supplier, score }) => ({
       ...supplier,
       relevanceScore: Math.round(score),
     }));

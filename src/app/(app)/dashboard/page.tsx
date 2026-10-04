@@ -7,6 +7,8 @@ import { AlertTriangle, RefreshCw } from "lucide-react";
 import { PageErrorBoundary } from "@/components/ui/PageErrorBoundary";
 import { SectionErrorBoundary } from "@/components/ui/SectionErrorBoundary";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { useDashboardSections } from "@/hooks/useDashboardSections";
+import { DashboardCustomize } from "@/components/dashboard/DashboardCustomize";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useSavedProducts } from "@/components/saved/SavedProductsProvider";
 import { setContextualActions } from "@/hooks/useContextualActions";
@@ -43,6 +45,7 @@ const PLATFORM_ID_BY_NAME: Record<string, string> = {
    ═══════════════════════════════════════════════ */
 export default function DashboardHome() {
   const { data, markAlertRead, markAllAlertsRead, addToCompare, removeFromCompare, clearCompare, loading, error, hasData, refresh } = useDashboardData();
+  const { hidden, toggle, reset, isVisible } = useDashboardSections();
   const { user } = useAuth();
   const { toggleSave, isSaved, savedProducts } = useSavedProducts();
   const router = useRouter();
@@ -116,7 +119,13 @@ export default function DashboardHome() {
   // Show a real error state instead of a silent all-zeros dashboard. ────
   if (error && !hasData) {
     return (
-      <div className="max-w-7xl mx-auto p-4 md:p-6">
+      <main id="dashboard-main" className="max-w-7xl mx-auto p-4 md:p-6">
+        <a
+          href="#dashboard-main"
+          className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:rounded-lg focus:bg-gray-900 focus:px-3 focus:py-2 focus:text-sm focus:text-white"
+        >
+          Skip to main content
+        </a>
         <div
           className="flex flex-col items-center justify-center py-24 px-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-center"
           role="alert"
@@ -131,19 +140,19 @@ export default function DashboardHome() {
           <button
             type="button"
             onClick={handleRetry}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent/10 border border-accent/20 text-accent text-sm font-semibold hover:bg-accent/20 transition-all"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent/10 border border-accent/20 text-accent text-sm font-semibold hover:bg-accent/20 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
             Try Again
           </button>
         </div>
-      </div>
+      </main>
     );
   }
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto space-y-8 p-4 md:p-6" aria-busy="true" aria-label="Loading dashboard">
+      <main id="dashboard-main" className="max-w-7xl mx-auto space-y-6 md:space-y-8 p-4 md:p-6" aria-busy="true" aria-label="Loading dashboard">
         <HeroSkeleton />
         {/* Mirrors the real section layout to avoid layout shift when data arrives */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
@@ -159,25 +168,32 @@ export default function DashboardHome() {
             <div key={i} className="h-56 rounded-2xl bg-white/[0.03] border border-white/[0.06] animate-pulse" />
           ))}
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
     <PageErrorBoundary>
-      <div className="max-w-7xl mx-auto space-y-8 p-4 md:p-6">
+      <main id="dashboard-main" aria-label="Dashboard" className="max-w-7xl mx-auto space-y-6 md:space-y-8 p-4 md:p-6">
+        <a
+          href="#dashboard-main"
+          className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:rounded-lg focus:bg-gray-900 focus:px-3 focus:py-2 focus:text-sm focus:text-white"
+        >
+          Skip to main content
+        </a>
         {/* Soft failure: refresh failed but we still have the last good data */}
         {error != null && hasData && (
           <div
             role="status"
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs"
           >
-            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span className="flex-1">Couldn&apos;t reach the live data feed — showing the last successful data.</span>
             <button
               type="button"
               onClick={handleRetry}
-              className="font-semibold underline underline-offset-2 hover:text-amber-200 shrink-0"
+              aria-label="Retry loading live dashboard data"
+              className="font-semibold underline underline-offset-2 hover:text-amber-200 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 rounded"
             >
               Retry
             </button>
@@ -191,7 +207,7 @@ export default function DashboardHome() {
             role="status"
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs"
           >
-            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span className="flex-1">
               {!data.dataQuality.firestore && !data.dataQuality.cj
                 ? "Store data and the product discovery feed are temporarily unavailable — showing the last available data."
@@ -202,13 +218,19 @@ export default function DashboardHome() {
             <button
               type="button"
               onClick={handleRetry}
-              className="font-semibold underline underline-offset-2 hover:text-amber-200 shrink-0"
+              aria-label="Retry loading dashboard data"
+              className="font-semibold underline underline-offset-2 hover:text-amber-200 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 rounded"
             >
               Retry
             </button>
           </div>
         )}
 
+        <div className="flex items-center justify-end">
+          <DashboardCustomize hidden={hidden} onToggle={toggle} onReset={reset} />
+        </div>
+
+        {isVisible("command") && (
         <SectionErrorBoundary name="Command Center">
           <HeroCommandCenter
             username={user?.displayName || user?.email?.split("@")[0] || "there"}
@@ -218,11 +240,15 @@ export default function DashboardHome() {
             savedCount={savedProducts.length}
           />
         </SectionErrorBoundary>
+        )}
 
+        {isVisible("revenue") && (
         <SectionErrorBoundary name="Revenue & Profit">
           <RevenueProfitHub stats={stats} chartData={data.revenueChart ?? []} storesConnected={data.storesCount} suppliersActive={onlineSuppliers} pendingOrders={data.fulfillmentPipeline.pending ?? 0} marginPct={marginPct} />
         </SectionErrorBoundary>
+        )}
 
+        {isVisible("insights") && (
         <SectionErrorBoundary name="AI Intelligence">
           <AIIntelligenceHub
             dailyPick={data.dailyPick}
@@ -232,30 +258,43 @@ export default function DashboardHome() {
             onMarkAllRead={markAllAlertsRead}
           />
         </SectionErrorBoundary>
+        )}
 
+        {isVisible("discovery") && (
         <SectionErrorBoundary name="Product Discovery">
           <ProductDiscovery trending={data.trending} onAddCompare={addToCompare} onSaveProduct={handleSaveTrending} isProductSaved={isTrendingSaved} onViewProduct={handleViewTrending} />
         </SectionErrorBoundary>
+        )}
 
+        {isVisible("suppliers") && (
         <SectionErrorBoundary name="Supplier Network">
           <SupplierNetwork suppliers={data.suppliers} />
         </SectionErrorBoundary>
+        )}
 
+        {isVisible("orders") && (
         <SectionErrorBoundary name="Order Operations">
           <OrderOperations pipeline={data.fulfillmentPipeline} />
         </SectionErrorBoundary>
+        )}
 
+        {isVisible("market") && (
         <SectionErrorBoundary name="Market Intelligence">
           <MarketIntelligence heatmap={data.heatmap} ticker={data.ticker} />
         </SectionErrorBoundary>
+        )}
 
+        {isVisible("stores") && (
         <SectionErrorBoundary name="Store Operations">
           <StoreOperations storesConnected={data.storesCount} />
         </SectionErrorBoundary>
+        )}
 
+        {isVisible("growth") && (
         <SectionErrorBoundary name="Growth Tools">
           <GrowthTools />
         </SectionErrorBoundary>
+        )}
 
         <SectionErrorBoundary name="Market Ticker">
           <MarketTickerFooter ticker={data.ticker} />
@@ -264,7 +303,7 @@ export default function DashboardHome() {
         {/* Quick compare bar — collects products added from Product Discovery
             ("Add to Compare") and lets users jump to the comparison view. */}
         <QuickCompareBar items={data.compareItems ?? []} onRemove={removeFromCompare} onClear={clearCompare} />
-      </div>
+      </main>
     </PageErrorBoundary>
   );
 }

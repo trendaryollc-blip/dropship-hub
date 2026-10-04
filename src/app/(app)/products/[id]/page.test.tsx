@@ -14,6 +14,7 @@ const detailEnv = vi.hoisted(() => ({
   reviews: {} as Record<string, unknown>,
   marketIntel: {} as Record<string, unknown>,
   listing: {} as Record<string, unknown>,
+  matchImage: {} as Record<string, unknown>,
   enrichFail: false,
   imagesDeferred: null as { promise: Promise<Record<string, unknown>>; resolve: (v: Record<string, unknown>) => void } | null,
 }));
@@ -70,6 +71,7 @@ function setDetailEnv(overrides: Partial<typeof detailEnv> = {}, flags: { enrich
   detailEnv.reviews = (overrides.reviews as Record<string, unknown>) ?? {};
   detailEnv.marketIntel = (overrides.marketIntel as Record<string, unknown>) ?? {};
   detailEnv.listing = (overrides.listing as Record<string, unknown>) ?? {};
+  detailEnv.matchImage = (overrides.matchImage as Record<string, unknown>) ?? {};
   detailEnv.enrichFail = flags.enrichFail ?? false;
   detailEnv.imagesDeferred = null;
 }
@@ -87,6 +89,7 @@ function installDetailImpl() {
       if (detailEnv.enrichFail) throw new Error("upstream down");
       return detailEnv.enrich;
     }
+    if (u.includes("/products/match-image")) return detailEnv.matchImage;
     if (u.includes("/products/reviews")) return detailEnv.reviews;
     if (u.includes("/products/market-intel")) return detailEnv.marketIntel;
     if (u.includes("/products/listing")) return detailEnv.listing;
@@ -172,6 +175,35 @@ describe("buildProductUrl", () => {
 // ---------------------------------------------------------------- page behavior
 
 describe("ProductDetailPage - data sources", () => {
+  it("presents product research sections in the seller decision order without duplicate next steps", async () => {
+    seedProduct();
+    installDetailImpl();
+    render(<ProductDetailPage />);
+    await settle();
+
+    const orderedSections = Array.from(document.querySelectorAll(
+      "#overview, #image-matches, #market-intel, #price-comparison, #reviews, #suppliers, #calculator, #listings, #similar, #searches"
+    )).map((section) => section.id);
+
+    expect(orderedSections).toEqual([
+      "overview",
+      "image-matches",
+      "market-intel",
+      "price-comparison",
+      "reviews",
+      "suppliers",
+      "calculator",
+      "listings",
+      "similar",
+      "searches",
+    ]);
+    expect(screen.queryByText("Next Steps")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Competitor analysis" })).toHaveAttribute(
+      "href",
+      "/competitors?q=Wireless%20Headphones"
+    );
+  });
+
   it("renders the product from sessionStorage with gallery, stats, and category", async () => {
     seedProduct();
     installDetailImpl();
@@ -186,6 +218,96 @@ describe("ProductDetailPage - data sources", () => {
     expect(screen.getByText("Related Searches")).toBeInTheDocument();
   });
 
+  it("offers same-tab product-aware links to dedicated research tools", async () => {
+    setDetailEnv({
+      enrich: RICH_ENRICH,
+      reviews: { averageRating: 4.3, totalReviews: 860 },
+      marketIntel: {
+        searchVolume: "medium",
+        estimatedSellers: 22,
+        avgSellerRating: 4.2,
+        interestIndex: 76,
+        trendSparkline: [10, 25, 76],
+        competitionLevel: "high",
+      },
+    });
+    seedProduct();
+    installDetailImpl();
+    render(<ProductDetailPage />);
+    await settle();
+
+    const tools = screen.getByRole("navigation", { name: "Product-specific tools" });
+    const suppliersLink = screen.getByRole("link", { name: /Find suppliers/ });
+    const competitorsLink = screen.getByRole("link", { name: /Analyze competitors/ });
+    const calculatorLink = screen.getByRole("link", { name: /Model profitability/ });
+    const validationLink = screen.getByRole("link", { name: /Validate product/ });
+    const listingLink = screen.getByRole("link", { name: /Create a listing/ });
+    const reviewsLink = screen.getByRole("link", { name: /Import reviews/ });
+    const contentLink = screen.getByRole("link", { name: /Create social content/ });
+    const complianceLink = screen.getByRole("link", { name: /Check compliance/ });
+    const priceWarLink = screen.getByRole("link", { name: /Set a price rule/ });
+    const trendsLink = screen.getByRole("link", { name: /Analyze product trend/ });
+    const lifecycleLink = screen.getByRole("link", { name: /Track lifecycle/ });
+
+    expect(tools).toBeInTheDocument();
+    expect(suppliersLink).toHaveAttribute("href", "/suppliers?product=Wireless+Headphones&category=General&source=amazon&price=29.99");
+    expect(competitorsLink).toHaveAttribute("href", "/competitors?q=Wireless%20Headphones");
+    expect(calculatorLink).toHaveAttribute("href", "/calculator/profit?cost=29.99&price=65.98");
+    expect(validationLink).toHaveAttribute("href", expect.stringContaining("/product-validation?productTitle=Wireless+Headphones"));
+    expect(validationLink).toHaveAttribute("href", expect.stringContaining("productImage=https%3A%2F%2Fimg.example.com%2Fh.jpg"));
+    const validationParams = new URL(validationLink.getAttribute("href")!, "https://example.test").searchParams;
+    expect(validationParams.get("source")).toBe("amazon");
+    expect(validationParams.get("productCost")).toBe("29.99");
+    expect(validationParams.get("estimatedSellingPrice")).toBe("65.98");
+    expect(validationParams.get("rating")).toBe("4.3");
+    expect(validationParams.get("reviews")).toBe("860");
+    expect(validationParams.get("bestPrice")).toBe("10.99");
+    expect(validationParams.get("competitorCount")).toBe("22");
+    expect(validationParams.get("sellerRating")).toBe("4.2");
+    expect(validationParams.get("searchInterestIndex")).toBe("76");
+    expect(validationParams.get("historicalInterestIndex")).toBe("10,25,76");
+    expect(validationParams.get("saturationLevel")).toBe("saturated");
+    expect(JSON.parse(validationParams.get("platformPrices") || "[]")).toEqual([
+      { platform: "ebay", price: 10.99, rating: 4.2, reviews: 80 },
+    ]);
+    expect(listingLink).toHaveAttribute("href", "/product-listings?title=Wireless+Headphones&price=29.99&category=General&platform=amazon");
+    const reviewParams = new URL(reviewsLink.getAttribute("href")!, "https://example.test").searchParams;
+    expect(reviewParams.get("productTitle")).toBe("Wireless Headphones");
+    expect(reviewParams.get("productUrl")).toBe("https://amazon.com/dp/B0ASIN123X");
+    expect(reviewParams.get("source")).toBe("amazon");
+    const contentParams = new URL(contentLink.getAttribute("href")!, "https://example.test").searchParams;
+    expect(contentParams.get("productTitle")).toBe("Wireless Headphones");
+    expect(contentParams.get("productImage")).toBe("https://img.example.com/h.jpg");
+    const complianceParams = new URL(complianceLink.getAttribute("href")!, "https://example.test").searchParams;
+    expect(complianceParams.get("productTitle")).toBe("Wireless Headphones");
+    expect(complianceParams.get("sellingPrice")).toBe("29.99");
+    expect(complianceParams.get("productImage")).toBe("https://img.example.com/h.jpg");
+    const priceWarParams = new URL(priceWarLink.getAttribute("href")!, "https://example.test").searchParams;
+    expect(priceWarParams.get("productTitle")).toBe("Wireless Headphones");
+    expect(priceWarParams.get("cost")).toBe("29.99");
+    expect(priceWarParams.get("myPrice")).toBe("65.98");
+    expect(priceWarParams.get("platforms")).toBe("amazon");
+    const trendParams = new URL(trendsLink.getAttribute("href")!, "https://example.test").searchParams;
+    expect(trendParams.get("keyword")).toBe("Wireless Headphones");
+    expect(trendParams.get("imageUrl")).toBe("https://img.example.com/h.jpg");
+    const lifecycleParams = new URL(lifecycleLink.getAttribute("href")!, "https://example.test").searchParams;
+    expect(lifecycleParams.get("productTitle")).toBe("Wireless Headphones");
+    expect(lifecycleParams.get("productImage")).toBe("https://img.example.com/h.jpg");
+    [suppliersLink, competitorsLink, calculatorLink, validationLink, listingLink, reviewsLink, contentLink, complianceLink, priceWarLink, trendsLink, lifecycleLink].forEach((link) => {
+      expect(link).not.toHaveAttribute("target", "_blank");
+    });
+
+    fireEvent.click(competitorsLink);
+    expect(JSON.parse(sessionStorage.getItem("competitorProduct") || "{}")).toMatchObject({
+      title: "Wireless Headphones",
+      price: 29.99,
+      image: "https://img.example.com/h.jpg",
+      source: "amazon",
+      rating: 4.5,
+      reviews: 1234,
+    });
+  });
+
   it("renders a fallback product from URL params when sessionStorage is empty", async () => {
     searchParamsState.current = new URLSearchParams("t=Yoga+Mat&p=15&src=walmart&r=4&rev=40");
     installDetailImpl();
@@ -193,7 +315,8 @@ describe("ProductDetailPage - data sources", () => {
 
     expect(await screen.findByRole("heading", { level: 1, name: "Yoga Mat" })).toBeInTheDocument();
     expect(screen.getByText("SKU-YOGAMAT")).toBeInTheDocument();
-    expect(screen.getByText("View on walmart")).toBeInTheDocument();
+    expect(screen.getByText("Search walmart for this product")).toBeInTheDocument();
+    expect(screen.getByText(/Direct product link unavailable/)).toBeInTheDocument();
     expect(screen.getAllByText(/15\.00/).length).toBeGreaterThan(0);
   });
 
@@ -220,8 +343,22 @@ describe("ProductDetailPage - data sources", () => {
       await pending.promise;
     });
 
+    expect(await screen.findByText("4 images available from amazon")).toBeInTheDocument();
+    expect(screen.getByText("1 / 4")).toBeInTheDocument();
+  });
+
+  it("fetches and merges source images when the search result already has multiple images", async () => {
+    setDetailEnv({ images: ["https://img.example.com/h2.jpg", "https://img.example.com/h3.jpg"] });
+    seedProduct({ images: ["https://img.example.com/h.jpg", "https://img.example.com/h2.jpg"] });
+    installDetailImpl();
+    render(<ProductDetailPage />);
+
     expect(await screen.findByText("3 images available from amazon")).toBeInTheDocument();
     expect(screen.getByText("1 / 3")).toBeInTheDocument();
+    expect(safeFetchMock).toHaveBeenCalledWith("/api/platforms/product-images", expect.objectContaining({
+      method: "POST",
+      body: expect.stringContaining('"source":"amazon"'),
+    }));
   });
 
   it("navigates the gallery via thumbnails", async () => {
@@ -242,9 +379,10 @@ describe("ProductDetailPage - # link fallback", () => {
     installDetailImpl();
     render(<ProductDetailPage />);
 
-    const ctas = screen.getAllByRole("link", { name: /view on amazon/i });
+    const ctas = screen.getAllByRole("link", { name: /search amazon for this product/i });
     expect(ctas.length).toBeGreaterThan(0);
     ctas.forEach((c) => expect(c).toHaveAttribute("href", "https://www.amazon.com/s?k=Wireless%20Headphones"));
+    expect(screen.getByText(/Direct product link unavailable/)).toBeInTheDocument();
 
     await settle();
   });
@@ -280,6 +418,53 @@ describe("ProductDetailPage - # link fallback", () => {
 });
 
 describe("ProductDetailPage - data fetching", () => {
+  it("shows an unavailable state instead of a failure when the review endpoint has no data", async () => {
+    setDetailEnv({ reviews: {} });
+    seedProduct({ rating: undefined, reviews: undefined });
+    installDetailImpl();
+    render(<ProductDetailPage />);
+
+    expect(await screen.findByText("Review data unavailable")).toBeInTheDocument();
+    expect(screen.getByText("This platform did not provide review details for this listing.")).toBeInTheDocument();
+    expect(screen.queryByText("Failed to load review data")).not.toBeInTheDocument();
+  });
+
+  it("searches marketplaces by the product image only when requested", async () => {
+    setDetailEnv({
+      matchImage: {
+        matches: [{
+          title: "Wireless Headphones listing",
+          platform: "ebay",
+          url: "https://www.ebay.com/itm/123",
+          image: "https://img.example.com/match.jpg",
+          price: "$18.00",
+          matchType: "exact",
+        }, {
+          title: "Similar listing without an advertised price",
+          platform: "etsy",
+          url: "https://www.etsy.com/listing/456",
+          image: null,
+          price: null,
+          matchType: "visual",
+        }],
+      },
+    });
+    seedProduct({ images: ["https://img.example.com/h.jpg"] });
+    installDetailImpl();
+    render(<ProductDetailPage />);
+
+    expect(safeFetchMock).not.toHaveBeenCalledWith("/api/products/match-image", expect.anything());
+    fireEvent.click(screen.getByRole("button", { name: "Search by image" }));
+
+    expect(await screen.findByText("Exact image match")).toBeInTheDocument();
+    expect(screen.getByText("Wireless Headphones listing")).toBeInTheDocument();
+    expect(screen.getByText("Price unavailable")).toBeInTheDocument();
+    expect(safeFetchMock).toHaveBeenCalledWith("/api/products/match-image", expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({ imageUrl: "https://img.example.com/h.jpg", source: "amazon" }),
+    }));
+  });
+
   it("fires all five data effects with the right endpoints and bodies", async () => {
     setDetailEnv({
       enrich: RICH_ENRICH,

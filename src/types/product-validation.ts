@@ -5,6 +5,8 @@ import { Timestamp } from "firebase/firestore";
 export interface TrendVelocityInput {
   currentSearchVolume: number;
   historicalSearchVolumes: number[];
+  currentSearchInterestIndex?: number;
+  historicalSearchInterest?: number[];
   currentSellerCount: number;
   historicalSellerCounts: number[];
   currentPrice: number;

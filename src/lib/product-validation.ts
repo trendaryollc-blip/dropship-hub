@@ -89,12 +89,14 @@ export function calculateTrendVelocity(input: TrendVelocityInput): TrendVelocity
   const {
     currentSearchVolume,
     historicalSearchVolumes,
+    historicalSearchInterest,
     historicalSellerCounts,
     historicalPrices,
   } = input;
 
   if (
     !historicalSearchVolumes.length &&
+    !historicalSearchInterest?.length &&
     !historicalSellerCounts.length &&
     !historicalPrices.length
   ) {
@@ -108,7 +110,10 @@ export function calculateTrendVelocity(input: TrendVelocityInput): TrendVelocity
     };
   }
 
-  const searchGrowthRates = calcGrowthRates(historicalSearchVolumes);
+  const historicalSearchTrend = input.historicalSearchInterest?.length
+    ? input.historicalSearchInterest
+    : historicalSearchVolumes;
+  const searchGrowthRates = calcGrowthRates(historicalSearchTrend);
   const sellerGrowthRates = calcGrowthRates(historicalSellerCounts);
   const priceGrowthRates = calcGrowthRates(historicalPrices);
 
@@ -142,7 +147,9 @@ export function calculateTrendVelocity(input: TrendVelocityInput): TrendVelocity
   const consistencyScore = searchGrowthRates.length > 0
     ? clamp(100 - standardDeviation(searchGrowthRates) * 2, 0, 20)
     : 10;
-  const volumeScore = clamp(currentSearchVolume / 5000, 0, 10);
+  const volumeScore = input.currentSearchInterestIndex != null
+    ? clamp(input.currentSearchInterestIndex / 100, 0, 1) * 10
+    : clamp(currentSearchVolume / 5000, 0, 10);
 
   const score = clamp(Math.round(growthScore + accelerationScore + consistencyScore + volumeScore), 0, 100);
 

@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { MessageSquare, Send, X, Sparkles, Loader2 } from "lucide-react";
 import { safeFetch } from "@/lib/safe-fetch";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { getAuthHeaders } from "@/lib/auth-headers";
 
 interface ChatMessage {
   id: string;
@@ -31,6 +33,7 @@ let msgIdCounter = 0;
 function uid(): string { return `fulfillment-chat-${Date.now()}-${++msgIdCounter}`; }
 
 export default function FulfillmentChatSidebar({ orderCounts, totalOrders }: FulfillmentChatSidebarProps) {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -68,9 +71,10 @@ export default function FulfillmentChatSidebar({ orderCounts, totalOrders }: Ful
     ];
 
     try {
-      const res = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: apiMessages, stream: true }) });
+      const authHeaders = await getAuthHeaders();
+      const res = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ messages: apiMessages, stream: true }) });
       if (!res.ok || !res.body) {
-        const retry = await safeFetch<{ response?: string }>("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: apiMessages, stream: false }) });
+        const retry = await safeFetch<{ response?: string }>("/api/ai", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ messages: apiMessages, stream: false }) });
         if (retry.response) setMessages((prev) => [...prev, { id: uid(), role: "assistant", content: retry.response!, timestamp: new Date() }]);
         return;
       }
@@ -95,7 +99,7 @@ export default function FulfillmentChatSidebar({ orderCounts, totalOrders }: Ful
     } catch {
       setMessages((prev) => [...prev, { id: uid(), role: "assistant", content: "Sorry, something went wrong.", timestamp: new Date() }]);
     } finally { setIsTyping(false); }
-  }, [input, isTyping, messages, buildSystemContext]);
+  }, [input, isTyping, messages, buildSystemContext, user]);
 
   return (
     <>
