@@ -5,7 +5,8 @@
 // margin floors in the price-war engine); the Execute confirm dialog below is a
 // UX safeguard, not a substitute for those server controls.
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   DollarSign, Plus, Trash2, Play, Pause, Loader2, TrendingDown, TrendingUp,
   X, ChevronLeft, ChevronRight, Download, Settings,
@@ -128,8 +129,9 @@ const TOUR_STEPS: TourStep[] = [
   },
 ];
 
-export default function PriceWarPage() {
+function PriceWarPageContent() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
   const uid = user?.uid || "";
   const { error: toastError, success: toastSuccess } = useToast();
   const { isOpen: tourOpen, complete: completeTour, skip: skipTour, restart: restartTour } = useTour("price-war");
@@ -168,6 +170,26 @@ export default function PriceWarPage() {
     platforms: "amazon", competitorUrls: "", productImage: "", productUrl: "",
     maxIncrease: "", maxDecrease: "",
   });
+
+  // Prefill the rule form from URL params (e.g. arriving from a product page).
+  // Opens the form but never auto-creates the rule — the user confirms.
+  useEffect(() => {
+    const productTitle = searchParams.get("productTitle");
+    if (!productTitle) return;
+    setForm((prev) => ({
+      ...prev,
+      productTitle,
+      myPrice: searchParams.get("myPrice") ?? prev.myPrice,
+      cost: searchParams.get("cost") ?? prev.cost,
+      floorPrice: searchParams.get("floorPrice") ?? prev.floorPrice,
+      platforms: searchParams.get("platforms") ?? prev.platforms,
+      productImage: searchParams.get("productImage") ?? prev.productImage,
+      productUrl: searchParams.get("productUrl") ?? prev.productUrl,
+    }));
+    setShowAdd(true);
+    // Run once on mount; later user edits must not be overwritten.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const getMargin = useCallback((price: number, cost: number) => price > 0 ? Math.round(((price - cost) / price) * 100) : 0, []);
 
@@ -1126,5 +1148,20 @@ export default function PriceWarPage() {
         onCancel={() => setExecuteConfirm(false)}
       />
     </div>
+  );
+}
+
+export default function PriceWarPage() {
+  // useSearchParams requires a Suspense boundary during prerender.
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-20">
+          <div className="h-8 w-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <PriceWarPageContent />
+    </Suspense>
   );
 }

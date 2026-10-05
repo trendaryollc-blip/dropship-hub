@@ -43,6 +43,20 @@ for (const name of ["localStorage", "sessionStorage"] as const) {
   }
 }
 
+// happy-dom does not implement the blocking dialog globals, so components that
+// call alert/confirm/prompt throw "is not a function" under test. Provide inert
+// stubs (default confirm -> true) so those code paths are exercised, not crashed.
+for (const name of ["alert", "confirm", "prompt"] as const) {
+  const existing = (globalThis as Record<string, unknown>)[name];
+  if (typeof existing !== "function") {
+    Object.defineProperty(globalThis, name, {
+      value: name === "confirm" ? vi.fn(() => true) : vi.fn(),
+      configurable: true,
+      writable: true,
+    });
+  }
+}
+
 // Mock ResizeObserver for Recharts
 class ResizeObserverMock {
   observe() {}
