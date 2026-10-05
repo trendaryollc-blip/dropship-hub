@@ -255,56 +255,59 @@ export async function orchestrateOrder(input: OrchestrationInput): Promise<Orche
   state = startStep(state, "place_order");
   state = { ...state, status: "placing_order" };
 
-  const isCJ = routing.selectedSupplier.supplierId === "cj";
-  if (isCJ) {
-    try {
-      const { placeCJOrder } = await import("./cj-adapter");
-      const result = await placeCJOrder({
-        productId: input.order.items[0]?.productId || "",
-        quantity: input.order.items.reduce((sum, item) => sum + item.quantity, 0),
-        shippingAddress: input.order.shippingAddress,
+  // The user's chosen supplier (stamped onto items from productSuppliers at
+  // ingest) flows through rules + scoring above; dispatch placement through
+  // the supplier adapter registry. Only CJ auto-orders; every other platform
+  // returns a manual queue card with a deep link.
+  const { getSupplierAdapter } = await import("./supplier-adapters/registry");
+  const adapter = getSupplierAdapter(routing.selectedSupplier.supplierId);
+  const placedAutomatically = adapter.canAutoOrder;
+  try {
+    const result = await adapter.placeOrder({
+      productId: input.order.items[0]?.productId || "",
+      quantity: input.order.items.reduce((sum, item) => sum + item.quantity, 0),
+      shippingAddress: input.order.shippingAddress,
+    });
+
+    if (result.queuedForManual) {
+      state = completeStep(state, "place_order");
+      logAuditEvent(input.uid, {
+        orderId: input.order.id,
+        action: "order_placed",
+        details: result.instructions || `Order queued for manual placement with ${routing.selectedSupplier.supplierName}`,
+        metadata: { supplierId: routing.selectedSupplier.supplierId, deepLink: result.deepLink },
       });
-
-      if (result.success && result.orderId) {
-        state = { ...state, cjOrderId: result.orderId };
-        state = completeStep(state, "place_order");
-
-        logAuditEvent(input.uid, {
-          orderId: input.order.id,
-          action: "order_placed",
-          details: `CJ order placed: ${result.orderId}`,
-          metadata: { cjOrderNumber: result.orderId, estimatedDelivery: result.estimatedDelivery },
-        });
-      } else {
-        throw new Error(result.error || "CJ order failed");
-      }
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "Order placement failed";
-      state = failStep(state, "place_order", errorMsg);
-      state = { ...state, status: "failed", error: errorMsg };
-      state.completedAt = new Date().toISOString();
+    } else if (result.success && result.platformOrderId) {
+      state = { ...state, cjOrderId: result.platformOrderId };
+      state = completeStep(state, "place_order");
 
       logAuditEvent(input.uid, {
         orderId: input.order.id,
-        action: "order_failed",
-        details: errorMsg,
-        metadata: { supplierId: routing.selectedSupplier.supplierId, error: errorMsg },
+        action: "order_placed",
+        details: `${adapter.platformId} order placed: ${result.platformOrderId}`,
+        metadata: { platformOrderId: result.platformOrderId, estimatedDelivery: result.estimatedDelivery },
       });
-
-      return { state, action: "failed", message: errorMsg };
+    } else {
+      throw new Error(result.error || `${adapter.platformId} order failed`);
     }
-  } else {
-    state = completeStep(state, "place_order");
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : "Order placement failed";
+    state = failStep(state, "place_order", errorMsg);
+    state = { ...state, status: "failed", error: errorMsg };
+    state.completedAt = new Date().toISOString();
+
     logAuditEvent(input.uid, {
       orderId: input.order.id,
-      action: "order_placed",
-      details: `Order queued for manual placement with ${routing.selectedSupplier.supplierName}`,
-      metadata: { supplierId: routing.selectedSupplier.supplierId },
+      action: "order_failed",
+      details: errorMsg,
+      metadata: { supplierId: routing.selectedSupplier.supplierId, error: errorMsg },
     });
+
+    return { state, action: "failed", message: errorMsg };
   }
 
   state = startStep(state, "register_tracking");
-  if (isCJ && state.cjOrderId) {
+  if (placedAutomatically && state.cjOrderId) {
     registerForTrackingPolling(input.order.id, state.cjOrderId);
   }
   state = completeStep(state, "register_tracking");
@@ -312,11 +315,13 @@ export async function orchestrateOrder(input: OrchestrationInput): Promise<Orche
   state = { ...state, status: "completed" };
   state.completedAt = new Date().toISOString();
 
+  const displayName =
+    adapter.platformId === "cj" ? "CJ" : routing.selectedSupplier.supplierName;
   return {
     state,
-    action: isCJ ? "placed_order" : "auto_fulfilled",
-    message: isCJ
-      ? `Order placed with CJ: ${state.cjOrderId}`
+    action: placedAutomatically ? "placed_order" : "auto_fulfilled",
+    message: placedAutomatically
+      ? `Order placed with ${displayName}: ${state.cjOrderId}`
       : `Order routed to ${routing.selectedSupplier.supplierName}`,
   };
 }

@@ -11,6 +11,28 @@ export interface PushProductPayload {
   productDescription: string;
   productVariants?: { name: string; price: number; sku: string }[];
   productImages?: string[];
+  supplierName?: string;
+  supplierUrl?: string;
+  unitCost?: number;
+  shippingNote?: string;
+}
+
+/** Supplier attribution block appended to pushed listing descriptions. */
+export function formatSupplierAttribution(product: PushProductPayload): string {
+  if (!product.supplierName) return "";
+  const lines = [`\n\nSupplied by ${product.supplierName}`];
+  if (typeof product.unitCost === "number" && product.unitCost > 0) {
+    lines.push(`Supplier cost: $${product.unitCost.toFixed(2)}`);
+  }
+  if (product.shippingNote) lines.push(`Shipping: ${product.shippingNote}`);
+  if (product.supplierUrl) lines.push(product.supplierUrl);
+  return lines.join("\n");
+}
+
+async function pushToEtsy(): Promise<{ success: boolean; platformProductId?: number | string; error?: unknown }> {
+  // Etsy Open API v3 listing inventory-create requires per-shop OAuth scopes the
+  // app does not request; fail honestly instead of faking a listing id.
+  return { success: false, error: "Etsy listing push not supported — create the listing in Etsy, then import the order" };
 }
 
 export interface StorePushResult {
@@ -174,19 +196,27 @@ export async function pushProductToStore(
   const storeName = (store.name as string) || storeId;
   const platform = (store.platform as string) || "";
 
+  const withAttribution: PushProductPayload = {
+    ...product,
+    productDescription: `${product.productDescription}${formatSupplierAttribution(product)}`,
+  };
+
   let result: { success: boolean; platformProductId?: number | string; error?: unknown };
   switch (platform) {
     case "shopify":
-      result = await pushToShopify((store.storeDomain as string) || (store.url as string), store.accessToken as string, product);
+      result = await pushToShopify((store.storeDomain as string) || (store.url as string), store.accessToken as string, withAttribution);
       break;
     case "woocommerce":
-      result = await pushToWooCommerce(store.url as string, store.apiKey as string, store.apiSecret as string, product);
+      result = await pushToWooCommerce(store.url as string, store.apiKey as string, store.apiSecret as string, withAttribution);
       break;
     case "custom":
-      result = await pushToCustomStore(store.url as string, store.apiKey as string, product);
+      result = await pushToCustomStore(store.url as string, store.apiKey as string, withAttribution);
       break;
     case "trendaryo":
-      result = await pushToTrendaryo(store.backendUrl as string, store.apiKey as string, product);
+      result = await pushToTrendaryo(store.backendUrl as string, store.apiKey as string, withAttribution);
+      break;
+    case "etsy":
+      result = await pushToEtsy();
       break;
     default:
       return { success: false, error: `Platform "${platform}" push not supported`, storeId, storeName, platform };

@@ -31,7 +31,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
 export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
     const body = await req.json();
-    const { productId, supplierId, supplierName, unitCost, shippingCost, source } = body;
+    const { productId, supplierId, supplierName, unitCost, shippingCost, source, confidence, candidates, needsAttention } = body;
     if (!productId || !supplierId) {
       return NextResponse.json({ error: "productId and supplierId required" }, { status: 400 });
     }
@@ -42,9 +42,14 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
       productId,
       supplierId,
       supplierName,
+      selectedSupplierId: supplierId,
+      selectedSupplierName: supplierName,
       unitCost: unitCost || 0,
       shippingCost: shippingCost || 0,
       source: source || "manual",
+      confidence: typeof confidence === "number" ? confidence : null,
+      ...(Array.isArray(candidates) ? { candidates } : {}),
+      ...(typeof needsAttention === "boolean" ? { needsAttention } : {}),
       updatedAt: new Date().toISOString(),
     }, { merge: true });
 

@@ -16,6 +16,17 @@ const STOP_WORDS = new Set([
   "suppliers", "vendor", "vendors", "manufacturer", "manufacturers",
 ]);
 
+export function buildSupplierSearchQuery(product: string, category: string, maxLength = 200): string {
+  const title = product.trim();
+  const categoryName = category.trim();
+  const usableCategory = /^(general|uncategorized)$/i.test(categoryName) ? "" : categoryName;
+  if (!title) return usableCategory.slice(0, maxLength);
+  if (!usableCategory) return title.slice(0, maxLength);
+
+  const combined = `${title} ${usableCategory}`;
+  return combined.length <= maxLength ? combined : title.slice(0, maxLength);
+}
+
 export function parseSupplierQuery(query: string): string[] {
   const trimmed = (query || "").trim().toLowerCase();
   if (!trimmed) return [];

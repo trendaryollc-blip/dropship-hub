@@ -21,6 +21,7 @@ const detailEnv = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => searchParamsState.current,
+  useParams: () => ({ id: "" }),
 }));
 
 vi.mock("next/image", () => ({

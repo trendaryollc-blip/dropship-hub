@@ -24,7 +24,7 @@ import SupplierQuickActions from "@/components/suppliers/SupplierQuickActions";
 import QuickActionResult from "@/components/suppliers/QuickActionResult";
 import { useAPI } from "@/hooks/useAPI";
 import { getAuthHeaders } from "@/lib/auth-headers";
-import { parseSupplierQuery, scoreSupplierMatch } from "@/lib/search/supplier-query";
+import { buildSupplierSearchQuery, parseSupplierQuery, scoreSupplierMatch } from "@/lib/search/supplier-query";
 
 type SortBy = "rating" | "reliability" | "response" | "orders" | "price";
 
@@ -535,7 +535,9 @@ function DiscoverContent() {
   const error = hasProductContext ? null : apiError ? "Failed to load suppliers" : listData?.error ?? null;
 
   const [filters, setFilters] = useState<SupplierFilters>({
-    search: initialProduct || initialCategory || initialQueryParam,
+    search: hasProductContext
+      ? buildSupplierSearchQuery(initialProduct, initialCategory)
+      : initialQueryParam,
     badges: [],
     locations: [],
     minRating: 0,
@@ -757,7 +759,7 @@ function DiscoverContent() {
   }, []);
 
   const initialSearchQuery = hasProductContext
-    ? initialProduct || initialCategory
+    ? buildSupplierSearchQuery(initialProduct, initialCategory)
     : initialQueryParam;
   useEffect(() => {
     if (initialQueryParam && !filters.search) {
@@ -868,8 +870,19 @@ function DiscoverContent() {
       result = result.filter((s) => filters.certifications.some((c) => (s.quality?.certifications ?? []).includes(c)));
     }
     const tieBreak = (a: SupplierProfile, b: SupplierProfile) => {
-      if (hasProductContext && sortBy === "rating" && suppliers.length > 0 && "relevanceScore" in suppliers[0]) {
-        return ((b as SupplierProfile & { relevanceScore: number }).relevanceScore || 0) - ((a as SupplierProfile & { relevanceScore: number }).relevanceScore || 0);
+      if (hasProductContext && sortBy === "rating") {
+        const priceFit = (supplier: SupplierProfile) => {
+          if (initialPrice <= 0) return 0;
+          const { min, max } = supplier.catalog.priceRange;
+          if (min <= 0 || max <= 0) return 0;
+          if (min <= initialPrice && initialPrice <= max) return 2;
+          return initialPrice >= min * 0.5 && initialPrice <= max * 2 ? 1 : 0;
+        };
+        const priceDifference = priceFit(b) - priceFit(a);
+        if (priceDifference !== 0) return priceDifference;
+        if (suppliers.length > 0 && "relevanceScore" in suppliers[0]) {
+          return ((b as SupplierProfile & { relevanceScore: number }).relevanceScore || 0) - ((a as SupplierProfile & { relevanceScore: number }).relevanceScore || 0);
+        }
       }
       switch (sortBy) {
         case "reliability": return b.stats.reliabilityScore - a.stats.reliabilityScore;
@@ -881,7 +894,7 @@ function DiscoverContent() {
     };
     result.sort((a, b) => (searchScores.get(b.id) ?? 0) - (searchScores.get(a.id) ?? 0) || tieBreak(a, b));
     return result;
-  }, [filters, searchTokens, sortBy, suppliers, hasProductContext, textFilterActive]);
+  }, [filters, searchTokens, sortBy, suppliers, hasProductContext, initialPrice, textFilterActive]);
 
   const hasFilters = filters.badges.length > 0 || filters.locations.length > 0 || filters.minRating > 0 ||
     filters.shippingSpeed !== "" || filters.specializations.length > 0 ||

@@ -49,12 +49,14 @@ export interface ListingSuggestion {
 export interface SupplierMatch {
   id: string;
   name: string;
-  trustBadge: "gold" | "silver" | "bronze";
+  /** null / "unverified" when no measured track record exists — never invented. */
+  trustBadge: "gold" | "silver" | "bronze" | "unverified" | null;
   location: string;
   flag: string;
   price: number | null;
-  shippingToUS: string;
-  shippingToEU: string;
-  reliabilityScore: number;
-  responseTime: string;
+  shippingToUS: string | null;
+  shippingToEU: string | null;
+  /** null or 0 means "not measured", not a bad score. */
+  reliabilityScore: number | null;
+  responseTime: string | null;
 }

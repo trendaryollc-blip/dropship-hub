@@ -2,7 +2,9 @@
 
 import { useState, useEffect, Suspense, useMemo, useCallback } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useParams } from "next/navigation";
+import { db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 import {
   ArrowLeft, ExternalLink, Star, ShoppingCart, Package,
   Shield, Clock, ChevronLeft, ChevronRight, Images, Barcode, Layers,
@@ -17,15 +19,20 @@ import ProfitCalculator from "@/components/products/ProfitCalculator";
 import MarketIntelligence from "@/components/products/MarketIntelligence";
 import ReviewIntelligence from "@/components/products/ReviewIntelligence";
 import SupplierMatchSection from "@/components/products/SupplierMatch";
+import SourcingSteps from "@/components/products/SourcingSteps";
+import { SupplierPicker } from "@/components/fulfillment/SupplierPicker";
+import { SupplierOffersTable } from "@/components/products/SupplierOffersTable";
+import { PushToStoreButton } from "@/components/products/PushToStoreButton";
 import ListingOptimization from "@/components/products/ListingOptimization";
 import SimilarProducts from "@/components/products/SimilarProducts";
 import ProductActionBar from "@/components/products/ProductActionBar";
 import StickyProductBar from "@/components/products/StickyProductBar";
 import PriceHistoryChart from "@/components/products/PriceHistoryChart";
 import { productPriceKey, seriesForPlatform, type ProductPricePoint } from "@/lib/products/price-key";
-import SectionNav from "@/components/products/SectionNav";
+import { stableProductId } from "@/lib/products/product-id";
 import SectionSkeleton from "@/components/products/SectionSkeleton";
 import { safeFetch } from "@/lib/safe-fetch";
+import { useAPI } from "@/hooks/useAPI";
 import { normalizeCJLink } from "@/lib/cj-url";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { logger } from "@/lib/logger";
@@ -184,9 +191,12 @@ function ImageGallery({ images, title }: { images: string[]; title: string }) {
 
 function ProductDetailContent() {
   const searchParams = useSearchParams();
+  const routeParams = useParams();
+  const routeId = typeof routeParams?.id === "string" ? routeParams.id : "";
   const { user } = useAuth();
   const { ref: heroRef, isInView: heroVisible } = useInView({ threshold: 0.1 });
-  const [product] = useState<ProductData | null>(() => {
+  const [catalogLoading, setCatalogLoading] = useState(!!routeId);
+  const [product, setProduct] = useState<ProductData | null>(() => {
     if (typeof window === "undefined") return null;
     // Try sessionStorage first (set by app navigation)
     try {
@@ -270,8 +280,61 @@ function ProductDetailContent() {
   const tags = product?.tags || [...new Set(title.toLowerCase().split(" ").slice(0, 6).filter((t) => t.length > 1))];
   const productId = product?.productId || `SKU-${title.slice(0, 8).replace(/\s+/g, "").toUpperCase()}`;
   const asin = product?.asin || "";
+  // One id for the whole product → supplier → store → order chain. Used for the
+  // supplier assignment, store push and (via aliasing) order webhook lookup.
+  const workflowProductId = stableProductId({
+    id: product?.id,
+    productId: product?.productId,
+    source,
+    link,
+    title,
+  });
 
-  const hasNoData = !product && !searchParams.get("t");
+  // ── Product → supplier → store workflow state ──────────────────────────
+  const { data: supplierAssignment } = useAPI<{
+    assignment?: { selectedSupplierId?: string; selectedSupplierName?: string; supplierId?: string; supplierName?: string };
+  }>(user && workflowProductId ? `/api/fulfillment/suppliers?productId=${encodeURIComponent(workflowProductId)}` : null);
+  const [selectedSupplier, setSelectedSupplier] = useState<{ id: string; name: string } | null>(null);
+  const [listedOnStore, setListedOnStore] = useState(false);
+
+  useEffect(() => {
+    const a = supplierAssignment?.assignment;
+    const id = a?.selectedSupplierId || a?.supplierId;
+    if (id) setSelectedSupplier({ id, name: a?.selectedSupplierName || a?.supplierName || "Supplier" });
+  }, [supplierAssignment]);
+
+  // A shared/bookmarked link has no sessionStorage and may omit URL params. Load
+  // the saved product snapshot by its stable id so the page is addressable.
+  useEffect(() => {
+    if (product || !user || !routeId) {
+      if (product || !routeId) setCatalogLoading(false);
+      return;
+    }
+    let cancelled = false;
+    getDoc(doc(db, "users", user.uid, "productCatalog", routeId))
+      .then((snap) => {
+        if (cancelled) return;
+        if (snap.exists()) {
+          const d = snap.data();
+          setProduct({
+            id: routeId,
+            title: (d.title as string) || "",
+            price: typeof d.price === "number" ? d.price : null,
+            image: (d.image as string) || null,
+            images: (d.images as string[]) || undefined,
+            link: (d.link as string) || "#",
+            source: (d.source as string) || "amazon",
+            rating: typeof d.rating === "number" ? d.rating : undefined,
+            reviews: typeof d.reviews === "number" ? d.reviews : undefined,
+          });
+        }
+      })
+      .catch(() => { /* fall through to URL params / not-found state */ })
+      .finally(() => { if (!cancelled) setCatalogLoading(false); });
+    return () => { cancelled = true; };
+  }, [product, user, routeId]);
+
+  const hasNoData = !product && !searchParams.get("t") && !catalogLoading;
 
   const storedImages = product?.images || (image ? [image] : []);
   const images = fetchedImages.length > storedImages.length ? fetchedImages : storedImages;
@@ -536,8 +599,19 @@ function ProductDetailContent() {
         sparkline: seriesForPlatform(priceHistory, p.platform).map((s) => s.price),
       }));
       const cheapest = enrichmentData.cheapest as { platform: string; price: number } | null;
-      const supplierMatchesRaw = (enrichmentData.supplierMatches || []) as { id: string; name: string; trustBadge: string; location: string; flag: string; price: number | null; shippingToUS: string; shippingToEU: string; reliabilityScore: number; responseTime: string }[];
-      const supplierMatches = supplierMatchesRaw.map((s) => ({ ...s, trustBadge: s.trustBadge as "gold" | "silver" | "bronze" }));
+      const supplierMatchesRaw = (enrichmentData.supplierMatches || []) as { id: string; name: string; trustBadge: string | null; location: string; flag: string; price: number | null; shippingToUS: string | null; shippingToEU: string | null; reliabilityScore: number | null; responseTime: string | null }[];
+      const supplierMatches = supplierMatchesRaw.map((s) => ({ ...s, trustBadge: s.trustBadge as "gold" | "silver" | "bronze" | "unverified" | null }));
+      const supplierOffers = (enrichmentData.supplierOffers || []) as {
+        supplierId: string; platformId: "cj" | "aliexpress" | "alibaba" | "dhgate" | "global_sources";
+        supplierName: string; storeUrl: string | null; productId: string; title: string; image: string | null;
+        url: string; unitCost: number | null; currency: string | null; shippingCost: number | null;
+        shippingDays: number | null; rating: number | null; reviews: number | null; inStock: boolean | null;
+        stockLevel: number | null; moq: number | null; dataSource: "live" | "estimated";
+        confidence: number; matchReasons: string[];
+      }[];
+      const supplierAutoLink = (enrichmentData.autoLink || null) as {
+        offer: (typeof supplierOffers)[number]; confidence: number;
+      } | null;
 
       const basePriceForCalc = cheapest?.price || priceNum || 0;
       const priceSpreadNum = typeof enrichmentData.priceSpread === "number" ? enrichmentData.priceSpread : 0;
@@ -590,6 +664,8 @@ function ProductDetailContent() {
         marketIntel: realMarketIntel,
         listingSuggestion: realListingSuggestion,
         supplierMatches,
+        supplierOffers,
+        supplierAutoLink,
       };
     }
 
@@ -634,6 +710,8 @@ function ProductDetailContent() {
         platformTips: (listingData.platformTips as { platform: string; tip: string }[]) || [],
       } : null,
       supplierMatches: [],
+      supplierOffers: [],
+      supplierAutoLink: null,
     };
   }, [enrichmentData, reviewData, marketIntelData, listingData, source, priceNum, ratingNum, reviewsNum, effectiveLink, priceHistory]);
 
@@ -852,6 +930,17 @@ function ProductDetailContent() {
     },
   ];
 
+  if (catalogLoading && !product && !searchParams.get("t")) {
+    return (
+      <div className="max-w-4xl mx-auto flex items-center justify-center py-20">
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+          <p className="text-sm text-muted-foreground">Loading product...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (hasNoData) {
     return (
       <div className="max-w-4xl mx-auto py-8 px-4">
@@ -886,9 +975,6 @@ function ProductDetailContent() {
         linkLabel={ctaLabel}
         heroRef={heroRef}
       />
-
-      {/* Section navigation */}
-      <SectionNav />
 
       {/* Back navigation */}
       <Link href="/products" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group">
@@ -1126,8 +1212,53 @@ function ProductDetailContent() {
       </section>
 
       <section id="suppliers" className="section-group scroll-mt-24">
-        <p className="section-label mb-2">Sourcing</p>
-        <SupplierMatchSection suppliers={enriched.supplierMatches} productTitle={title} category={category} />
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <p className="section-label">Sourcing &amp; listing</p>
+          {selectedSupplier && (
+            <PushToStoreButton
+              productId={workflowProductId}
+              title={title}
+              image={image}
+              price={priceNum}
+              url={effectiveLink}
+              description={`${title} — sourced from ${selectedSupplier.name}`}
+              onPushed={() => setListedOnStore(true)}
+            />
+          )}
+        </div>
+
+        <SourcingSteps
+          hasProduct={!!product || !!searchParams.get("t")}
+          hasSupplier={!!selectedSupplier}
+          hasListed={listedOnStore}
+        />
+
+        {selectedSupplier && (
+          <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/5 px-3 py-2 text-xs">
+            <span className="text-foreground">
+              Supplier selected: <span className="font-medium">{selectedSupplier.name}</span>
+            </span>
+            <span className="text-emerald-400">Ready to list</span>
+          </div>
+        )}
+
+        {(enriched.supplierOffers as unknown[]).length > 0 ? (
+          <SupplierOffersTable
+            productId={workflowProductId}
+            offers={enriched.supplierOffers as Parameters<typeof SupplierOffersTable>[0]["offers"]}
+            autoLink={enriched.supplierAutoLink as Parameters<typeof SupplierOffersTable>[0]["autoLink"]}
+            onSelect={(o) => setSelectedSupplier({ id: o.supplierId, name: o.supplierName })}
+          />
+        ) : (
+          <div className="space-y-3">
+            <SupplierMatchSection suppliers={enriched.supplierMatches} productTitle={title} category={category} />
+            <SupplierPicker
+              productId={workflowProductId}
+              productName={title}
+              onAssigned={(a) => setSelectedSupplier({ id: a.supplierId, name: a.supplierName })}
+            />
+          </div>
+        )}
       </section>
 
       <section id="calculator" className="section-group scroll-mt-24">

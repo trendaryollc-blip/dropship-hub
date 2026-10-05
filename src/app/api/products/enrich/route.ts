@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchAmazon, searchGoogleShopping, searchCJProducts, searchKeepaProducts, searchAliExpress } from "@/lib/platform-search";
 import { getSuppliers } from "@/lib/supplier-service";
+import { searchSupplierPlatforms } from "@/lib/supplier-platform-search";
+import { normalizeSupplierSources } from "@/lib/suppliers/normalize-offers";
+import { pickAutoLink } from "@/lib/suppliers/fuzzy-match";
+import type { NormalizedSupplierOffer } from "@/types/supplier-offers";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { safeErrorMessage } from "@/lib/api-errors";
@@ -122,20 +126,54 @@ export const POST = withAuth(async (request: NextRequest) => {
     const priceSpread = cheapest && mostExpensive ? mostExpensive.price - cheapest.price : 0;
 
     let supplierMatches: EnrichmentResult["supplierMatches"] = [];
+    let supplierOffers: NormalizedSupplierOffer[] = [];
+    let autoLink: { offer: NormalizedSupplierOffer; confidence: number } | null = null;
     try {
-      const suppliers = await getSuppliers();
-      supplierMatches = suppliers.slice(0, 3).map((s) => ({
-          id: s.id,
-          name: s.name,
-          trustBadge: measuredTrustBadge(s.trustBadge),
-          location: s.location,
-          flag: s.flag,
-          price: null,
-          shippingToUS: measuredDays(s.stats.shippingDays),
-          shippingToEU: measuredDays(s.stats.shippingDaysEU),
-          reliabilityScore: s.stats.reliabilityScore,
-          responseTime: s.stats.responseTime,
-        }));
+      // Live multi-supplier search (bounded so enrich stays fast); falls back
+      // to the local CJ-backed directory when unavailable.
+      try {
+        const outcome = await searchSupplierPlatforms(
+          query,
+          ["alibaba", "dhgate", "global_sources", "aliexpress", "cj"],
+          { deadlineMs: 15000 }
+        );
+        const offers = normalizeSupplierSources(outcome.sources).slice(0, 30);
+        if (offers.length > 0) {
+          supplierOffers = offers;
+          autoLink = pickAutoLink({ title: query, image: null, price: basePrice > 0 ? basePrice : null }, offers);
+        }
+      } catch {
+        // Live supplier search is optional — fall through to directory
+      }
+
+      if (supplierOffers.length === 0) {
+        const suppliers = await getSuppliers();
+        supplierMatches = suppliers.slice(0, 3).map((s) => ({
+            id: s.id,
+            name: s.name,
+            trustBadge: measuredTrustBadge(s.trustBadge),
+            location: s.location,
+            flag: s.flag,
+            price: null,
+            shippingToUS: measuredDays(s.stats.shippingDays),
+            shippingToEU: measuredDays(s.stats.shippingDaysEU),
+            reliabilityScore: s.stats.reliabilityScore,
+            responseTime: s.stats.responseTime,
+          }));
+      } else {
+        supplierMatches = supplierOffers.slice(0, 3).map((o) => ({
+            id: o.supplierId,
+            name: o.supplierName,
+            trustBadge: null,
+            location: o.platformId,
+            flag: "",
+            price: o.unitCost,
+            shippingToUS: null,
+            shippingToEU: null,
+            reliabilityScore: 0,
+            responseTime: "",
+          }));
+      }
     } catch (_err) {
       // Supplier matching is optional — log and continue
     }
@@ -146,6 +184,8 @@ export const POST = withAuth(async (request: NextRequest) => {
       mostExpensive,
       priceSpread: +priceSpread.toFixed(2),
       supplierMatches,
+      supplierOffers,
+      autoLink,
       sourcesUsed,
       coverage: {
         queried: searchTasks.length,

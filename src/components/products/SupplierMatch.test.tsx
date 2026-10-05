@@ -56,8 +56,28 @@ describe("SupplierMatchSection", () => {
 
   it("shows trust badges", () => {
     render(<SupplierMatchSection suppliers={mockSuppliers} productTitle="Test" />);
-    expect(screen.getByText("gold")).toBeInTheDocument();
-    expect(screen.getByText("silver")).toBeInTheDocument();
+    expect(screen.getByText("Gold")).toBeInTheDocument();
+    expect(screen.getByText("Silver")).toBeInTheDocument();
+  });
+
+  it("labels unmeasured suppliers as unverified instead of inventing a badge", () => {
+    const unmeasured: SupplierMatch[] = [
+      {
+        id: "sup-live",
+        name: "Scraped Offer",
+        location: "",
+        flag: "",
+        price: null,
+        shippingToUS: null,
+        shippingToEU: null,
+        reliabilityScore: 0,
+        trustBadge: null,
+      },
+    ];
+    render(<SupplierMatchSection suppliers={unmeasured} productTitle="Test" />);
+    expect(screen.getByText("Unverified")).toBeInTheDocument();
+    expect(screen.getByText("Not measured")).toBeInTheDocument();
+    expect(screen.queryByText("Reliability")).not.toBeInTheDocument();
   });
 
   it("shows shipping times", () => {

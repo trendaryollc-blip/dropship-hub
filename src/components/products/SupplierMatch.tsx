@@ -17,6 +17,7 @@ const badgeConfig = {
   gold: { class: "text-amber-400 bg-amber-400/10 border-amber-400/20", label: "Gold" },
   silver: { class: "text-slate-300 bg-slate-300/10 border-slate-300/20", label: "Silver" },
   bronze: { class: "text-orange-400 bg-orange-400/10 border-orange-400/20", label: "Bronze" },
+  unverified: { class: "text-muted-foreground bg-white/5 border-white/15", label: "Unverified" },
 };
 
 export default function SupplierMatchSection({ suppliers, productTitle, category }: { suppliers: SupplierMatch[]; productTitle: string; category?: string }) {
@@ -41,8 +42,11 @@ export default function SupplierMatchSection({ suppliers, productTitle, category
 
       <div className="p-5 space-y-3">
         {suppliers.map((s, i) => {
-          const badge = badgeConfig[s.trustBadge] || badgeConfig.bronze;
+          const badgeKey = s.trustBadge && s.trustBadge !== "unverified" ? s.trustBadge : "unverified";
+          const badge = badgeConfig[badgeKey];
           const cardClass = s.trustBadge === "gold" ? "supplier-gold" : s.trustBadge === "silver" ? "supplier-silver" : "supplier-bronze";
+          const hasReliability = typeof s.reliabilityScore === "number" && s.reliabilityScore > 0;
+          const location = [s.flag, s.location].filter(Boolean).join(" ").trim();
 
           return (
             <Link key={s.id} href={`/suppliers/${s.id}`} className={`supplier-card ${cardClass} flex items-center gap-4 p-4 ${isInView ? "opacity-100" : "opacity-0"}`} style={{ transitionDelay: `${i * 100}ms` }}>
@@ -58,27 +62,37 @@ export default function SupplierMatchSection({ suppliers, productTitle, category
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
                   <span className="text-sm font-semibold text-foreground truncate">{s.name}</span>
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-bold uppercase ${badge.class}`}>{s.trustBadge}</span>
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-bold uppercase ${badge.class}`}>{badge.label}</span>
                 </div>
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <MapPin className="h-2.5 w-2.5 text-muted-foreground/60" />
-                  <span className="text-[10px] text-muted-foreground">{s.flag} {s.location}</span>
-                </div>
+                {location ? (
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <MapPin className="h-2.5 w-2.5 text-muted-foreground/60" />
+                    <span className="text-[10px] text-muted-foreground">{location}</span>
+                  </div>
+                ) : (
+                  <div className="mb-1.5 text-[10px] text-muted-foreground">Sourcing platform — location not measured</div>
+                )}
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-bold text-emerald-400">{typeof s.price === "number" ? `$${s.price.toFixed(2)}` : "Price n/a"}</span>
                   <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                    <Truck className="h-2.5 w-2.5" /> {s.shippingToUS}
+                    <Truck className="h-2.5 w-2.5" /> {s.shippingToUS || "Shipping n/a"}
                   </span>
                   <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                    <Clock className="h-2.5 w-2.5" /> {s.responseTime}
+                    <Clock className="h-2.5 w-2.5" /> {s.responseTime || "Response n/a"}
                   </span>
                 </div>
               </div>
 
-              {/* Reliability ring */}
+              {/* Reliability — show a ring only when measured */}
               <div className="shrink-0 flex flex-col items-center gap-1">
-                <ScoreRing score={s.reliabilityScore} size={40} colorScheme="reliability" />
-                <span className="text-[8px] text-muted-foreground font-medium">Reliability</span>
+                {hasReliability ? (
+                  <>
+                    <ScoreRing score={s.reliabilityScore as number} size={40} colorScheme="reliability" />
+                    <span className="text-[8px] text-muted-foreground font-medium">Reliability</span>
+                  </>
+                ) : (
+                  <span className="max-w-14 text-center text-[8px] leading-tight text-muted-foreground">Not measured</span>
+                )}
               </div>
             </Link>
           );

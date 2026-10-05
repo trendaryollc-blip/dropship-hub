@@ -14,6 +14,9 @@ import { useSearchTracking } from "@/contexts/SearchTrackingContext";
 import { SupplierPicker } from "@/components/fulfillment/SupplierPicker";
 import { useSavedProducts, type SavedProduct } from "@/components/saved/SavedProductsProvider";
 import { safeFetch } from "@/lib/safe-fetch";
+import { stableProductId } from "@/lib/products/product-id";
+import { db } from "@/lib/firebase";
+import { doc, setDoc } from "firebase/firestore";
 
 const platformIcons: Record<string, string> = {
   amazon: "\ud83d\udce6", ebay: "\ud83c\udff7\ufe0f", aliexpress: "\ud83c\udde8\ud83c\uddf3",
@@ -106,6 +109,7 @@ export default function EnrichedProductCard({
   const { isSaved, toggleSave } = useSavedProducts();
   const { trackClick } = useSearchTracking();
   const saved = isSaved(product.id || product.title);
+  const stableId = stableProductId(product);
   const [showPushModal, setShowPushModal] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const [noteText, setNoteText] = useState("");
@@ -137,6 +141,21 @@ export default function EnrichedProductCard({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const persistToCatalog = useCallback((id: string) => {
+    if (!user) return;
+    void setDoc(doc(db, "users", user.uid, "productCatalog", id), {
+      title: product.title,
+      price: product.price ?? null,
+      image: product.image ?? null,
+      images: product.images || [],
+      link: product.link || "",
+      source: product.source || "",
+      rating: product.rating ?? null,
+      reviews: product.reviews ?? null,
+      updatedAt: Date.now(),
+    }, { merge: true }).catch(() => {});
+  }, [user, product]);
+
   const handleClick = (e: React.MouseEvent) => {
     if (compareMode) {
       e.preventDefault();
@@ -149,8 +168,9 @@ export default function EnrichedProductCard({
     onProductClick?.(product);
     sessionStorage.setItem("selectedProduct", JSON.stringify({
       ...product,
-      id: product.id,
+      id: stableId,
     }));
+    persistToCatalog(stableId);
     const params = new URLSearchParams({
       t: product.title,
       src: product.source,
@@ -160,7 +180,7 @@ export default function EnrichedProductCard({
     if (product.link) params.set("link", product.link);
     if (product.rating != null) params.set("r", String(product.rating));
     if (product.reviews != null) params.set("rev", String(product.reviews));
-    router.push(`/products/${product.id}?${params.toString()}`);
+    router.push(`/products/${stableId}?${params.toString()}`);
   };
 
   const fetchStores = useCallback(async () => {
@@ -561,7 +581,7 @@ export default function EnrichedProductCard({
 
       {/* Supplier Assignment */}
       <div className="px-3 pb-2 -mt-1">
-        <SupplierPicker productId={product.id} productName={product.title} />
+        <SupplierPicker productId={stableId} productName={product.title} />
       </div>
 
       {/* Push to Store Modal */}

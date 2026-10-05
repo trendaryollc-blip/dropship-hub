@@ -199,7 +199,7 @@ describe("supplier-service", () => {
     const { getSuppliers } = await import("./supplier-service");
     const suppliers = await getSuppliers();
     const cj = suppliers[0];
-    expect(["gold", "silver", "bronze"]).toContain(cj.trustBadge);
+    expect(["gold", "silver", "bronze", "unverified"]).toContain(cj.trustBadge);
   });
 
   it("CJ supplier has valid source", async () => {

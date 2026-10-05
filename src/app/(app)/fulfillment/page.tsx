@@ -57,6 +57,8 @@ export default function FulfillmentPage() {
   const storesUrl = user ? `/api/store/connections?uid=${user.uid}` : null;
 
   const { data: ordersData, isLoading: ordersLoading, mutate: mutateOrders } = useAPI<{ orders?: FulfillmentOrder[] }>(ordersUrl);
+  const metricsUrl = user ? "/api/fulfillment/metrics/auto-vs-manual" : null;
+  const { data: autoManualData } = useAPI<{ auto?: number; manual?: number; total?: number; autoRatio?: number | null; needsAssignment?: number }>(metricsUrl);
   const { data: settingsData, mutate: mutateSettings } = useAPI<{ settings?: FulfillmentSettings }>(settingsUrl);
   const { data: storesData, mutate: mutateStores } = useAPI<{ connections?: Array<{ id: string; platform: string; name: string }> }>(storesUrl);
 
@@ -502,6 +504,24 @@ export default function FulfillmentPage() {
           )}
           {managementTab === "dashboards" && (
             <div className="space-y-6">
+              <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-surface/50 px-4 py-3 text-xs">
+                <span className="font-medium text-foreground">Auto vs manual</span>
+                <span className="text-muted-foreground">
+                  {autoManualData?.total != null
+                    ? `${autoManualData.auto ?? 0} auto · ${autoManualData.manual ?? 0} manual of ${autoManualData.total}`
+                    : "Loading…"}
+                </span>
+                {typeof autoManualData?.autoRatio === "number" && (
+                  <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-emerald-400">
+                    {Math.round(autoManualData.autoRatio * 100)}% auto
+                  </span>
+                )}
+                {(autoManualData?.needsAssignment ?? 0) > 0 && (
+                  <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-amber-400">
+                    {autoManualData?.needsAssignment} need supplier assignment
+                  </span>
+                )}
+              </div>
               <SLADashboard data={slaData} loading={slaLoading} onRefresh={refreshDashboards} />
               <SupplierPerformanceDashboard data={supplierPerfData} loading={supplierPerfLoading} onRefresh={refreshDashboards} />
               <InventoryDashboard data={inventoryData} loading={inventoryLoading} onRefresh={refreshDashboards} />

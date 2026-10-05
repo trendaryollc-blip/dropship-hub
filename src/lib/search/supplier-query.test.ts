@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseSupplierQuery, scoreSupplierMatch, filterSuppliersByQuery } from "./supplier-query";
+import { buildSupplierSearchQuery, parseSupplierQuery, scoreSupplierMatch, filterSuppliersByQuery } from "./supplier-query";
 import type { SupplierProfile } from "@/types/supplier";
 
 function makeSupplier(overrides: Partial<SupplierProfile>): SupplierProfile {
@@ -44,6 +44,26 @@ describe("parseSupplierQuery", () => {
 
   it("falls back to the full phrase when every word is filler", () => {
     expect(parseSupplierQuery("the suppliers")).toEqual(["the suppliers"]);
+  });
+});
+
+describe("buildSupplierSearchQuery", () => {
+  it("includes the product category when it fits", () => {
+    expect(buildSupplierSearchQuery("Wireless Headphones", "Electronics")).toBe(
+      "Wireless Headphones Electronics"
+    );
+  });
+
+  it("keeps long product titles within the supplier search limit", () => {
+    expect(buildSupplierSearchQuery("x".repeat(250), "Electronics")).toBe("x".repeat(200));
+  });
+
+  it("uses the category when there is no product title", () => {
+    expect(buildSupplierSearchQuery("", "Electronics")).toBe("Electronics");
+  });
+
+  it("ignores placeholder categories", () => {
+    expect(buildSupplierSearchQuery("Wireless Headphones", "General")).toBe("Wireless Headphones");
   });
 });
 

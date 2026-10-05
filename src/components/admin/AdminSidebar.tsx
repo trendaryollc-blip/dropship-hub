@@ -17,6 +17,7 @@ import {
   ArrowLeft,
   Brain,
   Truck,
+  Package,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
@@ -29,6 +30,7 @@ const managementItems = [
   { label: "API Keys", href: "/admin/api-keys", icon: Key },
   { label: "AI Keys", href: "/admin/ai-keys", icon: Brain },
   { label: "Supplier Providers", href: "/admin/supplier-providers", icon: Truck },
+  { label: "Sourcing", href: "/admin/sourcing", icon: Package },
   { label: "Users", href: "/admin/users", icon: Users },
 ];
 

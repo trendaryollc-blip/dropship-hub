@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Users, Globe, Key, TrendingUp, DollarSign, Activity,
-  Shield, BarChart3, ArrowRight, RefreshCw, AlertTriangle,
+  Shield, BarChart3, ArrowRight, RefreshCw, AlertTriangle, Package,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { safeFetch } from "@/lib/safe-fetch";
@@ -108,6 +108,7 @@ export default function AdminDashboardPage() {
     { label: "Users", href: "/admin/users", icon: Users, color: "text-blue-400", description: "Manage accounts" },
     { label: "Analytics", href: "/admin/analytics", icon: BarChart3, color: "text-pink-400", description: "View metrics" },
     { label: "Supplier Providers", href: "/admin/supplier-providers", icon: Activity, color: "text-cyan-400", description: "Configure suppliers" },
+    { label: "Sourcing", href: "/admin/sourcing", icon: Package, color: "text-blue-400", description: "Product → supplier pipeline" },
     { label: "Settings", href: "/admin/settings", icon: Shield, color: "text-emerald-400", description: "System settings" },
   ];
 
@@ -185,7 +186,7 @@ export default function AdminDashboardPage() {
         <div className="px-6 py-4 border-b border-border">
           <h3 className="font-display text-sm font-semibold text-foreground">Quick Actions</h3>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {quickActions.map((action) => (
             <Link
               key={action.href}
