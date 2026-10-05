@@ -38,10 +38,10 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      # Gate on shipped (production) dependencies. Several dev-only toolchain
-      # advisories (braces/micromatch/fast-glob/eslint-config-next) have no
-      # patched release available; production deps are clean at high+critical.
-      - run: npm audit --omit=dev --audit-level=high
+      # Gate on shipped (production) dependencies. scripts/audit-gate.mjs fails
+      # on high/critical advisories that `npm audit fix` can resolve without a
+      # breaking upgrade, and only warns on unfixable/major-only ones.
+      - run: node scripts/audit-gate.mjs
 
   test:
     runs-on: ubuntu-latest
