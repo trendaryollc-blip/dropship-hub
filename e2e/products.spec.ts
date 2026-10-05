@@ -245,8 +245,9 @@ test.describe("Products Page - Authenticated - Detail Hand-off", () => {
     await page.getByRole("link", { name: "Test Product 1" }).click();
 
     await expect(page.getByRole("heading", { level: 1, name: "Test Product 1" })).toBeVisible();
-    // No dead "#" link — every "View on Amazon" CTA points at an Amazon search.
-    const cta = page.getByRole("link", { name: /view on amazon/i }).first();
+    // No dead "#" link — a missing source link becomes an explicit platform
+    // search CTA (honest label) that points at an Amazon search URL.
+    const cta = page.getByRole("link", { name: /search amazon for this product/i }).first();
     await expect(cta).toHaveAttribute("href", "https://www.amazon.com/s?k=Test%20Product%201");
   });
 
