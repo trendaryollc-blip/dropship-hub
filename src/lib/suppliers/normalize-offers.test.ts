@@ -24,6 +24,43 @@ describe("normalizeSupplierSources", () => {
     expect(offers[1].inStock).toBeNull();
   });
 
+  it("carries extracted MOQ and shipping days onto the offer, null when absent", () => {
+    const offers = normalizeSupplierSources([
+      {
+        platformId: "alibaba",
+        platformName: "Alibaba",
+        storeName: "Test Store",
+        storeUrl: "https://example.com/store",
+        listingCount: 2,
+        listings: [
+          {
+            title: "Widget Pro",
+            price: 12.5,
+            currency: "USD",
+            image: null,
+            link: "https://x/1",
+            moq: 50,
+            shippingDays: 7,
+          },
+          {
+            title: "Widget Lite",
+            price: 1,
+            currency: "USD",
+            image: null,
+            link: "https://x/2",
+            moq: null,
+            shippingDays: null,
+          },
+        ],
+        dataSource: "live",
+      },
+    ]);
+    expect(offers[0].moq).toBe(50);
+    expect(offers[0].shippingDays).toBe(7);
+    expect(offers[1].moq).toBeNull();
+    expect(offers[1].shippingDays).toBeNull();
+  });
+
   it("skips unknown platforms", () => {
     const offers = normalizeSupplierSources([
       {

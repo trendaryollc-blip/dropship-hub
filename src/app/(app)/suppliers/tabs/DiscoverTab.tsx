@@ -26,7 +26,7 @@ import { useAPI } from "@/hooks/useAPI";
 import { getAuthHeaders } from "@/lib/auth-headers";
 import { buildSupplierSearchQuery, parseSupplierQuery, scoreSupplierMatch } from "@/lib/search/supplier-query";
 import { compareSuppliers, summarizeRealSignals, type SupplierSortKey } from "@/lib/suppliers/rank";
-import { resolveSupplierTrust } from "@/lib/suppliers/trust";
+import { resolveSupplierTrust, supplierPromptLine } from "@/lib/suppliers/trust";
 
 type SortBy = SupplierSortKey;
 
@@ -427,6 +427,7 @@ function SupplierGridCard({
 }) {
   const discovered = isDiscovered(supplier);
   const trust = resolveSupplierTrust(supplier);
+  const signals = summarizeRealSignals(supplier);
   const detailHref = discovered && supplier.sourceUrl ? supplier.sourceUrl : `/suppliers/${supplier.id}`;
   const isExternalLink = detailHref.startsWith("http");
   const priceRange = supplier.catalog.priceRange;
@@ -460,7 +461,7 @@ function SupplierGridCard({
         <span className="px-1.5 py-0.5 rounded bg-surface border border-border uppercase font-bold">
           {SOURCE_LABELS[supplier.source] ?? supplier.source}
         </span>
-        {supplier.stats.totalProducts > 0 && <span>{supplier.stats.totalProducts} listings observed</span>}
+        {signals.listingCount > 0 && <span>{signals.listingCount.toLocaleString()} listings observed</span>}
         {supplier.stats.rating > 0 ? (
           <span className="flex items-center gap-1 text-amber-400">
             <Star className="h-3 w-3 fill-current" /> {supplier.stats.rating.toFixed(1)}
@@ -469,10 +470,10 @@ function SupplierGridCard({
         ) : (
           <span>Rating not observed</span>
         )}
-        {priceRange.max > 0 && (
+        {signals.priceRange && (
           <span className="text-emerald-400">
-            {formatMoney(priceRange.min, priceRange.currency)}–
-            {formatMoney(priceRange.max, priceRange.currency)}
+            {formatMoney(signals.priceRange.min, priceRange.currency)}–
+            {formatMoney(signals.priceRange.max, priceRange.currency)}
           </span>
         )}
       </div>
@@ -867,7 +868,7 @@ function DiscoverContent() {
         return true;
       });
     }
-    if (filters.badges.length > 0) result = result.filter((s) => filters.badges.includes(s.trustBadge));
+    if (filters.badges.length > 0) result = result.filter((s) => filters.badges.includes(resolveSupplierTrust(s)));
     if (filters.locations.length > 0) result = result.filter((s) => filters.locations.includes(s.country));
     if (filters.minRating > 0) result = result.filter((s) => s.stats.rating >= filters.minRating);
     if (filters.shippingSpeed) {
@@ -1158,7 +1159,7 @@ function DiscoverContent() {
         onRemove={toggleSelectForCompare}
         onClearAll={() => setSelectedForCompare([])}
         onAICompare={(suppliers) => {
-          const prompt = `Compare these suppliers in depth: ${suppliers.map((s) => `${s.name} (${s.trustBadge} badge, ${s.stats.reliabilityScore}% reliability, ${s.stats.rating} rating)`).join(", ")}. Which should I use for my dropshipping store and why?`;
+          const prompt = `Compare these suppliers in depth: ${suppliers.map(supplierPromptLine).join(", ")}. Which should I use for my dropshipping store and why?`;
           window.open(`/ai?q=${encodeURIComponent(prompt)}`, "_blank");
         }}
       />

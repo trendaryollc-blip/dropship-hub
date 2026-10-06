@@ -2,6 +2,7 @@
 
 import { Sparkles, BarChart3, Package, MessageSquare, TrendingUp, FileText, Shield } from "lucide-react";
 import type { SupplierProfile } from "@/types/supplier";
+import { supplierPromptLine } from "@/lib/suppliers/trust";
 
 interface QuickAction {
   id: string;
@@ -29,7 +30,7 @@ const ACTIONS: QuickAction[] = [
     color: "text-blue-400",
     bg: "bg-blue-400/10 border-blue-400/20",
     getPrompt: (suppliers, _query) => {
-      const names = suppliers.slice(0, 5).map((s) => `${s.name} (${s.trustBadge} badge, ${s.stats.reliabilityScore}% reliability, ${s.stats.rating} rating, ${s.stats.shippingDays}d shipping)`).join(", ");
+      const names = suppliers.slice(0, 5).map(supplierPromptLine).join(", ");
       return `Analyze these suppliers in detail: ${names}. Compare their reliability, pricing, shipping speeds, quality scores, and give me a ranked recommendation of which suppliers to use for my dropshipping store. Include pros and cons for each.`;
     },
   },

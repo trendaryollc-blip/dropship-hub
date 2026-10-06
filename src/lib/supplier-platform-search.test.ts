@@ -136,6 +136,32 @@ describe("extractListingMatches", () => {
     expect(second.price).toBe(9.5);
   });
 
+  it("extracts stated MOQ, shipping window and years trading from the listing window", () => {
+    const html = `
+<html><body>
+<div class="product-card">
+  <a href="/product-detail/mech-toy_999.html"><h3>Mechanical Toy Kit</h3></a>
+  <span class="price">$4.99</span>
+  <span>MOQ: 50 pieces</span>
+  <span>Ships in 3-7 days</span>
+  <span>Established in 2015</span>
+</div>
+</body></html>`;
+    const matches = extractListingMatches(html, customConfig, TARGET_URL);
+    expect(matches).toHaveLength(1);
+    const listing = matches[0].listing;
+    expect(listing.moq).toBe(50);
+    expect(listing.shippingDays).toBe(7);
+    expect(listing.yearsInBusiness).toBe(new Date().getFullYear() - 2015);
+  });
+
+  it("leaves detail fields null when the markup states none", () => {
+    const matches = extractListingMatches(STORE_HTML, customConfig, TARGET_URL);
+    expect(matches[0].listing.moq).toBeNull();
+    expect(matches[0].listing.shippingDays).toBeNull();
+    expect(matches[0].listing.yearsInBusiness).toBeNull();
+  });
+
   it("prefers JSON-LD structured data with ratings and review counts", () => {
     const matches = extractListingMatches(JSON_LD_HTML, customConfig, TARGET_URL);
     expect(matches.length).toBeGreaterThanOrEqual(3);

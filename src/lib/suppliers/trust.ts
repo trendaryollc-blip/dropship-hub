@@ -54,3 +54,16 @@ export function supplierTrustSignals(supplier: SupplierProfile): TrustSignals {
 export function resolveSupplierTrust(supplier: SupplierProfile): TrustBadge {
   return resolveTrustBadge(supplierTrustSignals(supplier));
 }
+
+/**
+ * One honest line describing a supplier for AI prompts and exports. Unmeasured
+ * fields are labelled as unmeasured rather than rendered as zeros.
+ */
+export function supplierPromptLine(supplier: SupplierProfile): string {
+  const stats = supplier.stats ?? ({} as SupplierProfile["stats"]);
+  const reliability =
+    (stats.reliabilityScore ?? 0) > 0 ? `${stats.reliabilityScore}% reliability` : "reliability unmeasured";
+  const rating = (stats.rating ?? 0) > 0 ? `${stats.rating} rating` : "rating unmeasured";
+  const shipping = (stats.shippingDays ?? 0) > 0 ? `${stats.shippingDays}d shipping` : "shipping time unmeasured";
+  return `${supplier.name} (${resolveSupplierTrust(supplier)} badge, ${reliability}, ${rating}, ${shipping})`;
+}
