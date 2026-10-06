@@ -6,6 +6,7 @@ import { pollAllTrackedOrders, getPollingOrders } from "@/lib/fulfillment/auto-t
 import { logAuditEvent } from "@/lib/fulfillment/audit-logger";
 import { pushTrackingToStore } from "@/lib/fulfillment/store-adapters";
 import { safeErrorMessage } from "@/lib/api-errors";
+import { recordShipmentObserved } from "@/lib/suppliers/observer";
 
 export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -48,6 +49,14 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
           platformOrders,
           updatedAt: new Date().toISOString(),
         });
+
+        // Observe fulfillment latency against the suppliers on this order.
+        // Best-effort, and guarded so a later sync never double counts.
+        try {
+          await recordShipmentObserved(db, uid, order ?? {});
+        } catch {
+          // metrics writes never break status polling
+        }
 
         if (order?.storePlatform && order?.storeOrderId) {
           const storeSnap = await db.collection("users").doc(uid).collection("storeConnections")

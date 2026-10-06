@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { safeErrorMessage } from "@/lib/api-errors";
+import { recordOrderIngested } from "@/lib/suppliers/observer";
 
 const WOO_WEBHOOK_SECRET = process.env.WOO_WEBHOOK_SECRET || "";
 
@@ -120,6 +121,22 @@ export async function POST(req: NextRequest) {
       createdAt: data.date_created || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
+
+    // Count the ingest against each real supplier so completion rate and
+    // fulfillment latency can be measured over time. Best-effort.
+    try {
+      for (const item of items) {
+        if (item.supplierId && item.supplierId !== "unknown") {
+          await recordOrderIngested(db, uid, {
+            supplierId: item.supplierId,
+            supplierName: item.supplierName,
+            at: data.date_created || undefined,
+          });
+        }
+      }
+    } catch {
+      // metrics writes never break order ingestion
+    }
 
     return NextResponse.json({ received: true, orderId: data.id });
   } catch (error) {

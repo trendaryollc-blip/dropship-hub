@@ -7,6 +7,7 @@ import { withRetry } from "@/lib/monitoring/retry";
 import { autoDelistProduct } from "@/lib/monitoring/delister";
 import { appendPriceSnapshot } from "@/lib/monitoring/price-history";
 import { dispatchNotifications } from "@/lib/monitoring/notification-dispatcher";
+import { recordPriceDrift } from "@/lib/suppliers/observer";
 import type { MonitoredProduct, NotificationPayload } from "@/lib/monitoring/types";
 import { safeErrorMessage } from "@/lib/api-errors";
 
@@ -112,6 +113,21 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
           const threshold = product.priceDropThreshold || 5;
           const diff = newPrice - product.currentPrice;
           const diffPercent = Math.abs(Math.round((diff / product.currentPrice) * 100));
+
+          // Feed observed price drift back into the supplier's metrics so the
+          // router can weigh real price stability. Best-effort.
+          if (product.supplierId && product.currentPrice > 0) {
+            try {
+              const absPct = Math.abs(((newPrice - product.currentPrice) / product.currentPrice) * 100);
+              await recordPriceDrift(db, uid, {
+                supplierId: product.supplierId,
+                supplierName: product.supplierName,
+                absPct: Math.round(absPct * 100) / 100,
+              });
+            } catch {
+              // metrics writes never block a sync
+            }
+          }
 
           if (diffPercent >= threshold) {
             allNotifications.push({

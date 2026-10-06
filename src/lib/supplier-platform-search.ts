@@ -20,6 +20,7 @@ import { PublicError, safeErrorMessage } from "@/lib/api-errors";
 import { createLogger } from "@/lib/logger";
 import { getFeedCache, setFeedCache, __resetFeedCacheForTests } from "@/lib/feed-cache";
 import { parseSupplierQuery, scoreSupplierMatch } from "@/lib/search/supplier-query";
+import { parseListingDetails } from "@/lib/suppliers/listing-details";
 import type { SupplierProfile, DiscoveredListing } from "@/types/supplier";
 
 const logger = createLogger({ module: "supplier-platform-search" });
@@ -466,6 +467,7 @@ function extractWindowListing(
     new RegExp(IMAGE_PATTERN, "i").exec(afterSegment) ||
     new RegExp(IMAGE_PATTERN, "i").exec(beforeSegment);
   const ratingMatch = RATING_PATTERN.exec(afterSegment) || RATING_PATTERN.exec(beforeSegment);
+  const details = parseListingDetails(`${afterSegment} ${beforeSegment}`);
 
   return {
     title,
@@ -474,6 +476,9 @@ function extractWindowListing(
     image: imageMatch ? imageMatch[1] : null,
     link,
     rating: ratingMatch ? parseFloat(ratingMatch[1]) : undefined,
+    moq: details.moq ?? null,
+    shippingDays: details.shippingDays ?? null,
+    yearsInBusiness: details.yearsInBusiness ?? null,
   };
 }
 
@@ -680,6 +685,8 @@ function embeddedToListing(
   const rawPrice = stringField(card, "price");
   const rating = numericField(card, "reviewScore");
   const reviews = numericField(card, "reviewCount");
+  const moq = numericField(card, "moq") ?? numericField(card, "minOrder") ?? numericField(card, "minOrderQuantity");
+  const shippingDays = numericField(card, "deliveryDays") ?? numericField(card, "shippingDays");
   return {
     title,
     price: rawPrice ? firstPriceValue(rawPrice) : null,
@@ -690,6 +697,8 @@ function embeddedToListing(
     link: absolutize(productUrl, targetUrl),
     rating: rating && rating > 0 && rating <= 5 ? rating : undefined,
     reviews: reviews && reviews > 0 ? Math.round(reviews) : undefined,
+    moq: moq && moq > 0 ? Math.round(moq) : null,
+    shippingDays: shippingDays && shippingDays > 0 ? Math.round(shippingDays) : null,
   };
 }
 
@@ -1402,6 +1411,13 @@ function priceRangeOf(listings: DiscoveredListing[]): {
   };
 }
 
+function observedMoq(listings: DiscoveredListing[]): number {
+  const values = listings
+    .map((l) => l.moq)
+    .filter((m): m is number => typeof m === "number" && m > 0);
+  return values.length > 0 ? Math.min(...values) : 0;
+}
+
 function observedRating(listings: DiscoveredListing[]): { rating: number; reviews: number } {
   const ratings = listings
     .map((l) => l.rating)
@@ -1496,7 +1512,7 @@ export function sourceToSupplierProfile(source: SupplierSource, query: string): 
     catalog: {
       categories: categories.slice(0, 15),
       priceRange: priceRangeOf(source.listings),
-      moq: 0,
+      moq: observedMoq(source.listings),
       samplesAvailable: false,
       samplePrice: null,
     },

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X, GitCompare, Loader2, Sparkles, ChevronDown } from "lucide-react";
 import type { SupplierProfile } from "@/types/supplier";
 import { badgeConfig, ScoreRing } from "./supplier-shared";
+import { resolveSupplierTrust } from "@/lib/suppliers/trust";
 
 interface SupplierComparePanelProps {
   selectedSuppliers: SupplierProfile[];
@@ -83,8 +84,8 @@ export default function SupplierComparePanel({
                   </div>
                   <div className="min-w-0">
                     <p className="text-[10px] font-medium text-foreground truncate">{supplier.name}</p>
-                    <span className={`text-[8px] px-1 py-0.5 rounded-full border font-bold uppercase ${badgeConfig[supplier.trustBadge].color} ${badgeConfig[supplier.trustBadge].border}`}>
-                      {badgeConfig[supplier.trustBadge].label}
+                    <span className={`text-[8px] px-1 py-0.5 rounded-full border font-bold uppercase ${(badgeConfig[resolveSupplierTrust(supplier)] || badgeConfig.unverified).color} ${(badgeConfig[resolveSupplierTrust(supplier)] || badgeConfig.unverified).border}`}>
+                      {(badgeConfig[resolveSupplierTrust(supplier)] || badgeConfig.unverified).label}
                     </span>
                   </div>
                 </div>

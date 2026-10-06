@@ -25,7 +25,7 @@ function MarginBar({ margin }: { margin: number }) {
 }
 
 function OfferCard({ offer, rank, sellingPrice }: { offer: SupplierOffer; rank: number; sellingPrice: number }) {
-  const badge = badgeConfig[offer.trustBadge] || badgeConfig.bronze;
+  const badge = badgeConfig[offer.trustBadge] || badgeConfig.unverified;
   const isBest = rank === 0;
   const actualMargin = sellingPrice > 0 ? ((sellingPrice - offer.totalCostPerUnit) / sellingPrice) * 100 : offer.estimatedMargin;
 

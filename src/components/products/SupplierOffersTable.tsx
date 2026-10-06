@@ -68,6 +68,11 @@ export function SupplierOffersTable({ productId, offers, autoLink, onSelect }: S
           source,
           confidence: offer.confidence,
           needsAttention: false,
+          matchReasons: offer.matchReasons,
+          platformId: offer.platformId,
+          storeUrl: offer.storeUrl,
+          productUrl: offer.url,
+          dataSource: offer.dataSource,
         }),
       });
       setSelectedId(offer.supplierId);
@@ -111,6 +116,11 @@ export function SupplierOffersTable({ productId, offers, autoLink, onSelect }: S
           <p className="flex-1 text-foreground">
             Auto-matched <span className="font-medium">{autoLink.offer.supplierName}</span>
             <span className="text-muted-foreground"> @ {autoLink.confidence.toFixed(2)} (Estimated)</span>
+            {autoLink.offer.matchReasons && autoLink.offer.matchReasons.length > 0 && (
+              <span className="block text-[10px] text-muted-foreground">
+                {autoLink.offer.matchReasons.join(" · ")}
+              </span>
+            )}
           </p>
           <button
             onClick={() => postAssignment(autoLink.offer, "auto_accepted")}
@@ -165,7 +175,16 @@ export function SupplierOffersTable({ productId, offers, autoLink, onSelect }: S
                   </span>
                 </td>
                 <td className="px-3 py-2 text-muted-foreground">
-                  {o.confidence > 0 ? `${o.confidence.toFixed(2)} (Estimated)` : "—"}
+                  {o.confidence > 0 ? (
+                    <div title={o.matchReasons?.join(", ") || undefined}>
+                      <div>{o.confidence.toFixed(2)} (Estimated)</div>
+                      {o.matchReasons && o.matchReasons.length > 0 && (
+                        <div className="text-[10px] text-muted-foreground/70">{o.matchReasons.join(", ")}</div>
+                      )}
+                    </div>
+                  ) : (
+                    "—"
+                  )}
                 </td>
                 <td className="px-3 py-2 text-right">
                   {selectedId === o.supplierId ? (

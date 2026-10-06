@@ -4,6 +4,7 @@ import { pushTrackingToStore } from "@/lib/fulfillment/store-adapters";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { safeErrorMessage } from "@/lib/api-errors";
+import { recordShipmentObserved } from "@/lib/suppliers/observer";
 
 export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -79,6 +80,14 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
         platformOrders,
         updatedAt: new Date().toISOString(),
       });
+
+      // Observe fulfillment latency against the suppliers on this order.
+      // Best-effort, and guarded so a re-sync never double counts.
+      try {
+        await recordShipmentObserved(db, uid, order);
+      } catch {
+        // metrics writes never break a tracking sync
+      }
     }
 
     return NextResponse.json({ success: synced, platform: storePlatform });

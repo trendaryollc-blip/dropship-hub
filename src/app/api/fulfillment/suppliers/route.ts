@@ -3,6 +3,7 @@ import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { safeErrorMessage } from "@/lib/api-errors";
+import { upsertDirectorySupplier, directoryEntryFromAssignment } from "@/lib/suppliers/directory";
 
 function sanitizeProductId(id: string): string {
   return id.replace(/\//g, "__SLASH__");
@@ -31,7 +32,7 @@ export const GET = withAuth(async (req: NextRequest, uid: string) => {
 export const POST = withAuth(async (req: NextRequest, uid: string) => {
   try {
     const body = await req.json();
-    const { productId, supplierId, supplierName, unitCost, shippingCost, source, confidence, candidates, needsAttention } = body;
+    const { productId, supplierId, supplierName, unitCost, shippingCost, source, confidence, candidates, needsAttention, matchReasons, platformId, storeUrl, productUrl, dataSource } = body;
     if (!productId || !supplierId) {
       return NextResponse.json({ error: "productId and supplierId required" }, { status: 400 });
     }
@@ -50,8 +51,28 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
       confidence: typeof confidence === "number" ? confidence : null,
       ...(Array.isArray(candidates) ? { candidates } : {}),
       ...(typeof needsAttention === "boolean" ? { needsAttention } : {}),
+      ...(Array.isArray(matchReasons) ? { matchReasons } : {}),
+      ...(typeof platformId === "string" ? { platformId } : {}),
+      ...(typeof storeUrl === "string" ? { storeUrl } : {}),
+      ...(typeof productUrl === "string" ? { productUrl } : {}),
+      ...(dataSource === "live" || dataSource === "estimated" ? { dataSource } : {}),
       updatedAt: new Date().toISOString(),
     }, { merge: true });
+
+    // Persist the supplier into the user's directory so observed performance
+    // accumulates against a stable id. Best-effort — never block the selection.
+    try {
+      await upsertDirectorySupplier(
+        db,
+        uid,
+        directoryEntryFromAssignment(
+          { supplierId, supplierName, platformId, storeUrl, unitCost, dataSource },
+          source === "auto_accepted" || source === "auto" ? "auto-link" : "manual-selection"
+        )
+      );
+    } catch {
+      // directory persistence is best-effort
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

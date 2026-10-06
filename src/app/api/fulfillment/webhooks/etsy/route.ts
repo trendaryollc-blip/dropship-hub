@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { getAdminDB } from "@/lib/firebase-admin";
 import { safeErrorMessage } from "@/lib/api-errors";
+import { recordOrderIngested } from "@/lib/suppliers/observer";
 
 function timingSafeStringEqual(a: string, b: string): boolean {
   const bufA = Buffer.from(a);
@@ -121,6 +122,21 @@ export async function POST(req: NextRequest) {
       createdAt: data.create_timestamp ? new Date(data.create_timestamp * 1000).toISOString() : new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
+
+    // Count the ingest against each real supplier so completion rate and
+    // fulfillment latency can be measured over time. Best-effort.
+    try {
+      for (const item of items) {
+        if (item.supplierId && item.supplierId !== "unknown") {
+          await recordOrderIngested(db, uid, {
+            supplierId: item.supplierId,
+            supplierName: item.supplierName,
+          });
+        }
+      }
+    } catch {
+      // metrics writes never break order ingestion
+    }
 
     return NextResponse.json({ received: true, receiptId });
   } catch (error) {

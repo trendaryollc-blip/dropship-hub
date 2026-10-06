@@ -8,6 +8,7 @@ import type { NormalizedSupplierOffer } from "@/types/supplier-offers";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { safeErrorMessage } from "@/lib/api-errors";
+import { resolveSupplierTrust, type TrustBadge } from "@/lib/suppliers/trust";
 
 interface PlatformPrice {
   platform: string;
@@ -25,18 +26,13 @@ interface EnrichmentResult {
   cheapest: PlatformPrice | null;
   mostExpensive: PlatformPrice | null;
   priceSpread: number;
-  // trustBadge/shipping are null when the source has no measured value — the UI
-  // hides those fields instead of rendering an invented range or tier.
-  supplierMatches: { id: string; name: string; trustBadge: "gold" | "silver" | "bronze" | null; location: string; flag: string; price: number | null; shippingToUS: string | null; shippingToEU: string | null; reliabilityScore: number; responseTime: string }[];
+  // trustBadge resolves through resolveSupplierTrust — the single source of
+  // truth — so unmeasured suppliers always read "unverified" and shipping is
+  // null when the source has no measured value: the UI hides those fields
+  // instead of rendering an invented range or tier.
+  supplierMatches: { id: string; name: string; trustBadge: TrustBadge; location: string; flag: string; price: number | null; shippingToUS: string | null; shippingToEU: string | null; reliabilityScore: number; responseTime: string }[];
   sourcesUsed: string[];
   coverage: { queried: number; succeeded: number; uniquePlatforms: number };
-}
-
-const TRUST_BADGES = new Set(["gold", "silver", "bronze"]);
-
-function measuredTrustBadge(value: string): "gold" | "silver" | "bronze" | null {
-  const normalized = value.toLowerCase();
-  return TRUST_BADGES.has(normalized) ? (normalized as "gold" | "silver" | "bronze") : null;
 }
 
 function measuredDays(days: number): string | null {
@@ -151,7 +147,7 @@ export const POST = withAuth(async (request: NextRequest) => {
         supplierMatches = suppliers.slice(0, 3).map((s) => ({
             id: s.id,
             name: s.name,
-            trustBadge: measuredTrustBadge(s.trustBadge),
+            trustBadge: resolveSupplierTrust(s),
             location: s.location,
             flag: s.flag,
             price: null,
@@ -164,7 +160,7 @@ export const POST = withAuth(async (request: NextRequest) => {
         supplierMatches = supplierOffers.slice(0, 3).map((o) => ({
             id: o.supplierId,
             name: o.supplierName,
-            trustBadge: null,
+            trustBadge: "unverified",
             location: o.platformId,
             flag: "",
             price: o.unitCost,

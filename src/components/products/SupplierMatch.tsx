@@ -44,7 +44,8 @@ export default function SupplierMatchSection({ suppliers, productTitle, category
         {suppliers.map((s, i) => {
           const badgeKey = s.trustBadge && s.trustBadge !== "unverified" ? s.trustBadge : "unverified";
           const badge = badgeConfig[badgeKey];
-          const cardClass = s.trustBadge === "gold" ? "supplier-gold" : s.trustBadge === "silver" ? "supplier-silver" : "supplier-bronze";
+          const cardClass =
+            badgeKey === "gold" ? "supplier-gold" : badgeKey === "silver" ? "supplier-silver" : badgeKey === "bronze" ? "supplier-bronze" : "";
           const hasReliability = typeof s.reliabilityScore === "number" && s.reliabilityScore > 0;
           const location = [s.flag, s.location].filter(Boolean).join(" ").trim();
 

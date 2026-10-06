@@ -25,8 +25,10 @@ import QuickActionResult from "@/components/suppliers/QuickActionResult";
 import { useAPI } from "@/hooks/useAPI";
 import { getAuthHeaders } from "@/lib/auth-headers";
 import { buildSupplierSearchQuery, parseSupplierQuery, scoreSupplierMatch } from "@/lib/search/supplier-query";
+import { compareSuppliers, summarizeRealSignals, type SupplierSortKey } from "@/lib/suppliers/rank";
+import { resolveSupplierTrust } from "@/lib/suppliers/trust";
 
-type SortBy = "rating" | "reliability" | "response" | "orders" | "price";
+type SortBy = SupplierSortKey;
 
 const DEFAULT_PLATFORM_IDS = ["alibaba", "dhgate", "global_sources", "aliexpress", "cj"];
 
@@ -144,7 +146,7 @@ function ComparisonModal({ suppliers, onClose }: { suppliers: SupplierProfile[];
                         {s.name.split(" ").map((w) => w[0]).join("").slice(0, 2)}
                       </div>
                       <span className="text-xs font-semibold text-foreground">{s.name}</span>
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-bold uppercase ${badgeConfig[s.trustBadge].color} ${badgeConfig[s.trustBadge].border}`}>{badgeConfig[s.trustBadge].label}</span>
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-bold uppercase ${(badgeConfig[resolveSupplierTrust(s)] || badgeConfig.unverified).color} ${(badgeConfig[resolveSupplierTrust(s)] || badgeConfig.unverified).border}`}>{(badgeConfig[resolveSupplierTrust(s)] || badgeConfig.unverified).label}</span>
                     </div>
                   </th>
                 ))}
@@ -234,6 +236,8 @@ function SupplierCard({
   }, []);
 
   const hasStats = supplier.stats.rating > 0 || supplier.stats.reliabilityScore > 0;
+  const trust = resolveSupplierTrust(supplier);
+  const signals = summarizeRealSignals(supplier);
   const discovered = isDiscovered(supplier);
   const detailHref = discovered && supplier.sourceUrl ? supplier.sourceUrl : `/suppliers/${supplier.id}`;
   const isExternalLink = detailHref.startsWith("http");
@@ -271,7 +275,7 @@ function SupplierCard({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <h3 className="font-display text-sm font-semibold text-foreground">{supplier.name}</h3>
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-bold uppercase ${badgeConfig[supplier.trustBadge].color} ${badgeConfig[supplier.trustBadge].border}`}>{badgeConfig[supplier.trustBadge].label}</span>
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-bold uppercase ${badgeConfig[trust].color} ${badgeConfig[trust].border}`}>{badgeConfig[trust].label}</span>
                   <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-bold uppercase ${dataSourceConfig[supplier.dataSource]?.color || ""}`}>{dataSourceConfig[supplier.dataSource]?.label || supplier.dataSource}</span>
                   {discovered && (
                     <span className="text-[9px] px-1.5 py-0.5 rounded-full border font-bold uppercase bg-surface text-muted-foreground border-border">
@@ -356,8 +360,17 @@ function SupplierCard({
               {supplier.shipping.freeShippingThreshold && (
                 <span className="text-emerald-400">Free ship ${supplier.shipping.freeShippingThreshold}+</span>
               )}
-              {supplier.stats.totalProducts > 0 && (
+              {!discovered && supplier.stats.totalProducts > 0 && (
                 <span>{supplier.stats.totalProducts.toLocaleString()} products</span>
+              )}
+              {discovered && signals.listingCount > 0 && (
+                <span>{signals.listingCount.toLocaleString()} matching listings</span>
+              )}
+              {discovered && signals.priceRange && (
+                <span className="text-emerald-400">
+                  {formatMoney(signals.priceRange.min, supplier.catalog.priceRange.currency)}–
+                  {formatMoney(signals.priceRange.max, supplier.catalog.priceRange.currency)}
+                </span>
               )}
               {isExternalLink && (
                 <span className="flex items-center gap-1 text-accent"><ExternalLink className="h-3 w-3" /> View store</span>
@@ -413,6 +426,7 @@ function SupplierGridCard({
   onToggleSelect: (id: string) => void;
 }) {
   const discovered = isDiscovered(supplier);
+  const trust = resolveSupplierTrust(supplier);
   const detailHref = discovered && supplier.sourceUrl ? supplier.sourceUrl : `/suppliers/${supplier.id}`;
   const isExternalLink = detailHref.startsWith("http");
   const priceRange = supplier.catalog.priceRange;
@@ -428,7 +442,7 @@ function SupplierGridCard({
           <div className="min-w-0">
             <h3 className="font-display text-sm font-semibold text-foreground truncate">{supplier.name}</h3>
             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-              <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-bold uppercase ${badgeConfig[supplier.trustBadge].color} ${badgeConfig[supplier.trustBadge].border}`}>{badgeConfig[supplier.trustBadge].label}</span>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-bold uppercase ${badgeConfig[trust].color} ${badgeConfig[trust].border}`}>{badgeConfig[trust].label}</span>
               <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-bold uppercase ${dataSourceConfig[supplier.dataSource]?.color || ""}`}>{dataSourceConfig[supplier.dataSource]?.label || supplier.dataSource}</span>
             </div>
           </div>
@@ -546,7 +560,7 @@ function DiscoverContent() {
     minPriceCompetitiveness: 0,
     certifications: [],
   });
-  const [sortBy, setSortBy] = useState<SortBy>("rating");
+  const [sortBy, setSortBy] = useState<SortBy>("relevance");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
   const [focusedSupplierId, setFocusedSupplierId] = useState<string | null>(null);
@@ -889,7 +903,10 @@ function DiscoverContent() {
         case "response": return a.stats.responseTimeHours - b.stats.responseTimeHours;
         case "orders": return b.stats.monthlyOrders - a.stats.monthlyOrders;
         case "price": return b.stats.priceCompetitiveness - a.stats.priceCompetitiveness;
-        default: return b.stats.rating - a.stats.rating;
+        case "rating": return b.stats.rating - a.stats.rating;
+        case "relevance":
+        default:
+          return compareSuppliers(sortBy, a, b);
       }
     };
     result.sort((a, b) => (searchScores.get(b.id) ?? 0) - (searchScores.get(a.id) ?? 0) || tieBreak(a, b));
@@ -1077,6 +1094,7 @@ function DiscoverContent() {
           onChange={(e) => setSortBy(e.target.value as SortBy)}
           className="h-12 px-4 rounded-xl glass border border-border text-sm text-foreground bg-transparent"
         >
+          <option value="relevance">Most Relevant</option>
           <option value="rating">Top Rated</option>
           <option value="reliability">Most Reliable</option>
           <option value="response">Fastest Response</option>
@@ -1239,7 +1257,7 @@ function DiscoverContent() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-display text-base font-bold text-foreground">{focusedSupplier.name}</h3>
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-bold uppercase ${badgeConfig[focusedSupplier.trustBadge].color} ${badgeConfig[focusedSupplier.trustBadge].border}`}>{badgeConfig[focusedSupplier.trustBadge].label}</span>
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-bold uppercase ${badgeConfig[resolveSupplierTrust(focusedSupplier)].color} ${badgeConfig[resolveSupplierTrust(focusedSupplier)].border}`}>{badgeConfig[resolveSupplierTrust(focusedSupplier)].label}</span>
                     </div>
                     <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                       <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {focusedSupplier.flag} {focusedSupplier.location}</span>

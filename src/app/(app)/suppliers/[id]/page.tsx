@@ -10,6 +10,7 @@ import {
 import { useInView } from "@/hooks/useInView";
 import type { SupplierProfile } from "@/types/supplier";
 import { badgeConfig, ScoreRing, dataSourceConfig } from "@/components/suppliers/supplier-shared";
+import { resolveSupplierTrust } from "@/lib/suppliers/trust";
 import { useAPI } from "@/hooks/useAPI";
 import SupplierContactSlideOver from "@/components/suppliers/SupplierContactSlideOver";
 import SupplierPerformanceTab from "@/components/suppliers/SupplierPerformanceTab";
@@ -96,7 +97,7 @@ function SupplierDetailContent({ id }: { id: string }) {
     );
   }
 
-  const badge = badgeConfig[supplier.trustBadge] || badgeConfig.bronze;
+  const badge = badgeConfig[resolveSupplierTrust(supplier)] || badgeConfig.unverified;
 
   return (
     <div className="max-w-5xl mx-auto space-y-5 pb-16 md:pb-24">

@@ -20,6 +20,9 @@ export interface MonitoredProduct {
   storeConnections?: StoreConnectionRef[];
   autoDelisted?: boolean;
   autoDelistedAt?: string | null;
+  /** Supplier that fulfilled this listing, when one was chosen at push time. */
+  supplierId?: string;
+  supplierName?: string;
 }
 
 export interface PriceHistoryEntry {

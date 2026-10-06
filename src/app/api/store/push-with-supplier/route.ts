@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { safeErrorMessage } from "@/lib/api-errors";
 import { pushProductToStore } from "@/lib/store-push";
+import { registerSupplierProductMonitoring } from "@/lib/suppliers/monitoring-registration";
 
 function sanitizeProductId(id: string): string {
   return id.replace(/\//g, "__SLASH__");
@@ -34,12 +35,13 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
     }
 
     // Product snapshot: prefer a saved product doc, fall back to query params.
-    const { title, image, price, url, description } = body as {
+    const { title, image, price, url, description, supplierUrl } = body as {
       title?: string;
       image?: string;
       price?: number;
       url?: string;
       description?: string;
+      supplierUrl?: string;
     };
     const priceNum = typeof price === "number" ? price : 0;
     if (!title || !(priceNum > 0)) {
@@ -92,6 +94,29 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
             },
             { merge: true }
           );
+      }
+
+      // Register the supplier product page for stock/price monitoring so the
+      // existing inventory sync can warn before a customer orders an out-of-stock
+      // item. Best-effort — the push already succeeded.
+      const supplierProductUrl =
+        (typeof supplierUrl === "string" && supplierUrl) ||
+        (typeof assignment?.productUrl === "string" ? assignment.productUrl : "");
+      if (supplierProductUrl) {
+        try {
+          await registerSupplierProductMonitoring(db, uid, {
+            productId,
+            productTitle: title,
+            sourceUrl: supplierProductUrl,
+            currentPrice: priceNum,
+            productImage: image || undefined,
+            storeId,
+            supplierId: typeof assignment?.supplierId === "string" ? assignment.supplierId : null,
+            supplierName: typeof assignment?.supplierName === "string" ? assignment.supplierName : null,
+          });
+        } catch {
+          // monitoring registration is best-effort
+        }
       }
     }
 

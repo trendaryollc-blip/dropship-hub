@@ -3,6 +3,7 @@ import { getAdminDB } from "@/lib/firebase-admin";
 import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { safeErrorMessage } from "@/lib/api-errors";
+import { recordRefund } from "@/lib/suppliers/observer";
 
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
@@ -112,6 +113,34 @@ export const POST = withAuth(async (req: NextRequest, uid: string) => {
           refundAmount: refundData.totalRefund,
           updatedAt: new Date().toISOString(),
         });
+      }
+
+      // Attribute the refund to the suppliers behind the order so refund rate
+      // feeds the router. Best-effort — the refund already succeeded.
+      try {
+        if (refundData.orderId != null) {
+          const orderSnap = await db
+            .collection("users")
+            .doc(uid)
+            .collection("fulfillmentOrders")
+            .where("storeOrderId", "==", String(refundData.orderId))
+            .limit(1)
+            .get();
+          const orderItems = (orderSnap.docs[0]?.data()?.items ?? []) as Array<{
+            supplierId?: string;
+            supplierName?: string;
+          }>;
+          for (const item of orderItems) {
+            if (item.supplierId && item.supplierId !== "unknown") {
+              await recordRefund(db, uid, {
+                supplierId: item.supplierId,
+                supplierName: item.supplierName,
+              });
+            }
+          }
+        }
+      } catch {
+        // metrics writes never break a refund
       }
 
       return NextResponse.json({ success: true });

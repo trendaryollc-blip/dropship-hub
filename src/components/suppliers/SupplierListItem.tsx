@@ -5,10 +5,11 @@ import { Star, MapPin, Clock, Truck, Package, ArrowRight } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
 import type { SupplierProfile } from "@/types/supplier";
 import { badgeConfig, ScoreRing, dataSourceConfig } from "./supplier-shared";
+import { resolveSupplierTrust } from "@/lib/suppliers/trust";
 
 export default function SupplierListItem({ supplier, index }: { supplier: SupplierProfile; index: number }) {
   const { ref, isInView } = useInView({ threshold: 0.1 });
-  const badge = badgeConfig[supplier.trustBadge] || badgeConfig.bronze;
+  const badge = badgeConfig[resolveSupplierTrust(supplier)] || badgeConfig.unverified;
 
   return (
     <Link href={`/suppliers/${supplier.id}`}>

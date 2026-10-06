@@ -67,6 +67,12 @@ export interface DiscoveredListing {
   link: string;
   rating?: number;
   reviews?: number;
+  /** Minimum order quantity, when explicitly stated on the listing. */
+  moq?: number | null;
+  /** Upper bound of a stated shipping window, in days. */
+  shippingDays?: number | null;
+  /** Whole years trading, only when derived from an explicit "since YYYY". */
+  yearsInBusiness?: number | null;
 }
 
 export interface SupplierSearchResult {
