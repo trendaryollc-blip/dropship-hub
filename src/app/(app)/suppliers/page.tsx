@@ -1,8 +1,9 @@
 "use client";
 
 import { Suspense } from "react";
+import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Shield, Search, BarChart3, Handshake, Wrench } from "lucide-react";
+import { Shield, Search, BarChart3, Handshake, Wrench, BookMarked } from "lucide-react";
 import dynamic from "next/dynamic";
 
 const DiscoverTab = dynamic(() => import("./tabs/DiscoverTab"), {
@@ -90,6 +91,13 @@ function SuppliersPageContent() {
               </button>
             );
           })}
+          <Link
+            href="/suppliers/directory"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all text-muted-foreground hover:text-foreground hover:bg-background/50"
+          >
+            <BookMarked className="h-4 w-4" />
+            <span className="hidden sm:inline">Directory</span>
+          </Link>
         </div>
       </div>
 
