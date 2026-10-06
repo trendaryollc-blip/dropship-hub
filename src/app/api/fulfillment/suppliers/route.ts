@@ -12,8 +12,25 @@ function sanitizeProductId(id: string): string {
 export const GET = withAuth(async (req: NextRequest, uid: string) => {
   try {
     const productId = req.nextUrl.searchParams.get("productId");
+    const view = req.nextUrl.searchParams.get("view");
 
     const db = await getAdminDB();
+
+    // ?view=directory — every supplier this account has discovered or chosen,
+    // merged into one stable row per supplier.
+    if (view === "directory") {
+      interface DirectoryRow {
+        id: string;
+        lastSeenAt?: unknown;
+        [field: string]: unknown;
+      }
+      const snap = await db.collection("users").doc(uid).collection("supplierDirectory").get();
+      const directory = snap.docs
+        .map((d): DirectoryRow => ({ id: d.id, ...(d.data() as Record<string, unknown>) }))
+        .sort((a, b) => String(b.lastSeenAt ?? "").localeCompare(String(a.lastSeenAt ?? "")))
+        .slice(0, 100);
+      return NextResponse.json({ directory });
+    }
 
     if (productId) {
       const docId = sanitizeProductId(productId);

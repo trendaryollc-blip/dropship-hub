@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
 import { getSuppliers } from "@/lib/supplier-service";
+import { resolveSupplierTrust } from "@/lib/suppliers/trust";
 import { LIMITS } from "@/lib/rate-limit";
 import { safeErrorMessage } from "@/lib/api-errors";
 import { z } from "zod";
@@ -73,8 +74,11 @@ export const GET = withAuth(async (request: NextRequest) => {
       // Quality signals
       score += supplier.stats.reliabilityScore * 0.1;
       score += supplier.stats.rating * 2;
-      if (supplier.trustBadge === "gold") score += 5;
-      else if (supplier.trustBadge === "silver") score += 3;
+      // Resolve instead of trusting the stored tier: an unmeasured supplier
+      // must never earn the gold/silver bonus.
+      const badge = resolveSupplierTrust(supplier);
+      if (badge === "gold") score += 5;
+      else if (badge === "silver") score += 3;
 
       // Data freshness bonus
       if (supplier.dataSource === "live") score += 3;

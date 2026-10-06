@@ -611,7 +611,8 @@ describe("/api/dashboard", () => {
 
       expect(data.supplierStatuses.length).toBe(1);
       expect(data.supplierStatuses[0].name).toBe("CJ Dropshipping");
-      expect(["gold", "silver", "bronze"]).toContain(data.supplierStatuses[0].trustBadge);
+      // No measured reliability for a search feed — never a fabricated tier.
+      expect(data.supplierStatuses[0].trustBadge).toBe("unverified");
     });
 
     it("returns correct response level based on product count", async () => {

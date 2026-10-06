@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { LIMITS } from "@/lib/rate-limit";
 import { validateBody, AIChatSchema } from "@/lib/validation";
 import { getSupplierById } from "@/lib/supplier-service";
+import { resolveSupplierTrust } from "@/lib/suppliers/trust";
 import { getUserTier, getUsage, trackUsage } from "@/lib/billing/stripe";
 import { getUsageLimit } from "@/lib/billing/types";
 import { getAllowedProviders } from "@/lib/ai-provider-guard";
@@ -106,7 +107,7 @@ BASIC INFO:
   ID: ${supplier.id}
   Location: ${supplier.flag} ${supplier.location}
   Source: ${supplier.source.toUpperCase()}
-  Trust Badge: ${supplier.trustBadge.toUpperCase()}
+  Trust Badge: ${resolveSupplierTrust(supplier)}
   Data Source: ${supplier.dataSource}
   Year Established: ${supplier.stats.yearEstablished}
   Specializations: ${supplier.specializations.join(", ")}

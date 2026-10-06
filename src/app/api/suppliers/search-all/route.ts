@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
+import { getAdminDB } from "@/lib/firebase-admin";
+import { directoryEntryFromProfile, upsertDirectorySupplier } from "@/lib/suppliers/directory";
 import { LIMITS } from "@/lib/rate-limit";
 import { createLogger } from "@/lib/logger";
 import { safeErrorMessage } from "@/lib/api-errors";
@@ -22,6 +24,7 @@ export const maxDuration = 60;
 const MAX_QUERY_LENGTH = 200;
 const MAX_PLATFORMS = 20;
 const MAX_SUPPLIERS = 60;
+const MAX_DIRECTORY_WRITES = 10;
 const PLATFORM_ID_PATTERN = /^[a-z0-9_]+$/;
 const STREAM_MEDIA_TYPE = "application/x-ndjson";
 
@@ -106,6 +109,27 @@ export const POST = withAuth(async (request: NextRequest, uid: string) => {
           : undefined,
       });
       const discovered = buildSupplierProfiles(outcome.sources, query);
+
+      // Persist what discovery just surfaced. Discovery is ephemeral and
+      // re-scraped every session; writing it to the directory keeps a stable id
+      // so observed performance can accumulate. Best-effort and bounded — a
+      // directory write must never fail a search.
+      if (discovered.length > 0) {
+        try {
+          const db = await getAdminDB();
+          await Promise.all(
+            discovered
+              .slice(0, MAX_DIRECTORY_WRITES)
+              .map((supplier) =>
+                upsertDirectorySupplier(db, uid, directoryEntryFromProfile(supplier, "discovery"))
+              )
+          );
+        } catch (error) {
+          logger.warn("supplier directory update failed", {
+            error: safeErrorMessage(error, "directory write failed"),
+          });
+        }
+      }
 
       let local: SupplierProfile[] = [];
       try {

@@ -1,4 +1,5 @@
 import type { SupplierProfile, SupplierDueDiligence } from "@/types/supplier";
+import { resolveSupplierTrust } from "@/lib/suppliers/trust";
 
 const _modelCache = new Map<string, { models: string[]; ts: number }>();
 const _MODEL_TTL = 3600000;
@@ -121,7 +122,7 @@ function buildDueDiligencePrompt(supplier: SupplierProfile): string {
 SUPPLIER DATA:
 - Name: ${supplier.name}
 - Location: ${supplier.location} (${supplier.country})
-- Trust Badge: ${supplier.trustBadge}
+- Trust Badge: ${resolveSupplierTrust(supplier)}
 - Data Source: ${supplier.dataSource}
 - Year Established: ${supplier.stats.yearEstablished}
 - Specializations: ${supplier.specializations.join(", ")}

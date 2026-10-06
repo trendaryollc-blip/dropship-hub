@@ -353,8 +353,9 @@ export const GET = withAuth(async (_request: Request) => {
     const supplierStatus: SupplierStatus = {
       name: "CJ Dropshipping",
       productCount: totalProducts,
-      // Catalog tier from listing count only — not a verified badge.
-      trustBadge: totalProducts > 30 ? "gold" : totalProducts > 15 ? "silver" : "bronze",
+      // Listing count is catalog size, not trust. With no measured reliability
+      // or completion rate for this feed, "unverified" is the only honest tier.
+      trustBadge: "unverified",
       // No messaging/SLA feed yet: omit response time rather than invent one.
       responseTime: "—",
       responseLevel: "slow",

@@ -17,6 +17,7 @@ export function SupplierNetwork({ suppliers }: { suppliers: SupplierStatus[] }) 
     gold: { bg: "bg-amber-400/10", text: "text-amber-400" },
     silver: { bg: "bg-gray-300/10", text: "text-gray-300" },
     bronze: { bg: "bg-orange-400/10", text: "text-orange-400" },
+    unverified: { bg: "bg-white/5", text: "text-gray-400" },
   };
   const statusColors: Record<string, string> = { online: "bg-emerald-400", busy: "bg-amber-400", offline: "bg-gray-500" };
   const responseColors: Record<string, string> = { fast: "text-emerald-400", moderate: "text-amber-400", slow: "text-red-400" };
@@ -72,7 +73,7 @@ export function SupplierNetwork({ suppliers }: { suppliers: SupplierStatus[] }) 
               <p className="text-[11px] text-gray-600 text-center py-4">No suppliers connected</p>
             )}
             {suppliers.slice(0, 4).map((s) => {
-              const badge = badgeColors[s.trustBadge] || badgeColors.bronze;
+              const badge = badgeColors[s.trustBadge] || badgeColors.unverified;
               return (
                 <Link key={s.name} href="/suppliers" className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] transition-all group">
                   <div className={`p-2 rounded-lg ${badge.bg}`}>

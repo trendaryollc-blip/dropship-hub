@@ -94,6 +94,31 @@ describe("/api/fulfillment/suppliers", () => {
       expect(json.assignment.supplierId).toBe("cj");
     });
 
+    it("returns the persisted supplier directory most recently seen first", async () => {
+      const entries = [
+        { supplierId: "s1", name: "Alpha", lastSeenAt: "2026-01-02T00:00:00.000Z" },
+        { supplierId: "s2", name: "Beta", lastSeenAt: "2026-01-05T00:00:00.000Z" },
+      ];
+      mockDb.collection.mockReturnValue({
+        doc: vi.fn().mockReturnValue({
+          collection: vi.fn().mockImplementation((name: string) => {
+            if (name === "supplierDirectory") {
+              return { get: vi.fn().mockResolvedValue({ docs: buildMockDocs(entries) }) };
+            }
+            return { get: vi.fn().mockResolvedValue({ docs: [] }) };
+          }),
+        }),
+      });
+
+      const { GET } = await import("./route");
+      const req = makeRequest("GET", "http://localhost/api/fulfillment/suppliers?view=directory");
+      const res = await GET(req);
+      const json = await res.json();
+
+      expect(json.directory).toHaveLength(2);
+      expect(json.directory.map((d: { supplierId: string }) => d.supplierId)).toEqual(["s2", "s1"]);
+    });
+
     it("returns 500 on error", async () => {
       mockDb.collection.mockImplementation(() => {
         throw new Error("db error");

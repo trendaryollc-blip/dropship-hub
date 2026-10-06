@@ -161,29 +161,32 @@ export interface ObservedPerformanceSnapshot {
   reliabilityScore: number;
   refundRate: number;
   avgShippingDays: number;
-  complaintRate: number;
-  stockReliability: number;
   snapshotDate: string;
 }
 
 /**
  * Project counters into the supplierPerformance row the router already reads.
- * Only emits when fulfilment evidence exists, so we never write default data.
+ *
+ * Every number written here must have been measured. The router treats a low
+ * reliabilityScore as evidence and excludes the supplier from auto-routing, so
+ * publishing an unmeasured 0 would silently drop a healthy supplier — no row is
+ * strictly better than a wrong one. Metrics nobody collects (complaint rate,
+ * stock reliability) are therefore omitted entirely, never zero-filled.
  */
 export function toPerformanceSnapshot(
   metrics: ObservedSupplierMetrics,
   snapshotDate = new Date().toISOString().split("T")[0]
 ): ObservedPerformanceSnapshot | null {
-  if (metrics.ordersFulfilled <= 0) return null;
+  if (metrics.ordersIngested <= 0 || metrics.ordersFulfilled <= 0) return null;
   const avgLatency = averageFulfillmentLatencyDays(metrics);
+  const rate = refundRate(metrics);
+  if (avgLatency === null || rate === null) return null;
   return {
     supplierId: metrics.supplierId,
     supplierName: metrics.supplierName,
     reliabilityScore: deriveObservedReliability(metrics),
-    refundRate: refundRate(metrics) ?? 0,
-    avgShippingDays: avgLatency ?? 0,
-    complaintRate: 0,
-    stockReliability: 0,
+    refundRate: rate,
+    avgShippingDays: avgLatency,
     snapshotDate,
   };
 }

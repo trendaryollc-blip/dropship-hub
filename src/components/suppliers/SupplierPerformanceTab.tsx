@@ -14,9 +14,9 @@ interface PerformanceData {
   refundRateTrend: number;
   avgShippingDays: number;
   shippingTrend: number;
-  complaintRate: number;
+  complaintRate: number | null;
   complaintTrend: number;
-  stockReliability: number;
+  stockReliability: number | null;
   stockTrend: number;
   dailySnapshots: SupplierMetricSnapshot[];
   status: "excellent" | "good" | "warning" | "critical" | "unknown";
@@ -206,14 +206,16 @@ export default function SupplierPerformanceTab({ supplierId, supplierName }: { s
               <metric.icon className="h-3.5 w-3.5" style={{ color: metric.color }} />
               <TrendIcon trend={metric.trend} />
             </div>
-            <p className="text-lg font-bold text-white">{metric.value.toFixed(1)}{metric.suffix}</p>
+            <p className="text-lg font-bold text-white">{metric.value === null ? "\u2014" : `${metric.value.toFixed(1)}${metric.suffix}`}</p>
             <div className="flex items-center justify-between mt-1">
-              <p className="text-[10px] text-neutral-500">{metric.label}</p>
+              <p className="text-[10px] text-neutral-500">{metric.value === null ? `${metric.label} (not measured)` : metric.label}</p>
               <TrendBadge trend={metric.trend} />
             </div>
             <div className="mt-2">
               <MiniSparkline
-                data={snapshots.map((s) => s[metric.label === "Reliability" ? "reliabilityScore" : metric.label === "Refund Rate" ? "refundRate" : metric.label === "Avg Shipping" ? "shippingDays" : "complaintRate"] as number)}
+                data={snapshots
+                  .map((s) => s[metric.label === "Reliability" ? "reliabilityScore" : metric.label === "Refund Rate" ? "refundRate" : metric.label === "Avg Shipping" ? "shippingDays" : "complaintRate"])
+                  .filter((v): v is number => typeof v === "number")}
                 color={metric.color}
               />
             </div>
@@ -229,19 +231,25 @@ export default function SupplierPerformanceTab({ supplierId, supplierName }: { s
             <span className="text-xs text-neutral-400">Stock Reliability</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-white">{performance.stockReliability}%</span>
+            <span className="text-sm font-bold text-white" title={performance.stockReliability === null ? "Not measured" : undefined}>
+              {performance.stockReliability === null ? "\u2014" : `${performance.stockReliability}%`}
+            </span>
             <TrendIcon trend={performance.stockTrend} />
           </div>
         </div>
-        <div className="w-full h-2 rounded-full bg-white/5 overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-1000"
-            style={{
-              width: `${performance.stockReliability}%`,
-              backgroundColor: performance.stockReliability >= 90 ? "#22c55e" : performance.stockReliability >= 75 ? "#3b82f6" : "#f59e0b",
-            }}
-          />
-        </div>
+        {performance.stockReliability === null ? (
+          <p className="text-[10px] text-neutral-500">No stock-out feed for this supplier yet — not measured.</p>
+        ) : (
+          <div className="w-full h-2 rounded-full bg-white/5 overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-1000"
+              style={{
+                width: `${performance.stockReliability}%`,
+                backgroundColor: performance.stockReliability >= 90 ? "#22c55e" : performance.stockReliability >= 75 ? "#3b82f6" : "#f59e0b",
+              }}
+            />
+          </div>
+        )}
       </div>
 
       {/* Trend Charts */}

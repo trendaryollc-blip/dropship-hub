@@ -6,6 +6,8 @@ import { normalizeSupplierSources } from "@/lib/suppliers/normalize-offers";
 import { pickAutoLink } from "@/lib/suppliers/fuzzy-match";
 import type { NormalizedSupplierOffer } from "@/types/supplier-offers";
 import { withAuth } from "@/lib/auth";
+import { getAdminDB } from "@/lib/firebase-admin";
+import { directoryEntryFromOffer, upsertDirectorySupplier } from "@/lib/suppliers/directory";
 import { LIMITS } from "@/lib/rate-limit";
 import { safeErrorMessage } from "@/lib/api-errors";
 import { resolveSupplierTrust, type TrustBadge } from "@/lib/suppliers/trust";
@@ -61,7 +63,7 @@ async function searchPlatformSafely(
   }
 }
 
-export const POST = withAuth(async (request: NextRequest) => {
+export const POST = withAuth(async (request: NextRequest, uid: string) => {
   try {
     const { title, source, price } = await request.json();
 
@@ -137,6 +139,28 @@ export const POST = withAuth(async (request: NextRequest) => {
         if (offers.length > 0) {
           supplierOffers = offers;
           autoLink = pickAutoLink({ title: query, image: null, price: basePrice > 0 ? basePrice : null }, offers);
+
+          // Persist the suppliers this search surfaced so the directory knows
+          // about them before a choice is made. Best-effort, deduped and bounded
+          // — a directory write must never fail enrichment.
+          const seen = new Set<string>();
+          const discovered = offers.filter((o) => {
+            if (seen.has(o.supplierId)) return false;
+            seen.add(o.supplierId);
+            return true;
+          });
+          try {
+            const db = await getAdminDB();
+            await Promise.all(
+              discovered
+                .slice(0, 10)
+                .map((offer) =>
+                  upsertDirectorySupplier(db, uid, directoryEntryFromOffer(offer, "discovery"))
+                )
+            );
+          } catch {
+            // best-effort only
+          }
         }
       } catch {
         // Live supplier search is optional — fall through to directory

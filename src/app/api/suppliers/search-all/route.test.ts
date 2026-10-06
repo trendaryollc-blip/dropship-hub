@@ -50,6 +50,22 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
+const mockGetAdminDB = vi.fn();
+vi.mock("@/lib/firebase-admin", () => ({
+  getAdminDB: (...args: unknown[]) => mockGetAdminDB(...args),
+}));
+
+const mockUpsertDirectorySupplier = vi.fn();
+vi.mock("@/lib/suppliers/directory", () => ({
+  upsertDirectorySupplier: (...args: unknown[]) => mockUpsertDirectorySupplier(...args),
+  directoryEntryFromProfile: (supplier: { id: string; name: string; source?: string }, source: string) => ({
+    supplierId: supplier.id,
+    name: supplier.name,
+    platformId: supplier.source ?? "unknown",
+    source,
+  }),
+}));
+
 function makePostRequest(body: unknown) {
   return {
     url: "http://localhost/api/suppliers/search-all",
@@ -129,6 +145,8 @@ describe("/api/suppliers/search-all", () => {
     vi.clearAllMocks();
     mockGetSuppliers.mockResolvedValue([makeSupplier()]);
     mockEnforceSearchDailyLimit.mockResolvedValue({ allowed: true });
+    mockGetAdminDB.mockResolvedValue({});
+    mockUpsertDirectorySupplier.mockResolvedValue(undefined);
   });
 
   describe("POST validation", () => {
@@ -242,6 +260,59 @@ describe("/api/suppliers/search-all", () => {
         store: "Factory X Store",
         listings: 2,
       });
+    });
+
+    it("persists discovered suppliers into the user's directory", async () => {
+      const discovered = makeSupplier({
+        id: "alibaba-factory-x-store",
+        name: "Factory X Store",
+        source: "alibaba",
+        dataSource: "estimated",
+        trustBadge: "unverified",
+      });
+      mockSearchSupplierPlatforms.mockResolvedValue({
+        sources: [
+          {
+            platformId: "alibaba",
+            platformName: "Alibaba",
+            storeName: "Factory X Store",
+            storeUrl: "https://www.alibaba.com/store/1.html",
+            listingCount: 2,
+            listings: [],
+            dataSource: "estimated",
+          },
+        ],
+        errors: [],
+        keywords: ["baby"],
+      });
+      mockBuildSupplierProfiles.mockReturnValue([discovered]);
+
+      const { POST } = await import("./route");
+      const res = await POST(makePostRequest({ query: "baby toys" }));
+      expect(res.status).toBe(200);
+
+      expect(mockUpsertDirectorySupplier).toHaveBeenCalledTimes(1);
+      const [db, uid, entry] = mockUpsertDirectorySupplier.mock.calls[0];
+      expect(db).toBeTruthy();
+      expect(uid).toBe("test-user-uid");
+      expect(entry).toMatchObject({
+        supplierId: "alibaba-factory-x-store",
+        name: "Factory X Store",
+        source: "discovery",
+      });
+    });
+
+    it("still returns results when the directory write fails", async () => {
+      mockUpsertDirectorySupplier.mockRejectedValue(new Error("firestore unavailable"));
+      mockSearchSupplierPlatforms.mockResolvedValue({ sources: [], errors: [], keywords: [] });
+      mockBuildSupplierProfiles.mockReturnValue([]);
+
+      const { POST } = await import("./route");
+      const res = await POST(makePostRequest({ query: "baby toys" }));
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(data.query).toBe("baby toys");
     });
 
     it("ranks query-relevant discovered suppliers above unrelated local ones", async () => {

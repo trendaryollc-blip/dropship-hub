@@ -92,12 +92,12 @@ export interface SupplierPerformance {
   refundRateTrend: number;
   avgShippingDays: number;
   shippingTrend: number;
-  complaintRate: number;
+  complaintRate: number | null;
   complaintTrend: number;
-  stockReliability: number;
+  stockReliability: number | null;
   stockTrend: number;
-  communicationScore: number;
-  qualityScore: number;
+  communicationScore: number | null;
+  qualityScore: number | null;
   totalOrders: number;
   responseTimeHours: number;
   dailySnapshots: SupplierMetricSnapshot[];
@@ -136,9 +136,9 @@ export interface SupplierComparison {
     reliabilityScore: number;
     refundRate: number;
     avgShippingDays: number;
-    complaintRate: number;
-    stockReliability: number;
-    priceCompetitiveness: number;
+    complaintRate: number | null;
+    stockReliability: number | null;
+    priceCompetitiveness: number | null;
     totalOrders: number;
   }[];
 }

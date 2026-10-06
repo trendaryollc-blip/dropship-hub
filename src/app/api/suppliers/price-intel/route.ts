@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth";
 import { getSuppliers } from "@/lib/supplier-service";
 import { getPriceIntelligence, savePriceIntelligence, isPriceIntelligenceFresh } from "@/lib/data/price-intelligence";
 import { PriceLookupInputSchema } from "@/lib/data/schemas";
+import { resolveSupplierTrust } from "@/lib/suppliers/trust";
 import type { SupplierOffer, PriceIntelligenceProduct, SupplierProfile } from "@/types/supplier";
 
 function normalizeProductName(name: string): string {
@@ -18,7 +19,10 @@ function _calculateTotalCost(offer: SupplierOffer): number {
 }
 
 function isBadgeEligible(s: SupplierProfile): s is SupplierProfile & { trustBadge: "gold" | "silver" | "bronze" } {
-  return s.trustBadge !== "unverified";
+  // Resolved, not stored: a supplier with no measured performance is excluded
+  // even if a tier value was attached upstream. When this passes, the resolved
+  // badge equals the stored one, so buildSupplierOffer can pass it through.
+  return resolveSupplierTrust(s) !== "unverified";
 }
 
 function scoreOffer(offer: SupplierOffer): number {

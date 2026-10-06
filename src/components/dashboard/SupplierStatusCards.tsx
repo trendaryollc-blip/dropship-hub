@@ -9,6 +9,7 @@ const badgeConfig: Record<string, { color: string; bg: string; glow: string }> =
   gold: { color: "text-amber-400", bg: "bg-amber-400/10", glow: "shadow-amber-400/20" },
   silver: { color: "text-gray-300", bg: "bg-gray-300/10", glow: "shadow-gray-300/20" },
   bronze: { color: "text-orange-400", bg: "bg-orange-400/10", glow: "shadow-orange-400/20" },
+  unverified: { color: "text-gray-400", bg: "bg-gray-400/10", glow: "shadow-gray-400/20" },
 };
 
 const defaultBadge = { color: "text-gray-400", bg: "bg-gray-400/10", glow: "shadow-gray-400/20" };

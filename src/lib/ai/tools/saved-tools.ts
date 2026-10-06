@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createTool } from "./registry";
 import { searchAllPlatforms } from "@/lib/platform-search";
 import { getSuppliers } from "@/lib/supplier-service";
+import { resolveSupplierTrust } from "@/lib/suppliers/trust";
 import type { SupplierProfile } from "@/types/supplier";
 
 // ─── Saved-product AI tools ─────────────────────────────────────────────────
@@ -219,7 +220,7 @@ export const compareSuppliersTool = createTool({
       id: supplier.id,
       name: supplier.name,
       location: supplier.location,
-      trustBadge: supplier.trustBadge,
+      trustBadge: resolveSupplierTrust(supplier),
       relevanceScore: score,
     }));
 

@@ -78,4 +78,29 @@ describe("observed supplier metrics", () => {
     });
     expect(snap!.reliabilityScore).toBeGreaterThan(0);
   });
+
+  it("never publishes a snapshot when order ingest was never observed", () => {
+    // A shipment can arrive without an ingest record (legacy orders, a webhook
+    // that only half-succeeded). Projecting that would write reliability 0 and
+    // get the supplier excluded by the router's minimum-reliability check.
+    let m = emptyObservedMetrics("s1", "Supplier 1");
+    m = applyOrderFulfilled(m, 4);
+    expect(toPerformanceSnapshot(m, "2026-01-05")).toBeNull();
+  });
+
+  it("never publishes a snapshot without a measured shipping latency", () => {
+    let m = emptyObservedMetrics("s1", "Supplier 1");
+    m = applyOrderIngested(m, "s1", "Supplier 1");
+    m = applyOrderFulfilled(m, -3);
+    expect(toPerformanceSnapshot(m, "2026-01-05")).toBeNull();
+  });
+
+  it("omits metrics nobody collects instead of reporting zero for them", () => {
+    let m = emptyObservedMetrics("s1", "Supplier 1");
+    m = applyOrderIngested(m, "s1", "Supplier 1");
+    m = applyOrderFulfilled(m, 4);
+    const snap = toPerformanceSnapshot(m, "2026-01-05");
+    expect(snap).not.toHaveProperty("complaintRate");
+    expect(snap).not.toHaveProperty("stockReliability");
+  });
 });

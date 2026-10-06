@@ -127,6 +127,31 @@ describe("observed metrics persistence", () => {
     expect(store.size).toBeGreaterThan(0);
   });
 
+  it("does not project a router snapshot from a shipment with no ingest history", async () => {
+    const { db, store } = makeDb();
+
+    await recordShipmentObserved(
+      db,
+      uid,
+      {
+        status: "pending",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        items: [{ supplierId: "sup-1", supplierName: "Alpha" }],
+      },
+      new Date("2026-01-11T00:00:00.000Z")
+    );
+
+    // The fulfilment itself is recorded…
+    const counters = await getObservedMetrics(db, uid, "sup-1");
+    expect(counters?.ordersFulfilled).toBe(1);
+
+    // …but nothing is published to the router: an unmeasured history must not
+    // become reliabilityScore 0, which would exclude the supplier from routing.
+    expect(
+      store.get(["c", "users", "d", uid, "c", "supplierPerformance", "d", "sup-1"].join("/"))
+    ).toBeUndefined();
+  });
+
   it("ignores unknown or missing supplier ids and unparseable timestamps", async () => {
     const { db, store } = makeDb();
 

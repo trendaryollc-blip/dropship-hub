@@ -62,7 +62,7 @@ function formatMoney(value: number, currency?: string | null): string {
 }
 
 function isDiscovered(supplier: SupplierProfile): boolean {
-  return supplier.trustBadge === "unverified";
+  return resolveSupplierTrust(supplier) === "unverified";
 }
 
 interface PlatformChip {

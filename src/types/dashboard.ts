@@ -122,7 +122,7 @@ export interface NicheCard {
 export interface SupplierStatus {
   name: string;
   productCount: number;
-  trustBadge: "gold" | "silver" | "bronze";
+  trustBadge: "gold" | "silver" | "bronze" | "unverified";
   responseTime: string;
   responseLevel: "fast" | "moderate" | "slow";
   completionRate: number;

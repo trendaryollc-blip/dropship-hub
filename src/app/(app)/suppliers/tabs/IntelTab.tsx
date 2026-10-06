@@ -57,14 +57,14 @@ function SupplierScoreCard({ supplier, delay }: { supplier: SupplierPerformance;
         <div className="p-2 rounded-lg bg-surface">
           <p className="text-[9px] sm:text-[10px] text-muted-foreground">Complaints</p>
           <div className="flex items-center gap-1">
-            <p className="text-xs sm:text-sm font-bold text-foreground">{supplier.complaintRate}%</p>
+            <p className="text-xs sm:text-sm font-bold text-foreground">{supplier.complaintRate === null ? "\u2014" : `${supplier.complaintRate}%`}</p>
             {trendIcon(-supplier.complaintTrend)}
           </div>
         </div>
         <div className="p-2 rounded-lg bg-surface">
           <p className="text-[9px] sm:text-[10px] text-muted-foreground">Stock Reliability</p>
           <div className="flex items-center gap-1">
-            <p className="text-xs sm:text-sm font-bold text-foreground">{supplier.stockReliability}%</p>
+            <p className="text-xs sm:text-sm font-bold text-foreground">{supplier.stockReliability === null ? "\u2014" : `${supplier.stockReliability}%`}</p>
             {trendIcon(supplier.stockTrend)}
           </div>
         </div>
@@ -117,7 +117,7 @@ function AlertCard({ alert, delay }: { alert: SupplierAlert; delay: number }) {
   );
 }
 
-function ComparisonTable({ suppliers }: { suppliers: { name: string; reliabilityScore: number; refundRate: number; avgShippingDays: number; complaintRate: number; stockReliability: number; priceCompetitiveness: number; totalOrders: number }[] }) {
+function ComparisonTable({ suppliers }: { suppliers: { name: string; reliabilityScore: number; refundRate: number; avgShippingDays: number; complaintRate: number | null; stockReliability: number | null; priceCompetitiveness: number | null; totalOrders: number }[] }) {
   const { ref, isInView } = useInView({ threshold: 0.2 });
   const metrics = [
     { key: "reliabilityScore", label: "Reliability", better: "higher" as const },
@@ -128,7 +128,11 @@ function ComparisonTable({ suppliers }: { suppliers: { name: string; reliability
     { key: "priceCompetitiveness", label: "Price Score", better: "higher" as const },
   ];
   const getBest = (key: string, better: "higher" | "lower") => {
-    const vals = suppliers.map((s) => (s as Record<string, unknown>)[key] as number);
+    // Unmeasured cells are null — they must never win a "best" highlight.
+    const vals = suppliers
+      .map((s) => (s as Record<string, unknown>)[key])
+      .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+    if (vals.length === 0) return null;
     return better === "higher" ? Math.max(...vals) : Math.min(...vals);
   };
   return (
@@ -153,12 +157,20 @@ function ComparisonTable({ suppliers }: { suppliers: { name: string; reliability
               <tr key={m.key} className="border-b border-border/50">
                 <td className="py-2 text-[10px] sm:text-[11px] text-muted-foreground">{m.label}</td>
                 {suppliers.map((s) => {
-                  const val = (s as Record<string, unknown>)[m.key] as number;
-                  const isBest = val === best;
+                  const val = (s as Record<string, unknown>)[m.key] as number | null;
+                  const isBest = val !== null && val === best;
+                  const cell =
+                    val === null || val === undefined
+                      ? "\u2014"
+                      : m.key === "avgShippingDays"
+                        ? `${val}d`
+                        : m.key.includes("Rate") || m.key === "stockReliability" || m.key === "reliabilityScore"
+                          ? `${val}%`
+                          : String(val);
                   return (
                     <td key={s.name} className="text-center py-2">
-                      <span className={`text-[10px] sm:text-[11px] font-semibold ${isBest ? "text-emerald-400" : "text-foreground"}`}>
-                        {m.key === "avgShippingDays" ? `${val}d` : m.key.includes("Rate") || m.key === "stockReliability" || m.key === "reliabilityScore" ? `${val}%` : val}
+                      <span className={`text-[10px] sm:text-[11px] font-semibold ${isBest ? "text-emerald-400" : "text-foreground"}`} title={val === null ? "Not measured" : undefined}>
+                        {cell}
                       </span>
                     </td>
                   );
@@ -252,7 +264,7 @@ export default function IntelTab() {
   const uid = user?.uid || "";
   const { data: sData } = useAPI<{ suppliers?: SupplierPerformance[] }>(uid ? `/api/suppliers/performance?type=overview&uid=${uid}` : null);
   const { data: aData } = useAPI<{ alerts?: SupplierAlert[] }>(uid ? `/api/suppliers/performance?type=alerts&uid=${uid}` : null);
-  const { data: cData } = useAPI<{ comparison?: { name: string; reliabilityScore: number; refundRate: number; avgShippingDays: number; complaintRate: number; stockReliability: number; priceCompetitiveness: number; totalOrders: number }[] }>(uid ? `/api/suppliers/performance?type=comparison&uid=${uid}` : null);
+  const { data: cData } = useAPI<{ comparison?: { name: string; reliabilityScore: number; refundRate: number; avgShippingDays: number; complaintRate: number | null; stockReliability: number | null; priceCompetitiveness: number | null; totalOrders: number }[] }>(uid ? `/api/suppliers/performance?type=comparison&uid=${uid}` : null);
   const suppliers = sData?.suppliers || [];
   const alerts = aData?.alerts || [];
   const comparison = cData?.comparison || [];
