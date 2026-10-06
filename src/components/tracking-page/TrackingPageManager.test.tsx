@@ -216,9 +216,11 @@ describe("TrackingPageManager", () => {
       expect(mockAuthJson).toHaveBeenCalledWith("/api/tracking-page", expect.objectContaining({
         action: "preview", template: "modern",
       }));
+      // Assert inside waitFor: the fetch resolves before React re-renders the
+      // iframe, so checking synchronously after the call races the state update.
+      const iframe = screen.getByTitle("Tracking Page Preview") as HTMLIFrameElement;
+      expect(iframe.getAttribute("sandbox")).toBe("");
     });
-    const iframe = screen.getByTitle("Tracking Page Preview") as HTMLIFrameElement;
-    expect(iframe.getAttribute("sandbox")).toBe("");
   });
 
   it("shows empty analytics state", () => {
